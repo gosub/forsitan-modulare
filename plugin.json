@@ -1,0 +1,16 @@
+{
+  "slug": "forsitan",
+  "name": "forsitan modulare",
+  "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
+  "brand": "forsitan modulare",
+  "author": "Giampaolo Guiducci",
+  "authorEmail": "giampaolo.guiducci@gmail.com",
+  "authorUrl": "https://github.com/gosub",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": []
+}
