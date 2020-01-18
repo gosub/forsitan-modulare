@@ -12,5 +12,15 @@
   "sourceUrl": "",
   "donateUrl": "",
   "changelogUrl": "",
-  "modules": []
+  "modules": [
+    {
+      "slug": "alea",
+      "name": "alea",
+      "description": "Add a random module to your rack",
+      "tags": [
+        "utility",
+        "random"
+      ]
+    }
+  ]
 }
