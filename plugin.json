@@ -21,6 +21,14 @@
         "utility",
         "random"
       ]
+    },
+    {
+      "slug": "interea",
+      "name": "interea",
+      "description": "Make a chord from a V/Oct input",
+      "tags": [
+        "utility"
+      ]
     }
   ]
 }
