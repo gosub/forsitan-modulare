@@ -41,7 +41,14 @@ struct Interea : Module {
 		NUM_LIGHTS
 	};
 
+	typedef unsigned int Chord[4];
 	const float VOLT_PER_SEMITONE = 1.f / 12.f;
+
+	const Chord qualities[4] = {
+		{0, 4, 7, 11},
+		{0, 3, 7, 10},
+		{0, 4, 7, 10},
+		{0, 3, 6, 10}};
 
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -56,10 +63,14 @@ struct Interea : Module {
 		float freqParam = params[FREQ_PARAM].getValue();
 		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
 
-		outputs[ROOT_OUTPUT].setVoltage(freqParam);
-		outputs[_3RD_OUTPUT].setVoltage(freqParam + 4*VOLT_PER_SEMITONE);
-		outputs[_5TH_OUTPUT].setVoltage(freqParam + 7*VOLT_PER_SEMITONE);
-		outputs[_7TH_OUTPUT].setVoltage(freqParam + 11*VOLT_PER_SEMITONE);
+		unsigned int qualityParam = std::floor(params[QUALITY_PARAM].getValue());
+		qualityParam = clamp(qualityParam, 0, 3);
+
+
+		outputs[ROOT_OUTPUT].setVoltage(freqParam + qualities[qualityParam][0] * VOLT_PER_SEMITONE);
+		outputs[_3RD_OUTPUT].setVoltage(freqParam + qualities[qualityParam][1] * VOLT_PER_SEMITONE);
+		outputs[_5TH_OUTPUT].setVoltage(freqParam + qualities[qualityParam][2] * VOLT_PER_SEMITONE);
+		outputs[_7TH_OUTPUT].setVoltage(freqParam + qualities[qualityParam][3] * VOLT_PER_SEMITONE);
 	}
 };
 
