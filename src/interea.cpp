@@ -45,7 +45,7 @@ struct Interea : Module {
 
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(FREQ_PARAM, -5.f, 5.f, 0.f, "Frequency", " Hz", 2, dsp::FREQ_C4);
+		configParam(FREQ_PARAM, -4.5f, 4.5f, 0.f, "Frequency", " Hz", 2, dsp::FREQ_C4);
 		configParam(HARMON_PARAM, 0.f, 1.f, 0.f, "Harmonize");
 		configParam(VOICING_PARAM, 0.f, 4.f, 0.f, "Voicing");
 		configParam(INVERSION_PARAM, 0.f, 4.f, 0.f, "Inversion");
