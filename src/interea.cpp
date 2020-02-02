@@ -54,6 +54,8 @@ struct Interea : Module {
 
 	void process(const ProcessArgs& args) override {
 		float freqParam = params[FREQ_PARAM].getValue();
+		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
+
 		outputs[ROOT_OUTPUT].setVoltage(freqParam);
 		outputs[_3RD_OUTPUT].setVoltage(freqParam + 4*VOLT_PER_SEMITONE);
 		outputs[_5TH_OUTPUT].setVoltage(freqParam + 7*VOLT_PER_SEMITONE);
