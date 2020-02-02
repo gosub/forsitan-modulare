@@ -41,6 +41,8 @@ struct Interea : Module {
 		NUM_LIGHTS
 	};
 
+	const float VOLT_PER_SEMITONE = 1.f / 12.f;
+
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(FREQ_PARAM, -5.f, 5.f, 0.f, "Frequency", " Hz", 2, dsp::FREQ_C4);
@@ -51,6 +53,11 @@ struct Interea : Module {
 	}
 
 	void process(const ProcessArgs& args) override {
+		float freqParam = params[FREQ_PARAM].getValue();
+		outputs[ROOT_OUTPUT].setVoltage(freqParam);
+		outputs[_3RD_OUTPUT].setVoltage(freqParam + 4*VOLT_PER_SEMITONE);
+		outputs[_5TH_OUTPUT].setVoltage(freqParam + 7*VOLT_PER_SEMITONE);
+		outputs[_7TH_OUTPUT].setVoltage(freqParam + 11*VOLT_PER_SEMITONE);
 	}
 };
 
