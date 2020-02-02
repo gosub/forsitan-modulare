@@ -43,11 +43,11 @@ struct Interea : Module {
 
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(FREQ_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(HARMON_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(VOICING_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(INVERSION_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(QUALITY_PARAM, 0.f, 1.f, 0.f, "");
+		configParam(FREQ_PARAM, -5.f, 5.f, 0.f, "Frequency", " Hz", 2, dsp::FREQ_C4);
+		configParam(HARMON_PARAM, 0.f, 1.f, 0.f, "Harmonize");
+		configParam(VOICING_PARAM, 0.f, 4.f, 0.f, "Voicing");
+		configParam(INVERSION_PARAM, 0.f, 4.f, 0.f, "Inversion");
+		configParam(QUALITY_PARAM, 0.f, 4.f, 0.f, "Quality");
 	}
 
 	void process(const ProcessArgs& args) override {
