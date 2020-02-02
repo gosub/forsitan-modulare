@@ -21,3 +21,14 @@ Giampaolo Guiducci <giampaolo.guiducci@gmail.com>
 ## License
 
 GPL-3
+
+## TODO
+
+- interea panel: add freq knob
+- interea panel: add v/o input
+- interea panel: add harmonize button
+- interea panel: rework lines connecting knobs and inputs
+- interea svg: rename components
+- interea doc: make screenshot
+- interea doc: add description
+- interea doc: add how-to-use
