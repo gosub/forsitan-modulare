@@ -60,6 +60,13 @@ struct Interea : Module {
 		configParam(QUALITY_PARAM, 0.f, 4.f, 0.f, "Quality");
 	}
 
+	void select_quality_light(unsigned int q) {
+		lights[MAJ7_LIGHT].setBrightness(q==0 ? 1.0f : 0.0f);
+		lights[MIN7_LIGHT].setBrightness(q==1 ? 1.0f : 0.0f);
+		lights[DOM7_LIGHT].setBrightness(q==2 ? 1.0f : 0.0f);
+		lights[HALFDIM_LIGHT].setBrightness(q==3 ? 1.0f : 0.0f);
+	}
+
 	void process(const ProcessArgs& args) override {
 		float freqParam = params[FREQ_PARAM].getValue();
 		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
@@ -69,6 +76,7 @@ struct Interea : Module {
 
 		if (qualityParam != quality) {
 			quality = qualityParam;
+			select_quality_light(quality);
 		}
 
 		outputs[ROOT_OUTPUT].setVoltage(freqParam + qualities[quality][0] * VOLT_PER_SEMITONE);
