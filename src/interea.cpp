@@ -43,7 +43,7 @@ struct Interea : Module {
 
 	typedef unsigned int Chord[4];
 	const float VOLT_PER_SEMITONE = 1.f / 12.f;
-	bool update_light = true;
+	unsigned int quality = -1;
 
 	const Chord qualities[4] = {
 		{0, 4, 7, 11},
@@ -67,15 +67,14 @@ struct Interea : Module {
 		unsigned int qualityParam = std::floor(params[QUALITY_PARAM].getValue());
 		qualityParam = clamp(qualityParam, 0, 3);
 
-		if (update_light) {
-			lights[MAJ7_LIGHT].setBrightness(1.0);
-			update_light = false;
+		if (qualityParam != quality) {
+			quality = qualityParam;
 		}
 
-		outputs[ROOT_OUTPUT].setVoltage(freqParam + qualities[qualityParam][0] * VOLT_PER_SEMITONE);
-		outputs[_3RD_OUTPUT].setVoltage(freqParam + qualities[qualityParam][1] * VOLT_PER_SEMITONE);
-		outputs[_5TH_OUTPUT].setVoltage(freqParam + qualities[qualityParam][2] * VOLT_PER_SEMITONE);
-		outputs[_7TH_OUTPUT].setVoltage(freqParam + qualities[qualityParam][3] * VOLT_PER_SEMITONE);
+		outputs[ROOT_OUTPUT].setVoltage(freqParam + qualities[quality][0] * VOLT_PER_SEMITONE);
+		outputs[_3RD_OUTPUT].setVoltage(freqParam + qualities[quality][1] * VOLT_PER_SEMITONE);
+		outputs[_5TH_OUTPUT].setVoltage(freqParam + qualities[quality][2] * VOLT_PER_SEMITONE);
+		outputs[_7TH_OUTPUT].setVoltage(freqParam + qualities[quality][3] * VOLT_PER_SEMITONE);
 	}
 };
 
