@@ -24,7 +24,9 @@ GPL-3
 
 ## TODO
 
-- interea svg: rename components
+- interea dsp: implement voicing
+- interea dsp: implement inversion
+- interea dsp: implement harmonize
 - interea doc: make screenshot
 - interea doc: add description
 - interea doc: add how-to-use
