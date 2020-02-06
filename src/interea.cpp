@@ -72,6 +72,7 @@ struct Interea : Module {
 		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
 
 		unsigned int qualityParam = std::floor(params[QUALITY_PARAM].getValue());
+		qualityParam += inputs[QUALITY_INPUT].getVoltage() / 10.f * 4.f;
 		qualityParam = clamp(qualityParam, 0, 3);
 
 		if (qualityParam != quality) {
