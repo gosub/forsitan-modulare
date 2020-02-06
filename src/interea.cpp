@@ -41,7 +41,7 @@ struct Interea : Module {
 		NUM_LIGHTS
 	};
 
-	typedef unsigned int Chord[4];
+	typedef int Chord[4];
 	const float VOLT_PER_SEMITONE = 1.f / 12.f;
 	unsigned int quality = -1;
 
