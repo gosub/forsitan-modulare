@@ -61,10 +61,10 @@ struct Interea : Module {
 	}
 
 	void select_quality_light(unsigned int q) {
-		lights[MAJ7_LIGHT].setBrightness(q==0 ? 1.0f : 0.0f);
-		lights[MIN7_LIGHT].setBrightness(q==1 ? 1.0f : 0.0f);
-		lights[DOM7_LIGHT].setBrightness(q==2 ? 1.0f : 0.0f);
-		lights[HALFDIM_LIGHT].setBrightness(q==3 ? 1.0f : 0.0f);
+		lights[MAJ7_LIGHT].setBrightness(q==0 ? 1.f : 0.f);
+		lights[MIN7_LIGHT].setBrightness(q==1 ? 1.f : 0.f);
+		lights[DOM7_LIGHT].setBrightness(q==2 ? 1.f : 0.f);
+		lights[HALFDIM_LIGHT].setBrightness(q==3 ? 1.f : 0.f);
 	}
 
 	void process(const ProcessArgs& args) override {
