@@ -44,12 +44,19 @@ struct Interea : Module {
 	typedef int Chord[4];
 	const float VOLT_PER_SEMITONE = 1.f / 12.f;
 	unsigned int quality = -1;
+	unsigned int voicing = -1;
 
 	const Chord qualities[4] = {
 		{0, 4, 7, 11},
 		{0, 3, 7, 10},
 		{0, 4, 7, 10},
 		{0, 3, 6, 10}};
+
+	const Chord voicings[4] = {
+		{0,    0,   0,  0},
+		{0,    0, -12,  0},
+		{0,  -12,   0,  0},
+		{-12,  0,   0, 12}};
 
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -67,6 +74,13 @@ struct Interea : Module {
 		lights[HALFDIM_LIGHT].setBrightness(q==3 ? 1.f : 0.f);
 	}
 
+	void select_voicing_light(unsigned int q) {
+		lights[CLOSE_LIGHT].setBrightness(q==0 ? 1.f : 0.f);
+		lights[DROP2_LIGHT].setBrightness(q==1 ? 1.f : 0.f);
+		lights[DROP3_LIGHT].setBrightness(q==2 ? 1.f : 0.f);
+		lights[SPREAD_LIGHT].setBrightness(q==3 ? 1.f : 0.f);
+	}
+
 	void process(const ProcessArgs& args) override {
 		float freqParam = params[FREQ_PARAM].getValue();
 		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
@@ -75,15 +89,24 @@ struct Interea : Module {
 		qualityParam += inputs[QUALITY_INPUT].getVoltage() / 10.f * 4.f;
 		qualityParam = clamp(qualityParam, 0, 3);
 
+		unsigned int voicingParam = std::floor(params[VOICING_PARAM].getValue());
+		voicingParam += inputs[VOICING_INPUT].getVoltage() / 10.f * 4.f;
+		voicingParam = clamp(voicingParam, 0, 3);
+
 		if (qualityParam != quality) {
 			quality = qualityParam;
 			select_quality_light(quality);
 		}
 
-		outputs[ROOT_OUTPUT].setVoltage(freqParam + qualities[quality][0] * VOLT_PER_SEMITONE);
-		outputs[_3RD_OUTPUT].setVoltage(freqParam + qualities[quality][1] * VOLT_PER_SEMITONE);
-		outputs[_5TH_OUTPUT].setVoltage(freqParam + qualities[quality][2] * VOLT_PER_SEMITONE);
-		outputs[_7TH_OUTPUT].setVoltage(freqParam + qualities[quality][3] * VOLT_PER_SEMITONE);
+		if (voicingParam != voicing) {
+			voicing = voicingParam;
+			select_voicing_light(voicing);
+		}
+
+		outputs[ROOT_OUTPUT].setVoltage(freqParam + (qualities[quality][0] + voicings[voicing][0]) * VOLT_PER_SEMITONE);
+		outputs[_3RD_OUTPUT].setVoltage(freqParam + (qualities[quality][1] + voicings[voicing][1]) * VOLT_PER_SEMITONE);
+		outputs[_5TH_OUTPUT].setVoltage(freqParam + (qualities[quality][2] + voicings[voicing][2]) * VOLT_PER_SEMITONE);
+		outputs[_7TH_OUTPUT].setVoltage(freqParam + (qualities[quality][3] + voicings[voicing][3]) * VOLT_PER_SEMITONE);
 	}
 };
 
