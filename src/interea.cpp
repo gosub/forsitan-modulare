@@ -45,6 +45,7 @@ struct Interea : Module {
 	const float VOLT_PER_SEMITONE = 1.f / 12.f;
 	unsigned int quality = -1;
 	unsigned int voicing = -1;
+	unsigned int inversion = -1;
 
 	const Chord qualities[4] = {
 		{0, 4, 7, 11},
@@ -57,6 +58,17 @@ struct Interea : Module {
 		{0,    0, -12,  0},
 		{0,  -12,   0,  0},
 		{-12,  0,   0, 12}};
+
+	void invert_chord_once_inplace(Chord c) {
+		int temp = c[0];
+		c[0] = c[1]; c[1] = c[2]; c[2] = c[3]; c[3] = temp + 12;
+	}
+
+	void invert_chord(Chord c, int times) {
+		for (int i=0; i < times; ++i) {
+			invert_chord_once_inplace(c);
+		}
+	}
 
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -81,6 +93,13 @@ struct Interea : Module {
 		lights[SPREAD_LIGHT].setBrightness(q==3 ? 1.f : 0.f);
 	}
 
+	void select_inversion_light(unsigned int q) {
+		lights[ROOT_LIGHT].setBrightness(q==0 ? 1.f : 0.f);
+		lights[FIRST_LIGHT].setBrightness(q==1 ? 1.f : 0.f);
+		lights[SECOND_LIGHT].setBrightness(q==2 ? 1.f : 0.f);
+		lights[THIRD_LIGHT].setBrightness(q==3 ? 1.f : 0.f);
+	}
+
 	void process(const ProcessArgs& args) override {
 		float freqParam = params[FREQ_PARAM].getValue();
 		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
@@ -93,6 +112,10 @@ struct Interea : Module {
 		voicingParam += inputs[VOICING_INPUT].getVoltage() / 10.f * 4.f;
 		voicingParam = clamp(voicingParam, 0, 3);
 
+		unsigned int inversionParam = std::floor(params[INVERSION_PARAM].getValue());
+		inversionParam += inputs[INVERSION_INPUT].getVoltage() / 10.f * 4.f;
+		inversionParam = clamp(inversionParam, 0, 3);
+
 		if (qualityParam != quality) {
 			quality = qualityParam;
 			select_quality_light(quality);
@@ -103,10 +126,21 @@ struct Interea : Module {
 			select_voicing_light(voicing);
 		}
 
-		outputs[ROOT_OUTPUT].setVoltage(freqParam + (qualities[quality][0] + voicings[voicing][0]) * VOLT_PER_SEMITONE);
-		outputs[_3RD_OUTPUT].setVoltage(freqParam + (qualities[quality][1] + voicings[voicing][1]) * VOLT_PER_SEMITONE);
-		outputs[_5TH_OUTPUT].setVoltage(freqParam + (qualities[quality][2] + voicings[voicing][2]) * VOLT_PER_SEMITONE);
-		outputs[_7TH_OUTPUT].setVoltage(freqParam + (qualities[quality][3] + voicings[voicing][3]) * VOLT_PER_SEMITONE);
+		if (inversionParam != inversion) {
+			inversion = inversionParam;
+			select_inversion_light(inversion);
+		}
+
+		Chord c = {0, 0, 0, 0};
+		c[0] = qualities[quality][0] + voicings[voicing][0];
+		c[1] = qualities[quality][1] + voicings[voicing][1];
+		c[2] = qualities[quality][2] + voicings[voicing][2];
+		c[3] = qualities[quality][3] + voicings[voicing][3];
+		invert_chord(c, inversion);
+		outputs[ROOT_OUTPUT].setVoltage(freqParam + c[0] * VOLT_PER_SEMITONE);
+		outputs[_3RD_OUTPUT].setVoltage(freqParam + c[1] * VOLT_PER_SEMITONE);
+		outputs[_5TH_OUTPUT].setVoltage(freqParam + c[2] * VOLT_PER_SEMITONE);
+		outputs[_7TH_OUTPUT].setVoltage(freqParam + c[3] * VOLT_PER_SEMITONE);
 	}
 };
 
