@@ -24,8 +24,7 @@ GPL-3
 
 ## TODO
 
-- interea dsp: implement voicing
-- interea dsp: implement inversion
+- interea dsp: check if order of transformations is meaningful
 - interea dsp: implement harmonize
 - interea doc: make screenshot
 - interea doc: add description
