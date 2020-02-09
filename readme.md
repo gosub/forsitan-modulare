@@ -24,7 +24,6 @@ GPL-3
 
 ## TODO
 
-- interea dsp: implement harmonize
 - interea doc: make screenshot
 - interea doc: add description
 - interea doc: add how-to-use

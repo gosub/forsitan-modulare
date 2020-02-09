@@ -46,6 +46,8 @@ struct Interea : Module {
 	unsigned int quality = -1;
 	unsigned int voicing = -1;
 	unsigned int inversion = -1;
+	unsigned int harmonize = 0;
+	dsp::SchmittTrigger harmonizeTrigger;
 
 	const Chord qualities[4] = {
 		{0, 4, 7, 11},
@@ -69,6 +71,8 @@ struct Interea : Module {
 			invert_chord_once_inplace(c);
 		}
 	}
+
+	const int harmonizations[12] = {0, 0, 1, 0, 1, 0, 2, 2, 0, 1, 2, 3};
 
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -104,9 +108,20 @@ struct Interea : Module {
 		float freqParam = params[FREQ_PARAM].getValue();
 		freqParam += inputs[VOLTOCT_INPUT].getVoltage();
 
-		unsigned int qualityParam = std::floor(params[QUALITY_PARAM].getValue());
-		qualityParam += inputs[QUALITY_INPUT].getVoltage() / 10.f * 4.f;
-		qualityParam = clamp(qualityParam, 0, 3);
+		if (harmonizeTrigger.process(params[HARMON_PARAM].getValue())) {
+			harmonize = !harmonize;
+		}
+		lights[HARMON_LIGHT].setSmoothBrightness(harmonize ? 1.f : 0.f, args.sampleTime);
+
+		unsigned int qualityParam;
+		if (harmonize) {
+			int semitone = (int) std::trunc(freqParam / VOLT_PER_SEMITONE) % 12;
+			qualityParam = harmonizations[semitone >= 0 ? semitone : 12 + semitone];
+		} else {
+			qualityParam = std::floor(params[QUALITY_PARAM].getValue());
+			qualityParam += inputs[QUALITY_INPUT].getVoltage() / 10.f * 4.f;
+			qualityParam = clamp(qualityParam, 0, 3);
+		}
 
 		unsigned int voicingParam = std::floor(params[VOICING_PARAM].getValue());
 		voicingParam += inputs[VOICING_INPUT].getVoltage() / 10.f * 4.f;
