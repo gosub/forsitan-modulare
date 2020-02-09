@@ -30,3 +30,4 @@ GPL-3
 
 - interea doc: add description
 - interea doc: add how-to-use
+- doc: add an index
