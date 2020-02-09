@@ -14,6 +14,10 @@ A collection of VCV Rack modules
 
 Click on the ⚂ (die)
 
+## interea
+
+![interea](img/interea.png)
+
 ## Author
 
 Giampaolo Guiducci <giampaolo.guiducci@gmail.com>
@@ -24,6 +28,5 @@ GPL-3
 
 ## TODO
 
-- interea doc: make screenshot
 - interea doc: add description
 - interea doc: add how-to-use
