@@ -132,11 +132,15 @@ struct Interea : Module {
 		}
 
 		Chord c = {0, 0, 0, 0};
-		c[0] = qualities[quality][0] + voicings[voicing][0];
-		c[1] = qualities[quality][1] + voicings[voicing][1];
-		c[2] = qualities[quality][2] + voicings[voicing][2];
-		c[3] = qualities[quality][3] + voicings[voicing][3];
+		c[0] = qualities[quality][0];
+		c[1] = qualities[quality][1];
+		c[2] = qualities[quality][2];
+		c[3] = qualities[quality][3];
 		invert_chord(c, inversion);
+		c[0] += voicings[voicing][0];
+		c[1] += voicings[voicing][1];
+		c[2] += voicings[voicing][2];
+		c[3] += voicings[voicing][3];
 		outputs[ROOT_OUTPUT].setVoltage(freqParam + c[0] * VOLT_PER_SEMITONE);
 		outputs[_3RD_OUTPUT].setVoltage(freqParam + c[1] * VOLT_PER_SEMITONE);
 		outputs[_5TH_OUTPUT].setVoltage(freqParam + c[2] * VOLT_PER_SEMITONE);
