@@ -25,7 +25,7 @@
     {
       "slug": "interea",
       "name": "interea",
-      "description": "Make a chord from a V/Oct input",
+      "description": "Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.",
       "tags": [
         "utility"
       ]
