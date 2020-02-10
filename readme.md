@@ -2,6 +2,9 @@
 
 A collection of VCV Rack modules
 
+- [alea](#alea)
+- [interea](#interea)
+
 ## alea
 
 ![alea](img/alea.png)
@@ -29,7 +32,3 @@ Giampaolo Guiducci <giampaolo.guiducci@gmail.com>
 ## License
 
 GPL-3
-
-## TODO
-
-- doc: add an index
