@@ -46,7 +46,7 @@ struct Interea : Module {
 	unsigned int quality = -1;
 	unsigned int voicing = -1;
 	unsigned int inversion = -1;
-	unsigned int harmonize = 0;
+	unsigned int harmonize = false;
 	dsp::SchmittTrigger harmonizeTrigger;
 
 	const Chord qualities[4] = {
@@ -160,6 +160,28 @@ struct Interea : Module {
 		outputs[_3RD_OUTPUT].setVoltage(freqParam + c[1] * VOLT_PER_SEMITONE);
 		outputs[_5TH_OUTPUT].setVoltage(freqParam + c[2] * VOLT_PER_SEMITONE);
 		outputs[_7TH_OUTPUT].setVoltage(freqParam + c[3] * VOLT_PER_SEMITONE);
+	}
+
+	void onReset() override {
+		harmonize = false;
+	}
+
+	void onRandomize() override {
+		harmonize = (random::uniform() > 0.5f);
+	}
+
+	json_t* dataToJson() override {
+		json_t* rootJ = json_object();
+		// harmonize
+		json_object_set_new(rootJ, "harmonize", json_boolean(harmonize));
+		return rootJ;
+	}
+
+	void dataFromJson(json_t* rootJ) override {
+		// harmonize
+		json_t* harmonizeJ = json_object_get(rootJ, "harmonize");
+		if (harmonizeJ)
+			harmonize = json_is_true(harmonizeJ);
 	}
 };
 
