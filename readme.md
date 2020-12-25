@@ -2,8 +2,9 @@
 
 A collection of VCV Rack modules
 
-- [alea](#alea)
-- [interea](#interea)
+- [alea](#alea) - Add a random module to your rack
+- [interea](#interea) - Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.
+- [cumuli](#cumuli) - Accumulator with up and down gates and rates.
 
 ## alea
 
