@@ -1,12 +1,78 @@
-<?xml version="1.0" encoding="utf-8"?>
-  <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-  <svg version="1.1" id="Level_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-  width="1024px" height="768px" viewBox="0 0 1024 768" enable-background="new 0 0 1024 768" xml:space="preserve">
-  <rect x="46"  y="44" fill="#bac1b8" width="180" height="631"/>
-  <rect x="238" y="44" fill="#c8d1c6" width="180" height="631"/>
-  <rect x="430" y="44" fill="#69b578" width="180" height="631"/>
-  <rect x="622" y="44" fill="#2b303a" width="180" height="631"/>
-  <rect x="814" y="44" fill="#d64933" width="180" height="631"/>
-  <text transform="matrix(1 0 0 1 44 725.8984)" fill="#8e98a7" font-family="'Helvetica'" font-size="12">Coolors Exported Palette - coolors.co/bac1b8-c8d1c6-69b578-2b303a-d64933</text>
-  </svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   id="Level_1"
+   x="0px"
+   y="0px"
+   width="1024px"
+   height="768px"
+   viewBox="0 0 1024 768"
+   enable-background="new 0 0 1024 768"
+   xml:space="preserve"
+   sodipodi:docname="palette.svg"
+   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"><metadata
+   id="metadata19"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+   id="defs17" /><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1276"
+   inkscape:window-height="761"
+   id="namedview15"
+   showgrid="false"
+   inkscape:zoom="0.77473958"
+   inkscape:cx="495.66526"
+   inkscape:cy="384"
+   inkscape:window-x="0"
+   inkscape:window-y="18"
+   inkscape:window-maximized="0"
+   inkscape:current-layer="Level_1" />
+  <rect
+   x="134"
+   y="44"
+   fill="#bac1b8"
+   width="180"
+   height="631"
+   id="rect2"
+   style="fill:#e4e4e4" />
+  <rect
+   x="326"
+   y="44"
+   fill="#c8d1c6"
+   width="180"
+   height="631"
+   id="rect4"
+   style="fill:#e5e5e5" />
+  <rect
+   x="518"
+   y="44"
+   fill="#69b578"
+   width="180"
+   height="631"
+   id="rect6"
+   style="fill:#ffd500" />
+  <rect
+   x="710"
+   y="44"
+   fill="#2b303a"
+   width="180"
+   height="631"
+   id="rect8"
+   style="fill:#1a1a1a" />
   
+  
+  </svg>
