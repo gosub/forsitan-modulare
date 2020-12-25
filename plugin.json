@@ -29,6 +29,14 @@
       "tags": [
         "utility"
       ]
+    },
+    {
+      "slug": "cumuli",
+      "name": "cumuli",
+      "description": "Accumulator with up and down gates and rates.",
+      "tags": [
+        "Envelope generator"
+      ]
     }
   ]
 }
