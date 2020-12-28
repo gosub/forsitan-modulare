@@ -37,6 +37,15 @@
       "tags": [
         "Envelope generator"
       ]
+    },
+    {
+      "slug": "deinde",
+      "name": "deinde",
+      "description": "Quad cascading addressable attack-hold envelope.",
+      "tags": [
+        "Envelope generator",
+        "Quad"
+      ]
     }
   ]
 }

@@ -11,6 +11,7 @@ void init(Plugin* p) {
 	p->addModel(alea);
 	p->addModel(interea);
 	p->addModel(cumuli);
+	p->addModel(deinde);
 	// Any other plugin initialization may go here.
 	// As an alternative, consider lazy-loading assets and lookup tables when your module is created to reduce startup times of Rack.
 }
