@@ -24,11 +24,20 @@ struct Deinde : Module {
 
 	Deinde() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(CV_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(CASCADE_PARAM, 0.f, 1.f, 0.f, "");
+		configParam(CV_PARAM, 0.f, 1.f, 1.f, "Cascade CV attenuator");
+		configParam(CASCADE_PARAM, 0.f, 10.f, 0.f, "Manual cascade");
 	}
 
 	void process(const ProcessArgs& args) override {
+		float cascade = inputs[CVIN_INPUT].getVoltage() * params[CV_PARAM].getValue() + params[CASCADE_PARAM].getValue();
+		float out1 = clamp(cascade * 4.f, 0.f, 10.f);
+		float out2 = clamp(cascade * 4.f - 10.f, 0.f, 10.f);
+		float out3 = clamp(cascade * 4.f - 20.f, 0.f, 10.f);
+		float out4 = clamp(cascade * 4.f - 30.f, 0.f, 10.f);
+		outputs[OUT1_OUTPUT].setVoltage(out1);
+		outputs[OUT2_OUTPUT].setVoltage(out2);
+		outputs[OUT3_OUTPUT].setVoltage(out3);
+		outputs[OUT4_OUTPUT].setVoltage(out4);
 	}
 };
 
