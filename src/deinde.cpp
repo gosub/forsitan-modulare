@@ -4,7 +4,7 @@
 struct Deinde : Module {
 	enum ParamIds {
 		CV_PARAM,
-		MORPH_PARAM,
+		CASCADE_PARAM,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -25,7 +25,7 @@ struct Deinde : Module {
 	Deinde() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(CV_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(MORPH_PARAM, 0.f, 1.f, 0.f, "");
+		configParam(CASCADE_PARAM, 0.f, 1.f, 0.f, "");
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -44,7 +44,7 @@ struct DeindeWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(29.543, 21.35)), module, Deinde::CV_PARAM));
-		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(29.543, 46.743)), module, Deinde::MORPH_PARAM));
+		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(29.543, 46.743)), module, Deinde::CASCADE_PARAM));
 
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.275, 21.35)), module, Deinde::CVIN_INPUT));
 
