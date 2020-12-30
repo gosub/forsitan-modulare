@@ -48,7 +48,7 @@ Connect two gate signals to the *up* and *down* input, select the *up* and *down
 - addressable: because the envelopes can be scanned with the *cascade* knob and CV
 - attack-hold envelope: because every envelope has a linear attack and then stays open
 
-This module is inspired by [A-144 by Doepfer](http://www.doepfer.de/a144.htm), with a significative difference: the four envelopes of the A-144 are attack-decay, while in this module they are attack-hold. One of the initial ideas behind this module was opening four send effects with only one control signal, for example: volume ramp, then saturation, the distortion, the fuzz.
+This module is inspired by [A-144 by Doepfer](http://www.doepfer.de/a144.htm), with a significative difference: the four envelopes of the A-144 are attack-decay, while in this module they are attack-hold. One of the initial ideas behind this module was opening four send effects with only one control signal, for example: volume ramp, then saturation, then distortion, then fuzz.
 
 ### how to use
 
