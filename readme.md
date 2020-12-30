@@ -5,6 +5,7 @@ A collection of VCV Rack modules
 - [alea](#alea) - Add a random module to your rack
 - [interea](#interea) - Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.
 - [cumuli](#cumuli) - Accumulator with up and down gates and rates.
+- [deinde](#deinde) - Quad cascading addressable attack-hold envelope.
 
 ## alea
 
@@ -35,6 +36,23 @@ Connect the four outputs to the V/O input of four oscillators. You shoud now be 
 ### how to use
 
 Connect two gate signals to the *up* and *down* input, select the *up* and *down* rate with the respective knobs and watch the output go up, down or hold. This module was imagined as a companion to midi controllers like the [Korg nanoPAD2](https://www.korg.com/us/products/computergear/nanopad2/), which has no faders, only buttons.
+
+## deinde
+
+![deinde](img/deinde.png)
+
+*deinde* is a quad cascading addressable attack-hold envelope.
+
+- quad: because it outputs 4 envelopes
+- cascading: because the 4 envelopes open one after the other
+- addressable: because the envelopes can be scanned with the *cascade* knob and CV
+- attack-hold envelope: because every envelope has a linear attack and then stays open
+
+This module is inspired by [A-144 by Doepfer](http://www.doepfer.de/a144.htm), with a significative difference: the four envelopes of the A-144 are attack-decay, while in this module they are attack-hold. One of the initial ideas behind this module was opening four send effects with only one control signal, for example: volume ramp, then saturation, the distortion, the fuzz.
+
+### how to use
+
+Connect the four output as you would for four envelopes, for example to the vca of four oscillators tuned to a chord. Turn the *cascade* knob to open the four envelope in sequence. When there is a signal in the *CV in* input, the signal scan the envelopes like the *cascade* knob, and in that case the *CV* knob acts like an attenuator and the *cascade* knob like an offset.
 
 ## Author
 
