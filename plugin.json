@@ -46,6 +46,15 @@
         "Envelope generator",
         "Quad"
       ]
+    },
+    {
+      "slug": "pavo",
+      "name": "pavo",
+      "description": "Spreader of polyphonic mono signal across the stereo field (Splay Ugen).",
+      "tags": [
+        "Panning",
+        "Polyphonic"
+      ]
     }
   ]
 }
