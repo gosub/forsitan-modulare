@@ -24,11 +24,32 @@ struct Pavo : Module {
 
 	Pavo() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(SPREAD_PARAM, 0.f, 1.f, 0.f, "");
-		configParam(CENTER_PARAM, 0.f, 1.f, 0.f, "");
+		configParam(SPREAD_PARAM, 0.f, 10.f, 5.f, "Spread", "%", 0, 10);
+		configParam(CENTER_PARAM, -5.f, 5.f, 0.f, "Center", "%", 0, 20);
 	}
 
+	// TODO:
+	// [ ] SPREAD INPUT
+	// [ ] CENTER INPUT
+	// [ ] SPREAD CLAMP
+	// [ ] CENTER CLAMP
+	// [ ] LEVEL COMPENSATION
+	// [ ] EQUAL POWER PANNING
+
 	void process(const ProcessArgs& args) override {
+		float outL = 0.f, outR = 0.f;
+		int channels = inputs[POLYIN_INPUT].getChannels();
+		float spread = params[SPREAD_PARAM].getValue() / 10.f;
+		float center = params[CENTER_PARAM].getValue() / 5.f;
+		for (int c = 0; c < channels; c++) {
+			float position = ((c * (2.f / channels)) - 1.f) * spread + center;
+			position = position / 2.f + 0.5f;
+			float input = inputs[POLYIN_INPUT].getVoltage(c);
+			outR += input * position;
+			outL += input * (1.f - position);
+		}
+		outputs[LEFT_OUTPUT].setVoltage(outL);
+		outputs[RIGHT_OUTPUT].setVoltage(outR);
 	}
 };
 
