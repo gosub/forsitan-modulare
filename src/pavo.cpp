@@ -29,8 +29,8 @@ struct Pavo : Module {
 	}
 
 	// TODO:
-	// [ ] SPREAD INPUT
-	// [ ] CENTER INPUT
+	// [X] SPREAD INPUT
+	// [X] CENTER INPUT
 	// [ ] SPREAD CLAMP
 	// [ ] CENTER CLAMP
 	// [ ] LEVEL COMPENSATION
@@ -39,8 +39,8 @@ struct Pavo : Module {
 	void process(const ProcessArgs& args) override {
 		float outL = 0.f, outR = 0.f;
 		int channels = inputs[POLYIN_INPUT].getChannels();
-		float spread = params[SPREAD_PARAM].getValue() / 10.f;
-		float center = params[CENTER_PARAM].getValue() / 5.f;
+		float spread = (inputs[SPREAD_INPUT].getVoltage() + params[SPREAD_PARAM].getValue()) / 10.f;
+		float center = (inputs[CENTER_INPUT].getVoltage() + params[CENTER_PARAM].getValue()) / 5.f;
 		for (int c = 0; c < channels; c++) {
 			float position = ((c * (2.f / channels)) - 1.f) * spread + center;
 			position = position / 2.f + 0.5f;
