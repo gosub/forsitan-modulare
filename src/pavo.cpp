@@ -33,8 +33,12 @@ struct Pavo : Module {
 	// [X] CENTER INPUT
 	// [ ] SPREAD CLAMP
 	// [ ] CENTER CLAMP
+	// [ ] POSITION CLAMP INSTEAD?
 	// [ ] LEVEL COMPENSATION
 	// [ ] EQUAL POWER PANNING
+	// [ ] SINGLE CHANNEL CASE
+	// [ ] REDO POSITION CALCULATION
+	// [ ] FACTOR OUT PANNING FUNCTION
 
 	void process(const ProcessArgs& args) override {
 		float outL = 0.f, outR = 0.f;
