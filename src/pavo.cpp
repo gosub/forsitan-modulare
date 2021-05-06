@@ -31,24 +31,33 @@ struct Pavo : Module {
 	// TODO:
 	// [X] SPREAD INPUT
 	// [X] CENTER INPUT
-	// [ ] SPREAD CLAMP
-	// [ ] CENTER CLAMP
-	// [ ] POSITION CLAMP INSTEAD?
+	// [-] SPREAD CLAMP
+	// [-] CENTER CLAMP
+	// [X] POSITION CLAMP
 	// [ ] LEVEL COMPENSATION
 	// [ ] EQUAL POWER PANNING
-	// [ ] SINGLE CHANNEL CASE
-	// [ ] REDO POSITION CALCULATION
+	// [X] SINGLE CHANNEL CASE
+	// [X] REDO POSITION CALCULATION
 	// [ ] FACTOR OUT PANNING FUNCTION
 
 	void process(const ProcessArgs& args) override {
 		float outL = 0.f, outR = 0.f;
 		int channels = inputs[POLYIN_INPUT].getChannels();
+		// spread input voltage is 0V-10V, internal value is [0.0, 1.0]
 		float spread = (inputs[SPREAD_INPUT].getVoltage() + params[SPREAD_PARAM].getValue()) / 10.f;
-		float center = (inputs[CENTER_INPUT].getVoltage() + params[CENTER_PARAM].getValue()) / 5.f;
+		// spread input voltage is ±5V, internal value is [-0.5, 0.5]
+		float center = (inputs[CENTER_INPUT].getVoltage() + params[CENTER_PARAM].getValue()) / 10.f;
+		float pos_delta = channels == 1 ? 0.f : 1.f/(channels-1);
+		float pos_offset = channels == 1 ? 0.f : -0.5f;
 		for (int c = 0; c < channels; c++) {
-			float position = ((c * (2.f / channels)) - 1.f) * spread + center;
-			position = position / 2.f + 0.5f;
+			// calculate position within [-0.5, 0.5]
+			float position = ((c * pos_delta) + pos_offset) * spread + center;
+			// normalize and clamp position to [0.0, 1.0]
+			position = position + 0.5f;
+			position = clamp(position, 0.f, 1.f);
+			// get input of channel c
 			float input = inputs[POLYIN_INPUT].getVoltage(c);
+			// pan in the stereo field
 			outR += input * position;
 			outL += input * (1.f - position);
 		}
