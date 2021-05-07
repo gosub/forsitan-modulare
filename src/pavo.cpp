@@ -34,7 +34,7 @@ struct Pavo : Module {
 	// [-] SPREAD CLAMP
 	// [-] CENTER CLAMP
 	// [X] POSITION CLAMP
-	// [ ] LEVEL COMPENSATION
+	// [X] LEVEL COMPENSATION
 	// [ ] EQUAL POWER PANNING
 	// [X] SINGLE CHANNEL CASE
 	// [X] REDO POSITION CALCULATION
@@ -43,6 +43,7 @@ struct Pavo : Module {
 	void process(const ProcessArgs& args) override {
 		float outL = 0.f, outR = 0.f;
 		int channels = inputs[POLYIN_INPUT].getChannels();
+		float compensation = channels == 0 ? 1.f : std::sqrt(1.f/channels);
 		// spread input voltage is 0V-10V, internal value is [0.0, 1.0]
 		float spread = (inputs[SPREAD_INPUT].getVoltage() + params[SPREAD_PARAM].getValue()) / 10.f;
 		// spread input voltage is ±5V, internal value is [-0.5, 0.5]
@@ -61,6 +62,10 @@ struct Pavo : Module {
 			outR += input * position;
 			outL += input * (1.f - position);
 		}
+
+		outR *= compensation;
+		outL *= compensation;
+
 		outputs[LEFT_OUTPUT].setVoltage(outL);
 		outputs[RIGHT_OUTPUT].setVoltage(outR);
 	}
