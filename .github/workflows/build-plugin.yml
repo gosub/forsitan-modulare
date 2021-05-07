@@ -1,4 +1,4 @@
-name: Build VCV Rack Plugin
+name: forsitan-modulare build
 on: [push, pull_request]
 
 env:

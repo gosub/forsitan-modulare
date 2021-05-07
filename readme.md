@@ -7,6 +7,8 @@ A collection of VCV Rack modules
 - [cumuli](#cumuli) - Accumulator with up and down gates and rates.
 - [deinde](#deinde) - Quad cascading addressable attack-hold envelope.
 
+![forsitan-modulare build](https://github.com/gosub/forsitan-modulare/workflows/forsitan-modulare%20build/badge.svg)
+
 ## alea
 
 ![alea](img/alea.png)
