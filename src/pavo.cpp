@@ -39,6 +39,8 @@ struct Pavo : Module {
 	// [X] SINGLE CHANNEL CASE
 	// [X] REDO POSITION CALCULATION
 	// [ ] FACTOR OUT PANNING FUNCTION
+	// [ ] MENU OPTION FOR LINEAR/EQUAL POWER PANNING SELECTION
+	// [ ] MENU OPTION FOR DISABLING LEVEL COMPENSATION
 
 	void process(const ProcessArgs& args) override {
 		float outL = 0.f, outR = 0.f;
