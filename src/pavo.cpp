@@ -35,7 +35,7 @@ struct Pavo : Module {
 	// [-] CENTER CLAMP
 	// [X] POSITION CLAMP
 	// [X] LEVEL COMPENSATION
-	// [ ] EQUAL POWER PANNING
+	// [X] EQUAL POWER PANNING
 	// [X] SINGLE CHANNEL CASE
 	// [X] REDO POSITION CALCULATION
 	// [ ] FACTOR OUT PANNING FUNCTION
@@ -60,9 +60,9 @@ struct Pavo : Module {
 			position = clamp(position, 0.f, 1.f);
 			// get input of channel c
 			float input = inputs[POLYIN_INPUT].getVoltage(c);
-			// pan in the stereo field
-			outR += input * position;
-			outL += input * (1.f - position);
+			// pan in the stereo field, with equal power panning
+			outR += input * std::sqrt(position);
+			outL += input * std::sqrt(1.f - position);
 		}
 
 		outR *= compensation;
