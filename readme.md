@@ -6,6 +6,7 @@ A collection of VCV Rack modules
 - [interea](#interea) - Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.
 - [cumuli](#cumuli) - Accumulator with up and down gates and rates.
 - [deinde](#deinde) - Quad cascading addressable attack-hold envelope.
+- [pavo](#pavo) - Spreader of polyphonic mono signals across the stereo field (Splay Ugen)
 
 ![forsitan-modulare build](https://github.com/gosub/forsitan-modulare/workflows/forsitan-modulare%20build/badge.svg)
 
@@ -62,11 +63,11 @@ Connect the four output as you would for four envelopes, for example to the vca 
 
 *pavo* spreads a polyphonic signal across the stereo field. It is heavily inspired by the [Splay Ugen](https://doc.sccode.org/Classes/Splay.html) available in the SuperCollider language. It works like this:
 
-- If the input has 1 channel: L-----------o-----------R
-- If the input has 2 channel: o-----------------------o
-- If the input has 3 channel: o-----------o-----------o
-- If the input has 4 channel: o-------o-------o-------o
-- If the input has 5 channel: o-----o-----o-----o-----o
+- If the input has 1 channel: `L-----------o-----------R`
+- If the input has 2 channel: `o-----------------------o`
+- If the input has 3 channel: `o-----------o-----------o`
+- If the input has 4 channel: `o-------o-------o-------o`
+- If the input has 5 channel: `o-----o-----o-----o-----o`
 - and so on...
 
 *pavo* uses the [square root method to approximate constant power panning](https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/index.html). It also adjust the level of the input channels when mixing down (level compensation). Right now these behaviours are hard coded, future version of the module will present options to disable them.
