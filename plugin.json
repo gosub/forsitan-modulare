@@ -50,7 +50,7 @@
     {
       "slug": "pavo",
       "name": "pavo",
-      "description": "Spreader of polyphonic mono signal across the stereo field (Splay Ugen).",
+      "description": "Spreader of polyphonic mono signals across the stereo field (Splay Ugen).",
       "tags": [
         "Panning",
         "Polyphonic"
