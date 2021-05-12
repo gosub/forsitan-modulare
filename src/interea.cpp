@@ -115,7 +115,9 @@ struct Interea : Module {
 
 		unsigned int qualityParam;
 		if (harmonize) {
-			int semitone = (int) std::trunc(freqParam / VOLT_PER_SEMITONE) % 12;
+			// The starting pitch will be the frequency defined by the pitch knob
+			float freqDelta = inputs[VOLTOCT_INPUT].getVoltage();
+			int semitone = (int) std::round(freqDelta / VOLT_PER_SEMITONE) % 12;
 			qualityParam = harmonizations[semitone >= 0 ? semitone : 12 + semitone];
 		} else {
 			qualityParam = std::floor(params[QUALITY_PARAM].getValue());
