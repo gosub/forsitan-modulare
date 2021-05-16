@@ -16,7 +16,7 @@
     {
       "slug": "alea",
       "name": "alea",
-      "description": "Add a random module to your rack",
+      "description": "Add a random module to your rack.",
       "tags": [
         "utility",
         "random"
