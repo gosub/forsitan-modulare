@@ -8,95 +8,14 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    sodipodi:docname="cumuli.svg"
-   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15, custom)"
    id="svg55291"
    version="1.1"
    viewBox="0 0 25.400001 128.5007"
    height="128.5007mm"
    width="25.4mm">
   <defs
-     id="defs55285">
-    <clipPath
-       id="clip11">
-      <rect
-         id="rect9531"
-         height="16"
-         width="17"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip12">
-      <path
-         id="path9528"
-         d="M 0.671875,0.476562 H 16.917969 V 15.574219 H 0.671875 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip9">
-      <rect
-         id="rect9515"
-         height="25"
-         width="24"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip10">
-      <path
-         id="path9512"
-         d="M 0.457031,0.238281 H 23.132812 V 24.980469 H 0.457031 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip7">
-      <rect
-         id="rect9499"
-         height="16"
-         width="17"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip8">
-      <path
-         id="path9496"
-         d="M 0.671875,0.449219 H 16.917969 V 15.546875 H 0.671875 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip5">
-      <rect
-         id="rect9483"
-         height="25"
-         width="24"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip6">
-      <path
-         id="path9480"
-         d="M 0.457031,0.210938 H 23.132812 V 24.953125 H 0.457031 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip1">
-      <rect
-         id="rect9461"
-         height="32"
-         width="30"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip2">
-      <path
-         id="path9458"
-         d="M 0.441406,0.394531 H 29.140625 V 31.96875 H 0.441406 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-  </defs>
+     id="defs55285" />
   <sodipodi:namedview
      inkscape:document-rotation="0"
      inkscape:window-maximized="0"
@@ -112,11 +31,11 @@
      fit-margin-left="0"
      fit-margin-top="0"
      showgrid="false"
-     inkscape:current-layer="layer3"
+     inkscape:current-layer="layer1"
      inkscape:document-units="mm"
      inkscape:cy="242.83597"
-     inkscape:cx="-91.147888"
-     inkscape:zoom="1.1448057"
+     inkscape:cx="47.999999"
+     inkscape:zoom="1.0747996"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
      borderopacity="1.0"
@@ -142,16 +61,6 @@
      inkscape:groupmode="layer"
      inkscape:label="graphics"
      sodipodi:insensitive="true">
-    <path
-       id="path10665"
-       d="M 8.1044074,5.6758691 H 33.504407 V 134.17588 H 8.1044074 Z m 0,0"
-       style="fill:#1a1a1a;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.352778"
-       inkscape:connector-curvature="0" />
-    <path
-       id="path10667"
-       d="M 33.41071,5.675523 H 8.0107099 V 134.17622 H 33.41071 Z M 33.098379,133.98879 H 8.3208073 V 5.862936 H 33.098379 Z m 0,0"
-       style="fill:#ababab;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.352778"
-       inkscape:connector-curvature="0" />
     <rect
        style="display:inline;fill:#e4e4e4;fill-opacity:1;stroke:none;stroke-width:0.999999;stroke-miterlimit:4;stroke-dasharray:none"
        id="rect1684"
@@ -161,6 +70,13 @@
        y="106.87552"
        rx="2"
        ry="2" />
+    <rect
+       style="fill:#1a1a1a;stroke:none;stroke-width:0.265;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect73"
+       width="25.4"
+       height="128.5"
+       x="8.0107098"
+       y="5.6755219" />
   </g>
   <g
      style="display:inline"
