@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -11,7 +11,7 @@
   "manualUrl": "https://github.com/gosub/forsitan-modulare#forsitan-modulare",
   "sourceUrl": "https://github.com/gosub/forsitan-modulare",
   "donateUrl": "",
-  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v1.4.1/CHANGELOG.md",
+  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v1.4.2/CHANGELOG.md",
   "modules": [
     {
       "slug": "alea",
