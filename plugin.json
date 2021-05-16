@@ -11,7 +11,7 @@
   "manualUrl": "https://github.com/gosub/forsitan-modulare#forsitan-modulare",
   "sourceUrl": "https://github.com/gosub/forsitan-modulare",
   "donateUrl": "",
-  "changelogUrl": "https://github.com/gosub/forsitan-modulare/CHANGELOG.md",
+  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v1.4.1/CHANGELOG.md",
   "modules": [
     {
       "slug": "alea",
