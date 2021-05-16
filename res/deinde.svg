@@ -15,88 +15,7 @@
    height="128.5mm"
    width="40.639999mm">
   <defs
-     id="defs55285">
-    <clipPath
-       id="clip11">
-      <rect
-         id="rect9531"
-         height="16"
-         width="17"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip12">
-      <path
-         id="path9528"
-         d="M 0.671875,0.476562 H 16.917969 V 15.574219 H 0.671875 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip9">
-      <rect
-         id="rect9515"
-         height="25"
-         width="24"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip10">
-      <path
-         id="path9512"
-         d="M 0.457031,0.238281 H 23.132812 V 24.980469 H 0.457031 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip7">
-      <rect
-         id="rect9499"
-         height="16"
-         width="17"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip8">
-      <path
-         id="path9496"
-         d="M 0.671875,0.449219 H 16.917969 V 15.546875 H 0.671875 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip5">
-      <rect
-         id="rect9483"
-         height="25"
-         width="24"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip6">
-      <path
-         id="path9480"
-         d="M 0.457031,0.210938 H 23.132812 V 24.953125 H 0.457031 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-    <clipPath
-       id="clip1">
-      <rect
-         id="rect9461"
-         height="32"
-         width="30"
-         y="0"
-         x="0" />
-    </clipPath>
-    <clipPath
-       id="clip2">
-      <path
-         id="path9458"
-         d="M 0.441406,0.394531 H 29.140625 V 31.96875 H 0.441406 Z m 0,0"
-         inkscape:connector-curvature="0" />
-    </clipPath>
-  </defs>
+     id="defs55285" />
   <sodipodi:namedview
      inkscape:document-rotation="0"
      inkscape:window-maximized="0"
@@ -112,10 +31,10 @@
      fit-margin-left="0"
      fit-margin-top="0"
      showgrid="false"
-     inkscape:current-layer="layer3"
+     inkscape:current-layer="layer1"
      inkscape:document-units="mm"
      inkscape:cy="242.83465"
-     inkscape:cx="76.799999"
+     inkscape:cx="-31.591715"
      inkscape:zoom="1.0748054"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
@@ -148,16 +67,13 @@
      inkscape:groupmode="layer"
      inkscape:label="graphics"
      sodipodi:insensitive="true">
-    <path
-       id="path10665"
-       d="M 8.2605755,5.7692315 H 48.400846 V 134.08179 H 8.2605755 Z m 0,0"
-       style="fill:#1a1a1a;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.352779"
-       inkscape:connector-curvature="0" />
-    <path
-       id="path10667"
-       d="M 48.650709,5.675523 H 8.0107095 V 134.17552 H 48.650709 Z M 48.15098,133.98809 H 8.5068654 V 5.862935 H 48.15098 Z m 0,0"
-       style="fill:#ababab;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.352779"
-       inkscape:connector-curvature="0" />
+    <rect
+       style="fill:#1a1a1a;stroke:none;stroke-width:0.265;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect179"
+       width="40.639999"
+       height="128.5"
+       x="8.0107098"
+       y="5.6755219" />
     <rect
        style="display:inline;fill:#e4e4e4;fill-opacity:1;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none"
        id="rect1684"
