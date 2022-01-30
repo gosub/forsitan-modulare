@@ -4,15 +4,20 @@
 #include "callback_button.hpp"
 
 
-void CreateModule(Model* module) {
-  ModuleWidget *moduleWidget = module->createModuleWidget();
-  if (moduleWidget) {
-      APP->scene->rack->addModuleAtMouse(moduleWidget);
-      history::ModuleAdd *h = new history::ModuleAdd;
-      h->name = "create module";
-      h->setModule(moduleWidget);
-      APP->history->push(h);
-  }
+void CreateModule(Model* model) {
+    engine::Module* module = model->createModule();
+    APP->engine->addModule(module);
+    ModuleWidget* moduleWidget = model->createModuleWidget(module);
+    APP->scene->rack->addModuleAtMouse(moduleWidget);
+    // Load template preset
+    moduleWidget->loadTemplate();
+
+    // history::ModuleAdd
+    history::ModuleAdd* h = new history::ModuleAdd;
+    h->name = "create module";
+    // This serializes the module so redoing returns to the current state.
+    h->setModule(moduleWidget);
+    APP->history->push(h);
 }
 
 template<typename Iter, typename RandomGenerator>
