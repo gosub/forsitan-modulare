@@ -2,7 +2,7 @@ name: forsitan-modulare build
 on: [push, pull_request]
 
 env:
-  rack-sdk-version: 1.1.6
+  rack-sdk-version: 2.0.6
 
 defaults:
   run:
@@ -17,16 +17,19 @@ jobs:
         config:
         - {
             name: Linux,
+            sdk-platform: lin,
             os: ubuntu-latest,
-            prepare-os: sudo apt install -y libglu-dev
+            prepare-os: sudo apt update && sudo apt install -y libglu-dev
           }
         - {
             name: MacOS,
+            sdk-platform: mac,
             os: macos-latest,
             prepare-os: ""
           }
         - {
             name: Windows,
+            sdk-platform: win,
             os: windows-latest,
             prepare-os: export CC=gcc
           }
@@ -37,12 +40,8 @@ jobs:
       - name: Get Rack-SDK
         run: |
           pushd $HOME
-          curl -o Rack-SDK.zip https://vcvrack.com/downloads/Rack-SDK-${{ env.rack-sdk-version }}.zip
+          curl -o Rack-SDK.zip https://vcvrack.com/downloads/Rack-SDK-${{ env.rack-sdk-version }}-${{ matrix.config.sdk-platform }}.zip
           unzip Rack-SDK.zip
-      - name: Patch plugin.mk, use 7zip on Windows
-        if: runner.os == 'Windows'
-        run: |
-          sed -i 's/zip -q -9 -r/7z a -tzip -mx=9/' $HOME/Rack-SDK/plugin.mk
       - name: Modify plugin version
         # only modify plugin version if no tag was created
         if: "! startsWith(github.ref, 'refs/tags/v')"
@@ -98,6 +97,6 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: _artifacts/**/*.zip
+          file: _artifacts/**/*.vcvplugin
           tag: ${{ github.ref }}
           file_glob: true
