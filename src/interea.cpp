@@ -82,6 +82,12 @@ struct Interea : Module {
 		configParam(INVERSION_PARAM, 0.f, 4.f, 0.f, "Inversion");
 		configParam(QUALITY_PARAM, 0.f, 4.f, 0.f, "Quality");
 
+		// bypass root pitch to output pitches
+		configBypass(VOLTOCT_INPUT, ROOT_OUTPUT);
+		configBypass(VOLTOCT_INPUT, _3RD_OUTPUT);
+		configBypass(VOLTOCT_INPUT, _5TH_OUTPUT);
+		configBypass(VOLTOCT_INPUT, _7TH_OUTPUT);
+
 		// input ports labels
 		configInput(VOLTOCT_INPUT, "1V/oct root pitch");
 		configInput(VOICING_INPUT, "Voicing CV");
