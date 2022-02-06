@@ -93,6 +93,20 @@ struct Interea : Module {
 		configOutput(_3RD_OUTPUT, "1V/oct third pitch");
 		configOutput(_5TH_OUTPUT, "1V/oct fifth pitch");
 		configOutput(_7TH_OUTPUT, "1V/oct seventh pitch");
+
+		// lights labels
+		configLight(SPREAD_LIGHT, "Spread voicing");
+		configLight(DROP3_LIGHT, "Drop3 voicing");
+		configLight(DROP2_LIGHT, "Drop2 voicing");
+		configLight(CLOSE_LIGHT, "Close voicing");
+		configLight(THIRD_LIGHT, "Third inversion");
+		configLight(SECOND_LIGHT, "Second inversion");
+		configLight(FIRST_LIGHT, "First inversion");
+		configLight(ROOT_LIGHT, "Root position");
+		configLight(HALFDIM_LIGHT, "Half diminished chord");
+		configLight(DOM7_LIGHT, "Dominant 7 chord");
+		configLight(MIN7_LIGHT, "Minor 7 chord");
+		configLight(MAJ7_LIGHT, "Major 7 chord");
 	}
 
 	void select_quality_light(unsigned int q) {
