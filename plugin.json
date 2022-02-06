@@ -18,8 +18,8 @@
       "name": "alea",
       "description": "Add a random module to your rack.",
       "tags": [
-        "utility",
-        "random"
+        "Random",
+        "Utility"
       ]
     },
     {
@@ -27,7 +27,8 @@
       "name": "interea",
       "description": "Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.",
       "tags": [
-        "utility"
+	"Quad",
+        "Utility"
       ]
     },
     {
