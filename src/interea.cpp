@@ -87,6 +87,12 @@ struct Interea : Module {
 		configInput(VOICING_INPUT, "Voicing CV");
 		configInput(INVERSION_INPUT, "Inversion CV");
 		configInput(QUALITY_INPUT, "Quality CV");
+
+		// output ports labels
+		configOutput(ROOT_OUTPUT, "1V/oct root pitch");
+		configOutput(_3RD_OUTPUT, "1V/oct third pitch");
+		configOutput(_5TH_OUTPUT, "1V/oct fifth pitch");
+		configOutput(_7TH_OUTPUT, "1V/oct seventh pitch");
 	}
 
 	void select_quality_light(unsigned int q) {
