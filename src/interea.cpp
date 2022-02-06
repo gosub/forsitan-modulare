@@ -77,7 +77,7 @@ struct Interea : Module {
 	Interea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(FREQ_PARAM, -4.5f, 4.5f, 0.f, "Frequency", " Hz", 2, dsp::FREQ_C4);
-		configParam(HARMON_PARAM, 0.f, 1.f, 0.f, "Harmonize");
+		configButton(HARMON_PARAM, "Harmonize");
 		configParam(VOICING_PARAM, 0.f, 4.f, 0.f, "Voicing");
 		configParam(INVERSION_PARAM, 0.f, 4.f, 0.f, "Inversion");
 		configParam(QUALITY_PARAM, 0.f, 4.f, 0.f, "Quality");
@@ -111,7 +111,7 @@ struct Interea : Module {
 		if (harmonizeTrigger.process(params[HARMON_PARAM].getValue())) {
 			harmonize = !harmonize;
 		}
-		lights[HARMON_LIGHT].setSmoothBrightness(harmonize ? 1.f : 0.f, args.sampleTime);
+		lights[HARMON_LIGHT].setBrightness(harmonize);
 
 		unsigned int qualityParam;
 		if (harmonize) {
@@ -199,7 +199,7 @@ struct IntereaWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
 		addParam(createParamCentered<Rogan3PSWhite>(mm2px(Vec(13.145, 19.454)), module, Interea::FREQ_PARAM));
-		addParam(createParamCentered<LEDButton>(mm2px(Vec(41.967, 19.454)), module, Interea::HARMON_PARAM));
+		addParam(createLightParamCentered<VCVLightButton<MediumSimpleLight<BlueLight>>>(mm2px(Vec(41.967, 19.454)), module, Interea::HARMON_PARAM, Interea::HARMON_LIGHT));
 		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(22.273, 43.029)), module, Interea::VOICING_PARAM));
 		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(22.273, 64.725)), module, Interea::INVERSION_PARAM));
 		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(22.273, 86.421)), module, Interea::QUALITY_PARAM));
@@ -214,7 +214,6 @@ struct IntereaWidget : ModuleWidget {
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(31.141, 106.478)), module, Interea::_5TH_OUTPUT));
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(42.623, 106.478)), module, Interea::_7TH_OUTPUT));
 
-		addChild(createLightCentered<MediumLight<BlueLight>>(mm2px(Vec(41.967, 19.454)), module, Interea::HARMON_LIGHT));
 		addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(33.056, 37.879)), module, Interea::SPREAD_LIGHT));
 		addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(33.056, 41.583)), module, Interea::DROP3_LIGHT));
 		addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(Vec(33.056, 45.287)), module, Interea::DROP2_LIGHT));
