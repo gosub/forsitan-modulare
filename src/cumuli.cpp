@@ -26,6 +26,9 @@ struct Cumuli : Module {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(UPRATE_PARAM, -2.f, 2.f, 0.f, "Rise rate", "V/sec", 10);
 		configParam(DOWNRATE_PARAM, -2.f, 2.f, 0.f, "Fall rate", "V/sec", 10);
+		// input labels
+		configInput(UP_INPUT, "Rise gate");
+		configInput(DOWN_INPUT, "Fall gate");
 	}
 
 	void process(const ProcessArgs& args) override {
