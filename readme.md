@@ -30,6 +30,10 @@ Click on the ⚂ (die)
 
 Connect the four outputs to the V/O input of four oscillators. You shoud now be listening to the classic C4 Major7 chord. Play with the *frequency*, *quality*, *inversion* and *voicing* knobs and inputs to play different chord. The *frequency* input is bipolar (+/- 5V), the range of the other inputs is unipolar (0-10V). When the *harmonize* button is on, the chord *quality* is chosen automatically and the *quality* knob and input are disabled. In this state the notes of the chord will be harmonized with diatonic and modal interchange chords of the Major scale. See the [manual](https://www.qubitelectronix.com/s/Chord_Manual.pdf) for Qu-Bit Electronix Chord for addition explanations.
 
+### bypass behaviour
+
+The root pitch input is copied to all the chord outputs (root, 3rd, 5th, 7th).
+
 ## cumuli
 
 ![cumuli](img/cumuli.png)
