@@ -26,6 +26,8 @@ struct Deinde : Module {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(CV_PARAM, 0.f, 1.f, 1.f, "Cascade CV attenuator");
 		configParam(CASCADE_PARAM, 0.f, 10.f, 0.f, "Manual cascade");
+		// input label
+		configInput(CVIN_INPUT, "Cascade CV");
 	}
 
 	void process(const ProcessArgs& args) override {
