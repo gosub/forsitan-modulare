@@ -26,6 +26,10 @@ struct Pavo : Module {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(SPREAD_PARAM, 0.f, 10.f, 5.f, "Spread", "%", 0, 10);
 		configParam(CENTER_PARAM, -5.f, 5.f, 0.f, "Center", "%", 0, 20);
+		// input labels
+		configInput(POLYIN_INPUT,"Polyphonic");
+		configInput(SPREAD_INPUT, "Spread CV");
+		configInput(CENTER_INPUT, "Center CV");
 	}
 
 	// TODO:
