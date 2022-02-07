@@ -24,8 +24,8 @@ struct Cumuli : Module {
 
 	Cumuli() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-		configParam(UPRATE_PARAM, -2.f, 2.f, 0.f, "accum. up rate", "V/sec", 10);
-		configParam(DOWNRATE_PARAM, -2.f, 2.f, 0.f, "accum. down rate", "V/sec", 10);
+		configParam(UPRATE_PARAM, -2.f, 2.f, 0.f, "Rise rate", "V/sec", 10);
+		configParam(DOWNRATE_PARAM, -2.f, 2.f, 0.f, "Fall rate", "V/sec", 10);
 	}
 
 	void process(const ProcessArgs& args) override {
