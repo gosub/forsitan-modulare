@@ -29,6 +29,8 @@ struct Cumuli : Module {
 		// input labels
 		configInput(UP_INPUT, "Rise gate");
 		configInput(DOWN_INPUT, "Fall gate");
+		// output label
+		configOutput(OUT_OUTPUT, "Envelope CV");
 	}
 
 	void process(const ProcessArgs& args) override {
