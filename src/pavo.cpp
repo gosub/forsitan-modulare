@@ -30,6 +30,9 @@ struct Pavo : Module {
 		configInput(POLYIN_INPUT,"Polyphonic");
 		configInput(SPREAD_INPUT, "Spread CV");
 		configInput(CENTER_INPUT, "Center CV");
+		// output labels
+		configOutput(LEFT_OUTPUT, "Left");
+		configOutput(RIGHT_OUTPUT, "Right");
 	}
 
 	// TODO:
