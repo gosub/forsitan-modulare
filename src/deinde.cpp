@@ -28,6 +28,11 @@ struct Deinde : Module {
 		configParam(CASCADE_PARAM, 0.f, 10.f, 0.f, "Manual cascade");
 		// input label
 		configInput(CVIN_INPUT, "Cascade CV");
+		// output labels
+		configOutput(OUT1_OUTPUT, "Envelope 1");
+		configOutput(OUT2_OUTPUT, "Envelope 2");
+		configOutput(OUT3_OUTPUT, "Envelope 3");
+		configOutput(OUT4_OUTPUT, "Envelope 4");
 	}
 
 	void process(const ProcessArgs& args) override {
