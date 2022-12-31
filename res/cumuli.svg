@@ -62,6 +62,13 @@
      inkscape:label="graphics"
      sodipodi:insensitive="true">
     <rect
+       style="fill:#1a1a1a;stroke:none;stroke-width:0.265;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none"
+       id="rect73"
+       width="25.4"
+       height="128.5"
+       x="8.0107098"
+       y="5.6755219" />
+    <rect
        style="display:inline;fill:#e4e4e4;fill-opacity:1;stroke:none;stroke-width:0.999999;stroke-miterlimit:4;stroke-dasharray:none"
        id="rect1684"
        width="13"
@@ -70,13 +77,6 @@
        y="106.87552"
        rx="2"
        ry="2" />
-    <rect
-       style="fill:#1a1a1a;stroke:none;stroke-width:0.265;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none"
-       id="rect73"
-       width="25.4"
-       height="128.5"
-       x="8.0107098"
-       y="5.6755219" />
   </g>
   <g
      style="display:inline"
