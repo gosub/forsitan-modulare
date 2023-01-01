@@ -5,8 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.0.1] - 2022-02-07
+## [2.0.2] - 2023-01-01
+### Fixed
+  - cumuli: corrected z-order of output white outline
 
+### Changed
+  - forsitan: updated github action build script (arm64 support)
+
+## [2.0.1] - 2022-02-07
 ### Added
   - readme: screenshots of v2.0
   - interea: bypass behaviour
