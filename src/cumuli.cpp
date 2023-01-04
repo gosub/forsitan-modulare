@@ -29,10 +29,10 @@ struct Cumuli : Module {
 	Cumuli() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 		configParam(UPRATE_PARAM, -2.f, 2.f, 0.f, "Rise rate", "V/sec", 10);
-		configParam(UPGATE_PARAM, 0.f, 1.f, 0.f, "TODO");
-		configParam(RESETGATE_PARAM, 0.f, 1.f, 0.f, "TODO");
+		configParam(UPGATE_PARAM, 0.f, 1.f, 0.f, "Rise manual gate");
+		configParam(RESETGATE_PARAM, 0.f, 1.f, 0.f, "Reset manual gate");
 		configParam(DOWNRATE_PARAM, -2.f, 2.f, 0.f, "Fall rate", "V/sec", 10);
-		configParam(DOWNGATE_PARAM, 0.f, 1.f, 0.f, "TODO");
+		configParam(DOWNGATE_PARAM, 0.f, 1.f, 0.f, "Fall manual gate");
 		// input labels
 		configInput(UP_INPUT, "Rise gate");
 		configInput(RESET_INPUT, "Reset gate");
