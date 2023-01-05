@@ -45,6 +45,10 @@ struct Cumuli : Module {
 		float upVperSec = 0;
 		float downVperSec = 0;
 
+		if(inputs[RESET_INPUT].getVoltage() + params[RESETGATE_PARAM].getValue() > 0.5) {
+			accumulator = 0.f;
+		}
+
 		if(inputs[UP_INPUT].getVoltage() + params[UPGATE_PARAM].getValue() > 0.5) {
 			upVperSec = std::pow(10.f, params[UPRATE_PARAM].getValue());
 			accumulator += upVperSec * args.sampleTime;
