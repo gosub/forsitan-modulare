@@ -8,6 +8,7 @@ struct Cumuli : Module {
 		RESETGATE_PARAM,
 		DOWNGATE_PARAM,
 		DOWNRATE_PARAM,
+		BIPOLAR_PARAM,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -33,6 +34,7 @@ struct Cumuli : Module {
 		configParam(RESETGATE_PARAM, 0.f, 1.f, 0.f, "Reset manual gate");
 		configParam(DOWNRATE_PARAM, -2.f, 2.f, 0.f, "Fall rate", "V/sec", 10);
 		configParam(DOWNGATE_PARAM, 0.f, 1.f, 0.f, "Fall manual gate");
+		configParam(BIPOLAR_PARAM, 0.f, 1.f, 0.f, "Bipolar switch");
 		// input labels
 		configInput(UP_INPUT, "Rise gate");
 		configInput(RESET_INPUT, "Reset gate");
@@ -73,17 +75,18 @@ struct CumuliWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(0, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 		addChild(createWidget<ScrewSilver>(Vec(box.size.x - RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(12.7, 27.154)), module, Cumuli::UPRATE_PARAM));
+		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(12.7, 25.038)), module, Cumuli::UPRATE_PARAM));
 		addParam(createParamCentered<Rogan2PWhite>(mm2px(Vec(12.7, 89.596)), module, Cumuli::DOWNRATE_PARAM));
-		addParam(createParamCentered<TL1105>(mm2px(Vec(7.792, 42.803)), module, Cumuli::UPGATE_PARAM));
-		addParam(createParamCentered<TL1105>(mm2px(Vec(10.438, 61.075)), module, Cumuli::RESETGATE_PARAM));
+		addParam(createParamCentered<TL1105>(mm2px(Vec(7.792, 40.687)), module, Cumuli::UPGATE_PARAM));
+		addParam(createParamCentered<TL1105>(mm2px(Vec(7.792, 57.9)), module, Cumuli::RESETGATE_PARAM));
 		addParam(createParamCentered<TL1105>(mm2px(Vec(7.792, 73.495)), module, Cumuli::DOWNGATE_PARAM));
+		addParam(createParam<CKSS>(mm2px(Vec(18.049, 105.435)), module, Cumuli::BIPOLAR_PARAM));
 
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.992, 42.803)), module, Cumuli::UP_INPUT));
-		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.992, 58.429)), module, Cumuli::RESET_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.992, 40.687)), module, Cumuli::UP_INPUT));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.992, 57.9)), module, Cumuli::RESET_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.992, 73.495)), module, Cumuli::DOWN_INPUT));
 
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(12.7, 106.332)), module, Cumuli::OUT_OUTPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.467, 106.332)), module, Cumuli::OUT_OUTPUT));
 	}
 };
 
