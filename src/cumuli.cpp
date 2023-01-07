@@ -47,8 +47,10 @@ struct Cumuli : Module {
 		float upVperSec = 0;
 		float downVperSec = 0;
 
+		bool bipolar = params[BIPOLAR_PARAM].getValue();
+
 		if(inputs[RESET_INPUT].getVoltage() + params[RESETGATE_PARAM].getValue() > 0.5) {
-			accumulator = 0.f;
+			accumulator = bipolar ? 5.f : 0.f ;
 		}
 
 		if(inputs[UP_INPUT].getVoltage() + params[UPGATE_PARAM].getValue() > 0.5) {
@@ -60,7 +62,7 @@ struct Cumuli : Module {
 			accumulator -= downVperSec * args.sampleTime;
 		}
 		accumulator = math::clamp(accumulator, 0.f, 10.f);
-		outputs[OUT_OUTPUT].setVoltage(accumulator);
+		outputs[OUT_OUTPUT].setVoltage(accumulator - (bipolar ? 5.f : 0.f));
 	}
 };
 
