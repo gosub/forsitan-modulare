@@ -50,6 +50,10 @@ struct Cumuli : Module {
 		bool bipolar = params[BIPOLAR_PARAM].getValue();
 
 		if(inputs[RESET_INPUT].getVoltage() + params[RESETGATE_PARAM].getValue() > 0.5) {
+			// when output is bipolar, a -5V offset is added to the output
+			// so to reach 0V on reset gate, we bring the accumulator to +5V
+			// when output is monopolar, no offset is added, so a reset gate
+			// sets the accumulator directly to 0V
 			accumulator = bipolar ? 5.f : 0.f ;
 		}
 
@@ -61,7 +65,9 @@ struct Cumuli : Module {
 			downVperSec = std::pow(10.f, params[DOWNRATE_PARAM].getValue());
 			accumulator -= downVperSec * args.sampleTime;
 		}
+		// internal value of the accumulator is always between 0 and + 10V
 		accumulator = math::clamp(accumulator, 0.f, 10.f);
+		// if output is set to bipolar, a -5V offset isaddded
 		outputs[OUT_OUTPUT].setVoltage(accumulator - (bipolar ? 5.f : 0.f));
 	}
 };
