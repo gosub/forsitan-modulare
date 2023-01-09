@@ -38,7 +38,7 @@ The root pitch input is copied to all the chord outputs (root, 3rd, 5th, 7th).
 
 ![cumuli](img/cumuli.png)
 
-*cumuli* is an accumulator. The value accumulated grows when the *up* gate is open and grows to the rate indicated by the *up* knob. Simmetrically, the value decrease when the *down* gate is open, with a velocity specified by the *down* knob. The output value cannot go below 0V and over 10V, and holds its value when neither the *up* or *down* gates are open. The *up* and *down* knobs are exponential, and their values range between 0.01 V/sec and 100 V/sec (1 V/sec default).
+*cumuli* is an accumulator. The value accumulated grows when the *up* gate is open and grows to the rate indicated by the *up* knob. Symmetrically, the value decrease when the *down* gate is open, with a velocity specified by the *down* knob. When the *reset* gate is open, the output value goes immediately to zero. The output value is clamped between 0V and 10V when the polarity selector is on "0-10V", and between -5V and +5V when the selector is on "±5V". The output holds its value when neither the *up* or *down* gates are open. The *up* and *down* knobs are exponential, and their values range between 0.01 V/sec and 100 V/sec (1 V/sec default). Each gate has a corresponding button.
 
 ### how to use
 
