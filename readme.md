@@ -24,13 +24,13 @@ Click on the ⚂ (die)
 
 ![interea](img/interea.png)
 
-*interea* transform a V/Oct signal into a chord. It has four chord qualities (Maj7, Min7, Dom7, Half Dim), four inversions (root, first, second, third) and four voicings (close, drop 2, drop 3, spread). When the *harmonize* button is pressed, the frequency input is treated as a bassline and the chord is harmonized with the major scale. This module is inspired by [Strum's Mental Chord](https://github.com/Strum/Strums_Mental_VCV_Modules/wiki/Chord) and the physical module [Chord v1 by Qu-Bit Electronix](https://www.modulargrid.net/e/qu-bit-electronix-chord).
+*interea* transforms a V/Oct signal into a chord. It has four chord qualities (Maj7, Min7, Dom7, Half Dim), four inversions (root, first, second, third) and four voicings (close, drop 2, drop 3, spread). When the *harmonize* button is pressed, the frequency input is treated as a bassline and the chord is harmonized with the major scale. This module is inspired by [Strum's Mental Chord](https://github.com/Strum/Strums_Mental_VCV_Modules/wiki/Chord) and the physical module [Chord v1 by Qu-Bit Electronix](https://www.modulargrid.net/e/qu-bit-electronix-chord).
 
 ### how to use
 
-Connect the four outputs to the V/O input of four oscillators. You shoud now be listening to the classic C4 Major7 chord. Play with the *frequency*, *quality*, *inversion* and *voicing* knobs and inputs to play different chord. The *frequency* input is bipolar (+/- 5V), the range of the other inputs is unipolar (0-10V). When the *harmonize* button is on, the chord *quality* is chosen automatically and the *quality* knob and input are disabled. In this state the notes of the chord will be harmonized with diatonic and modal interchange chords of the Major scale. See the [manual](https://www.qubitelectronix.com/s/Chord_Manual.pdf) for Qu-Bit Electronix Chord for addition explanations.
+Connect the four outputs to the V/O input of four oscillators. You should now be listening to the classic C4 Major7 chord. Play with the *frequency*, *quality*, *inversion* and *voicing* knobs and inputs to play different chord. The *frequency* input is bipolar (+/- 5V), the range of the other inputs is uni-polar (0-10V). When the *harmonize* button is on, the chord *quality* is chosen automatically and the *quality* knob and input are disabled. In this state the notes of the chord will be harmonized with diatonic and modal interchange chords of the Major scale. See the [manual](https://www.qubitelectronix.com/s/Chord_Manual.pdf) for Qu-Bit Electronix Chord for addition explanations.
 
-### bypass behaviour
+### bypass behavior
 
 The root pitch input is copied to all the chord outputs (root, 3rd, 5th, 7th).
 
@@ -55,7 +55,7 @@ Connect two gate signals to the *up* and *down* input, select the *up* and *down
 - addressable: because the envelopes can be scanned with the *cascade* knob and CV
 - attack-hold envelope: because every envelope has a linear attack and then stays open
 
-This module is inspired by [A-144 by Doepfer](http://www.doepfer.de/a144.htm), with a significative difference: the four envelopes of the A-144 are attack-decay, while in this module they are attack-hold. One of the initial ideas behind this module was opening four send effects with only one control signal, for example: volume ramp, then saturation, then distortion, then fuzz.
+This module is inspired by [A-144 by Doepfer](http://www.doepfer.de/a144.htm), with a significant difference: the four envelopes of the A-144 are attack-decay, while in this module they are attack-hold. One of the initial ideas behind this module was opening four send effects with only one control signal, for example: volume ramp, then saturation, then distortion, then fuzz.
 
 ### how to use
 
@@ -74,7 +74,7 @@ Connect the four output as you would for four envelopes, for example to the vca 
 - If the input has 5 channel: `o-----o-----o-----o-----o`
 - and so on...
 
-*pavo* uses the [square root method to approximate constant power panning](https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/index.html). It also adjust the level of the input channels when mixing down (level compensation). Right now these behaviours are hard coded, future version of the module will present options to disable them.
+*pavo* uses the [square root method to approximate constant power panning](https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/index.html). It also adjust the level of the input channels when mixing down (level compensation). Right now these behaviors are hard coded, future version of the module will present options to disable them.
 
 ### how to use
 
