@@ -19,8 +19,8 @@
      id="defs55285" />
   <sodipodi:namedview
      inkscape:document-rotation="0"
-     inkscape:window-maximized="0"
-     inkscape:window-y="18"
+     inkscape:window-maximized="1"
+     inkscape:window-y="0"
      inkscape:window-x="0"
      inkscape:window-height="761"
      inkscape:window-width="1276"
@@ -35,7 +35,7 @@
      inkscape:current-layer="layer3"
      inkscape:document-units="mm"
      inkscape:cy="253.76419"
-     inkscape:cx="174.95196"
+     inkscape:cx="155.38864"
      inkscape:zoom="0.89453126"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0.0"
@@ -256,8 +256,7 @@
      style="display:inline"
      inkscape:label="text"
      id="layer3"
-     inkscape:groupmode="layer"
-     sodipodi:insensitive="true">
+     inkscape:groupmode="layer">
     <text
        id="text1545"
        y="6.8667336"
@@ -314,17 +313,6 @@
          y="120.22859"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52777px;font-family:OCR-A;-inkscape-font-specification:OCR-A;fill:#1a1a1a;fill-opacity:1;stroke-width:0.264583">out4</tspan></text>
     <text
-       id="text1391"
-       y="32.324001"
-       x="26.954254"
-       style="font-style:normal;font-weight:normal;font-size:4.23333px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;display:inline;fill:#e5e5e5;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       xml:space="preserve"><tspan
-         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.23333px;font-family:OCR-A;-inkscape-font-specification:OCR-A;fill:#e5e5e5;stroke-width:0.264583"
-         y="32.324001"
-         x="26.954254"
-         id="tspan1389"
-         sodipodi:role="line">CV</tspan></text>
-    <text
        id="text399"
        y="57.285873"
        x="20.568258"
@@ -337,15 +325,28 @@
          sodipodi:role="line">cascade</tspan></text>
     <text
        id="text403"
-       y="29.678165"
-       x="5.9243183"
+       y="33.382336"
+       x="24.965155"
        style="font-style:normal;font-weight:normal;font-size:3.52778px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;display:inline;fill:#e5e5e5;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       xml:space="preserve"><tspan
+       xml:space="preserve"
+       inkscape:label="pitch2-text"><tspan
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:OCR-A;-inkscape-font-specification:OCR-A;fill:#e5e5e5;stroke-width:0.264583"
-         y="29.678165"
-         x="5.9243183"
+         y="33.382336"
+         x="24.965155"
          id="tspan401"
-         sodipodi:role="line">CV in</tspan></text>
+         sodipodi:role="line">pitch</tspan></text>
+    <text
+       id="text1879"
+       y="33.382336"
+       x="4.475409"
+       style="font-style:normal;font-weight:normal;font-size:3.52778px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;display:inline;fill:#e5e5e5;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       xml:space="preserve"
+       inkscape:label="pitch-text"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:3.52778px;font-family:OCR-A;-inkscape-font-specification:OCR-A;fill:#e5e5e5;stroke-width:0.264583"
+         y="0"
+         x="0"
+         id="tspan1877"
+         sodipodi:role="line">pitch</tspan></text>
   </g>
   <g
      inkscape:groupmode="layer"
@@ -576,7 +577,7 @@
      id="layer6"
      inkscape:label="overlay"
      sodipodi:insensitive="true"
-     style="display:none;opacity:0.371326">
+     style="display:none;opacity:1">
     <image
        width="101.60001"
        height="128.5"
