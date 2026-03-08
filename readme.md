@@ -7,6 +7,7 @@ A collection of VCV Rack modules
 - [cumuli](#cumuli) - Accumulator with up and down gates and rates.
 - [deinde](#deinde) - Quad cascading addressable attack-hold envelope.
 - [pavo](#pavo) - Spreader of polyphonic mono signals across the stereo field (Splay Ugen)
+- [limen](#limen) - TCP+JSON Rack control interface
 
 ![forsitan-modulare build](https://github.com/gosub/forsitan-modulare/workflows/forsitan-modulare%20build/badge.svg)
 
@@ -80,6 +81,105 @@ Connect the four output as you would for four envelopes, for example to the vca 
 
 Connect a polyphonic cable to the *poly in* input. Adjust the *spread* knob to select the maximum spread across the stereo field: a value of 0% means that all the channels are at the center, a value of of 100% means that the first and last signal are panned hard left and hard right. Additionally, the center knob determines the midpoint of the stereo image: -100% means the center is on the left side, 100% on the right. With this parameter, it could happen that channels could fall outside the stereo field. This is prevented by clipping their final position. So, when the center is 100% left, all the channels that would fall on the left side are "squished" at 100% left.
 The *spread CV* input accepts 0V-10V, while the *center CV* input is ±5V. When these inputs are plugged, the respective knobs act like offsets.
+
+## limen
+
+*limen* is a TCP+JSON control interface for VCV Rack. It exposes a simple newline-delimited JSON protocol over a local TCP socket, letting you query and control your patch from scripts, Emacs, or any other tool that can open a socket.
+
+### module UI
+
+A green LED at the centre of the panel indicates that the server is listening. Right-click the module for options:
+
+- **Server enabled** — toggle the TCP server on or off without removing the module. The LED goes dark when the server is stopped.
+- **TCP port** — choose a preset port (7000, 7001, 7002, 7777, 8000) or type any port number (1–65535) in the text field and press Enter.
+
+The port selection and enabled state are saved with the patch.
+
+### JSON protocol
+
+The server listens on `localhost:7000` by default (configurable via right-click menu). Send one JSON object per line; receive one JSON response line per request.
+
+**Request format:**
+```json
+{"cmd": "<command>", ...}
+```
+
+**Response format (success):**
+```json
+{"ok": true, "result": <value>}
+```
+
+**Response format (error):**
+```json
+{"ok": false, "error": "<message>"}
+```
+
+**Commands:**
+
+| cmd | extra fields | description |
+|-----|-------------|-------------|
+| `list_modules` | — | list all modules in the patch |
+| `get_module` | `"id": <int>` | get detail for one module |
+| `list_params` | `"id": <int>` | list params for a module |
+| `set_param` | `"id": <int>`, `"param": <int>`, `"value": <float>` | set a parameter value |
+| `list_cables` | — | list all cables in the patch |
+
+### quick-start examples
+
+```bash
+# list modules with netcat
+echo '{"cmd":"list_modules"}' | nc localhost 7000
+
+# list params for module 8518972980240757
+echo '{"cmd":"list_params","id":8518972980240757}' | nc localhost 7000
+
+# set param 0 of module 8518972980240757 to 0.5
+echo '{"cmd":"set_param","id":8518972980240757,"param":0,"value":0.5}' | nc localhost 7000
+
+# from Python
+import socket, json
+s = socket.create_connection(("127.0.0.1", 7000))
+s.sendall(b'{"cmd":"list_modules"}\n')
+print(json.loads(s.recv(65536)))
+```
+
+### CLI tool
+
+A standalone C client lives in `cli/`. No dependencies beyond a POSIX C compiler.
+
+```bash
+cd cli && make
+```
+
+**Usage:**
+```
+limen [--port N] [--host H] [--json] <command> [args]
+```
+
+```bash
+# list all modules (human-readable table)
+./limen modules
+
+# get module detail
+./limen get 8518972980240757
+
+# list params for a module
+./limen params 8518972980240757
+
+# set a parameter
+./limen set 8518972980240757 0 0.75
+
+# list cables
+./limen cables
+
+# raw JSON output (pipe to jq)
+./limen --json modules | jq .
+```
+
+Install system-wide:
+```bash
+sudo make install   # installs to /usr/local/bin/limen
+```
 
 ## Author
 
