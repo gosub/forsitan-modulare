@@ -10,10 +10,26 @@
 #include <string>
 #include <vector>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <cerrno>
+#ifdef _WIN32
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
+#  pragma comment(lib, "ws2_32.lib")
+   using ssize_t = int;
+#  define close(s)      closesocket(s)
+#  define read(s,b,n)   recv(s,(char*)(b),(int)(n),0)
+#  define write(s,b,n)  send(s,(const char*)(b),(int)(n),0)
+#  define SHUT_RDWR     SD_BOTH
+#  define SOCK_ERRNO    WSAGetLastError()
+#  define EAGAIN        WSAEWOULDBLOCK
+#  define EWOULDBLOCK   WSAEWOULDBLOCK
+#  define EINTR         WSAEINTR
+#else
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <unistd.h>
+#  include <cerrno>
+#  define SOCK_ERRNO    errno
+#endif
 
 #include <jansson.h>
 
@@ -191,6 +207,9 @@ struct Limen : Module {
 		signalStop();
 		if (svrThread.joinable())
 			svrThread.join();
+#ifdef _WIN32
+		WSACleanup();
+#endif
 	}
 
 	void onAdd(const AddEvent&) override {
@@ -236,6 +255,10 @@ struct Limen : Module {
 		// Full stop before restarting (safe: called from UI, no engine lock).
 		stopServer();
 
+#ifdef _WIN32
+		WSADATA wsa; WSAStartup(MAKEWORD(2,2), &wsa);
+#endif
+
 		listenFd = socket(AF_INET, SOCK_STREAM, 0);
 		if (listenFd < 0) {
 			WARN("limen: socket() failed");
@@ -247,10 +270,13 @@ struct Limen : Module {
 
 		// Accept times out every 100ms so the thread can check `running`.
 		// On Linux, close() from another thread does not reliably unblock accept().
-		struct timeval tv;
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
+#ifdef _WIN32
+		DWORD tv_ms = 100;
+		setsockopt(listenFd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_ms, sizeof(tv_ms));
+#else
+		struct timeval tv{0, 100000};
 		setsockopt(listenFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
 
 		sockaddr_in addr{};
 		addr.sin_family = AF_INET;
@@ -303,7 +329,7 @@ struct Limen : Module {
 			if (cfd < 0) {
 				// Timeout (EAGAIN/EWOULDBLOCK) → check running and retry.
 				// Any other error → socket closed or broken, exit.
-				if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+				if (SOCK_ERRNO == EAGAIN || SOCK_ERRNO == EWOULDBLOCK || SOCK_ERRNO == EINTR)
 					continue;
 				break;
 			}
@@ -535,10 +561,13 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 
 void Limen::handleClient(int fd) {
 	// Same timeout on the client socket so read() doesn't block forever.
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 100000;
+#ifdef _WIN32
+	DWORD tv_ms = 100;
+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_ms, sizeof(tv_ms));
+#else
+	struct timeval tv{0, 100000};
 	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
 
 	activeFd.store(fd);
 	std::string buf;
@@ -546,7 +575,7 @@ void Limen::handleClient(int fd) {
 	while (running) {
 		ssize_t n = read(fd, tmp, sizeof(tmp));
 		if (n < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+			if (SOCK_ERRNO == EAGAIN || SOCK_ERRNO == EWOULDBLOCK || SOCK_ERRNO == EINTR)
 				continue;
 			break;
 		}
