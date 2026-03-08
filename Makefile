@@ -8,7 +8,9 @@ CXXFLAGS +=
 
 # Careful about linking to shared libraries, since you can't assume much about the user's environment and library search path.
 # Static libraries are fine, but they should be added to this plugin's build system.
-LDFLAGS += $(if $(filter win%,$(ARCH)),-lws2_32)
+ifdef ARCH_WIN
+LDFLAGS += -lws2_32
+endif
 
 # Add .cpp files to the build
 SOURCES += $(wildcard src/*.cpp)
