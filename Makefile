@@ -1,6 +1,9 @@
 # If RACK_DIR is not defined when calling the Makefile, default to two directories above
 RACK_DIR ?= ../..
 
+# Include arch.mk early so ARCH_WIN/ARCH_LIN/ARCH_MAC are available below
+include $(RACK_DIR)/arch.mk
+
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS +=
 CFLAGS +=
