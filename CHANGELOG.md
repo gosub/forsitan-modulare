@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.0] - 2026-03-08
+### Added
+  - limen: TCP + JSON control interface for controlling VCV Rack from external tools
+  - limen: right-click menu to enable/disable server and select TCP port
+  - cli: limen command-line client (list modules/plugins, add/remove modules, connect/disconnect cables)
+
+### Fixed
+  - limen: Windows (win-x64) build compatibility via Winsock2 shim
+
 ## [2.1.0] - 2023-01-10
 ### Added
   - cumuli: reset input gate and button
