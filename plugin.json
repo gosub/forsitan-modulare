@@ -56,6 +56,14 @@
         "Panning",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "limen",
+      "name": "limen",
+      "description": "TCP + JSON interface for controlling VCV Rack from external tools (e.g. Emacs).",
+      "tags": [
+        "Utility"
+      ]
     }
   ]
 }
