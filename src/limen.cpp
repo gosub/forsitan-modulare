@@ -13,22 +13,23 @@
 #ifdef _WIN32
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
-#  pragma comment(lib, "ws2_32.lib")
-   using ssize_t = int;
-#  define close(s)      closesocket(s)
-#  define read(s,b,n)   recv(s,(char*)(b),(int)(n),0)
-#  define write(s,b,n)  send(s,(const char*)(b),(int)(n),0)
-#  define SHUT_RDWR     SD_BOTH
-#  define SOCK_ERRNO    WSAGetLastError()
-#  define EAGAIN        WSAEWOULDBLOCK
-#  define EWOULDBLOCK   WSAEWOULDBLOCK
-#  define EINTR         WSAEINTR
+#  define close(s)        closesocket(s)
+#  define read(s,b,n)     recv(s,(char*)(b),(int)(n),0)
+#  define write(s,b,n)    send(s,(const char*)(b),(int)(n),0)
+#  define SHUT_RDWR       SD_BOTH
+#  define SOCK_ERRNO      WSAGetLastError()
+#  define SOCK_EAGAIN     WSAEWOULDBLOCK
+#  define SOCK_EWOULDBLOCK WSAEWOULDBLOCK
+#  define SOCK_EINTR      WSAEINTR
 #else
 #  include <sys/socket.h>
 #  include <netinet/in.h>
 #  include <unistd.h>
 #  include <cerrno>
-#  define SOCK_ERRNO    errno
+#  define SOCK_ERRNO      errno
+#  define SOCK_EAGAIN     EAGAIN
+#  define SOCK_EWOULDBLOCK EWOULDBLOCK
+#  define SOCK_EINTR      EINTR
 #endif
 
 #include <jansson.h>
@@ -266,7 +267,7 @@ struct Limen : Module {
 		}
 
 		int yes = 1;
-		setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+		setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof(yes));
 
 		// Accept times out every 100ms so the thread can check `running`.
 		// On Linux, close() from another thread does not reliably unblock accept().
@@ -329,7 +330,7 @@ struct Limen : Module {
 			if (cfd < 0) {
 				// Timeout (EAGAIN/EWOULDBLOCK) → check running and retry.
 				// Any other error → socket closed or broken, exit.
-				if (SOCK_ERRNO == EAGAIN || SOCK_ERRNO == EWOULDBLOCK || SOCK_ERRNO == EINTR)
+				if (SOCK_ERRNO == SOCK_EAGAIN || SOCK_ERRNO == SOCK_EWOULDBLOCK || SOCK_ERRNO == SOCK_EINTR)
 					continue;
 				break;
 			}
@@ -575,7 +576,7 @@ void Limen::handleClient(int fd) {
 	while (running) {
 		ssize_t n = read(fd, tmp, sizeof(tmp));
 		if (n < 0) {
-			if (SOCK_ERRNO == EAGAIN || SOCK_ERRNO == EWOULDBLOCK || SOCK_ERRNO == EINTR)
+			if (SOCK_ERRNO == SOCK_EAGAIN || SOCK_ERRNO == SOCK_EWOULDBLOCK || SOCK_ERRNO == SOCK_EINTR)
 				continue;
 			break;
 		}
