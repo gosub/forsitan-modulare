@@ -84,6 +84,8 @@ The *spread CV* input accepts 0V-10V, while the *center CV* input is ±5V. When 
 
 ## limen
 
+![limen](img/limen.png)
+
 *limen* is a TCP+JSON control interface for VCV Rack. It exposes a simple newline-delimited JSON protocol over a local TCP socket, letting you query and control your patch from scripts, Emacs, or any other tool that can open a socket.
 
 ### module UI
