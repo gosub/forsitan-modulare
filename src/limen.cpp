@@ -422,6 +422,17 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 					return err_response("failed to create module widget");
 				}
 				APP->scene->rack->addModule(mw);
+				// Place next to an existing module so it appears in the visible area.
+				// Fall back to (0,0) if there are no other modules.
+				math::Vec pos = math::Vec(0, 0);
+				for (widget::Widget* w : APP->scene->rack->getModuleContainer()->children) {
+					app::ModuleWidget* existing = dynamic_cast<app::ModuleWidget*>(w);
+					if (existing && existing != mw) {
+						pos = existing->box.pos;
+						break;
+					}
+				}
+				APP->scene->rack->setModulePosNearest(mw, pos);
 				json_t* obj = json_object();
 				json_object_set_new(obj, "id", json_integer(mod->id));
 				return ok_response(obj);
