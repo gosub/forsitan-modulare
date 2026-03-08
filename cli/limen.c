@@ -5,11 +5,16 @@
  *   limen [--port N] [--host H] [--json] <command> [args]
  *
  * Commands:
- *   modules                              list all modules
- *   cables                               list all cables
- *   params <module-id>                   list params for a module
- *   set <module-id> <param-id> <value>   set a parameter value
- *   get <module-id>                      get module detail
+ *   plugins                                      list all loaded plugins
+ *   modules [<plugin-slug>]                      list modules (optionally filtered by plugin)
+ *   cables                                       list all cables
+ *   params <module-id>                           list params for a module
+ *   set <module-id> <param-id> <value>           set a parameter value
+ *   get <module-id>                              get module detail
+ *   add <plugin-slug> <model-slug>               add a module to the patch
+ *   rm <module-id>                               remove a module from the patch
+ *   connect <out-mod>:<out-port> <in-mod>:<in-port>  connect two ports with a cable
+ *   disconnect <cable-id>                        remove a cable from the patch
  */
 
 #include <stdio.h>
@@ -259,6 +264,27 @@ static long long resolve_id(int fd, const char *prefix) {
 
 /* ── command implementations ────────────────────────────────────────────── */
 
+static void print_plugin_item(const char *item, void *user) {
+    (void)user;
+    char slug[64], name[64], version[32];
+    json_str(item, "slug",    slug,    sizeof(slug));
+    json_str(item, "name",    name,    sizeof(name));
+    json_str(item, "version", version, sizeof(version));
+    printf("%-24s  %-32s  %s\n", slug, name, version);
+}
+
+static int cmd_plugins(int fd) {
+    char req[] = "{\"cmd\":\"list_plugins\"}\n";
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    printf("%-24s  %-32s  %s\n", "slug", "name", "version");
+    each_result_item(resp, print_plugin_item, NULL);
+    free(resp);
+    return 0;
+}
+
 static void print_module_item(const char *item, void *user) {
     (void)user;
     long long id; char plugin[64], model[64], name[64];
@@ -274,8 +300,14 @@ static void print_module_item(const char *item, void *user) {
            id, plugin, model, name, (int)np, (int)ni, (int)no);
 }
 
-static int cmd_modules(int fd) {
-    char req[] = "{\"cmd\":\"list_modules\"}\n";
+static int cmd_modules(int fd, const char *plugin_slug) {
+    char req[256];
+    if (plugin_slug) {
+        snprintf(req, sizeof(req),
+                 "{\"cmd\":\"list_modules\",\"plugin\":\"%s\"}\n", plugin_slug);
+    } else {
+        snprintf(req, sizeof(req), "{\"cmd\":\"list_modules\"}\n");
+    }
     char *resp = transact(fd, req);
     if (!resp) return 1;
     if (opt_json) { puts(resp); free(resp); return 0; }
@@ -389,6 +421,145 @@ static int cmd_cables(int fd) {
     return 0;
 }
 
+static int cmd_add(int fd, const char *plugin_slug, const char *model_slug) {
+    char req[512];
+    snprintf(req, sizeof(req),
+             "{\"cmd\":\"add_module\",\"plugin\":\"%s\",\"model\":\"%s\"}\n",
+             plugin_slug, model_slug);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    long long id = 0;
+    const char *p = strstr(resp, "\"result\":{");
+    if (p) {
+        p += 9;
+        size_t start = 0;
+        const char *s = p;
+        /* find end of result object */
+        int depth = 0;
+        for (; *s; s++) {
+            if (*s == '{') depth++;
+            else if (*s == '}') { depth--; if (!depth) break; }
+        }
+        (void)start;
+        size_t len = (size_t)(s - p + 1);
+        char *item = malloc(len + 1);
+        if (item) {
+            memcpy(item, p, len); item[len] = '\0';
+            json_int64(item, "id", &id);
+            free(item);
+        }
+    }
+    printf("%lld\n", id);
+    free(resp);
+    return 0;
+}
+
+static int cmd_rm(int fd, const char *id_prefix) {
+    long long id = resolve_id(fd, id_prefix);
+    if (id < 0) return 1;
+    char req[128];
+    snprintf(req, sizeof(req), "{\"cmd\":\"remove_module\",\"id\":%lld}\n", id);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    puts("ok");
+    free(resp);
+    return 0;
+}
+
+/*
+ * Parse "modid:port" where modid may be a prefix.
+ * Returns 1 on success, sets *mod_id and *port.
+ */
+static int parse_endpoint(int fd, const char *arg, long long *mod_id, int *port) {
+    const char *colon = strrchr(arg, ':');
+    if (!colon) {
+        fprintf(stderr, "limen: expected <module-id>:<port>, got: %s\n", arg);
+        return 0;
+    }
+    /* extract module prefix */
+    size_t prefix_len = (size_t)(colon - arg);
+    char prefix[64];
+    if (prefix_len >= sizeof(prefix)) {
+        fprintf(stderr, "limen: module id too long\n");
+        return 0;
+    }
+    memcpy(prefix, arg, prefix_len);
+    prefix[prefix_len] = '\0';
+
+    *mod_id = resolve_id(fd, prefix);
+    if (*mod_id < 0) return 0;
+
+    char *end;
+    long p = strtol(colon + 1, &end, 10);
+    if (end == colon + 1 || *end != '\0') {
+        fprintf(stderr, "limen: invalid port: %s\n", colon + 1);
+        return 0;
+    }
+    *port = (int)p;
+    return 1;
+}
+
+static int cmd_connect(int fd, const char *out_arg, const char *in_arg) {
+    long long out_mod, in_mod;
+    int out_port, in_port;
+    if (!parse_endpoint(fd, out_arg, &out_mod, &out_port)) return 1;
+    if (!parse_endpoint(fd, in_arg,  &in_mod,  &in_port))  return 1;
+
+    char req[256];
+    snprintf(req, sizeof(req),
+             "{\"cmd\":\"add_cable\","
+             "\"outputModule\":%lld,\"outputPort\":%d,"
+             "\"inputModule\":%lld,\"inputPort\":%d}\n",
+             out_mod, out_port, in_mod, in_port);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    long long id = 0;
+    const char *p = strstr(resp, "\"result\":{");
+    if (p) {
+        p += 9;
+        const char *s = p;
+        int depth = 0;
+        for (; *s; s++) {
+            if (*s == '{') depth++;
+            else if (*s == '}') { depth--; if (!depth) break; }
+        }
+        size_t len = (size_t)(s - p + 1);
+        char *item = malloc(len + 1);
+        if (item) {
+            memcpy(item, p, len); item[len] = '\0';
+            json_int64(item, "id", &id);
+            free(item);
+        }
+    }
+    printf("%lld\n", id);
+    free(resp);
+    return 0;
+}
+
+static int cmd_disconnect(int fd, const char *id_str) {
+    char *end;
+    long long id = strtoll(id_str, &end, 10);
+    if (end == id_str || *end != '\0') {
+        fprintf(stderr, "limen: invalid cable id: %s\n", id_str);
+        return 1;
+    }
+    char req[128];
+    snprintf(req, sizeof(req), "{\"cmd\":\"remove_cable\",\"id\":%lld}\n", id);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    puts("ok");
+    free(resp);
+    return 0;
+}
+
 /* ── main ───────────────────────────────────────────────────────────────── */
 
 static void usage(void) {
@@ -396,11 +567,16 @@ static void usage(void) {
         "usage: limen [--port N] [--host H] [--json] <command> [args]\n"
         "\n"
         "commands:\n"
-        "  modules                              list all modules\n"
-        "  cables                               list all cables\n"
-        "  params <module-id>                   list params for a module\n"
-        "  set <module-id> <param-id> <value>   set a parameter value\n"
-        "  get <module-id>                      get module detail\n"
+        "  plugins                                      list all loaded plugins\n"
+        "  modules [<plugin-slug>]                      list modules (opt. plugin filter)\n"
+        "  cables                                       list all cables\n"
+        "  params <module-id>                           list params for a module\n"
+        "  set <module-id> <param-id> <value>           set a parameter value\n"
+        "  get <module-id>                              get module detail\n"
+        "  add <plugin-slug> <model-slug>               add a module to the patch\n"
+        "  rm <module-id>                               remove a module from the patch\n"
+        "  connect <out-mod>:<out-port> <in-mod>:<in-port>  connect two ports\n"
+        "  disconnect <cable-id>                        remove a cable\n"
         "\n"
         "options:\n"
         "  --port N    TCP port (default: 7000)\n"
@@ -429,8 +605,11 @@ int main(int argc, char *argv[]) {
     if (fd < 0) return 1;
 
     int ret = 1;
-    if (strcmp(cmd, "modules") == 0) {
-        ret = cmd_modules(fd);
+    if (strcmp(cmd, "plugins") == 0) {
+        ret = cmd_plugins(fd);
+    } else if (strcmp(cmd, "modules") == 0) {
+        const char *slug = (i < argc) ? argv[i] : NULL;
+        ret = cmd_modules(fd, slug);
     } else if (strcmp(cmd, "get") == 0) {
         if (i >= argc) { fprintf(stderr, "limen: get requires module-id\n"); }
         else {
@@ -456,6 +635,24 @@ int main(int argc, char *argv[]) {
         }
     } else if (strcmp(cmd, "cables") == 0) {
         ret = cmd_cables(fd);
+    } else if (strcmp(cmd, "add") == 0) {
+        if (i + 1 >= argc) {
+            fprintf(stderr, "limen: add requires plugin-slug model-slug\n");
+        } else {
+            ret = cmd_add(fd, argv[i], argv[i+1]);
+        }
+    } else if (strcmp(cmd, "rm") == 0) {
+        if (i >= argc) { fprintf(stderr, "limen: rm requires module-id\n"); }
+        else { ret = cmd_rm(fd, argv[i]); }
+    } else if (strcmp(cmd, "connect") == 0) {
+        if (i + 1 >= argc) {
+            fprintf(stderr, "limen: connect requires <out-mod>:<out-port> <in-mod>:<in-port>\n");
+        } else {
+            ret = cmd_connect(fd, argv[i], argv[i+1]);
+        }
+    } else if (strcmp(cmd, "disconnect") == 0) {
+        if (i >= argc) { fprintf(stderr, "limen: disconnect requires cable-id\n"); }
+        else { ret = cmd_disconnect(fd, argv[i]); }
     } else {
         fprintf(stderr, "limen: unknown command: %s\n", cmd);
         usage();

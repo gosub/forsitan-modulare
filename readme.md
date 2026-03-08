@@ -118,11 +118,16 @@ The server listens on `localhost:7000` by default (configurable via right-click 
 
 | cmd | extra fields | description |
 |-----|-------------|-------------|
-| `list_modules` | — | list all modules in the patch |
+| `list_plugins` | — | list all plugins loaded in Rack |
+| `list_modules` | `"plugin": "<slug>"` (opt.) | list modules in the patch, optionally filtered by plugin |
 | `get_module` | `"id": <int>` | get detail for one module |
 | `list_params` | `"id": <int>` | list params for a module |
 | `set_param` | `"id": <int>`, `"param": <int>`, `"value": <float>` | set a parameter value |
 | `list_cables` | — | list all cables in the patch |
+| `add_module` | `"plugin": "<slug>"`, `"model": "<slug>"` | add a module → `{"id": <int>}` |
+| `remove_module` | `"id": <int>` | remove a module from the patch |
+| `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>` | connect two ports → `{"id": <int>}` |
+| `remove_cable` | `"id": <int>` | remove a cable from the patch |
 
 ### quick-start examples
 
@@ -157,8 +162,14 @@ limen [--port N] [--host H] [--json] <command> [args]
 ```
 
 ```bash
+# list all loaded plugins
+./limen plugins
+
 # list all modules (human-readable table)
 ./limen modules
+
+# list modules from a specific plugin
+./limen modules VCV
 
 # get module detail
 ./limen get 8518972980240757
@@ -171,6 +182,18 @@ limen [--port N] [--host H] [--json] <command> [args]
 
 # list cables
 ./limen cables
+
+# add a module, prints its id
+./limen add VCV VCO-1
+
+# remove a module (supports id prefix)
+./limen rm 8518972980240757
+
+# connect output 0 of one module to input 0 of another, prints cable id
+./limen connect 8518972980240757:0 9876543210:0
+
+# remove a cable by id
+./limen disconnect 1234567890
 
 # raw JSON output (pipe to jq)
 ./limen --json modules | jq .

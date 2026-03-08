@@ -1,8 +1,14 @@
 #include "forsitan.hpp"
 
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <thread>
 #include <string>
+#include <vector>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -40,14 +46,30 @@ static std::string err_response(const char* msg) {
 }
 
 
-// ── Command dispatch ──────────────────────────────────────────────────────────
+// ── Read-only commands (safe to call from any thread) ────────────────────────
 
-static std::string cmd_list_modules() {
+static std::string cmd_list_plugins() {
+	json_t* arr = json_array();
+	for (plugin::Plugin* p : rack::plugin::plugins) {
+		json_t* obj = json_object();
+		json_object_set_new(obj, "slug",    json_string(p->slug.c_str()));
+		json_object_set_new(obj, "name",    json_string(p->name.c_str()));
+		json_object_set_new(obj, "version", json_string(p->version.c_str()));
+		json_array_append_new(arr, obj);
+	}
+	return ok_response(arr);
+}
+
+static std::string cmd_list_modules(const std::string& pluginFilter = "") {
 	json_t* arr = json_array();
 	auto ids = APP->engine->getModuleIds();
 	for (int64_t id : ids) {
 		engine::Module* m = APP->engine->getModule(id);
 		if (!m) continue;
+		if (!pluginFilter.empty()) {
+			if (!m->model || !m->model->plugin) continue;
+			if (m->model->plugin->slug != pluginFilter) continue;
+		}
 		json_t* obj = json_object();
 		json_object_set_new(obj, "id", json_integer(id));
 		if (m->model) {
@@ -129,65 +151,14 @@ static std::string cmd_list_cables() {
 	return ok_response(arr);
 }
 
-static std::string dispatch(const std::string& line) {
-	json_error_t err;
-	json_t* req = json_loads(line.c_str(), 0, &err);
-	if (!req)
-		return err_response("invalid JSON");
 
-	json_t* cmd_j = json_object_get(req, "cmd");
-	if (!cmd_j || !json_is_string(cmd_j)) {
-		json_decref(req);
-		return err_response("missing cmd");
-	}
-	std::string cmd = json_string_value(cmd_j);
+// ── Pending operation queue (mutation commands run on the main thread) ────────
 
+struct PendingOp {
+	std::function<std::string()> fn;
 	std::string result;
-
-	if (cmd == "list_modules") {
-		result = cmd_list_modules();
-	}
-	else if (cmd == "get_module") {
-		json_t* id_j = json_object_get(req, "id");
-		if (!id_j || !json_is_integer(id_j)) {
-			result = err_response("missing id");
-		} else {
-			result = cmd_get_module(json_integer_value(id_j));
-		}
-	}
-	else if (cmd == "list_params") {
-		json_t* id_j = json_object_get(req, "id");
-		if (!id_j || !json_is_integer(id_j)) {
-			result = err_response("missing id");
-		} else {
-			result = cmd_list_params(json_integer_value(id_j));
-		}
-	}
-	else if (cmd == "set_param") {
-		json_t* id_j    = json_object_get(req, "id");
-		json_t* param_j = json_object_get(req, "param");
-		json_t* value_j = json_object_get(req, "value");
-		if (!id_j || !json_is_integer(id_j) ||
-		    !param_j || !json_is_integer(param_j) ||
-		    !value_j || !json_is_number(value_j)) {
-			result = err_response("missing id, param, or value");
-		} else {
-			result = cmd_set_param(
-				json_integer_value(id_j),
-				(int)json_integer_value(param_j),
-				(float)json_number_value(value_j));
-		}
-	}
-	else if (cmd == "list_cables") {
-		result = cmd_list_cables();
-	}
-	else {
-		result = err_response("unknown cmd");
-	}
-
-	json_decref(req);
-	return result;
-}
+	bool done = false;
+};
 
 
 // ── Module ────────────────────────────────────────────────────────────────────
@@ -205,6 +176,11 @@ struct Limen : Module {
 	std::thread svrThread;
 	std::atomic<bool> running{false};
 	std::atomic<bool> listening{false};
+
+	// Main-thread operation queue for mutation commands.
+	std::mutex pendingMtx;
+	std::condition_variable pendingCv;
+	std::vector<std::shared_ptr<PendingOp>> pendingOps;
 
 	Limen() {
 		config(0, 0, 0, NUM_LIGHTS);
@@ -235,6 +211,8 @@ struct Limen : Module {
 	void signalStop() {
 		running = false;
 		listening = false;
+		// Wake any server threads waiting for main-thread op completion.
+		pendingCv.notify_all();
 		if (listenFd >= 0) {
 			close(listenFd);
 			listenFd = -1;
@@ -302,6 +280,23 @@ struct Limen : Module {
 		});
 	}
 
+	// Enqueue fn to execute on the main thread; block until done (≤2s timeout).
+	// Returns the JSON response string produced by fn.
+	std::string runOnMainThread(std::function<std::string()> fn) {
+		auto op = std::make_shared<PendingOp>();
+		op->fn = std::move(fn);
+		{
+			std::lock_guard<std::mutex> lk(pendingMtx);
+			pendingOps.push_back(op);
+		}
+		std::unique_lock<std::mutex> lk(pendingMtx);
+		bool ok = pendingCv.wait_for(lk, std::chrono::seconds(2),
+			[&]{ return op->done || !running.load(); });
+		if (!ok || !op->done)
+			return err_response("timeout waiting for main thread");
+		return op->result;
+	}
+
 	void serverLoop() {
 		while (running) {
 			int cfd = accept(listenFd, nullptr, nullptr);
@@ -318,44 +313,7 @@ struct Limen : Module {
 		listening = false;
 	}
 
-	void handleClient(int fd) {
-		// Same timeout on the client socket so read() doesn't block forever.
-		struct timeval tv;
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
-		activeFd.store(fd);
-		std::string buf;
-		char tmp[256];
-		while (running) {
-			ssize_t n = read(fd, tmp, sizeof(tmp));
-			if (n < 0) {
-				if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
-					continue;
-				break;
-			}
-			if (n == 0)
-				break;
-			buf.append(tmp, (size_t)n);
-			size_t pos;
-			while ((pos = buf.find('\n')) != std::string::npos) {
-				std::string line = buf.substr(0, pos);
-				buf.erase(0, pos + 1);
-				if (line.empty()) continue;
-				std::string resp = dispatch(line);
-				const char* p = resp.c_str();
-				size_t rem = resp.size();
-				while (rem > 0) {
-					ssize_t w = write(fd, p, rem);
-					if (w <= 0) { activeFd.store(-1); return; }
-					p += w;
-					rem -= (size_t)w;
-				}
-			}
-		}
-		activeFd.store(-1);
-	}
+	void handleClient(int fd);  // defined after dispatch()
 
 	void process(const ProcessArgs&) override {
 		lights[STATUS_LIGHT].setBrightness(listening ? 1.f : 0.f);
@@ -379,6 +337,231 @@ struct Limen : Module {
 };
 
 
+// ── Command dispatch ──────────────────────────────────────────────────────────
+
+static std::string dispatch(const std::string& line, Limen* limen) {
+	json_error_t err;
+	json_t* req = json_loads(line.c_str(), 0, &err);
+	if (!req)
+		return err_response("invalid JSON");
+
+	json_t* cmd_j = json_object_get(req, "cmd");
+	if (!cmd_j || !json_is_string(cmd_j)) {
+		json_decref(req);
+		return err_response("missing cmd");
+	}
+	std::string cmd = json_string_value(cmd_j);
+
+	std::string result;
+
+	if (cmd == "list_plugins") {
+		result = cmd_list_plugins();
+	}
+	else if (cmd == "list_modules") {
+		std::string filter;
+		json_t* plugin_j = json_object_get(req, "plugin");
+		if (plugin_j && json_is_string(plugin_j))
+			filter = json_string_value(plugin_j);
+		result = cmd_list_modules(filter);
+	}
+	else if (cmd == "get_module") {
+		json_t* id_j = json_object_get(req, "id");
+		if (!id_j || !json_is_integer(id_j)) {
+			result = err_response("missing id");
+		} else {
+			result = cmd_get_module(json_integer_value(id_j));
+		}
+	}
+	else if (cmd == "list_params") {
+		json_t* id_j = json_object_get(req, "id");
+		if (!id_j || !json_is_integer(id_j)) {
+			result = err_response("missing id");
+		} else {
+			result = cmd_list_params(json_integer_value(id_j));
+		}
+	}
+	else if (cmd == "set_param") {
+		json_t* id_j    = json_object_get(req, "id");
+		json_t* param_j = json_object_get(req, "param");
+		json_t* value_j = json_object_get(req, "value");
+		if (!id_j || !json_is_integer(id_j) ||
+		    !param_j || !json_is_integer(param_j) ||
+		    !value_j || !json_is_number(value_j)) {
+			result = err_response("missing id, param, or value");
+		} else {
+			result = cmd_set_param(
+				json_integer_value(id_j),
+				(int)json_integer_value(param_j),
+				(float)json_number_value(value_j));
+		}
+	}
+	else if (cmd == "list_cables") {
+		result = cmd_list_cables();
+	}
+	else if (cmd == "add_module") {
+		json_t* plugin_j = json_object_get(req, "plugin");
+		json_t* model_j  = json_object_get(req, "model");
+		if (!plugin_j || !json_is_string(plugin_j) ||
+		    !model_j  || !json_is_string(model_j)) {
+			result = err_response("missing plugin or model");
+		} else {
+			std::string plugSlug  = json_string_value(plugin_j);
+			std::string modelSlug = json_string_value(model_j);
+			result = limen->runOnMainThread([plugSlug, modelSlug]() -> std::string {
+				plugin::Plugin* plug = rack::plugin::getPlugin(plugSlug);
+				if (!plug) return err_response("plugin not found");
+				plugin::Model* mdl = plug->getModel(modelSlug);
+				if (!mdl) return err_response("model not found");
+				engine::Module* mod = mdl->createModule();
+				if (!mod) return err_response("failed to create module");
+				APP->engine->addModule(mod);
+				app::ModuleWidget* mw = mdl->createModuleWidget(mod);
+				if (!mw) {
+					APP->engine->removeModule(mod);
+					delete mod;
+					return err_response("failed to create module widget");
+				}
+				APP->scene->rack->addModule(mw);
+				json_t* obj = json_object();
+				json_object_set_new(obj, "id", json_integer(mod->id));
+				return ok_response(obj);
+			});
+		}
+	}
+	else if (cmd == "remove_module") {
+		json_t* id_j = json_object_get(req, "id");
+		if (!id_j || !json_is_integer(id_j)) {
+			result = err_response("missing id");
+		} else {
+			int64_t id = json_integer_value(id_j);
+			result = limen->runOnMainThread([id]() -> std::string {
+				app::ModuleWidget* mw = nullptr;
+				for (widget::Widget* w : APP->scene->rack->getModuleContainer()->children) {
+					app::ModuleWidget* candidate = dynamic_cast<app::ModuleWidget*>(w);
+					if (candidate && candidate->module && candidate->module->id == id) {
+						mw = candidate;
+						break;
+					}
+				}
+				if (!mw) return err_response("module not found");
+				APP->scene->rack->removeModule(mw);
+				delete mw;
+				return ok_response(json_null());
+			});
+		}
+	}
+	else if (cmd == "add_cable") {
+		json_t* om_j = json_object_get(req, "outputModule");
+		json_t* op_j = json_object_get(req, "outputPort");
+		json_t* im_j = json_object_get(req, "inputModule");
+		json_t* ip_j = json_object_get(req, "inputPort");
+		if (!om_j || !json_is_integer(om_j) ||
+		    !op_j || !json_is_integer(op_j) ||
+		    !im_j || !json_is_integer(im_j) ||
+		    !ip_j || !json_is_integer(ip_j)) {
+			result = err_response("missing outputModule, outputPort, inputModule, or inputPort");
+		} else {
+			int64_t outMod  = json_integer_value(om_j);
+			int     outPort = (int)json_integer_value(op_j);
+			int64_t inMod   = json_integer_value(im_j);
+			int     inPort  = (int)json_integer_value(ip_j);
+			result = limen->runOnMainThread([outMod, outPort, inMod, inPort]() -> std::string {
+				engine::Module* outM = APP->engine->getModule(outMod);
+				if (!outM) return err_response("output module not found");
+				engine::Module* inM  = APP->engine->getModule(inMod);
+				if (!inM) return err_response("input module not found");
+				if (outPort < 0 || outPort >= outM->getNumOutputs())
+					return err_response("output port out of range");
+				if (inPort < 0 || inPort >= inM->getNumInputs())
+					return err_response("input port out of range");
+
+				engine::Cable* cable = new engine::Cable;
+				cable->outputModule = outM;
+				cable->outputId     = outPort;
+				cable->inputModule  = inM;
+				cable->inputId      = inPort;
+				APP->engine->addCable(cable);
+
+				app::CableWidget* cw = new app::CableWidget;
+				cw->setCable(cable);
+				APP->scene->rack->addCable(cw);
+
+				json_t* obj = json_object();
+				json_object_set_new(obj, "id", json_integer(cable->id));
+				return ok_response(obj);
+			});
+		}
+	}
+	else if (cmd == "remove_cable") {
+		json_t* id_j = json_object_get(req, "id");
+		if (!id_j || !json_is_integer(id_j)) {
+			result = err_response("missing id");
+		} else {
+			int64_t id = json_integer_value(id_j);
+			result = limen->runOnMainThread([id]() -> std::string {
+				app::CableWidget* cw = nullptr;
+				for (widget::Widget* w : APP->scene->rack->getCableContainer()->children) {
+					app::CableWidget* candidate = dynamic_cast<app::CableWidget*>(w);
+					if (candidate && candidate->cable && candidate->cable->id == id) {
+						cw = candidate;
+						break;
+					}
+				}
+				if (!cw) return err_response("cable not found");
+				APP->scene->rack->removeCable(cw);
+				delete cw;
+				return ok_response(json_null());
+			});
+		}
+	}
+	else {
+		result = err_response("unknown cmd");
+	}
+
+	json_decref(req);
+	return result;
+}
+
+void Limen::handleClient(int fd) {
+	// Same timeout on the client socket so read() doesn't block forever.
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 100000;
+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+	activeFd.store(fd);
+	std::string buf;
+	char tmp[256];
+	while (running) {
+		ssize_t n = read(fd, tmp, sizeof(tmp));
+		if (n < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)
+				continue;
+			break;
+		}
+		if (n == 0)
+			break;
+		buf.append(tmp, (size_t)n);
+		size_t pos;
+		while ((pos = buf.find('\n')) != std::string::npos) {
+			std::string line = buf.substr(0, pos);
+			buf.erase(0, pos + 1);
+			if (line.empty()) continue;
+			std::string resp = dispatch(line, this);
+			const char* p = resp.c_str();
+			size_t rem = resp.size();
+			while (rem > 0) {
+				ssize_t w = write(fd, p, rem);
+				if (w <= 0) { activeFd.store(-1); return; }
+				p += w;
+				rem -= (size_t)w;
+			}
+		}
+	}
+	activeFd.store(-1);
+}
+
+
 // ── Widget ────────────────────────────────────────────────────────────────────
 
 struct LimenWidget : ModuleWidget {
@@ -394,6 +577,27 @@ struct LimenWidget : ModuleWidget {
 		// Status LED: green = listening
 		addChild(createLightCentered<MediumLight<GreenLight>>(
 			mm2px(Vec(7.62, 64.0)), module, Limen::STATUS_LIGHT));
+	}
+
+	// Drain the pending-op queue each frame on the main thread.
+	void step() override {
+		ModuleWidget::step();
+		Limen* m = dynamic_cast<Limen*>(module);
+		if (!m) return;
+
+		std::vector<std::shared_ptr<PendingOp>> ops;
+		{
+			std::lock_guard<std::mutex> lk(m->pendingMtx);
+			ops.swap(m->pendingOps);
+		}
+		for (auto& op : ops) {
+			op->result = op->fn();
+			{
+				std::lock_guard<std::mutex> lk(m->pendingMtx);
+				op->done = true;
+			}
+			m->pendingCv.notify_all();
+		}
 	}
 
 	void appendContextMenu(Menu* menu) override {
