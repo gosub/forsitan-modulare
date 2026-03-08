@@ -199,6 +199,7 @@ struct Limen : Module {
 	};
 
 	int port = 7000;
+	bool serverEnabled = true;
 	int listenFd = -1;
 	std::atomic<int> activeFd{-1};  // client fd currently in handleClient, or -1
 	std::thread svrThread;
@@ -217,7 +218,7 @@ struct Limen : Module {
 	}
 
 	void onAdd(const AddEvent&) override {
-		startServer();
+		if (serverEnabled) startServer();
 	}
 
 	void onRemove(const RemoveEvent&) override {
@@ -363,6 +364,7 @@ struct Limen : Module {
 	json_t* dataToJson() override {
 		json_t* root = json_object();
 		json_object_set_new(root, "port", json_integer(port));
+		json_object_set_new(root, "serverEnabled", json_boolean(serverEnabled));
 		return root;
 	}
 
@@ -370,6 +372,9 @@ struct Limen : Module {
 		json_t* port_j = json_object_get(rootJ, "port");
 		if (port_j && json_is_integer(port_j))
 			port = (int)json_integer_value(port_j);
+		json_t* enabled_j = json_object_get(rootJ, "serverEnabled");
+		if (enabled_j && json_is_boolean(enabled_j))
+			serverEnabled = json_boolean_value(enabled_j);
 	}
 };
 
@@ -397,13 +402,35 @@ struct LimenWidget : ModuleWidget {
 
 		menu->addChild(new MenuSeparator);
 
+		// Enable / disable toggle
+		struct EnableItem : MenuItem {
+			Limen* module;
+			void onAction(const event::Action&) override {
+				module->serverEnabled = !module->serverEnabled;
+				if (module->serverEnabled)
+					module->startServer();
+				else
+					module->signalStop();
+			}
+		};
+		auto* ei = construct<EnableItem>(
+			&MenuItem::text, "Server enabled",
+			&MenuItem::rightText, module->serverEnabled ? "✓" : "",
+			&EnableItem::module, module);
+		menu->addChild(ei);
+
+		menu->addChild(new MenuSeparator);
+
+		// Preset port items
 		struct PortItem : MenuItem {
 			Limen* module;
 			int newPort;
 			void onAction(const event::Action&) override {
-				module->stopServer();
 				module->port = newPort;
-				module->startServer();
+				if (module->serverEnabled) {
+					module->stopServer();
+					module->startServer();
+				}
 			}
 		};
 
@@ -415,6 +442,37 @@ struct LimenWidget : ModuleWidget {
 				&PortItem::newPort, p);
 			menu->addChild(item);
 		}
+
+		// Custom port text field
+		struct PortTextField : ui::TextField {
+			Limen* module;
+			void onSelectKey(const event::SelectKey& e) override {
+				if (e.action == GLFW_PRESS &&
+				    (e.key == GLFW_KEY_ENTER || e.key == GLFW_KEY_KP_ENTER)) {
+					try {
+						int p = std::stoi(text);
+						if (p >= 1 && p <= 65535) {
+							module->port = p;
+							if (module->serverEnabled) {
+								module->stopServer();
+								module->startServer();
+							}
+						}
+					} catch (...) {}
+					getAncestorOfType<ui::MenuOverlay>()->requestDelete();
+					e.consume(this);
+				}
+				if (!e.getTarget())
+					ui::TextField::onSelectKey(e);
+			}
+		};
+
+		menu->addChild(construct<MenuLabel>(&MenuLabel::text, "Custom port (Enter to apply)"));
+		auto* tf = new PortTextField;
+		tf->module = module;
+		tf->text = std::to_string(module->port);
+		tf->box.size.x = 80.f;
+		menu->addChild(tf);
 	}
 };
 
