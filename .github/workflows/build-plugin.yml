@@ -2,7 +2,7 @@ name: forsitan-modulare build
 on: [push, pull_request]
 
 env:
-  rack-sdk-version: 2.2.1
+  rack-sdk-version: 2.6.6
   rack-plugin-toolchain-dir: /home/build/rack-plugin-toolchain
 
 defaults:
