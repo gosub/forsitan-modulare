@@ -8,4 +8,4 @@ clean:
 	rm -f limen
 
 install: limen
-	install -Dm755 limen $(DESTDIR)/usr/local/bin/limen
+	install -Dm755 limen $(HOME)/.local/bin/limen
