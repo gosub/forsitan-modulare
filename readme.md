@@ -176,9 +176,9 @@ limen [--port N] [--host H] [--json] <command> [args]
 ./limen --json modules | jq .
 ```
 
-Install system-wide:
+Install:
 ```bash
-sudo make install   # installs to /usr/local/bin/limen
+make install   # installs to ~/.local/bin/limen
 ```
 
 ## Author
