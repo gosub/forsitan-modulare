@@ -192,6 +192,71 @@ static int json_int64(const char *obj, const char *key, long long *out) {
     return end != p;
 }
 
+/* ── module-id prefix resolution ────────────────────────────────────────── */
+
+/*
+ * Resolve a module-id prefix to a full ID.
+ * If prefix uniquely matches one module, returns that ID.
+ * On ambiguity or no match, prints an error and returns -1.
+ * A full numeric ID is accepted as-is (still verified against the patch).
+ */
+static long long resolve_id(int fd, const char *prefix) {
+    char req[] = "{\"cmd\":\"list_modules\"}\n";
+    char *resp = transact(fd, req);
+    if (!resp) return -1;
+    if (!json_ok(resp)) { print_error(resp); free(resp); return -1; }
+
+    size_t prefix_len = strlen(prefix);
+    long long matched_id = -1;
+    int match_count = 0;
+
+    const char *p = strstr(resp, "\"result\":[");
+    if (!p) { free(resp); return -1; }
+    p += 9; /* point at '[' */
+    int depth = 0;
+    const char *item_start = NULL;
+    for (; *p; p++) {
+        if (*p == '{') {
+            if (depth == 0) item_start = p;
+            depth++;
+        } else if (*p == '}') {
+            depth--;
+            if (depth == 0 && item_start) {
+                size_t len = (size_t)(p - item_start + 1);
+                char *item = malloc(len + 1);
+                if (!item) break;
+                memcpy(item, item_start, len);
+                item[len] = '\0';
+                long long id;
+                if (json_int64(item, "id", &id)) {
+                    char id_str[32];
+                    snprintf(id_str, sizeof(id_str), "%lld", id);
+                    if (strncmp(id_str, prefix, prefix_len) == 0) {
+                        matched_id = id;
+                        match_count++;
+                    }
+                }
+                free(item);
+                item_start = NULL;
+            }
+        } else if (*p == ']' && depth == 0) {
+            break;
+        }
+    }
+    free(resp);
+
+    if (match_count == 0) {
+        fprintf(stderr, "limen: no module matches '%s'\n", prefix);
+        return -1;
+    }
+    if (match_count > 1) {
+        fprintf(stderr, "limen: ambiguous prefix '%s' matches %d modules\n",
+                prefix, match_count);
+        return -1;
+    }
+    return matched_id;
+}
+
 /* ── command implementations ────────────────────────────────────────────── */
 
 static void print_module_item(const char *item, void *user) {
@@ -368,18 +433,26 @@ int main(int argc, char *argv[]) {
         ret = cmd_modules(fd);
     } else if (strcmp(cmd, "get") == 0) {
         if (i >= argc) { fprintf(stderr, "limen: get requires module-id\n"); }
-        else ret = cmd_get(fd, strtoll(argv[i], NULL, 10));
+        else {
+            long long id = resolve_id(fd, argv[i]);
+            if (id >= 0) ret = cmd_get(fd, id);
+        }
     } else if (strcmp(cmd, "params") == 0) {
         if (i >= argc) { fprintf(stderr, "limen: params requires module-id\n"); }
-        else ret = cmd_params(fd, strtoll(argv[i], NULL, 10));
+        else {
+            long long id = resolve_id(fd, argv[i]);
+            if (id >= 0) ret = cmd_params(fd, id);
+        }
     } else if (strcmp(cmd, "set") == 0) {
         if (i + 2 >= argc) {
             fprintf(stderr, "limen: set requires module-id param-id value\n");
         } else {
-            long long modid  = strtoll(argv[i],     NULL, 10);
-            int       paramid = (int)strtol(argv[i+1], NULL, 10);
-            double    value   = strtod(argv[i+2],   NULL);
-            ret = cmd_set(fd, modid, paramid, value);
+            long long modid = resolve_id(fd, argv[i]);
+            if (modid >= 0) {
+                int    paramid = (int)strtol(argv[i+1], NULL, 10);
+                double value   = strtod(argv[i+2],      NULL);
+                ret = cmd_set(fd, modid, paramid, value);
+            }
         }
     } else if (strcmp(cmd, "cables") == 0) {
         ret = cmd_cables(fd);
