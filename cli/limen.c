@@ -8,6 +8,7 @@
  *   plugins                                      list all loaded plugins
  *   modules [<plugin-slug>]                      list modules (optionally filtered by plugin)
  *   cables                                       list all cables
+ *   ports <module-id>                            list input/output port names
  *   params <module-id>                           list params for a module
  *   set <module-id> <param-id> <value>           set a parameter value
  *   get <module-id>                              get module detail
@@ -542,6 +543,60 @@ static int cmd_connect(int fd, const char *out_arg, const char *in_arg) {
     return 0;
 }
 
+static void print_port_item(const char *item, void *user) {
+    const char *label = (const char *)user;
+    long long id; char name[64];
+    json_int64(item, "id",   &id);
+    json_str  (item, "name", name, sizeof(name));
+    printf("  %s %2lld  %s\n", label, id, name);
+}
+
+/* Iterate items of a named sub-array inside "result":{...}. */
+static void each_subarray_item(const char *resp, const char *key, item_cb cb, void *user) {
+    char search[64];
+    snprintf(search, sizeof(search), "\"%s\":[", key);
+    const char *p = strstr(resp, search);
+    if (!p) return;
+    p += strlen(search) - 1; /* point at '[' */
+    int depth = 0;
+    const char *item_start = NULL;
+    for (; *p; p++) {
+        if (*p == '{') {
+            if (depth == 0) item_start = p;
+            depth++;
+        } else if (*p == '}') {
+            depth--;
+            if (depth == 0 && item_start) {
+                size_t len = (size_t)(p - item_start + 1);
+                char *item = malloc(len + 1);
+                if (!item) break;
+                memcpy(item, item_start, len);
+                item[len] = '\0';
+                cb(item, user);
+                free(item);
+                item_start = NULL;
+            }
+        } else if (*p == ']' && depth == 0) {
+            break;
+        }
+    }
+}
+
+static int cmd_ports(int fd, long long id) {
+    char req[128];
+    snprintf(req, sizeof(req), "{\"cmd\":\"list_ports\",\"id\":%lld}\n", id);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    puts("inputs:");
+    each_subarray_item(resp, "inputs",  print_port_item, (void *)"in ");
+    puts("outputs:");
+    each_subarray_item(resp, "outputs", print_port_item, (void *)"out");
+    free(resp);
+    return 0;
+}
+
 static int cmd_disconnect(int fd, const char *id_str) {
     char *end;
     long long id = strtoll(id_str, &end, 10);
@@ -570,6 +625,7 @@ static void usage(void) {
         "  plugins                                      list all loaded plugins\n"
         "  modules [<plugin-slug>]                      list modules (opt. plugin filter)\n"
         "  cables                                       list all cables\n"
+        "  ports <module-id>                            list input/output port names\n"
         "  params <module-id>                           list params for a module\n"
         "  set <module-id> <param-id> <value>           set a parameter value\n"
         "  get <module-id>                              get module detail\n"
@@ -615,6 +671,12 @@ int main(int argc, char *argv[]) {
         else {
             long long id = resolve_id(fd, argv[i]);
             if (id >= 0) ret = cmd_get(fd, id);
+        }
+    } else if (strcmp(cmd, "ports") == 0) {
+        if (i >= argc) { fprintf(stderr, "limen: ports requires module-id\n"); }
+        else {
+            long long id = resolve_id(fd, argv[i]);
+            if (id >= 0) ret = cmd_ports(fd, id);
         }
     } else if (strcmp(cmd, "params") == 0) {
         if (i >= argc) { fprintf(stderr, "limen: params requires module-id\n"); }

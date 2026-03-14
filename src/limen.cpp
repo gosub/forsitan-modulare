@@ -151,6 +151,34 @@ static std::string cmd_set_param(int64_t id, int paramId, float value) {
 	return ok_response(json_null());
 }
 
+static std::string cmd_list_ports(int64_t id) {
+	engine::Module* m = APP->engine->getModule(id);
+	if (!m)
+		return err_response("module not found");
+	json_t* inputs = json_array();
+	for (int i = 0; i < m->getNumInputs(); i++) {
+		json_t* obj = json_object();
+		json_object_set_new(obj, "id", json_integer(i));
+		json_object_set_new(obj, "name", json_string(
+			(m->inputInfos[i] && !m->inputInfos[i]->name.empty())
+			? m->inputInfos[i]->name.c_str() : ""));
+		json_array_append_new(inputs, obj);
+	}
+	json_t* outputs = json_array();
+	for (int i = 0; i < m->getNumOutputs(); i++) {
+		json_t* obj = json_object();
+		json_object_set_new(obj, "id", json_integer(i));
+		json_object_set_new(obj, "name", json_string(
+			(m->outputInfos[i] && !m->outputInfos[i]->name.empty())
+			? m->outputInfos[i]->name.c_str() : ""));
+		json_array_append_new(outputs, obj);
+	}
+	json_t* result = json_object();
+	json_object_set_new(result, "inputs",  inputs);
+	json_object_set_new(result, "outputs", outputs);
+	return ok_response(result);
+}
+
 static std::string cmd_list_cables() {
 	json_t* arr = json_array();
 	auto ids = APP->engine->getCableIds();
@@ -420,6 +448,14 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 				json_integer_value(id_j),
 				(int)json_integer_value(param_j),
 				(float)json_number_value(value_j));
+		}
+	}
+	else if (cmd == "list_ports") {
+		json_t* id_j = json_object_get(req, "id");
+		if (!id_j || !json_is_integer(id_j)) {
+			result = err_response("missing id");
+		} else {
+			result = cmd_list_ports(json_integer_value(id_j));
 		}
 	}
 	else if (cmd == "list_cables") {
