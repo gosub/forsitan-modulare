@@ -1,0 +1,160 @@
+# limen
+
+![limen](../img/limen.png)
+
+*limen* is a TCP+JSON control interface for VCV Rack. It exposes a simple newline-delimited JSON protocol over a local TCP socket, letting you query and control your patch from scripts, Emacs, or any other tool that can open a socket.
+
+## Module UI
+
+A green LED at the centre of the panel indicates that the server is listening. Right-click the module for options:
+
+- **Server enabled** — toggle the TCP server on or off without removing the module. The LED goes dark when the server is stopped.
+- **TCP port** — choose a preset port (7000, 7001, 7002, 7777, 8000) or type any value in the text field (1–65535) and press Enter.
+
+The port and enabled state are saved with the patch.
+
+## JSON protocol
+
+The server listens on `localhost:7000` by default. Send one JSON object per line; receive one JSON response line per request.
+
+**Request:**
+```json
+{"cmd": "<command>", ...}
+```
+
+**Success response:**
+```json
+{"ok": true, "result": <value>}
+```
+
+**Error response:**
+```json
+{"ok": false, "error": "<message>"}
+```
+
+### Commands
+
+#### Plugin and model registry
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `list_plugins` | — | `[{slug, name, version}]` | all plugins loaded in Rack |
+| `list_models` | `"plugin": "<slug>"` (opt.) | `[{plugin, slug, name, description}]` | all available models, optionally filtered by plugin |
+
+#### Modules in the patch
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `list_modules` | `"plugin": "<slug>"` (opt.) | `[{id, plugin, model, name, numParams, numInputs, numOutputs}]` | modules currently in the patch |
+| `get_module` | `"id": <int>` | `{id, plugin, model, name, numParams, numInputs, numOutputs}` | detail for one module |
+| `list_ports` | `"id": <int>` | `{inputs: [{id, name}], outputs: [{id, name}]}` | input and output port names |
+| `list_params` | `"id": <int>` | `[{id, value, name, min, max, unit}]` | params for a module |
+| `set_param` | `"id": <int>`, `"param": <int>`, `"value": <float>` | `null` | set a parameter value |
+| `add_module` | `"plugin": "<slug>"`, `"model": "<slug>"` | `{id}` | add a module to the patch |
+| `remove_module` | `"id": <int>` | `null` | remove a module from the patch |
+
+#### Cables in the patch
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `list_cables` | `"id": <int>` (opt.), `"verbose": true` (opt.) | `[{id, outputModule, outputPort, inputModule, inputPort, …}]` | cables in the patch; filter by module id; verbose adds `outputModuleName`, `outputPortName`, `inputModuleName`, `inputPortName` |
+| `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>` | `{id}` | connect two ports |
+| `remove_cable` | `"id": <int>` | `null` | remove a cable from the patch |
+
+### Examples
+
+```bash
+# list modules (with netcat)
+echo '{"cmd":"list_modules"}' | nc localhost 7000
+
+# list all models available from the Fundamental plugin
+echo '{"cmd":"list_models","plugin":"Fundamental"}' | nc localhost 7000
+
+# list port names for module 8518972980240757
+echo '{"cmd":"list_ports","id":8518972980240757}' | nc localhost 7000
+
+# list params for a module
+echo '{"cmd":"list_params","id":8518972980240757}' | nc localhost 7000
+
+# set param 0 of module 8518972980240757 to 0.5
+echo '{"cmd":"set_param","id":8518972980240757,"param":0,"value":0.5}' | nc localhost 7000
+
+# list cables with module names and port names
+echo '{"cmd":"list_cables","verbose":true}' | nc localhost 7000
+```
+
+```python
+# Python example
+import socket, json
+s = socket.create_connection(("127.0.0.1", 7000))
+s.sendall(b'{"cmd":"list_modules"}\n')
+print(json.loads(s.recv(65536)))
+```
+
+## CLI tool
+
+A standalone C client lives in `cli/`. No dependencies beyond a POSIX C compiler.
+
+```bash
+cd cli && make
+# optionally install to ~/.local/bin
+make install
+```
+
+**Usage:**
+```
+limen [--port N] [--host H] [--json] <command> [args]
+```
+
+| command | description |
+|---------|-------------|
+| `plugins` | list all loaded plugins |
+| `models [<plugin-slug>]` | list available models, optionally filtered by plugin |
+| `modules [<plugin-slug>]` | list modules currently in the rack |
+| `get <module-id>` | get detail for one module |
+| `ports <module-id>` | list input/output port names |
+| `params <module-id>` | list params for a module |
+| `set <module-id> <param-id> <value>` | set a parameter value |
+| `cables [-v] [<module-id>]` | list cables; `-v` adds module and port names; optional module filter |
+| `add <plugin-slug> <model-slug>` | add a module, prints its id |
+| `rm <module-id>` | remove a module |
+| `connect <out-mod>:<out-port> <in-mod>:<in-port>` | connect two ports, prints cable id |
+| `disconnect <cable-id>` | remove a cable |
+
+Module IDs and cable IDs can be given as unique prefixes instead of the full number.
+
+**Options:**
+
+| option | description |
+|--------|-------------|
+| `--port N` | TCP port (default: 7000) |
+| `--host H` | host (default: 127.0.0.1) |
+| `--json` | print raw JSON response (pipe to `jq`) |
+
+**Examples:**
+
+```bash
+# list all modules in the rack
+limen modules
+
+# list all models available in the Fundamental plugin
+limen models Fundamental
+
+# get port names for a module
+limen ports 8518972980240757
+
+# add a VCO, capture its id
+ID=$(limen add Fundamental VCO)
+
+# connect VCO output 0 to VCA input 0
+limen connect ${ID}:0 9876543210:0
+
+# list cables with names (verbose)
+limen cables -v
+
+# disconnect a cable by prefix
+limen disconnect 1234
+
+# raw JSON output
+limen --json modules | jq .
+```
