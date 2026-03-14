@@ -6,7 +6,8 @@
  *
  * Commands:
  *   plugins                                      list all loaded plugins
- *   modules [<plugin-slug>]                      list modules (optionally filtered by plugin)
+ *   models [<plugin-slug>]                       list available models (opt. plugin filter)
+ *   modules [<plugin-slug>]                      list modules currently in the rack (opt. plugin filter)
  *   cables                                       list all cables
  *   ports <module-id>                            list input/output port names
  *   params <module-id>                           list params for a module
@@ -166,8 +167,23 @@ static int json_str(const char *obj, const char *key, char *dest, size_t dest_si
     if (*p != '"') return 0;
     p++;
     size_t i = 0;
-    while (*p && *p != '"' && i < dest_size - 1)
-        dest[i++] = *p++;
+    while (*p && *p != '"' && i < dest_size - 1) {
+        if (*p == '\\' && *(p + 1)) {
+            p++;
+            switch (*p) {
+                case '"':  dest[i++] = '"';  break;
+                case '\\': dest[i++] = '\\'; break;
+                case '/':  dest[i++] = '/';  break;
+                case 'n':  dest[i++] = '\n'; break;
+                case 'r':  dest[i++] = '\r'; break;
+                case 't':  dest[i++] = '\t'; break;
+                default:   dest[i++] = *p;   break;
+            }
+        } else {
+            dest[i++] = *p;
+        }
+        p++;
+    }
     dest[i] = '\0';
     return 1;
 }
@@ -282,6 +298,33 @@ static int cmd_plugins(int fd) {
     if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
     printf("%-24s  %-32s  %s\n", "slug", "name", "version");
     each_result_item(resp, print_plugin_item, NULL);
+    free(resp);
+    return 0;
+}
+
+static void print_model_item(const char *item, void *user) {
+    (void)user;
+    char plugin[64], slug[64], name[64], desc[128];
+    json_str(item, "plugin",      plugin, sizeof(plugin));
+    json_str(item, "slug",        slug,   sizeof(slug));
+    json_str(item, "name",        name,   sizeof(name));
+    json_str(item, "description", desc,   sizeof(desc));
+    printf("%-24s  %-24s  %-24s  %s\n", plugin, slug, name, desc);
+}
+
+static int cmd_models(int fd, const char *plugin_slug) {
+    char req[256];
+    if (plugin_slug)
+        snprintf(req, sizeof(req),
+                 "{\"cmd\":\"list_models\",\"plugin\":\"%s\"}\n", plugin_slug);
+    else
+        snprintf(req, sizeof(req), "{\"cmd\":\"list_models\"}\n");
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    printf("%-24s  %-24s  %-24s  %s\n", "plugin", "slug", "name", "description");
+    each_result_item(resp, print_model_item, NULL);
     free(resp);
     return 0;
 }
@@ -623,7 +666,8 @@ static void usage(void) {
         "\n"
         "commands:\n"
         "  plugins                                      list all loaded plugins\n"
-        "  modules [<plugin-slug>]                      list modules (opt. plugin filter)\n"
+        "  models [<plugin-slug>]                       list available models (opt. plugin filter)\n"
+        "  modules [<plugin-slug>]                      list modules currently in the rack (opt. plugin filter)\n"
         "  cables                                       list all cables\n"
         "  ports <module-id>                            list input/output port names\n"
         "  params <module-id>                           list params for a module\n"
@@ -663,6 +707,9 @@ int main(int argc, char *argv[]) {
     int ret = 1;
     if (strcmp(cmd, "plugins") == 0) {
         ret = cmd_plugins(fd);
+    } else if (strcmp(cmd, "models") == 0) {
+        const char *slug = (i < argc) ? argv[i] : NULL;
+        ret = cmd_models(fd, slug);
     } else if (strcmp(cmd, "modules") == 0) {
         const char *slug = (i < argc) ? argv[i] : NULL;
         ret = cmd_modules(fd, slug);

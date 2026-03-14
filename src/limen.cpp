@@ -77,6 +77,22 @@ static std::string cmd_list_plugins() {
 	return ok_response(arr);
 }
 
+static std::string cmd_list_models(const std::string& pluginFilter = "") {
+	json_t* arr = json_array();
+	for (plugin::Plugin* p : rack::plugin::plugins) {
+		if (!pluginFilter.empty() && p->slug != pluginFilter) continue;
+		for (plugin::Model* mdl : p->models) {
+			json_t* obj = json_object();
+			json_object_set_new(obj, "plugin",      json_string(p->slug.c_str()));
+			json_object_set_new(obj, "slug",        json_string(mdl->slug.c_str()));
+			json_object_set_new(obj, "name",        json_string(mdl->name.c_str()));
+			json_object_set_new(obj, "description", json_string(mdl->description.c_str()));
+			json_array_append_new(arr, obj);
+		}
+	}
+	return ok_response(arr);
+}
+
 static std::string cmd_list_modules(const std::string& pluginFilter = "") {
 	json_t* arr = json_array();
 	auto ids = APP->engine->getModuleIds();
@@ -411,6 +427,13 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 
 	if (cmd == "list_plugins") {
 		result = cmd_list_plugins();
+	}
+	else if (cmd == "list_models") {
+		std::string filter;
+		json_t* plugin_j = json_object_get(req, "plugin");
+		if (plugin_j && json_is_string(plugin_j))
+			filter = json_string_value(plugin_j);
+		result = cmd_list_models(filter);
 	}
 	else if (cmd == "list_modules") {
 		std::string filter;
