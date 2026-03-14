@@ -21,6 +21,19 @@ A collection of VCV Rack modules.
 
 See [CHANGELOG.md](CHANGELOG.md).
 
+## About the names
+
+Being Italian, giving the modules English names felt off, but Italian names would have been less accessible to most users. Latin seemed like a natural middle ground: familiar enough, international, and with a certain character.
+
+| module | Latin meaning |
+|--------|--------------|
+| **alea** | dice, chance (as in *alea iacta est*, the die is cast) |
+| **interea** | meanwhile, in the meantime |
+| **cumuli** | heaps, piles (plural of *cumulus*) |
+| **deinde** | then, next, afterwards |
+| **pavo** | peacock (whose spreading tail mirrors the stereo spread) |
+| **limen** | threshold, doorway |
+
 ## Author
 
 Giampaolo Guiducci <giampaolo.guiducci@gmail.com>

@@ -13,6 +13,20 @@ A green LED at the centre of the panel indicates that the server is listening. R
 
 The port and enabled state are saved with the patch.
 
+## Use cases
+
+**CLI control** — the included `limen` CLI lets you inspect and modify a live patch from the terminal. Useful for quick experiments, parameter sweeps, or integrating Rack into shell scripts.
+
+**Alternative interfaces** — any tool that can open a TCP socket can drive Rack. An Emacs minor mode (coming soon) will let you interact with your patch directly from your editor: list modules, tweak parameters, connect cables, all without touching the mouse.
+
+**LLM interfacing** — a language model can use limen as a tool to explore and build patches. `list_models` gives it the full module catalogue; `list_ports` tells it what each port does; `add_module` and `add_cable` let it act. The JSON protocol is easy for models to generate and parse.
+
+**Automated patch testing** — load a known patch, query its topology with `list_modules` and `list_cables`, assert that parameters are in expected ranges with `list_params`. Useful for regression testing or verifying that a saved patch loads correctly.
+
+**Live coding / generative patching** — drive patch changes from a REPL, a script, or a custom sequencer. Add and remove modules, reconnect cables, and automate parameter changes in real time without touching the Rack UI.
+
+**Patch documentation and archiving** — dump the current patch state to JSON for later analysis or archiving. `list_modules`, `list_cables`, and `list_params` together give a complete snapshot of what is patched and how it is configured.
+
 ## JSON protocol
 
 The server listens on `localhost:7000` by default. Send one JSON object per line; receive one JSON response line per request.
