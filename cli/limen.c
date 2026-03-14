@@ -214,17 +214,16 @@ static int json_int64(const char *obj, const char *key, long long *out) {
     return end != p;
 }
 
-/* ── module-id prefix resolution ────────────────────────────────────────── */
+/* ── id prefix resolution ────────────────────────────────────────────────── */
 
 /*
- * Resolve a module-id prefix to a full ID.
- * If prefix uniquely matches one module, returns that ID.
+ * Resolve a prefix against the "id" field of items returned by list_req.
+ * If prefix uniquely matches one item, returns that ID.
  * On ambiguity or no match, prints an error and returns -1.
- * A full numeric ID is accepted as-is (still verified against the patch).
  */
-static long long resolve_id(int fd, const char *prefix) {
-    char req[] = "{\"cmd\":\"list_modules\"}\n";
-    char *resp = transact(fd, req);
+static long long resolve_prefix(int fd, const char *list_req,
+                                const char *kind, const char *prefix) {
+    char *resp = transact(fd, list_req);
     if (!resp) return -1;
     if (!json_ok(resp)) { print_error(resp); free(resp); return -1; }
 
@@ -268,15 +267,23 @@ static long long resolve_id(int fd, const char *prefix) {
     free(resp);
 
     if (match_count == 0) {
-        fprintf(stderr, "limen: no module matches '%s'\n", prefix);
+        fprintf(stderr, "limen: no %s matches '%s'\n", kind, prefix);
         return -1;
     }
     if (match_count > 1) {
-        fprintf(stderr, "limen: ambiguous prefix '%s' matches %d modules\n",
-                prefix, match_count);
+        fprintf(stderr, "limen: ambiguous prefix '%s' matches %d %ss\n",
+                prefix, match_count, kind);
         return -1;
     }
     return matched_id;
+}
+
+static long long resolve_id(int fd, const char *prefix) {
+    return resolve_prefix(fd, "{\"cmd\":\"list_modules\"}\n", "module", prefix);
+}
+
+static long long resolve_cable_id(int fd, const char *prefix) {
+    return resolve_prefix(fd, "{\"cmd\":\"list_cables\"}\n", "cable", prefix);
 }
 
 /* ── command implementations ────────────────────────────────────────────── */
@@ -641,12 +648,8 @@ static int cmd_ports(int fd, long long id) {
 }
 
 static int cmd_disconnect(int fd, const char *id_str) {
-    char *end;
-    long long id = strtoll(id_str, &end, 10);
-    if (end == id_str || *end != '\0') {
-        fprintf(stderr, "limen: invalid cable id: %s\n", id_str);
-        return 1;
-    }
+    long long id = resolve_cable_id(fd, id_str);
+    if (id < 0) return 1;
     char req[128];
     snprintf(req, sizeof(req), "{\"cmd\":\"remove_cable\",\"id\":%lld}\n", id);
     char *resp = transact(fd, req);
