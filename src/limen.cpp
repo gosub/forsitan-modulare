@@ -195,18 +195,35 @@ static std::string cmd_list_ports(int64_t id) {
 	return ok_response(result);
 }
 
-static std::string cmd_list_cables() {
+static std::string cmd_list_cables(int64_t moduleFilter = -1, bool verbose = false) {
 	json_t* arr = json_array();
 	auto ids = APP->engine->getCableIds();
 	for (int64_t id : ids) {
 		engine::Cable* c = APP->engine->getCable(id);
 		if (!c) continue;
+		int64_t outId = c->outputModule ? c->outputModule->id : -1;
+		int64_t inId  = c->inputModule  ? c->inputModule->id  : -1;
+		if (moduleFilter >= 0 && outId != moduleFilter && inId != moduleFilter)
+			continue;
 		json_t* obj = json_object();
-		json_object_set_new(obj, "id", json_integer(id));
-		json_object_set_new(obj, "outputModule", json_integer(c->outputModule ? c->outputModule->id : -1));
+		json_object_set_new(obj, "id",           json_integer(id));
+		json_object_set_new(obj, "outputModule", json_integer(outId));
 		json_object_set_new(obj, "outputPort",   json_integer(c->outputId));
-		json_object_set_new(obj, "inputModule",  json_integer(c->inputModule  ? c->inputModule->id  : -1));
+		json_object_set_new(obj, "inputModule",  json_integer(inId));
 		json_object_set_new(obj, "inputPort",    json_integer(c->inputId));
+		if (verbose) {
+			engine::Module* om = c->outputModule;
+			engine::Module* im = c->inputModule;
+			auto port_name = [](std::vector<rack::engine::PortInfo*>& infos, int i) -> const char* {
+				if (i >= 0 && i < (int)infos.size() && infos[i] && !infos[i]->name.empty())
+					return infos[i]->name.c_str();
+				return "";
+			};
+			json_object_set_new(obj, "outputModuleName", json_string(om && om->model ? om->model->name.c_str() : ""));
+			json_object_set_new(obj, "outputPortName",   json_string(om ? port_name(om->outputInfos, c->outputId) : ""));
+			json_object_set_new(obj, "inputModuleName",  json_string(im && im->model ? im->model->name.c_str() : ""));
+			json_object_set_new(obj, "inputPortName",    json_string(im ? port_name(im->inputInfos,  c->inputId)  : ""));
+		}
 		json_array_append_new(arr, obj);
 	}
 	return ok_response(arr);
@@ -482,7 +499,15 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 		}
 	}
 	else if (cmd == "list_cables") {
-		result = cmd_list_cables();
+		int64_t moduleFilter = -1;
+		json_t* mod_j = json_object_get(req, "id");
+		if (mod_j && json_is_integer(mod_j))
+			moduleFilter = json_integer_value(mod_j);
+		bool verbose = false;
+		json_t* verbose_j = json_object_get(req, "verbose");
+		if (verbose_j && json_is_boolean(verbose_j))
+			verbose = json_boolean_value(verbose_j);
+		result = cmd_list_cables(moduleFilter, verbose);
 	}
 	else if (cmd == "add_module") {
 		json_t* plugin_j = json_object_get(req, "plugin");

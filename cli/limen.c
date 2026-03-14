@@ -8,7 +8,7 @@
  *   plugins                                      list all loaded plugins
  *   models [<plugin-slug>]                       list available models (opt. plugin filter)
  *   modules [<plugin-slug>]                      list modules currently in the rack (opt. plugin filter)
- *   cables                                       list all cables
+ *   cables [-v] [<module-id>]                    list cables (opt. module filter, -v for verbose)
  *   ports <module-id>                            list input/output port names
  *   params <module-id>                           list params for a module
  *   set <module-id> <param-id> <value>           set a parameter value
@@ -444,30 +444,54 @@ static int cmd_set(int fd, long long modid, int paramid, double value) {
 }
 
 static void print_cable_item(const char *item, void *user) {
-    (void)user;
+    int verbose = *(int *)user;
     long long id, om, op, im, ip;
     json_int64(item, "id",           &id);
     json_int64(item, "outputModule", &om);
     json_int64(item, "outputPort",   &op);
     json_int64(item, "inputModule",  &im);
     json_int64(item, "inputPort",    &ip);
-    printf("%20lld  %20lld:%lld  →  %20lld:%lld\n", id, om, op, im, ip);
+    if (verbose) {
+        char omn[64], opn[64], imn[64], ipn[64];
+        json_str(item, "outputModuleName", omn, sizeof(omn));
+        json_str(item, "outputPortName",   opn, sizeof(opn));
+        json_str(item, "inputModuleName",  imn, sizeof(imn));
+        json_str(item, "inputPortName",    ipn, sizeof(ipn));
+        printf("%20lld  %20lld %-16s  :%lld %-16s  →  %20lld %-16s  :%lld %-16s\n",
+               id, om, omn, op, opn, im, imn, ip, ipn);
+    } else {
+        printf("%20lld  %20lld:%lld  →  %20lld:%lld\n", id, om, op, im, ip);
+    }
 }
 
-static int cmd_cables(int fd) {
-    char req[] = "{\"cmd\":\"list_cables\"}\n";
+static int cmd_cables(int fd, long long module_id, int verbose) {
+    char req[256];
+    if (module_id >= 0 && verbose)
+        snprintf(req, sizeof(req),
+                 "{\"cmd\":\"list_cables\",\"id\":%lld,\"verbose\":true}\n", module_id);
+    else if (module_id >= 0)
+        snprintf(req, sizeof(req),
+                 "{\"cmd\":\"list_cables\",\"id\":%lld}\n", module_id);
+    else if (verbose)
+        snprintf(req, sizeof(req), "{\"cmd\":\"list_cables\",\"verbose\":true}\n");
+    else
+        snprintf(req, sizeof(req), "{\"cmd\":\"list_cables\"}\n");
     char *resp = transact(fd, req);
     if (!resp) return 1;
     if (opt_json) { puts(resp); free(resp); return 0; }
     if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
-    /* check if result is empty array */
     if (strstr(resp, "\"result\":[]")) {
         puts("(no cables)");
         free(resp);
         return 0;
     }
-    printf("%20s  %20s       %20s\n", "cable-id", "out-module:port", "in-module:port");
-    each_result_item(resp, print_cable_item, NULL);
+    if (verbose)
+        printf("%20s  %20s %-16s   %-3s %-16s      %20s %-16s   %-3s %-16s\n",
+               "cable-id", "out-module-id", "out-module", "out", "out-port",
+               "in-module-id", "in-module", "in", "in-port");
+    else
+        printf("%20s  %20s       %20s\n", "cable-id", "out-module:port", "in-module:port");
+    each_result_item(resp, print_cable_item, &verbose);
     free(resp);
     return 0;
 }
@@ -671,7 +695,7 @@ static void usage(void) {
         "  plugins                                      list all loaded plugins\n"
         "  models [<plugin-slug>]                       list available models (opt. plugin filter)\n"
         "  modules [<plugin-slug>]                      list modules currently in the rack (opt. plugin filter)\n"
-        "  cables                                       list all cables\n"
+        "  cables [-v] [<module-id>]                    list cables (opt. module filter, -v for names)\n"
         "  ports <module-id>                            list input/output port names\n"
         "  params <module-id>                           list params for a module\n"
         "  set <module-id> <param-id> <value>           set a parameter value\n"
@@ -746,7 +770,17 @@ int main(int argc, char *argv[]) {
             }
         }
     } else if (strcmp(cmd, "cables") == 0) {
-        ret = cmd_cables(fd);
+        int verbose = 0;
+        long long module_id = -1;
+        for (; i < argc; i++) {
+            if (strcmp(argv[i], "-v") == 0)
+                verbose = 1;
+            else {
+                module_id = resolve_id(fd, argv[i]);
+                if (module_id < 0) { close(fd); return 1; }
+            }
+        }
+        ret = cmd_cables(fd, module_id, verbose);
     } else if (strcmp(cmd, "add") == 0) {
         if (i + 1 >= argc) {
             fprintf(stderr, "limen: add requires plugin-slug model-slug\n");
