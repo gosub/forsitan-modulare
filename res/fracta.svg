@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   id="svg1"
+   version="1.1"
+   viewBox="0 0 60.96 128.5"
+   height="128.5mm"
+   width="60.96mm">
+  <defs id="defs1" />
+
+  <!-- Background -->
+  <rect
+     id="bg"
+     width="60.96"
+     height="128.5"
+     x="0"
+     y="0"
+     style="fill:#1a1a1a;stroke:none" />
+
+  <!-- Module title -->
+  <text
+     id="title"
+     x="30.48"
+     y="10"
+     style="font-size:5px;font-family:sans-serif;fill:#f0f0f0;text-anchor:middle;dominant-baseline:middle;letter-spacing:2">fracta</text>
+
+  <!-- Section labels -->
+  <text x="12" y="16.5" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">core</text>
+  <text x="30.5" y="16.5" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">iter</text>
+  <text x="49" y="16.5" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">warp</text>
+
+  <text x="12" y="55" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">v/oct</text>
+  <text x="30.5" y="55" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">freq</text>
+  <text x="49" y="55" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">fm</text>
+
+  <text x="19" y="63" style="font-size:2.4px;font-family:sans-serif;fill:#666;text-anchor:middle">mode</text>
+
+  <text x="12" y="78.5" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">sync</text>
+  <text x="30.5" y="78.5" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">boost</text>
+  <text x="49" y="78.5" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">boost cv</text>
+
+  <text x="12" y="93" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">alias</text>
+  <text x="49" y="93" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">alias gate</text>
+
+  <text x="30.5" y="108" style="font-size:2.8px;font-family:sans-serif;fill:#888;text-anchor:middle">fract</text>
+
+  <!-- Divider lines -->
+  <line x1="3" y1="52" x2="57.96" y2="52" style="stroke:#333;stroke-width:0.3" />
+  <line x1="3" y1="76" x2="57.96" y2="76" style="stroke:#333;stroke-width:0.3" />
+  <line x1="3" y1="91" x2="57.96" y2="91" style="stroke:#333;stroke-width:0.3" />
+  <line x1="3" y1="106" x2="57.96" y2="106" style="stroke:#333;stroke-width:0.3" />
+
+  <!-- Component position markers (hidden, for design reference) -->
+  <g id="components" style="display:none">
+    <!-- core btn 12,22 -->
+    <circle cx="12" cy="22" r="2" fill="red" />
+    <!-- core LED 12,32 -->
+    <circle cx="12" cy="32" r="1.5" fill="lime" />
+    <!-- core gate 12,44 -->
+    <circle cx="12" cy="44" r="4.1775" fill="blue" />
+    <!-- iter knob 30.5,22 -->
+    <circle cx="30.5" cy="22" r="4.5" fill="white" />
+    <!-- iter atten 30.5,33 -->
+    <circle cx="30.5" cy="33" r="2.5" fill="white" />
+    <!-- iter cv 30.5,44 -->
+    <circle cx="30.5" cy="44" r="4.1775" fill="blue" />
+    <!-- warp knob 49,22 -->
+    <circle cx="49" cy="22" r="4.5" fill="white" />
+    <!-- warp atten 49,33 -->
+    <circle cx="49" cy="33" r="2.5" fill="white" />
+    <!-- warp cv 49,44 -->
+    <circle cx="49" cy="44" r="4.1775" fill="blue" />
+    <!-- voct 12,60 -->
+    <circle cx="12" cy="60" r="4.1775" fill="blue" />
+    <!-- freq knob 30.5,60 -->
+    <circle cx="30.5" cy="60" r="4.5" fill="white" />
+    <!-- freq mode btn 19,68 -->
+    <circle cx="19" cy="68" r="2" fill="red" />
+    <!-- freq mode LED 25,68 -->
+    <circle cx="25" cy="68" r="1.5" fill="lime" />
+    <!-- fm atten 49,60 -->
+    <circle cx="49" cy="60" r="2.5" fill="white" />
+    <!-- fm in 49,73 -->
+    <circle cx="49" cy="73" r="4.1775" fill="blue" />
+    <!-- sync 12,84 -->
+    <circle cx="12" cy="84" r="4.1775" fill="blue" />
+    <!-- boost knob 30.5,84 -->
+    <circle cx="30.5" cy="84" r="4.5" fill="white" />
+    <!-- boost cv 49,84 -->
+    <circle cx="49" cy="84" r="4.1775" fill="blue" />
+    <!-- alias btn 12,98 -->
+    <circle cx="12" cy="98" r="2" fill="red" />
+    <!-- alias LED 22,98 -->
+    <circle cx="22" cy="98" r="1.5" fill="lime" />
+    <!-- alias gate 49,98 -->
+    <circle cx="49" cy="98" r="4.1775" fill="blue" />
+    <!-- fract out 30.5,113 -->
+    <circle cx="30.5" cy="113" r="4.1775" fill="red" />
+  </g>
+</svg>

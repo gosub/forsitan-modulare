@@ -168,6 +168,14 @@
         "Synth Voice",
         "Random"
       ]
+    },
+    {
+      "slug": "fracta",
+      "name": "fracta",
+      "description": "Fractal interpolation oscillator.",
+      "tags": [
+        "Oscillator"
+      ]
     }
   ]
 }
