@@ -291,17 +291,17 @@ struct FractaWidget : ModuleWidget {
 
         // CORE section
         addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(12.0, 21.0)), module, Fracta::CORE_LIGHT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 37.0)), module, Fracta::CORE_BTN_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 35.0)), module, Fracta::CORE_BTN_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 44.0)), module, Fracta::CORE_INPUT));
 
         // ITER section
         addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 21.0)), module, Fracta::ITER_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(30.5, 37.0)), module, Fracta::ITER_ATTEN_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(30.5, 35.0)), module, Fracta::ITER_ATTEN_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.5, 44.0)), module, Fracta::ITER_INPUT));
 
         // WARP section
         addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(49.0, 21.0)), module, Fracta::WARP_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 37.0)), module, Fracta::WARP_ATTEN_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 35.0)), module, Fracta::WARP_ATTEN_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 44.0)), module, Fracta::WARP_INPUT));
 
         // FREQ section
