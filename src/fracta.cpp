@@ -259,8 +259,10 @@ struct Fracta : Module {
         float boostCV = inputs[BOOST_INPUT].isConnected()
                       ? inputs[BOOST_INPUT].getVoltage() / 5.f : 0.f;
         float boost = clamp(params[BOOST_PARAM].getValue() + boostCV, 0.f, 1.f);
-        float scale = 1.f + boost;
-        y = std::tanh(y * scale) * scale;
+        if (boost > 0.f) {
+            float scale = 1.f + boost;
+            y = std::tanh(y * scale) * scale;
+        }
 
         outputs[MAIN_OUTPUT].setVoltage(clamp(y * 5.f, -10.f, 10.f));
 
