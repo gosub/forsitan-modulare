@@ -290,42 +290,40 @@ struct FractaWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         // CORE section
-        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 22.0)), module, Fracta::CORE_BTN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(12.0, 32.0)), module, Fracta::CORE_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 21.0)), module, Fracta::CORE_BTN_PARAM));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(12.0, 34.0)), module, Fracta::CORE_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 44.0)), module, Fracta::CORE_INPUT));
 
         // ITER section
-        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 22.0)), module, Fracta::ITER_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(30.5, 33.0)), module, Fracta::ITER_ATTEN_PARAM));
+        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 21.0)), module, Fracta::ITER_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(30.5, 34.0)), module, Fracta::ITER_ATTEN_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.5, 44.0)), module, Fracta::ITER_INPUT));
 
         // WARP section
-        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(49.0, 22.0)), module, Fracta::WARP_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 33.0)), module, Fracta::WARP_ATTEN_PARAM));
+        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(49.0, 21.0)), module, Fracta::WARP_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 34.0)), module, Fracta::WARP_ATTEN_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 44.0)), module, Fracta::WARP_INPUT));
 
         // FREQ section
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 60.0)), module, Fracta::VOCT_INPUT));
-        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 60.0)), module, Fracta::FREQ_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 60.0)), module, Fracta::FM_PARAM));
-        // Freq mode button + LED
-        addParam(createParamCentered<TL1105>(mm2px(Vec(19.0, 68.0)), module, Fracta::FREQ_MODE_BTN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(25.0, 68.0)), module, Fracta::FREQ_MODE_LIGHT));
-        // FM audio input
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 73.0)), module, Fracta::FM_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 62.0)), module, Fracta::VOCT_INPUT));
+        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 62.0)), module, Fracta::FREQ_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 62.0)), module, Fracta::FM_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 75.0)), module, Fracta::FREQ_MODE_BTN_PARAM));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(19.5, 75.0)), module, Fracta::FREQ_MODE_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 75.0)), module, Fracta::FM_INPUT));
 
         // SYNC / BOOST section
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 84.0)), module, Fracta::SYNC_INPUT));
-        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 84.0)), module, Fracta::BOOST_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 84.0)), module, Fracta::BOOST_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 93.0)), module, Fracta::SYNC_INPUT));
+        addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 93.0)), module, Fracta::BOOST_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 93.0)), module, Fracta::BOOST_INPUT));
 
         // ALIAS section
-        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 98.0)), module, Fracta::ALIAS_BTN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(22.0, 98.0)), module, Fracta::ALIAS_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 98.0)), module, Fracta::ALIAS_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 111.0)), module, Fracta::ALIAS_BTN_PARAM));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(20.5, 111.0)), module, Fracta::ALIAS_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.5, 111.0)), module, Fracta::ALIAS_INPUT));
 
         // Output
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.5, 113.0)), module, Fracta::MAIN_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(49.0, 111.0)), module, Fracta::MAIN_OUTPUT));
     }
 };
 
