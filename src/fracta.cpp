@@ -9,36 +9,33 @@
 // ---------------------------------------------------------------------------
 
 struct FractaOsc {
-    // Base waveform
-    int N = 2;                    // number of segments (2=triangle, 3=trapezoid)
-    float yorig[4] = {};          // N+1 y-values; xorig[i] = i/N (equal spacing)
+    int N = 2;
+    float yorig[4] = {};
 
-    // Shear transform parameters (per segment, precomputed)
-    float seg_c[3] = {};          // y-tilt per segment t (1-indexed, stored 0-indexed)
-    float seg_f[3] = {};          // y-offset per segment t
-    float d = 0.5f;               // global displacement (WARP)
+    // Shear transform parameters (precomputed, one per segment)
+    // c[t] = yorig[t+1] - yorig[t]   (y-tilt, connects endpoints)
+    // f[t] = yorig[t]                 (y-offset at segment start)
+    // a[t] = 1/N                      (x-scale, same for all)
+    // e[t] = t/N                      (x-offset)
+    float seg_c[3] = {};
+    float seg_f[3] = {};
+    float d = 0.5f;  // global displacement (WARP)
 
-    // Wavetable
-    std::vector<float> table;     // N^k + 1 points, x uniform in [0,1]
-
-    // Oscillator state
+    std::vector<float> table;
     float phase = 0.f;
     bool dirty = true;
 
-    // Cached params for change detection
-    int lastCore = -1;
-    float lastD = -999.f;
-    int lastK = -1;
+    int   lastCore = -1;
+    float lastD    = -999.f;
+    int   lastK    = -1;
 
     void setCore(int core) {
         if (core == lastCore) return;
         lastCore = core;
         if (core == 0) {
-            // Triangle: (0,0), (0.5,1), (1,0)
             N = 2;
             yorig[0] = 0.f; yorig[1] = 1.f; yorig[2] = 0.f;
         } else {
-            // Trapezoid: (0,0), (1/3,1), (2/3,1), (1,0)
             N = 3;
             yorig[0] = 0.f; yorig[1] = 1.f; yorig[2] = 1.f; yorig[3] = 0.f;
         }
@@ -58,18 +55,16 @@ struct FractaOsc {
         lastK = k;
         dirty = false;
 
-        // Precompute per-segment shear params
-        // a[t] = 1/N (same for all), e[t] = (t-1)/N
-        // c[t] = N*(yorig[t] - yorig[t-1])  (since yorig[0]=yorig[N]=0, cross-term vanishes)
-        // f[t] = yorig[t-1]
         float invN = 1.f / N;
         for (int t = 0; t < N; t++) {
-            seg_c[t] = N * (yorig[t + 1] - yorig[t]);
+            // c[t] = yorig[t+1] - yorig[t]
+            // This is the correct shear tilt: ensures w_t maps the right endpoint
+            // of the previous waveform to yorig[t+1].
+            // (NOT multiplied by N — that was a bug that distorted the y-scale.)
+            seg_c[t] = yorig[t + 1] - yorig[t];
             seg_f[t] = yorig[t];
         }
 
-        // Iterative construction using two alternating buffers
-        // First "iteration" is just copying the base points
         int maxPts = 1;
         for (int i = 0; i < k; i++) maxPts *= N;
         maxPts += 1;
@@ -77,49 +72,41 @@ struct FractaOsc {
         std::vector<float> xold(maxPts), yold(maxPts);
         std::vector<float> xnew(maxPts), ynew(maxPts);
 
-        // Seed: base points (counts as iteration 1)
-        int currpts = N;   // number of intervals
+        // Iteration 1: seed with base waveform
+        int currpts = N;
         for (int i = 0; i <= N; i++) {
             xold[i] = i * invN;
             yold[i] = yorig[i];
         }
 
-        // Subsequent iterations
+        // Iterations 2..k: apply all N shear transforms to current waveform
         for (int iter = 2; iter <= k; iter++) {
             int np = 0;
             for (int t = 0; t < N; t++) {
-                float at = invN;
-                float et = t * invN;
                 float ct = seg_c[t];
                 float ft = seg_f[t];
+                float et = t * invN;
                 for (int i = 0; i < currpts; i++) {
-                    xnew[np] = at * xold[i] + et;
+                    xnew[np] = invN * xold[i] + et;
                     ynew[np] = ct * xold[i] + d * yold[i] + ft;
                     np++;
                 }
             }
-            // Last point
             xnew[np] = xold[currpts];
             ynew[np] = yold[currpts];
-
             std::swap(xold, xnew);
             std::swap(yold, ynew);
             currpts *= N;
         }
 
-        // Store y-values into table (x is uniform so we only need y)
-        int total = currpts + 1;
-        table.resize(total);
-        for (int i = 0; i < total; i++) {
+        table.resize(currpts + 1);
+        for (int i = 0; i <= currpts; i++)
             table[i] = yold[i];
-        }
     }
 
-    // Returns sample in [~0, ~1] (may slightly exceed due to high warp)
     float next(float phaseInc) {
         phase += phaseInc;
         if (phase >= 1.f) phase -= std::floor(phase);
-
         int n = (int)table.size() - 1;
         float pos = phase * n;
         int i = (int)pos;
@@ -128,9 +115,7 @@ struct FractaOsc {
         return table[i] + frac * (table[i + 1] - table[i]);
     }
 
-    void hardSync() {
-        phase = 0.f;
-    }
+    void hardSync() { phase = 0.f; }
 };
 
 
@@ -142,11 +127,13 @@ struct Fracta : Module {
     enum ParamIds {
         ITER_PARAM, ITER_ATTEN_PARAM,
         WARP_PARAM, WARP_ATTEN_PARAM,
-        FREQ_PARAM, FREQ_MODE_PARAM,
+        FREQ_PARAM,
+        FREQ_MODE_PARAM,     // 0-3, internal state, no spring-back
         FM_PARAM,
         BOOST_PARAM,
-        CORE_PARAM,
-        ALIAS_PARAM,
+        CORE_BTN_PARAM,      // momentary button
+        ALIAS_BTN_PARAM,     // momentary button
+        FREQ_MODE_BTN_PARAM, // momentary button cycles FREQ_MODE_PARAM
         NUM_PARAMS
     };
     enum InputIds {
@@ -156,23 +143,30 @@ struct Fracta : Module {
         NUM_INPUTS
     };
     enum OutputIds { MAIN_OUTPUT, NUM_OUTPUTS };
-    enum LightIds { CORE_LIGHT, ALIAS_LIGHT, FREQ_MODE_LIGHT, NUM_LIGHTS };
+    enum LightIds  { CORE_LIGHT, ALIAS_LIGHT, FREQ_MODE_LIGHT, NUM_LIGHTS };
 
     FractaOsc osc;
-    dsp::SchmittTrigger syncTrig, coreTrig, aliasTrig;
+
+    // Persistent toggle states (TL1105 is momentary so we track state here)
+    bool coreState  = false;
+    bool aliasState = false;
+
+    dsp::SchmittTrigger coreBtnTrig, aliasBtnTrig, freqModeBtnTrig;
+    dsp::SchmittTrigger coreTrig, aliasTrig, syncTrig;
 
     Fracta() {
         config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-        configParam(ITER_PARAM,       1.f,  8.f, 3.f,  "Iterations");
-        configParam(ITER_ATTEN_PARAM,-1.f,  1.f, 0.f,  "Iterations CV amount");
-        configParam(WARP_PARAM,      -0.99f, 0.99f, 0.5f, "Warp");
-        configParam(WARP_ATTEN_PARAM,-1.f,  1.f, 0.f,  "Warp CV amount");
-        configParam(FREQ_PARAM,      -4.f,  4.f, 0.f,  "Frequency offset", "V");
-        configParam(FREQ_MODE_PARAM,  0.f,  3.f, 0.f,  "Frequency mode");
-        configParam(FM_PARAM,         0.f,  1.f, 0.f,  "FM amount");
-        configParam(BOOST_PARAM,      0.f,  1.f, 0.f,  "Boost");
-        configParam(CORE_PARAM,       0.f,  1.f, 0.f,  "Core");
-        configParam(ALIAS_PARAM,      0.f,  1.f, 0.f,  "Alias");
+        configParam(ITER_PARAM,          1.f,  8.f,   3.f,  "Iterations");
+        configParam(ITER_ATTEN_PARAM,   -1.f,  1.f,   0.f,  "Iterations CV");
+        configParam(WARP_PARAM,         -0.99f, 0.99f, 0.5f, "Warp");
+        configParam(WARP_ATTEN_PARAM,   -1.f,  1.f,   0.f,  "Warp CV");
+        configParam(FREQ_PARAM,         -4.f,  4.f,   0.f,  "Frequency", "V");
+        configParam(FREQ_MODE_PARAM,     0.f,  3.f,   0.f,  "Frequency mode");
+        configParam(FM_PARAM,            0.f,  1.f,   0.f,  "FM amount");
+        configParam(BOOST_PARAM,         0.f,  1.f,   0.f,  "Boost");
+        configParam(CORE_BTN_PARAM,      0.f,  1.f,   0.f,  "Core");
+        configParam(ALIAS_BTN_PARAM,     0.f,  1.f,   0.f,  "Alias");
+        configParam(FREQ_MODE_BTN_PARAM, 0.f,  1.f,   0.f,  "Freq mode button");
 
         configInput(ITER_INPUT,  "Iterations CV");
         configInput(WARP_INPUT,  "Warp CV");
@@ -182,23 +176,40 @@ struct Fracta : Module {
         configInput(SYNC_INPUT,  "Sync");
         configInput(CORE_INPUT,  "Core gate");
         configInput(ALIAS_INPUT, "Alias gate");
+        configOutput(MAIN_OUTPUT, "Fract");
+    }
 
-        configOutput(MAIN_OUTPUT, "Fracta");
+    json_t* dataToJson() override {
+        json_t* root = json_object();
+        json_object_set_new(root, "core",  json_boolean(coreState));
+        json_object_set_new(root, "alias", json_boolean(aliasState));
+        return root;
+    }
+
+    void dataFromJson(json_t* root) override {
+        json_t* j;
+        if ((j = json_object_get(root, "core")))  coreState  = json_boolean_value(j);
+        if ((j = json_object_get(root, "alias"))) aliasState = json_boolean_value(j);
     }
 
     void process(const ProcessArgs& args) override {
-        // --- Toggle buttons via gate inputs ---
-        if (coreTrig.process(inputs[CORE_INPUT].getVoltage())) {
-            float v = params[CORE_PARAM].getValue();
-            params[CORE_PARAM].setValue(v >= 0.5f ? 0.f : 1.f);
+        // --- Toggle states: detect rising edge on momentary buttons ---
+        if (coreBtnTrig.process(params[CORE_BTN_PARAM].getValue(), 0.1f, 0.9f))
+            coreState ^= true;
+        if (aliasBtnTrig.process(params[ALIAS_BTN_PARAM].getValue(), 0.1f, 0.9f))
+            aliasState ^= true;
+        if (freqModeBtnTrig.process(params[FREQ_MODE_BTN_PARAM].getValue(), 0.1f, 0.9f)) {
+            int m = (int)std::round(params[FREQ_MODE_PARAM].getValue());
+            params[FREQ_MODE_PARAM].setValue((float)((m + 1) % 4));
         }
-        if (aliasTrig.process(inputs[ALIAS_INPUT].getVoltage())) {
-            float v = params[ALIAS_PARAM].getValue();
-            params[ALIAS_PARAM].setValue(v >= 0.5f ? 0.f : 1.f);
-        }
+        // Gate inputs also toggle
+        if (coreTrig.process(inputs[CORE_INPUT].getVoltage()))
+            coreState ^= true;
+        if (aliasTrig.process(inputs[ALIAS_INPUT].getVoltage()))
+            aliasState ^= true;
+
         // --- Core shape ---
-        int core = (int)std::round(params[CORE_PARAM].getValue());
-        osc.setCore(core);
+        osc.setCore(coreState ? 1 : 0);
 
         // --- ITER ---
         float iterCV = inputs[ITER_INPUT].getVoltage() * params[ITER_ATTEN_PARAM].getValue();
@@ -206,57 +217,47 @@ struct Fracta : Module {
 
         // --- WARP ---
         float warpCV = inputs[WARP_INPUT].getVoltage() * params[WARP_ATTEN_PARAM].getValue();
-        float warpVal = params[WARP_PARAM].getValue() + warpCV;
-        osc.setWarp(warpVal);
+        osc.setWarp(params[WARP_PARAM].getValue() + warpCV);
 
         // --- Frequency ---
-        float rawFreqV = params[FREQ_PARAM].getValue();
+        float rawV = params[FREQ_PARAM].getValue();
         int freqMode = (int)clamp(std::round(params[FREQ_MODE_PARAM].getValue()), 0.f, 3.f);
         float freqV;
         switch (freqMode) {
-            case 0:  freqV = std::round(rawFreqV); break;
-            case 1:  freqV = std::round(rawFreqV * 12.f) / 12.f; break;
-            case 2:  freqV = std::round(rawFreqV * 1200.f) / 1200.f; break;
-            default: freqV = rawFreqV; break;
+            case 0:  freqV = std::round(rawV);                        break; // octave
+            case 1:  freqV = std::round(rawV * 12.f)   / 12.f;       break; // semitone
+            case 2:  freqV = std::round(rawV * 1200.f) / 1200.f;     break; // cent
+            default: freqV = rawV;                                    break; // free
         }
         freqV += inputs[VOCT_INPUT].getVoltage();
         float freq = 261.626f * std::pow(2.f, freqV);
 
         // --- FM ---
-        if (inputs[FM_INPUT].isConnected()) {
-            float fmDepth = params[FM_PARAM].getValue();
-            freq *= std::pow(2.f, inputs[FM_INPUT].getVoltage() * fmDepth);
-        }
+        if (inputs[FM_INPUT].isConnected())
+            freq *= std::pow(2.f, inputs[FM_INPUT].getVoltage() * params[FM_PARAM].getValue());
         freq = clamp(freq, 0.5f, 20000.f);
 
-        // --- Anti-aliasing: compute effective k ---
-        bool aliasOn = params[ALIAS_PARAM].getValue() >= 0.5f;
+        // --- Anti-aliasing: cap iterations to keep harmonics below Nyquist ---
         int kEff = k;
-        if (!aliasOn && freq > 0.f) {
+        if (!aliasState && freq > 0.f) {
             float kMax = std::floor(std::log(args.sampleRate / freq) / std::log((float)osc.N));
-            kEff = (int)clamp((float)k, 1.f, kMax);
+            kEff = (int)clamp((float)k, 1.f, std::max(kMax, 1.f));
         }
-        kEff = std::max(kEff, 1);
 
-        // Mark dirty if k changed (warp/core already handled in setters)
         if (kEff != osc.lastK) osc.dirty = true;
         osc.rebuild(kEff);
 
         // --- Sync ---
-        if (syncTrig.process(inputs[SYNC_INPUT].getVoltage())) {
+        if (syncTrig.process(inputs[SYNC_INPUT].getVoltage()))
             osc.hardSync();
-        }
 
-        // --- Advance oscillator ---
-        float phaseInc = freq / args.sampleRate;
-        float raw = osc.next(phaseInc);
+        // --- Oscillator output ---
+        float raw = osc.next(freq / args.sampleRate);
+        float y   = (raw - 0.5f) * 2.f;  // center around 0, nominal ±1
 
-        // raw is in [0,1] nominally; center and scale to ±1
-        float y = (raw - 0.5f) * 2.f;
-
-        // --- Boost / soft saturation ---
+        // --- Boost: soft saturation + amplitude ---
         float boostCV = inputs[BOOST_INPUT].isConnected()
-            ? inputs[BOOST_INPUT].getVoltage() / 5.f : 0.f;
+                      ? inputs[BOOST_INPUT].getVoltage() / 5.f : 0.f;
         float boost = clamp(params[BOOST_PARAM].getValue() + boostCV, 0.f, 1.f);
         float scale = 1.f + boost;
         y = std::tanh(y * scale) * scale;
@@ -264,10 +265,10 @@ struct Fracta : Module {
         outputs[MAIN_OUTPUT].setVoltage(clamp(y * 5.f, -10.f, 10.f));
 
         // --- Lights ---
-        lights[CORE_LIGHT].setBrightness(core);
-        lights[ALIAS_LIGHT].setBrightness(aliasOn ? 1.f : 0.f);
-        static const float freqModeBrightness[4] = {1.f, 0.67f, 0.33f, 0.f};
-        lights[FREQ_MODE_LIGHT].setBrightness(freqModeBrightness[freqMode]);
+        lights[CORE_LIGHT].setBrightness(coreState ? 1.f : 0.f);
+        lights[ALIAS_LIGHT].setBrightness(aliasState ? 1.f : 0.f);
+        static const float modeBrightness[4] = {1.f, 0.67f, 0.33f, 0.f};
+        lights[FREQ_MODE_LIGHT].setBrightness(modeBrightness[freqMode]);
     }
 };
 
@@ -275,20 +276,6 @@ struct Fracta : Module {
 // ---------------------------------------------------------------------------
 // Widget
 // ---------------------------------------------------------------------------
-
-struct FreqModeButton : TL1105 {
-    Fracta* module = nullptr;
-
-    void onButton(const ButtonEvent& e) override {
-        TL1105::onButton(e);
-        if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT && module) {
-            int mode = (int)clamp(std::round(module->params[Fracta::FREQ_MODE_PARAM].getValue()), 0.f, 3.f);
-            module->params[Fracta::FREQ_MODE_PARAM].setValue((float)((mode + 1) % 4));
-            e.consume(this);
-        }
-    }
-};
-
 
 struct FractaWidget : ModuleWidget {
     FractaWidget(Fracta* module) {
@@ -301,7 +288,7 @@ struct FractaWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
         // CORE section
-        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 22.0)), module, Fracta::CORE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 22.0)), module, Fracta::CORE_BTN_PARAM));
         addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(12.0, 32.0)), module, Fracta::CORE_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 44.0)), module, Fracta::CORE_INPUT));
 
@@ -319,14 +306,10 @@ struct FractaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 60.0)), module, Fracta::VOCT_INPUT));
         addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 60.0)), module, Fracta::FREQ_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 60.0)), module, Fracta::FM_PARAM));
-
-        // FREQ mode button + LED
-        FreqModeButton* fmb = createParamCentered<FreqModeButton>(mm2px(Vec(19.0, 68.0)), module, Fracta::FREQ_MODE_PARAM);
-        fmb->module = module;
-        addParam(fmb);
+        // Freq mode button + LED
+        addParam(createParamCentered<TL1105>(mm2px(Vec(19.0, 68.0)), module, Fracta::FREQ_MODE_BTN_PARAM));
         addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(25.0, 68.0)), module, Fracta::FREQ_MODE_LIGHT));
-
-        // FM input
+        // FM audio input
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 73.0)), module, Fracta::FM_INPUT));
 
         // SYNC / BOOST section
@@ -335,7 +318,7 @@ struct FractaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 84.0)), module, Fracta::BOOST_INPUT));
 
         // ALIAS section
-        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 98.0)), module, Fracta::ALIAS_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 98.0)), module, Fracta::ALIAS_BTN_PARAM));
         addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(22.0, 98.0)), module, Fracta::ALIAS_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 98.0)), module, Fracta::ALIAS_INPUT));
 
