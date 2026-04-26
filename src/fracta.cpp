@@ -318,12 +318,12 @@ struct FractaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 93.0)), module, Fracta::BOOST_INPUT));
 
         // ALIAS section
-        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 111.0)), module, Fracta::ALIAS_BTN_PARAM));
-        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(20.5, 111.0)), module, Fracta::ALIAS_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.5, 111.0)), module, Fracta::ALIAS_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 108.0)), module, Fracta::ALIAS_BTN_PARAM));
+        addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(20.5, 108.0)), module, Fracta::ALIAS_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.5, 108.0)), module, Fracta::ALIAS_INPUT));
 
         // Output
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(49.0, 111.0)), module, Fracta::MAIN_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(49.0, 108.0)), module, Fracta::MAIN_OUTPUT));
     }
 };
 
