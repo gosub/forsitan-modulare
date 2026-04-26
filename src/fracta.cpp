@@ -307,7 +307,7 @@ struct FractaWidget : ModuleWidget {
         // FREQ section
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.0, 62.0)), module, Fracta::VOCT_INPUT));
         addParam(createParamCentered<Rogan1PWhite>(mm2px(Vec(30.5, 62.0)), module, Fracta::FREQ_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 62.0)), module, Fracta::FM_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.0, 60.0)), module, Fracta::FM_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(12.0, 75.0)), module, Fracta::FREQ_MODE_BTN_PARAM));
         addChild(createLightCentered<MediumLight<GreenLight>>(mm2px(Vec(19.5, 75.0)), module, Fracta::FREQ_MODE_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.0, 75.0)), module, Fracta::FM_INPUT));
