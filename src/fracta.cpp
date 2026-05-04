@@ -65,6 +65,29 @@ struct FractaOsc {
             seg_f[t] = yorig[t];
         }
 
+        if (k == 1) {
+            // ITER=1: wavefolder on base core, gain driven by d (WARP).
+            // gain = 4^d: d=0 → 1 (no fold), d=0.99 → ~4 (heavy fold), d<0 → compress.
+            // Temporary: wavefolder type chosen in absence of hardware specs.
+            const int NPTS = 128;
+            table.resize(NPTS + 1);
+            float gain = std::pow(4.f, d);
+            for (int i = 0; i <= NPTS; i++) {
+                float x = i / (float)NPTS;
+                float pos = x * N;
+                int seg = std::min((int)pos, N - 1);
+                float frac = pos - seg;
+                float y = yorig[seg] + frac * (yorig[seg + 1] - yorig[seg]);
+                y *= gain;
+                // Triangular fold into [0, 1]
+                y = std::abs(y);
+                y = std::fmod(y, 2.f);
+                if (y > 1.f) y = 2.f - y;
+                table[i] = y;
+            }
+            return;
+        }
+
         int maxPts = 1;
         for (int i = 0; i < k; i++) maxPts *= N;
         maxPts += 1;
