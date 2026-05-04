@@ -160,7 +160,7 @@ struct Fracta : Module {
         configParam(ITER_ATTEN_PARAM,   -1.f,  1.f,   0.f,  "Iterations CV");
         configParam(WARP_PARAM,         -0.99f, 0.99f, 0.5f, "Warp");
         configParam(WARP_ATTEN_PARAM,   -1.f,  1.f,   0.f,  "Warp CV");
-        configParam(FREQ_PARAM,         -9.f,  5.f,   0.f,  "Frequency", "V");
+        configParam(FREQ_PARAM,        -10.f, 10.f,   0.f,  "Frequency", "V");
         configParam(FREQ_MODE_PARAM,     0.f,  3.f,   0.f,  "Frequency mode");
         configParam(FM_PARAM,            0.f,  1.f,   0.f,  "FM amount");
         configParam(BOOST_PARAM,         0.f,  1.f,   0.f,  "Boost");
