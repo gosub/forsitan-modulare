@@ -164,28 +164,44 @@ struct MMCCCXCIXWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/MMCCCXCIX.svg")));
 
-        // Screws (1HP inset, matching other forsitan modules)
-        addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
-        addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2*RACK_GRID_WIDTH, 0)));
-        addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-        addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2*RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-
 // @layout:begin MMCCCXCIX 50.8 128.5
-// @elem TIME_PARAM RoundHugeBlackKnob 9.0 param "time" -11.0
-// @elem FEEDBACK_PARAM RoundBigBlackKnob 6.0 param "feedback" -8.0
-// @elem MIX_PARAM RoundBigBlackKnob 6.0 param "mix" -8.0
-// @elem BRIGHTNESS_PARAM RoundBlackKnob 4.5 param "bright" -6.5
-// @elem FB_LOOP_MIX_PARAM RoundBlackKnob 4.5 param "fblp" -6.5
-// @elem AUDIO_INPUT PJ301MPort 4.18 input "in" -6.0
-// @elem TIME_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
-// @elem FEEDBACK_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
-// @elem MIX_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
-// @elem FB_LOOP_MIX_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
-// @elem FB_SEND_OUTPUT PJ301MPort 4.18 output "send" -6.0
+// @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
+// @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
+// @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
+// @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
+// @elem TIME_PARAM RoundHugeBlackKnob 9.0 param "" 0.0
+// @elem FEEDBACK_PARAM RoundBigBlackKnob 6.0 param "" 0.0
+// @elem MIX_PARAM RoundBigBlackKnob 6.0 param "" 0.0
+// @elem BRIGHTNESS_PARAM RoundBlackKnob 4.5 param "" 0.0
+// @elem FB_LOOP_MIX_PARAM RoundBlackKnob 4.5 param "" 0.0
+// @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem TIME_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem FEEDBACK_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem MIX_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem FB_LOOP_MIX_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem FB_SEND_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem FB_LOOP_ACTIVE_LIGHT SmallLight 1.5 light "" 0.0
-// @elem FB_RETURN_INPUT PJ301MPort 4.18 input "return" -6.0
-// @elem AUDIO_OUTPUT PJ301MPort 4.18 output "out" -6.0
+// @elem FB_RETURN_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
+// @elem LABEL_TIME label 0.0 label "time" 0.0 25.40 13.00
+// @elem LABEL_FEEDBACK label 0.0 label "feedback" 0.0 14.20 32.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 36.60 32.50
+// @elem LABEL_BRIGHT label 0.0 label "bright" 0.0 14.20 50.50
+// @elem LABEL_FBLP label 0.0 label "fblp" 0.0 36.60 50.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 10.00 70.50
+// @elem LABEL_TIMECV label 0.0 label "cv" 0.0 25.00 70.50
+// @elem LABEL_FBCV label 0.0 label "cv" 0.0 40.00 70.50
+// @elem LABEL_MIXCV label 0.0 label "cv" 0.0 10.00 82.50
+// @elem LABEL_FLPCV label 0.0 label "cv" 0.0 25.00 82.50
+// @elem LABEL_SEND label 0.0 label "send" 0.0 15.00 97.50
+// @elem LABEL_RETURN label 0.0 label "return" 0.0 35.00 97.50
+// @elem LABEL_OUT label 0.0 label "out" 0.0 25.40 112.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 7.00 120.00
 
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 123.42f)))); // SCREW_BL
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 123.42f)))); // SCREW_BR
         addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(25.40f, 18.00f)), module, MMCCCXCIX::TIME_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(14.20f, 40.00f)), module, MMCCCXCIX::FEEDBACK_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(36.60f, 40.00f)), module, MMCCCXCIX::MIX_PARAM));

@@ -5,12 +5,19 @@ Usage: python3 tools/panel-editor.py src/MMCCCXCIX.cpp
 
 Opens a browser editor. Drag elements until happy, then Save.
 The server rewrites the @layout section in the .cpp and regenerates the SVG.
+
+Element kinds:
+  param / input / output / light  — VCV Rack widget, gets a C++ addParam/addInput/etc. line
+  screw                           — VCV Rack widget positioned by top-left; editor shows visual center
+  label                           — SVG-only text; position stored in @elem line as extra x y fields
+  logo                            — SVG-only forsitan logo; position stored in @elem line as extra x y
 """
 
 import sys, os, re, json, webbrowser, threading, traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ── visual properties for each VCV Rack widget type (radius in mm) ────────────
+# vec_off: offset from stored visual-center to the createWidget Vec arg (screws only)
 WIDGET_VISUALS = {
     'RoundHugeBlackKnob': {'r': 9.0,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.8},
     'RoundBigBlackKnob':  {'r': 6.0,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.6},
@@ -23,11 +30,15 @@ WIDGET_VISUALS = {
     'TL1105':             {'r': 2.0,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
     'SmallLight':         {'r': 1.5,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
     'MediumLight':        {'r': 2.0,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
-    'ScrewSilver':        {'r': 3.5,  'fill': '#c0c0c0', 'stroke': '#888', 'sw': 0.4},
-    'ScrewBlack':         {'r': 3.5,  'fill': '#333',    'stroke': '#555', 'sw': 0.4},
+    # ScrewSilver/Black: vec_off = half the 15px widget size at 2.953 px/mm ≈ 2.54mm
+    'ScrewSilver':        {'r': 3.5,  'vec_off': 2.54, 'fill': '#c0c0c0', 'stroke': '#888', 'sw': 0.4},
+    'ScrewBlack':         {'r': 3.5,  'vec_off': 2.54, 'fill': '#333',    'stroke': '#555', 'sw': 0.4},
+    # SVG-only pseudo-types
+    'label':              {'r': 1.0,  'fill': '#555',    'stroke': '#888', 'sw': 0.3},
+    'forsitan_logo':      {'r': 2.75, 'fill': '#ffd500', 'stroke': '#aa8800', 'sw': 0.3},
 }
 
-KIND_FILL = {          # overrides widget fill per kind
+KIND_FILL = {
     'input':  '#4d7fa8',
     'output': '#a8924d',
     'light':  '#00cc44',
@@ -36,11 +47,14 @@ KIND_FILL = {          # overrides widget fill per kind
 # ── parse ─────────────────────────────────────────────────────────────────────
 LAYOUT_HEAD_RE = re.compile(
     r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)')
+# @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  — X Y optional, used for SVG-only kinds
 ELEM_RE = re.compile(
-    r'//\s*@elem\s+(\S+)\s+(\S+)\s+([\d.]+)\s+(\w+)\s+"([^"]*)"\s*([-\d.]+)')
-VEC_RE  = re.compile(
-    r'mm2px\(Vec\(([\d.]+)f?,\s*([\d.]+)f?\)')
-ID_RE   = re.compile(r'(\w+)::(\w+)\)')
+    r'//\s*@elem\s+(\S+)\s+(\S+)\s+([\d.]+)\s+(\w+)\s+"([^"]*)"\s*([-\d.]+)'
+    r'(?:\s+([\d.]+)\s+([\d.]+))?')
+VEC_RE      = re.compile(r'mm2px\(Vec\(([\d.]+)f?,\s*([\d.]+)f?\)')
+ID_RE       = re.compile(r'(\w+)::(\w+)\)')
+SCREW_ID_RE = re.compile(r'createWidget.*mm2px.*Vec.*//\s*(\w+)')
+
 
 def parse_cpp(path):
     with open(path) as f:
@@ -64,24 +78,40 @@ def parse_cpp(path):
     elem_order = []
 
     for m in ELEM_RE.finditer(block):
-        eid, ctype, radius, kind, label, ldy = m.groups()
+        g = m.groups()
+        eid, ctype, radius, kind, label, ldy = g[:6]
+        ox, oy = g[6], g[7]
         elem_defs[eid] = {
             'id': eid, 'cpp_type': ctype,
             'radius': float(radius), 'kind': kind,
             'label': label, 'label_dy': float(ldy),
-            'x': 0.0, 'y': 0.0,
+            # SVG-only elements carry their position in the @elem line
+            'x': float(ox) if ox else 0.0,
+            'y': float(oy) if oy else 0.0,
         }
         elem_order.append(eid)
 
-    # extract positions from C++ lines
+    # Extract positions from C++ lines (screws and VCV widget types)
     for line in block.splitlines():
         mv = VEC_RE.search(line)
+        if not mv:
+            continue
         mi = ID_RE.search(line)
-        if mv and mi:
+        ms = SCREW_ID_RE.search(line)
+        eid = None
+        if mi:
             eid = mi.group(2)
-            if eid in elem_defs:
-                elem_defs[eid]['x'] = float(mv.group(1))
-                elem_defs[eid]['y'] = float(mv.group(2))
+        elif ms:
+            eid = ms.group(1)
+        if eid and eid in elem_defs:
+            el = elem_defs[eid]
+            if el['kind'] in ('label', 'logo'):
+                continue  # position already in @elem line
+            v   = WIDGET_VISUALS.get(el['cpp_type'], {})
+            off = v.get('vec_off', 0.0)
+            # stored as visual center = Vec arg + offset
+            el['x'] = float(mv.group(1)) + off
+            el['y'] = float(mv.group(2)) + off
 
     elements = [elem_defs[k] for k in elem_order if k in elem_defs]
     return {
@@ -93,14 +123,22 @@ def parse_cpp(path):
         'kind_fill': KIND_FILL,
     }
 
+
 # ── generate & write ──────────────────────────────────────────────────────────
 def cpp_line(el, module):
     x, y  = el['x'], el['y']
     eid   = el['id']
     ctype = el['cpp_type']
     kind  = el['kind']
-    vec   = f'mm2px(Vec({x:.2f}f, {y:.2f}f))'
-    ref   = f'module, {module}::{eid}'
+    if kind in ('label', 'logo'):
+        return ''  # SVG-only, no C++ widget
+    v   = WIDGET_VISUALS.get(ctype, {})
+    off = v.get('vec_off', 0.0)
+    vx, vy = x - off, y - off
+    vec = f'mm2px(Vec({vx:.2f}f, {vy:.2f}f))'
+    if kind == 'screw':
+        return f'        addChild(createWidget<{ctype}>({vec})); // {eid}'
+    ref = f'module, {module}::{eid}'
     if kind == 'param':
         return f'        addParam(createParamCentered<{ctype}>({vec}, {ref}));'
     if kind == 'input':
@@ -111,20 +149,29 @@ def cpp_line(el, module):
         return f'        addChild(createLightCentered<{ctype}<GreenLight>>({vec}, {ref}));'
     return f'        // @unknown kind={kind} id={eid}'
 
+
 def generate_block(layout):
     m = layout['module']
     w = layout['panel_w']
     h = layout['panel_h']
     lines = [f'// @layout:begin {m} {w} {h}']
     for e in layout['elements']:
-        lines.append(
-            f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
-            f'{e["kind"]} "{e["label"]}" {e["label_dy"]}')
+        if e['kind'] in ('label', 'logo'):
+            lines.append(
+                f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
+                f'{e["kind"]} "{e["label"]}" {e["label_dy"]} {e["x"]:.2f} {e["y"]:.2f}')
+        else:
+            lines.append(
+                f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
+                f'{e["kind"]} "{e["label"]}" {e["label_dy"]}')
     lines.append('')
     for e in layout['elements']:
-        lines.append(cpp_line(e, m))
+        cl = cpp_line(e, m)
+        if cl:
+            lines.append(cl)
     lines.append('        // @layout:end')
     return '\n'.join(lines)
+
 
 def write_cpp(path, layout):
     with open(path) as f:
@@ -136,20 +183,22 @@ def write_cpp(path, layout):
     with open(path, 'w') as f:
         f.write(new_text)
 
+
 # ── SVG regeneration (uses fonttools if available) ────────────────────────────
 FONT_PATH = os.path.expanduser(
     '~/dl/audio/ocr-a/OCR-A Regular/OCR-A Regular.otf')
-# fallback search
 _FONT_CANDIDATES = [
     FONT_PATH,
     '/tmp/ocr-a/OCR-A Regular/OCR-A Regular.otf',
 ]
+
 
 def _find_font():
     for p in _FONT_CANDIDATES:
         if os.path.exists(p):
             return p
     return None
+
 
 def regen_svg(layout, svg_path):
     font_path = _find_font()
@@ -166,7 +215,7 @@ def regen_svg(layout, svg_path):
 
     font   = TTFont(font_path)
     glyphs = font.getGlyphSet()
-    cap_h  = font['OS/2'].sCapHeight  # 606
+    cap_h  = font['OS/2'].sCapHeight
 
     def char_w(ch, sz):
         g = glyphs.get(ch, glyphs.get('.notdef'))
@@ -194,7 +243,6 @@ def regen_svg(layout, svg_path):
         return ' '.join(parts)
 
     W, H  = layout['panel_w'], layout['panel_h']
-    HP    = 5.08
     mod   = layout['module']
     elems = layout['elements']
 
@@ -205,38 +253,55 @@ def regen_svg(layout, svg_path):
         f'  <rect width="{W}" height="{H}" fill="#1a1a1a"/>',
     ]
 
-    # title
+    # module name title at top
     title_sz = 2.8
-    title_y  = 3.5 + title_sz
-    d = text_path(mod.lower(), W/2, title_y, title_sz)
+    d = text_path(mod.lower(), W/2, 3.5 + title_sz, title_sz)
     if d:
         lines.append(f'  <path d="{d}" fill="#dcdcdc"/>')
 
-    # element labels
+    # grey output boxes (drawn before labels so labels appear on top)
     for el in elems:
-        lbl = el.get('label', '')
-        if not lbl:
-            continue
-        sz = 2.2
-        baseline = el['y'] + el['label_dy']
-        d = text_path(lbl, el['x'], baseline, sz)
-        if not d:
-            continue
-        fill = '#1a1a1a' if el['kind'] == 'output' else '#f9f9f9'
-        # output box
         if el['kind'] == 'output':
             bw, bh = 14.0, 14.0
-            bx = el['x'] - bw/2
+            bx = el['x'] - bw / 2
             by = el['y'] - el['radius'] - 1.5
             lines.append(
                 f'  <rect x="{bx:.2f}" y="{by:.2f}" '
                 f'width="{bw}" height="{bh}" rx="1.5" fill="#e4e4e4"/>')
-        lines.append(f'  <path d="{d}" fill="{fill}"/>')
+
+    # independent labels (SVG-only, freely positioned)
+    sz = 2.2
+    for el in elems:
+        if el['kind'] == 'label':
+            lbl = el.get('label', '')
+            if not lbl:
+                continue
+            # el['y'] is the text baseline
+            d = text_path(lbl, el['x'], el['y'], sz)
+            if d:
+                lines.append(f'  <path d="{d}" fill="#f9f9f9"/>')
+
+    # forsitan logo — shape derived from alea.svg (analysed from pixel coords)
+    for el in elems:
+        if el['kind'] == 'logo':
+            cx, cy = el['x'], el['y']
+            bx, by = cx - 2.75, cy - 6.25
+            lines += [
+                f'  <rect x="{bx:.2f}" y="{by:.2f}" width="5.5" height="12.5" rx="1.2" '
+                f'fill="none" stroke="#ffd500" stroke-width="0.5"/>',
+                f'  <rect x="{cx-2.25:.2f}" y="{cy-0.125:.2f}" '
+                f'width="4.5" height="0.25" fill="#ffd500"/>',
+                f'  <circle cx="{cx-1.361:.2f}" cy="{cy-2.063:.2f}" r="0.625" fill="#ffd500"/>',
+                f'  <circle cx="{cx+1.285:.2f}" cy="{cy-4.180:.2f}" r="0.625" fill="#ffd500"/>',
+                f'  <circle cx="{cx-1.361:.2f}" cy="{cy+4.066:.2f}" r="0.625" fill="#ffd500"/>',
+                f'  <circle cx="{cx+1.285:.2f}" cy="{cy+1.949:.2f}" r="0.625" fill="#ffd500"/>',
+            ]
 
     lines.append('</svg>')
     with open(svg_path, 'w') as f:
         f.write('\n'.join(lines))
     return True
+
 
 # ── HTML editor (embedded) ────────────────────────────────────────────────────
 HTML = r"""<!DOCTYPE html>
@@ -284,6 +349,10 @@ body {
 .ei:hover { background: #2a2a2a; }
 .ei.sel   { background: #1e3a1e; }
 .ei-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ei-dot.square { border-radius: 2px; }
+.ei-dot.text   { border-radius: 0; background: #555 !important;
+                  font-size: 8px; display:flex; align-items:center;
+                  justify-content:center; color:#ccc; }
 .ei-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ei-xy    { color: #555; font-size: 10px; flex-shrink: 0; }
 
@@ -318,7 +387,6 @@ body {
 #cursor-pos { font-size: 10px; color: #555; }
 #cursor-pos span { color: #888; }
 
-/* SVG element styles (injected) */
 .grp { cursor: grab; }
 .grp.sel .indicator { stroke: #ffee00 !important; stroke-width: 0.6px !important; }
 .grp.sel .knob-dot { fill: #ffee00 !important; }
@@ -361,7 +429,7 @@ body {
   </div>
 
   <div class="sb-section" style="flex:1; overflow:hidden; display:flex; flex-direction:column; gap:0; padding:0;">
-    <div style="padding:10px 12px 6px;" class=""><h3>Elements</h3></div>
+    <div style="padding:10px 12px 6px;"><h3>Elements</h3></div>
     <div id="elem-list-wrap"><div id="elem-list"></div></div>
   </div>
 
@@ -374,9 +442,9 @@ body {
 <script>
 'use strict';
 let layout = null, elems = [], W = 0, H = 0;
-let selected = [];        // ordered list of selected IDs
-let dragState = null;     // {startPt, startPos:{id:{x,y}}, moved}
-let rubberState = null;   // {x0,y0,x,y}
+let selected = [];
+let dragState = null;
+let rubberState = null;
 const svg = document.getElementById('panel-svg');
 
 // ── load ─────────────────────────────────────────────────────────────────────
@@ -392,7 +460,7 @@ async function load() {
 
 // ── visual helpers ────────────────────────────────────────────────────────────
 function vis(el) {
-  const v = layout.widget_visuals[el.cpp_type] || {r:4,fill:'#888',stroke:'#555',sw:0.5};
+  const v = layout.widget_visuals[el.cpp_type] || {r:4, fill:'#888', stroke:'#555', sw:0.5};
   const fill = layout.kind_fill[el.kind] || v.fill;
   return {...v, fill};
 }
@@ -402,14 +470,13 @@ function svgNS(tag, attrs) {
   for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
-function circ(cx,cy,r,fill,stroke,sw) {
-  return svgNS('circle',{cx,cy,r,fill,
-    ...(stroke&&stroke!=='none'?{stroke,'stroke-width':sw}:{})});
+function circ(cx, cy, r, fill, stroke, sw) {
+  return svgNS('circle', {cx, cy, r, fill,
+    ...(stroke && stroke !== 'none' ? {stroke, 'stroke-width': sw} : {})});
 }
 
 // ── render panel ──────────────────────────────────────────────────────────────
 function render() {
-  // scale to fit
   const maxW = document.getElementById('panel-wrap').clientWidth  - 48;
   const maxH = document.getElementById('panel-wrap').clientHeight - 48;
   const scale = Math.min(maxW/W, maxH/H, 10);
@@ -418,43 +485,45 @@ function render() {
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.innerHTML = '';
 
-  // background
   svg.appendChild(svgNS('rect', {width:W, height:H, fill:'#1a1a1a'}));
 
-  // grid (optional, light)
-  for (let x=5.08; x<W; x+=5.08) {
-    svg.appendChild(svgNS('line',{x1:x,y1:0,x2:x,y2:H,
-      stroke:'#2a2a2a','stroke-width':'0.15'}));
-  }
-  for (let y=5.08; y<H; y+=5.08) {
-    svg.appendChild(svgNS('line',{x1:0,y1:y,x2:W,y2:y,
-      stroke:'#2a2a2a','stroke-width':'0.15'}));
+  // HP grid
+  for (let x=5.08; x<W; x+=5.08)
+    svg.appendChild(svgNS('line',{x1:x,y1:0,x2:x,y2:H,stroke:'#2a2a2a','stroke-width':'0.15'}));
+  for (let y=5.08; y<H; y+=5.08)
+    svg.appendChild(svgNS('line',{x1:0,y1:y,x2:W,y2:y,stroke:'#2a2a2a','stroke-width':'0.15'}));
+
+  // If no screw elements in layout, draw decorative non-interactive screws
+  const hasScrews = elems.some(e => e.kind === 'screw');
+  if (!hasScrews) {
+    const HP = 5.08;
+    [[HP,HP],[W-HP,HP],[HP,H-HP],[W-HP,H-HP]].forEach(([sx,sy]) => {
+      const g = svgNS('g',{});
+      g.appendChild(circ(sx,sy,3.5,'#c0c0c0','#888',0.4));
+      [[-1.5,0],[1.5,0],[0,-1.5],[0,1.5]].forEach(([dx,dy]) => {
+        g.appendChild(svgNS('line',{x1:sx+dx-0.6,y1:sy+dy,x2:sx+dx+0.6,y2:sy+dy,
+          stroke:'#777','stroke-width':'0.3'}));
+      });
+      svg.appendChild(g);
+    });
   }
 
-  // screws (auto at 1HP corners)
-  const HP = 5.08;
-  [[HP,HP],[W-HP,HP],[HP,H-HP],[W-HP,H-HP]].forEach(([sx,sy]) => {
-    const g = svgNS('g',{});
-    g.appendChild(circ(sx,sy,3.5,'#c0c0c0','#888',0.4));
-    [[-1.5,0],[1.5,0],[0,-1.5],[0,1.5]].forEach(([dx,dy]) => {
-      const l = svgNS('line',{
-        x1:sx+dx-0.6,y1:sy+dy,x2:sx+dx+0.6,y2:sy+dy,
-        stroke:'#777','stroke-width':'0.3'});
-      g.appendChild(l);
-    });
-    svg.appendChild(g);
+  // Output grey boxes (under elements)
+  elems.filter(e => e.kind === 'output').forEach(el => {
+    const bw=14, bh=14;
+    const bx=el.x-bw/2, by=el.y-el.radius-1.5;
+    svg.appendChild(svgNS('rect',{x:bx,y:by,width:bw,height:bh,rx:1.5,fill:'#e4e4e4'}));
   });
 
-  // elements
+  // Elements
   elems.forEach(renderElem);
 
-  // rubber band (on top)
+  // Rubber band (on top)
   svg._rb = svgNS('rect',{fill:'none',stroke:'#ffee00',
     'stroke-width':'0.25','stroke-dasharray':'1 0.5',
     display:'none', x:0,y:0,width:0,height:0});
   svg.appendChild(svg._rb);
 
-  // events
   svg.addEventListener('mousedown', svgDown);
   svg.addEventListener('mousemove', svgMove);
   svg.addEventListener('mouseup',   svgUp);
@@ -466,55 +535,92 @@ function renderElem(el) {
   const sel = selected.includes(el.id);
   const g   = svgNS('g', {'class': 'grp'+(sel?' sel':''), 'data-id': el.id});
 
-  // main circle
+  // ── screw ────────────────────────────────────────────────────────────────
+  if (el.kind === 'screw') {
+    const c = circ(el.x, el.y, v.r, v.fill,
+      sel ? '#ffee00' : (v.stroke||'#888'), sel ? 0.6 : (v.sw||0.4));
+    c.setAttribute('class','indicator');
+    g.appendChild(c);
+    [[-1.5,0],[1.5,0],[0,-1.5],[0,1.5]].forEach(([dx,dy]) => {
+      g.appendChild(svgNS('line',{
+        x1:el.x+dx-0.6, y1:el.y+dy, x2:el.x+dx+0.6, y2:el.y+dy,
+        stroke:sel?'#ffee00':'#777', 'stroke-width':'0.3'}));
+    });
+    g.addEventListener('mousedown', e => elemDown(e, el));
+    svg.appendChild(g);
+    return;
+  }
+
+  // ── label ────────────────────────────────────────────────────────────────
+  if (el.kind === 'label') {
+    if (sel) {
+      const tw = Math.max((el.label||el.id).length * 1.3, 4);
+      g.appendChild(svgNS('rect',{
+        x:el.x-tw, y:el.y-2.4, width:tw*2, height:2.9,
+        fill:'none', stroke:'#ffee00', 'stroke-width':'0.25', 'stroke-dasharray':'0.5 0.3'}));
+    }
+    const t = svgNS('text',{
+      x:el.x, y:el.y, fill:'#e8e8e8',
+      'font-size':'2.1', 'text-anchor':'middle', 'font-family':'monospace'});
+    t.textContent = el.label || el.id;
+    g.appendChild(t);
+    // invisible hit target
+    const hit = svgNS('rect',{
+      x:el.x-6, y:el.y-2.5, width:12, height:3,
+      fill:'transparent', 'pointer-events':'all'});
+    g.appendChild(hit);
+    g.addEventListener('mousedown', e => elemDown(e, el));
+    svg.appendChild(g);
+    return;
+  }
+
+  // ── logo ─────────────────────────────────────────────────────────────────
+  if (el.kind === 'logo') {
+    const [cx, cy] = [el.x, el.y];
+    const bx = cx - 2.75, by = cy - 6.25;
+    const border = svgNS('rect',{x:bx,y:by,width:5.5,height:12.5,rx:1.2,
+      fill:'none', stroke:sel?'#ffee00':'#ffd500', 'stroke-width':'0.5'});
+    border.setAttribute('class','indicator');
+    g.appendChild(border);
+    g.appendChild(svgNS('rect',{x:cx-2.25,y:cy-0.125,width:4.5,height:0.25,fill:'#ffd500'}));
+    [[-1.361,-2.063],[1.285,-4.180],[-1.361,4.066],[1.285,1.949]].forEach(([dx,dy]) => {
+      g.appendChild(circ(cx+dx,cy+dy,0.625,'#ffd500','none',0));
+    });
+    g.addEventListener('mousedown', e => elemDown(e, el));
+    svg.appendChild(g);
+    return;
+  }
+
+  // ── standard VCV widget ──────────────────────────────────────────────────
   const c = circ(el.x, el.y, v.r, v.fill, sel?'#ffee00':(v.stroke||'#666'), sel?0.6:(v.sw||0.5));
   c.setAttribute('class','indicator');
   g.appendChild(c);
 
-  // knob pointer
   if (el.kind === 'param' && v.r >= 3) {
-    const angle = -Math.PI/4;  // fixed decorative angle
-    const len   = v.r * 0.6;
-    const x2    = el.x + Math.sin(angle)*len;
-    const y2    = el.y - Math.cos(angle)*len;
+    const angle = -Math.PI/4;
+    const len = v.r * 0.6;
+    const x2 = el.x + Math.sin(angle)*len;
+    const y2 = el.y - Math.cos(angle)*len;
     const l = svgNS('line',{x1:el.x,y1:el.y,x2,y2,
       stroke:sel?'#ffee00':'#aaa','stroke-width':'0.35','stroke-linecap':'round'});
     l.setAttribute('class','knob-dot');
     g.appendChild(l);
-    // rim
-    const rim = circ(el.x,el.y,v.r*0.18,'#555','none',0);
-    g.appendChild(rim);
+    g.appendChild(circ(el.x,el.y,v.r*0.18,'#555','none',0));
   }
 
-  // jack hole
   if (el.cpp_type.includes('Port')) {
     g.appendChild(circ(el.x,el.y,v.r*0.40,'#333','none',0));
     g.appendChild(circ(el.x,el.y,v.r*0.22,'#111','none',0));
   }
 
-  // light glow
   if (el.kind === 'light') {
     const glow = circ(el.x,el.y,v.r*0.55,'#aaffaa','none',0);
     glow.setAttribute('opacity','0.5');
     g.appendChild(glow);
   }
 
-  // TL1105 (button)
-  if (el.cpp_type === 'TL1105') {
-    const top = circ(el.x,el.y,v.r*0.6,'#777','none',0);
-    g.appendChild(top);
-  }
-
-  // label
-  if (el.label) {
-    const t = svgNS('text',{
-      x:el.x, y:el.y+el.label_dy,
-      fill: el.kind==='output' ? '#1a1a1a' : '#e0e0e0',
-      'font-size':'1.9','text-anchor':'middle',
-      'font-family':'monospace','pointer-events':'none'});
-    t.textContent = el.label;
-    g.appendChild(t);
-  }
+  if (el.cpp_type === 'TL1105')
+    g.appendChild(circ(el.x,el.y,v.r*0.6,'#777','none',0));
 
   g.addEventListener('mousedown', e => elemDown(e, el));
   svg.appendChild(g);
@@ -527,12 +633,12 @@ function svgPt(e) {
   return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
 
-function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // ── events ────────────────────────────────────────────────────────────────────
 function svgDown(e) {
   const target = e.target.closest('.grp');
-  if (target) return;  // handled by elemDown
+  if (target) return;
   const p = svgPt(e);
   if (!e.shiftKey) { selected = []; updateSelection(); }
   rubberState = {x0:p.x, y0:p.y, x:p.x, y:p.y};
@@ -594,19 +700,17 @@ function svgMove(e) {
 }
 
 function svgUp(e) {
-  dragState  = null;
+  dragState = null;
   rubberState = null;
   if (svg._rb) svg._rb.setAttribute('display','none');
 }
 
-// keyboard
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { selected=[]; updateSelection(); }
   if (e.key === 'a' && (e.ctrlKey||e.metaKey)) {
     e.preventDefault();
     selected = elems.map(el=>el.id); updateSelection();
   }
-  // nudge with arrow keys
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && selected.length) {
     e.preventDefault();
     const step = e.shiftKey ? 1.0 : 0.1;
@@ -650,9 +754,8 @@ function updateAlignBtns() {
   ['al-l','al-cx','al-r','al-t','al-cy','al-b'].forEach(id=>{
     document.getElementById(id).disabled = dis;
   });
-  const dis3 = selected.length < 3;
-  document.getElementById('al-dx').disabled = dis3;
-  document.getElementById('al-dy').disabled = dis3;
+  document.getElementById('al-dx').disabled = selected.length < 3;
+  document.getElementById('al-dy').disabled = selected.length < 3;
 }
 
 // ── element list ──────────────────────────────────────────────────────────────
@@ -664,9 +767,24 @@ function renderList() {
     const sel = selected.includes(el.id);
     const div = document.createElement('div');
     div.className = 'ei' + (sel?' sel':'');
+
+    let dotHtml, name;
+    if (el.kind === 'label') {
+      dotHtml = `<div class="ei-dot text" style="border:1px dashed #888">T</div>`;
+      name = `"${el.label||el.id}"`;
+    } else if (el.kind === 'logo') {
+      dotHtml = `<div class="ei-dot square" style="background:#ffd500;border:1px solid #aa8800"></div>`;
+      name = 'logo';
+    } else if (el.kind === 'screw') {
+      dotHtml = `<div class="ei-dot" style="background:${v.fill};border:1px solid ${v.stroke||'#888'}"></div>`;
+      name = el.id.toLowerCase().replace('screw_','') + ' screw';
+    } else {
+      dotHtml = `<div class="ei-dot" style="background:${v.fill};border:1px solid ${v.stroke||'#555'}"></div>`;
+      name = el.id;
+    }
     div.innerHTML =
-      `<div class="ei-dot" style="background:${v.fill};border:1px solid ${v.stroke||'#555'}"></div>` +
-      `<span class="ei-name">${el.label||el.id}</span>` +
+      dotHtml +
+      `<span class="ei-name">${name}</span>` +
       `<span class="ei-xy">${el.x.toFixed(1)},${el.y.toFixed(1)}</span>`;
     div.addEventListener('click', e => {
       if (!e.shiftKey) selected = [];
@@ -715,12 +833,11 @@ function align(mode) {
 document.getElementById('save-btn').addEventListener('click', async () => {
   status('Saving...');
   try {
-    const r = await fetch('/api/layout', {
+    const res = await (await fetch('/api/layout', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({elements: elems})
-    });
-    const res = await r.json();
+    })).json();
     status(res.ok ? 'Saved. Run make to rebuild.' : 'Error: '+res.error);
   } catch(ex) { status('Network error: '+ex.message); }
 });
@@ -737,8 +854,9 @@ load();
 CPP_FILE = None
 SVG_FILE = None
 
+
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, fmt, *args): pass  # quiet
+    def log_message(self, fmt, *args): pass
 
     def send_json(self, data, code=200):
         body = json.dumps(data).encode()
@@ -785,6 +903,7 @@ class Handler(BaseHTTPRequestHandler):
             print(tb)
             self.send_json({'ok': False, 'error': tb.splitlines()[-1]})
 
+
 # ── main ──────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -796,7 +915,6 @@ if __name__ == '__main__':
         print(f'File not found: {CPP_FILE}')
         sys.exit(1)
 
-    # infer SVG path: src/FOO.cpp → res/FOO.svg
     base     = os.path.splitext(os.path.basename(CPP_FILE))[0]
     repo_dir = os.path.dirname(os.path.dirname(CPP_FILE))
     SVG_FILE = os.path.join(repo_dir, 'res', base + '.svg')
@@ -806,18 +924,15 @@ if __name__ == '__main__':
     data = parse_cpp(CPP_FILE)
     if data is None:
         print('ERROR: @layout section not found in the .cpp file.')
-        print('Add // @layout:begin ... // @layout:end to the widget constructor.')
+        print('       Add // @layout:begin MODULE W H  ...  // @layout:end to the widget constructor.')
         sys.exit(1)
 
-    port   = 8765
-    server = HTTPServer(('localhost', port), Handler)
-    url    = f'http://localhost:{port}'
-    print(f'Panel editor → {url}')
-    print(f'Editing:  {CPP_FILE}')
-    print(f'SVG:      {SVG_FILE}')
-    print('Ctrl-C to quit.')
-    threading.Timer(0.4, lambda: webbrowser.open(url)).start()
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print('\nBye.')
+    port = 7890
+    print(f'Panel editor: http://localhost:{port}/')
+    print(f'  module : {data["module"]}  ({data["panel_w"]}×{data["panel_h"]} mm)')
+    print(f'  cpp    : {CPP_FILE}')
+    print(f'  svg    : {SVG_FILE}')
+    print('Ctrl-C to stop.')
+
+    threading.Timer(0.6, lambda: webbrowser.open(f'http://localhost:{port}/')).start()
+    HTTPServer(('localhost', port), Handler).serve_forever()
