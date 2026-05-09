@@ -284,7 +284,7 @@ def regen_svg(layout, svg_path):
 
     # module name title at top
     title_sz = 2.8
-    d = text_path(mod.lower(), W/2, 3.5 + title_sz, title_sz)
+    d = text_path(mod, W/2, 3.5 + title_sz, title_sz)
     if d:
         lines.append(f'  <path d="{d}" fill="#dcdcdc"/>')
 
