@@ -16,6 +16,7 @@ A collection of VCV Rack modules.
 | [deinde](doc/deinde.md) | Quad cascading addressable attack-hold envelope | [doc/deinde.md](doc/deinde.md) |
 | [pavo](doc/pavo.md) | Polyphonic stereo spreader (Splay Ugen) | [doc/pavo.md](doc/pavo.md) |
 | [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack | [doc/limen.md](doc/limen.md) |
+| [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
 
 ## Changelog
 
@@ -33,6 +34,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **deinde** | then, next, afterwards |
 | **pavo** | peacock (whose spreading tail mirrors the stereo spread) |
 | **limen** | threshold, doorway |
+| **MMCCCXCIX** | 2399 in Roman numerals — the PT2399 chip this module emulates |
 
 ## Author
 

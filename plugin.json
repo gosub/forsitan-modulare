@@ -70,6 +70,16 @@
       "tags": [
         "Utility"
       ]
+    },
+    {
+      "slug": "MMCCCXCIX",
+      "name": "MMCCCXCIX",
+      "description": "PT2399 delay chip emulation with feedback send/return loop.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/mmcccxcix.md",
+      "tags": [
+        "Delay",
+        "Effect"
+      ]
     }
   ]
 }
