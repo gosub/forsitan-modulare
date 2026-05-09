@@ -204,18 +204,43 @@ def _find_font():
     return None
 
 
+_VENV_CANDIDATES = [
+    os.path.expanduser('~/dl/audio/fonttools-venv'),
+    '/tmp/fonttools-venv',
+]
+
+
+def _ensure_fonttools():
+    try:
+        import fontTools  # noqa: F401
+        return True
+    except ImportError:
+        pass
+    import glob
+    for venv in _VENV_CANDIDATES:
+        pattern = os.path.join(venv, 'lib', 'python*', 'site-packages')
+        hits = glob.glob(pattern)
+        if hits:
+            sys.path.insert(0, hits[0])
+            try:
+                import fontTools  # noqa: F401
+                return True
+            except ImportError:
+                sys.path.pop(0)
+    return False
+
+
 def regen_svg(layout, svg_path):
     font_path = _find_font()
     if font_path is None:
         print('  SVG: OCR-A font not found, skipping SVG regeneration')
         return False
-    try:
-        from fontTools.ttLib import TTFont
-        from fontTools.pens.svgPathPen import SVGPathPen
-        from fontTools.pens.transformPen import TransformPen
-    except ImportError:
+    if not _ensure_fonttools():
         print('  SVG: fonttools not available, skipping SVG regeneration')
         return False
+    from fontTools.ttLib import TTFont
+    from fontTools.pens.svgPathPen import SVGPathPen
+    from fontTools.pens.transformPen import TransformPen
 
     font   = TTFont(font_path)
     glyphs = font.getGlyphSet()
