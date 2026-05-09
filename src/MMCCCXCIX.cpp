@@ -170,52 +170,37 @@ struct MMCCCXCIXWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
         addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2*RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
-        // ── TIME (big knob, centre) ──────────────────────────────────────────
-        addParam(createParamCentered<RoundHugeBlackKnob>(
-            mm2px(Vec(25.4f, 18.f)),
-            module, MMCCCXCIX::TIME_PARAM));
+// @layout:begin MMCCCXCIX 50.8 128.5
+// @elem TIME_PARAM RoundHugeBlackKnob 9.0 param "time" -11.0
+// @elem FEEDBACK_PARAM RoundBigBlackKnob 6.0 param "feedback" -8.0
+// @elem MIX_PARAM RoundBigBlackKnob 6.0 param "mix" -8.0
+// @elem BRIGHTNESS_PARAM RoundBlackKnob 4.5 param "bright" -6.5
+// @elem FB_LOOP_MIX_PARAM RoundBlackKnob 4.5 param "fblp" -6.5
+// @elem AUDIO_INPUT PJ301MPort 4.18 input "in" -6.0
+// @elem TIME_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
+// @elem FEEDBACK_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
+// @elem MIX_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
+// @elem FB_LOOP_MIX_CV_INPUT PJ301MPort 4.18 input "cv" -6.0
+// @elem FB_SEND_OUTPUT PJ301MPort 4.18 output "send" -6.0
+// @elem FB_LOOP_ACTIVE_LIGHT SmallLight 1.5 light "" 0.0
+// @elem FB_RETURN_INPUT PJ301MPort 4.18 input "return" -6.0
+// @elem AUDIO_OUTPUT PJ301MPort 4.18 output "out" -6.0
 
-        // ── FEEDBACK + MIX ────────────────────────────────────────────────────
-        addParam(createParamCentered<RoundBigBlackKnob>(
-            mm2px(Vec(14.2f, 40.f)),
-            module, MMCCCXCIX::FEEDBACK_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(
-            mm2px(Vec(36.6f, 40.f)),
-            module, MMCCCXCIX::MIX_PARAM));
-
-        // ── BRIGHTNESS + FB LOOP MIX ─────────────────────────────────────────
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(14.2f, 58.f)),
-            module, MMCCCXCIX::BRIGHTNESS_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(36.6f, 58.f)),
-            module, MMCCCXCIX::FB_LOOP_MIX_PARAM));
-
-        // ── CV inputs row 1: AUDIO IN, TIME CV, FEEDBACK CV ──────────────────
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(10.f, 76.f)), module, MMCCCXCIX::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(25.f, 76.f)), module, MMCCCXCIX::TIME_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(40.f, 76.f)), module, MMCCCXCIX::FEEDBACK_CV_INPUT));
-
-        // ── CV inputs row 2: MIX CV, FB LOOP MIX CV ──────────────────────────
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(10.f, 88.f)), module, MMCCCXCIX::MIX_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(25.f, 88.f)), module, MMCCCXCIX::FB_LOOP_MIX_CV_INPUT));
-
-        // ── Feedback loop ─────────────────────────────────────────────────────
-        addOutput(createOutputCentered<PJ301MPort>(
-            mm2px(Vec(15.f, 103.f)), module, MMCCCXCIX::FB_SEND_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(
-            mm2px(Vec(25.4f, 103.f)), module, MMCCCXCIX::FB_LOOP_ACTIVE_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(35.f, 103.f)), module, MMCCCXCIX::FB_RETURN_INPUT));
-
-        // ── Audio output ──────────────────────────────────────────────────────
-        addOutput(createOutputCentered<PJ301MPort>(
-            mm2px(Vec(25.4f, 116.f)), module, MMCCCXCIX::AUDIO_OUTPUT));
+        addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(25.40f, 18.00f)), module, MMCCCXCIX::TIME_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(14.20f, 40.00f)), module, MMCCCXCIX::FEEDBACK_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(36.60f, 40.00f)), module, MMCCCXCIX::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.20f, 58.00f)), module, MMCCCXCIX::BRIGHTNESS_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.60f, 58.00f)), module, MMCCCXCIX::FB_LOOP_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 76.00f)), module, MMCCCXCIX::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 76.00f)), module, MMCCCXCIX::TIME_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 76.00f)), module, MMCCCXCIX::FEEDBACK_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 88.00f)), module, MMCCCXCIX::MIX_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 88.00f)), module, MMCCCXCIX::FB_LOOP_MIX_CV_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(15.00f, 103.00f)), module, MMCCCXCIX::FB_SEND_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(25.40f, 103.00f)), module, MMCCCXCIX::FB_LOOP_ACTIVE_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(35.00f, 103.00f)), module, MMCCCXCIX::FB_RETURN_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 116.00f)), module, MMCCCXCIX::AUDIO_OUTPUT));
+        // @layout:end
     }
 };
 
