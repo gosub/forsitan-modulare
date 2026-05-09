@@ -70,6 +70,16 @@
       "tags": [
         "Utility"
       ]
+    },
+    {
+      "slug": "MMCCCXCIX",
+      "name": "MMCCCXCIX",
+      "description": "PT2399 delay chip emulation with feedback send/return loop.",
+      "manualUrl": "",
+      "tags": [
+        "Delay",
+        "Effect"
+      ]
     }
   ]
 }
