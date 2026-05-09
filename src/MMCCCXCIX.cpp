@@ -194,42 +194,42 @@ struct MMCCCXCIXWidget : ModuleWidget {
 // @elem FB_RETURN_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LABEL_TIME label 0.0 label "time" 0.0 15.27 33.03
-// @elem LABEL_FEEDBACK label 0.0 label "fb" 0.0 10.22 50.04
-// @elem LABEL_MIX label 0.0 label "wet" 0.0 40.52 50.04
+// @elem LABEL_FEEDBACK label 0.0 label "fb" 0.0 10.22 52.84
+// @elem LABEL_MIX label 0.0 label "wet" 0.0 40.52 52.84
 // @elem LABEL_BRIGHT label 0.0 label "bright" 0.0 40.67 29.67
-// @elem LABEL_FBLP label 0.0 label "fb mix" 0.0 25.56 50.04
-// @elem LABEL_IN label 0.0 label "in" 0.0 10.41 114.16
-// @elem LABEL_BRIGHTCV label 0.0 label "bright" 0.0 33.73 66.44
-// @elem LABEL_TIMECV label 0.0 label "time" 0.0 17.82 66.24
-// @elem LABEL_FBCV label 0.0 label "fb" 0.0 10.19 81.60
-// @elem LABEL_MIXCV label 0.0 label "wet" 0.0 40.57 81.68
-// @elem LABEL_FLPCV label 0.0 label "fb mix" 0.0 25.44 81.73
-// @elem LABEL_SEND label 0.0 label "send" 0.0 10.49 98.48
-// @elem LABEL_RETURN label 0.0 label "return" 0.0 40.33 98.87
-// @elem LABEL_OUT label 0.0 label "out" 0.0 40.54 114.10
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.46 119.97
-// @elem BOX_SEND panel_box 7.0 box "" 0.0 10.36 92.90
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 40.34 108.10
+// @elem LABEL_FBLP label 0.0 label "fb mix" 0.0 25.56 52.84
+// @elem LABEL_IN label 0.0 label "in" 0.0 10.21 119.16
+// @elem LABEL_BRIGHTCV label 0.0 label "bright" 0.0 33.73 69.24
+// @elem LABEL_TIMECV label 0.0 label "time" 0.0 17.82 69.04
+// @elem LABEL_FBCV label 0.0 label "fb" 0.0 10.19 84.40
+// @elem LABEL_MIXCV label 0.0 label "wet" 0.0 40.57 84.48
+// @elem LABEL_FLPCV label 0.0 label "fb mix" 0.0 25.44 84.53
+// @elem LABEL_SEND label 0.0 label "send" 0.0 14.99 101.38
+// @elem LABEL_RETURN label 0.0 label "return" 0.0 35.23 101.77
+// @elem LABEL_OUT label 0.0 label "out" 0.0 40.34 119.10
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.46 123.37
+// @elem BOX_SEND panel_box 7.0 box "" 0.0 14.86 95.80
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 40.14 113.10
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 123.42f)))); // SCREW_BR
         addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(15.27f, 20.06f)), module, MMCCCXCIX::TIME_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.22f, 40.84f)), module, MMCCCXCIX::FEEDBACK_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.56f, 40.84f)), module, MMCCCXCIX::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.22f, 43.64f)), module, MMCCCXCIX::FEEDBACK_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.56f, 43.64f)), module, MMCCCXCIX::MIX_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.67f, 20.44f)), module, MMCCCXCIX::BRIGHTNESS_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.36f, 40.94f)), module, MMCCCXCIX::FB_LOOP_MIX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.28f, 106.52f)), module, MMCCCXCIX::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.80f, 58.72f)), module, MMCCCXCIX::TIME_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.19f, 73.91f)), module, MMCCCXCIX::FEEDBACK_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.54f, 73.86f)), module, MMCCCXCIX::MIX_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.33f, 58.72f)), module, MMCCCXCIX::BRIGHTNESS_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.44f, 73.83f)), module, MMCCCXCIX::FB_LOOP_MIX_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.29f, 91.56f)), module, MMCCCXCIX::FB_SEND_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(25.65f, 91.73f)), module, MMCCCXCIX::FB_LOOP_ACTIVE_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.45f, 91.45f)), module, MMCCCXCIX::FB_RETURN_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.54f, 106.85f)), module, MMCCCXCIX::AUDIO_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.36f, 43.74f)), module, MMCCCXCIX::FB_LOOP_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.08f, 111.52f)), module, MMCCCXCIX::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.80f, 61.52f)), module, MMCCCXCIX::TIME_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.19f, 76.71f)), module, MMCCCXCIX::FEEDBACK_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.54f, 76.66f)), module, MMCCCXCIX::MIX_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.33f, 61.52f)), module, MMCCCXCIX::BRIGHTNESS_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.44f, 76.63f)), module, MMCCCXCIX::FB_LOOP_MIX_CV_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(14.79f, 94.46f)), module, MMCCCXCIX::FB_SEND_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(25.65f, 94.63f)), module, MMCCCXCIX::FB_LOOP_ACTIVE_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(35.35f, 94.35f)), module, MMCCCXCIX::FB_RETURN_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.34f, 111.85f)), module, MMCCCXCIX::AUDIO_OUTPUT));
         // @layout:end
     }
 };
