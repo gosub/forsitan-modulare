@@ -18,6 +18,13 @@ A collection of VCV Rack modules.
 | [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack | [doc/limen.md](doc/limen.md) |
 | [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
 
+## Tools
+
+| tool | description |
+|------|-------------|
+| [tools/cli/](tools/cli/) | limen CLI client — C (`limen.c`) and Python (`limen.py`) |
+| [tools/panel-editor/](tools/panel-editor/) | Browser-based drag-and-drop panel layout editor |
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).

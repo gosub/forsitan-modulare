@@ -107,13 +107,23 @@ print(json.loads(s.recv(65536)))
 
 ## CLI tool
 
-A standalone C client lives in `cli/`. No dependencies beyond a POSIX C compiler.
+Two clients are available in `tools/cli/`:
+
+### C client (compiled, no runtime dependency)
 
 ```bash
-cd cli && make
+cd tools/cli && make
 # optionally install to ~/.local/bin
 make install
 ```
+
+### Python client (no compilation needed)
+
+```bash
+python tools/cli/limen.py <command> [args]
+```
+
+Requires Python 3.6+, no third-party packages.
 
 **Usage:**
 ```
