@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.3.0] - 2026-05-09
+### Added
+  - MMCCCXCIX: PT2399 delay chip emulation with feedback send/return loop
+  - MMCCCXCIX: CV inputs for all parameters (time, feedback, mix, brightness, fb loop mix)
+  - MMCCCXCIX: external feedback send/return loop with normalled bypass and blend control
+  - MMCCCXCIX: soft compressor on wet output to limit self-oscillation amplitude
+  - tools: panel-editor.py — browser-based drag-and-drop panel layout editor
+
 ## [2.2.1] - 2026-03-14
 ### Added
   - limen: `list_ports` command to query input/output port names by module id
