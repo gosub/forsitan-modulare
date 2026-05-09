@@ -56,7 +56,7 @@ struct MMCCCXCIX : Module {
     MMCCCXCIX() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
-        configParam(TIME_PARAM,       0.f,  1.f,  0.15f, "Delay Time",    " ms", 0.f, 565.f, 35.f);
+        configParam(TIME_PARAM,       0.f,  1.f,  0.15f, "Delay Time",    " ms", 0.f, 1140.f, 35.f);
         configParam(FEEDBACK_PARAM,   0.f,  1.8f, 0.4f,  "Feedback",      "%",   0.f, 100.f * (1.f/1.8f));
         configParam(MIX_PARAM,        0.f,  1.f,  0.5f,  "Dry/Wet");
         configParam(BRIGHTNESS_PARAM, 0.f,  1.f,  0.f,   "Brightness");
@@ -95,7 +95,7 @@ struct MMCCCXCIX : Module {
 
     // ── time knob to milliseconds (quadratic curve: more resolution at low end)
     static float timeKnobToMs(float knob) {
-        return 35.f + knob * knob * 565.f;
+        return 35.f + knob * knob * 1140.f;
     }
 
     void process(const ProcessArgs& args) override {
