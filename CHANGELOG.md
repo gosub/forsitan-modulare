@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.3.1] - 2026-06-14
+### Added
+  - limen: `hello` command — protocol version and capability discovery
+  - limen: `get_param` command — read back a single parameter's value and metadata
+  - limen: window/view commands `set_fullscreen`, `zoom_to_modules`, and `quit`, for scripting patch screenshots
+  - cli: Python limen client (`tools/cli/limen.py`) alongside the C client
+  - cli: subcommands for the new protocol commands (`hello`, `param`, `fullscreen`, `zoom`, `quit`)
+  - tools: `gen_patches.py` and a minimal `patches/limen.vcv` that launches Rack straight into a server-enabled, controllable state
+  - tools: `gen_title_paths.py` and `measure_text.py` for generating OCR-A panel titles
+  - docs: README section on controlling Rack externally via limen, including the loopback-only security model
+
+### Fixed
+  - alea: guard against undefined behaviour when no modules are available
+
+### Changed
+  - tools: reorganised `tools/` into `cli/` and `panel-editor/`, with a panel-editor README
+
 ## [2.3.0] - 2026-05-09
 ### Added
   - MMCCCXCIX: PT2399 delay chip emulation with feedback send/return loop
