@@ -31,7 +31,7 @@ The [limen](doc/limen.md) module runs a small TCP server speaking newline-delimi
 
 Quickstart:
 
-1. Add a **limen** module and enable its server from the right-click menu (it is off until enabled).
+1. Launch Rack straight into a controllable state with the bundled patch — it contains a single limen module with the server already enabled: `./Rack patches/limen.vcv`. (Or add a **limen** module to any patch and enable its server from the right-click menu.)
 2. Talk to it with the bundled client: `python3 tools/cli/limen.py hello` (or `list_modules`, `set 0 0 0.5`, …).
 3. Or from anything that opens a socket: `echo '{"cmd":"hello"}' | nc localhost 7000`.
 
