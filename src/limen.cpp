@@ -13,7 +13,9 @@
 #ifdef _WIN32
 #  include <winsock2.h>
 #  include <ws2tcpip.h>
-#  define close(s)        closesocket(s)
+// Do not redefine close(): it collides with Window::close() used by the quit
+// command. Use closesock() for sockets instead.
+#  define closesock(s)    closesocket(s)
 #  define read(s,b,n)     recv(s,(char*)(b),(int)(n),0)
 #  define write(s,b,n)    send(s,(const char*)(b),(int)(n),0)
 #  define SHUT_RDWR       SD_BOTH
@@ -26,6 +28,7 @@
 #  include <netinet/in.h>
 #  include <unistd.h>
 #  include <cerrno>
+#  define closesock(s)    close(s)
 #  define SOCK_ERRNO      errno
 #  define SOCK_EAGAIN     EAGAIN
 #  define SOCK_EWOULDBLOCK EWOULDBLOCK
@@ -344,7 +347,7 @@ struct Limen : Module {
 		// Wake any server threads waiting for main-thread op completion.
 		pendingCv.notify_all();
 		if (listenFd >= 0) {
-			close(listenFd);
+			closesock(listenFd);
 			listenFd = -1;
 		}
 		// Unblock read() in handleClient without closing the fd (avoids the
@@ -396,14 +399,14 @@ struct Limen : Module {
 
 		if (bind(listenFd, (sockaddr*)&addr, sizeof(addr)) < 0) {
 			WARN("limen: bind() failed on port %d", port);
-			close(listenFd);
+			closesock(listenFd);
 			listenFd = -1;
 			return;
 		}
 
 		if (listen(listenFd, 1) < 0) {
 			WARN("limen: listen() failed");
-			close(listenFd);
+			closesock(listenFd);
 			listenFd = -1;
 			return;
 		}
@@ -445,7 +448,7 @@ struct Limen : Module {
 				break;
 			}
 			handleClient(cfd);
-			close(cfd);
+			closesock(cfd);
 		}
 		listening = false;
 	}
