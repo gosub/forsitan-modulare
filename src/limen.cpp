@@ -78,6 +78,7 @@ static std::string cmd_hello() {
 		"list_plugins", "list_models", "list_modules", "get_module",
 		"list_ports", "list_params", "get_param", "set_param",
 		"list_cables", "add_module", "remove_module", "add_cable", "remove_cable",
+		"set_fullscreen", "zoom_to_modules", "quit",
 	};
 	json_t* cmds = json_array();
 	for (const char* c : commands)
@@ -692,6 +693,32 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 				return ok_response(json_null());
 			});
 		}
+	}
+	else if (cmd == "set_fullscreen") {
+		json_t* on_j = json_object_get(req, "on");
+		if (!on_j || !json_is_boolean(on_j)) {
+			result = err_response("missing on");
+		} else {
+			bool on = json_boolean_value(on_j);
+			result = limen->runOnMainThread([on]() -> std::string {
+				APP->window->setFullScreen(on);
+				json_t* obj = json_object();
+				json_object_set_new(obj, "fullscreen", json_boolean(APP->window->isFullScreen()));
+				return ok_response(obj);
+			});
+		}
+	}
+	else if (cmd == "zoom_to_modules") {
+		result = limen->runOnMainThread([]() -> std::string {
+			APP->scene->rackScroll->zoomToModules();
+			return ok_response(json_null());
+		});
+	}
+	else if (cmd == "quit") {
+		result = limen->runOnMainThread([]() -> std::string {
+			APP->window->close();
+			return ok_response(json_null());
+		});
 	}
 	else {
 		result = err_response("unknown cmd");

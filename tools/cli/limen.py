@@ -207,6 +207,22 @@ def cmd_disconnect(args):
     print("ok")
 
 
+def cmd_fullscreen(args):
+    on = args.state == "on"
+    result = send(args, {"cmd": "set_fullscreen", "on": on})
+    print("fullscreen" if result.get("fullscreen") else "windowed")
+
+
+def cmd_zoom(args):
+    send(args, {"cmd": "zoom_to_modules"})
+    print("ok")
+
+
+def cmd_quit(args):
+    send(args, {"cmd": "quit"})
+    print("ok")
+
+
 # ── argument parsing ──────────────────────────────────────────────────────────
 
 def main():
@@ -268,6 +284,13 @@ def main():
     sp = sub.add_parser("disconnect", help="remove a cable")
     sp.add_argument("id", metavar="cable-id")
 
+    sp = sub.add_parser("fullscreen", help="enter or leave fullscreen")
+    sp.add_argument("state", choices=["on", "off"])
+
+    sub.add_parser("zoom", help="zoom/center the view to fit all modules (F4)")
+
+    sub.add_parser("quit", help="quit VCV Rack")
+
     args = p.parse_args()
 
     dispatch = {
@@ -285,6 +308,9 @@ def main():
         "rm":         cmd_rm,
         "connect":    cmd_connect,
         "disconnect": cmd_disconnect,
+        "fullscreen": cmd_fullscreen,
+        "zoom":       cmd_zoom,
+        "quit":       cmd_quit,
     }
     dispatch[args.cmd](args)
 

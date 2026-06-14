@@ -733,6 +733,31 @@ static int cmd_disconnect(int fd, const char *id_str) {
     return 0;
 }
 
+static int cmd_fullscreen(int fd, int on) {
+    char req[64];
+    snprintf(req, sizeof(req),
+             "{\"cmd\":\"set_fullscreen\",\"on\":%s}\n", on ? "true" : "false");
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    puts(strstr(resp, "\"fullscreen\":true") ? "fullscreen" : "windowed");
+    free(resp);
+    return 0;
+}
+
+static int cmd_simple(int fd, const char *cmd) {
+    char req[64];
+    snprintf(req, sizeof(req), "{\"cmd\":\"%s\"}\n", cmd);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    puts("ok");
+    free(resp);
+    return 0;
+}
+
 /* ── main ───────────────────────────────────────────────────────────────── */
 
 static void usage(void) {
@@ -754,6 +779,9 @@ static void usage(void) {
         "  rm <module-id>                               remove a module from the patch\n"
         "  connect <out-mod>:<out-port> <in-mod>:<in-port>  connect two ports\n"
         "  disconnect <cable-id>                        remove a cable\n"
+        "  fullscreen on|off                            enter or leave fullscreen\n"
+        "  zoom                                         zoom/center the view to fit all modules (F4)\n"
+        "  quit                                         quit VCV Rack\n"
         "\n"
         "options:\n"
         "  --port N    TCP port (default: 7000)\n"
@@ -861,6 +889,16 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(cmd, "disconnect") == 0) {
         if (i >= argc) { fprintf(stderr, "limen: disconnect requires cable-id\n"); }
         else { ret = cmd_disconnect(fd, argv[i]); }
+    } else if (strcmp(cmd, "fullscreen") == 0) {
+        if (i >= argc || (strcmp(argv[i], "on") && strcmp(argv[i], "off"))) {
+            fprintf(stderr, "limen: fullscreen requires on|off\n");
+        } else {
+            ret = cmd_fullscreen(fd, strcmp(argv[i], "on") == 0);
+        }
+    } else if (strcmp(cmd, "zoom") == 0) {
+        ret = cmd_simple(fd, "zoom_to_modules");
+    } else if (strcmp(cmd, "quit") == 0) {
+        ret = cmd_simple(fd, "quit");
     } else {
         fprintf(stderr, "limen: unknown command: %s\n", cmd);
         usage();

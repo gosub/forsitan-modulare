@@ -82,6 +82,18 @@ The server listens on `localhost:7000` by default. Send one JSON object per line
 | `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>` | `{id}` | connect two ports |
 | `remove_cable` | `"id": <int>` | `null` | remove a cable from the patch |
 
+#### Application / view
+
+These control the Rack window and view rather than the patch. Useful for
+scripting screenshots (e.g. add modules, `zoom_to_modules`, `set_fullscreen`,
+then capture the window with an external tool).
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `set_fullscreen` | `"on": <bool>` | `{fullscreen}` | enter or leave fullscreen; result reflects the resulting state |
+| `zoom_to_modules` | — | `null` | set offset and zoom to fit all modules to the view (the F4 action) |
+| `quit` | — | `null` | quit VCV Rack (window closes after the current frame) |
+
 ### Examples
 
 ```bash
