@@ -31,11 +31,12 @@ yellow-on-dark panels.
 ```
 make                                      # build (RACK_DIR is set in .bashrc)
 HOME=/home/gg/dl/temp/rackhome/ make install
+cd ~/dl/audio/rack && HOME=/home/gg/dl/temp/rackhome/ ./Rack   # run Rack
 ```
 
 - `make install` needs the fake `HOME` so Rack installs into
   `~/dl/temp/rackhome/.local/share/Rack2/plugins-lin-x64/` and the real home
-  stays clean.
+  stays clean. Run Rack itself with the same fake `HOME` so it loads that plugin.
 - Rack SDK is symlinked at `~/dl/audio/rack-sdk` → current SDK version.
 - `make dist` packages `res/` and `LICENSE*` plus the built plugin.
 
@@ -145,3 +146,8 @@ use the venv at `~/dl/audio/fonttools-venv`, never a global pip install):
   (`panel-editor.py`). On save it regenerates the panel SVG, auto-finding the
   OCR-A font and a fonttools venv from the same candidate paths above.
 - `tools/gen_title_paths.py`, `tools/measure_text.py` — see Typography above.
+- `tools/gen_patches.py` — generates `patches/*.vcv`. A `.vcv` is a
+  zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
+  builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so
+  `./Rack patches/limen.vcv` launches straight into a controllable state.
+  Regenerate after edits: `python3 tools/gen_patches.py` (needs `tar` + `zstd`).
