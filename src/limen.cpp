@@ -157,6 +157,25 @@ static std::string cmd_list_params(int64_t id) {
 	return ok_response(arr);
 }
 
+static std::string cmd_get_param(int64_t id, int paramId) {
+	engine::Module* m = APP->engine->getModule(id);
+	if (!m)
+		return err_response("module not found");
+	if (paramId < 0 || paramId >= m->getNumParams())
+		return err_response("param not found");
+	json_t* obj = json_object();
+	json_object_set_new(obj, "id", json_integer(paramId));
+	json_object_set_new(obj, "value", json_real(APP->engine->getParamValue(m, paramId)));
+	engine::ParamQuantity* pq = m->getParamQuantity(paramId);
+	if (pq) {
+		json_object_set_new(obj, "name", json_string(pq->name.c_str()));
+		json_object_set_new(obj, "min",  json_real(pq->minValue));
+		json_object_set_new(obj, "max",  json_real(pq->maxValue));
+		json_object_set_new(obj, "unit", json_string(pq->unit.c_str()));
+	}
+	return ok_response(obj);
+}
+
 static std::string cmd_set_param(int64_t id, int paramId, float value) {
 	engine::Module* m = APP->engine->getModule(id);
 	if (!m)
@@ -473,6 +492,18 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 			result = err_response("missing id");
 		} else {
 			result = cmd_list_params(json_integer_value(id_j));
+		}
+	}
+	else if (cmd == "get_param") {
+		json_t* id_j    = json_object_get(req, "id");
+		json_t* param_j = json_object_get(req, "param");
+		if (!id_j || !json_is_integer(id_j) ||
+		    !param_j || !json_is_integer(param_j)) {
+			result = err_response("missing id or param");
+		} else {
+			result = cmd_get_param(
+				json_integer_value(id_j),
+				(int)json_integer_value(param_j));
 		}
 	}
 	else if (cmd == "set_param") {

@@ -133,6 +133,14 @@ def cmd_params(args):
               f"{p['min']:>7.3f}  {p['max']:>7.3f}  {p.get('unit','')}")
 
 
+def cmd_param(args):
+    mid = resolve_id(args, args.id)
+    p = send(args, {"cmd": "get_param", "id": mid, "param": args.param})
+    print(f"{'id':>3}  {'name':<20}  {'value':>7}  {'min':>7}  {'max':>7}  unit")
+    print(f"{p['id']:>3}  {p.get('name',''):<20}  {p['value']:>7.3f}  "
+          f"{p.get('min',0):>7.3f}  {p.get('max',0):>7.3f}  {p.get('unit','')}")
+
+
 def cmd_set(args):
     mid = resolve_id(args, args.id)
     send(args, {"cmd": "set_param", "id": mid,
@@ -225,6 +233,10 @@ def main():
     sp = sub.add_parser("params", help="list params for a module")
     sp.add_argument("id", metavar="module-id")
 
+    sp = sub.add_parser("param", help="get a single parameter value")
+    sp.add_argument("id", metavar="module-id")
+    sp.add_argument("param", type=int, metavar="param-id")
+
     sp = sub.add_parser("set", help="set a parameter value")
     sp.add_argument("id", metavar="module-id")
     sp.add_argument("param", type=int, metavar="param-id")
@@ -257,6 +269,7 @@ def main():
         "get":        cmd_get,
         "ports":      cmd_ports,
         "params":     cmd_params,
+        "param":      cmd_param,
         "set":        cmd_set,
         "cables":     cmd_cables,
         "add":        cmd_add,

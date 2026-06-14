@@ -429,6 +429,23 @@ static int cmd_params(int fd, long long id) {
     return 0;
 }
 
+static int cmd_param(int fd, long long modid, int paramid) {
+    char req[128];
+    snprintf(req, sizeof(req),
+             "{\"cmd\":\"get_param\",\"id\":%lld,\"param\":%d}\n", modid, paramid);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    const char *obj = strstr(resp, "\"result\":");
+    if (obj) obj += 9; else obj = resp;
+    printf("%3s  %-20s  %7s  %7s  %7s  %s\n",
+           "id", "name", "value", "min", "max", "unit");
+    print_param_item(obj, NULL);
+    free(resp);
+    return 0;
+}
+
 static int cmd_set(int fd, long long modid, int paramid, double value) {
     char req[256];
     snprintf(req, sizeof(req),
@@ -698,6 +715,7 @@ static void usage(void) {
         "  cables [-v] [<module-id>]                    list cables (opt. module filter, -v for names)\n"
         "  ports <module-id>                            list input/output port names\n"
         "  params <module-id>                           list params for a module\n"
+        "  param <module-id> <param-id>                 get a single parameter value\n"
         "  set <module-id> <param-id> <value>           set a parameter value\n"
         "  get <module-id>                              get module detail\n"
         "  add <plugin-slug> <model-slug>               add a module to the patch\n"
@@ -757,6 +775,16 @@ int main(int argc, char *argv[]) {
         else {
             long long id = resolve_id(fd, argv[i]);
             if (id >= 0) ret = cmd_params(fd, id);
+        }
+    } else if (strcmp(cmd, "param") == 0) {
+        if (i + 1 >= argc) {
+            fprintf(stderr, "limen: param requires module-id param-id\n");
+        } else {
+            long long modid = resolve_id(fd, argv[i]);
+            if (modid >= 0) {
+                int paramid = (int)strtol(argv[i+1], NULL, 10);
+                ret = cmd_param(fd, modid, paramid);
+            }
         }
     } else if (strcmp(cmd, "set") == 0) {
         if (i + 2 >= argc) {

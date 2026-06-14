@@ -63,6 +63,7 @@ The server listens on `localhost:7000` by default. Send one JSON object per line
 | `get_module` | `"id": <int>` | `{id, plugin, model, name, numParams, numInputs, numOutputs}` | detail for one module |
 | `list_ports` | `"id": <int>` | `{inputs: [{id, name}], outputs: [{id, name}]}` | input and output port names |
 | `list_params` | `"id": <int>` | `[{id, value, name, min, max, unit}]` | params for a module |
+| `get_param` | `"id": <int>`, `"param": <int>` | `{id, value, name, min, max, unit}` | one parameter's current value and metadata |
 | `set_param` | `"id": <int>`, `"param": <int>`, `"value": <float>` | `null` | set a parameter value |
 | `add_module` | `"plugin": "<slug>"`, `"model": "<slug>"` | `{id}` | add a module to the patch |
 | `remove_module` | `"id": <int>` | `null` | remove a module from the patch |
