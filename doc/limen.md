@@ -89,7 +89,7 @@ The server listens on `localhost:7000` by default. It handles **one client at a 
 #### Application / view
 
 These control the Rack window and view rather than the patch. Useful for
-scripting screenshots (e.g. add modules, `zoom_to_modules`, `set_fullscreen`,
+scripting screenshots (e.g. add modules, `set_fullscreen`, `zoom_to_modules`,
 then capture the window with an external tool).
 
 | cmd | extra fields | result | description |
@@ -97,6 +97,10 @@ then capture the window with an external tool).
 | `set_fullscreen` | `"on": <bool>` | `{fullscreen}` | enter or leave fullscreen; result reflects the resulting state |
 | `zoom_to_modules` | — | `null` | set offset and zoom to fit all modules to the view (the F4 action) |
 | `quit` | — | `null` | quit VCV Rack (window closes after the current frame) |
+
+`zoom_to_modules` fits to the **current** viewport, so call it *after* any
+viewport change such as `set_fullscreen` — fitting first and then toggling
+fullscreen leaves the view off-center.
 
 ### Examples
 
