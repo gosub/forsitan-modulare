@@ -27,9 +27,13 @@ The port and enabled state are saved with the patch.
 
 **Patch documentation and archiving** — dump the current patch state to JSON for later analysis or archiving. `list_modules`, `list_cables`, and `list_params` together give a complete snapshot of what is patched and how it is configured.
 
+## Security
+
+The server binds **loopback only** (`127.0.0.1`), so it is reachable only from the same machine. There is **no authentication** by design: anything that can open the local socket can control Rack (add/remove modules, set parameters, even quit). This is fine for local scripting and editor integration, but do **not** expose the port to an untrusted network (e.g. via port forwarding or a public bind) without adding your own access control in front of it.
+
 ## JSON protocol
 
-The server listens on `localhost:7000` by default. Send one JSON object per line; receive one JSON response line per request.
+The server listens on `localhost:7000` by default. It handles **one client at a time** by design; open a connection, send your requests, and close it. Send one JSON object per line; receive one JSON response line per request.
 
 **Request:**
 ```json
