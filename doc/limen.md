@@ -99,8 +99,9 @@ then capture the window with an external tool).
 | `quit` | — | `null` | quit VCV Rack (window closes after the current frame) |
 
 `zoom_to_modules` fits to the **current** viewport, so call it *after* any
-viewport change such as `set_fullscreen` — fitting first and then toggling
-fullscreen leaves the view off-center.
+viewport change such as `set_fullscreen`. It returns immediately but the fit
+settles over the next few frames, so allow a short pause before capturing a
+screenshot.
 
 ### Examples
 

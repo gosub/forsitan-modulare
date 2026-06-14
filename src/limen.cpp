@@ -303,6 +303,12 @@ struct Limen : Module {
 	std::condition_variable pendingCv;
 	std::vector<std::shared_ptr<PendingOp>> pendingOps;
 
+	// zoom_to_modules must re-run over a few consecutive frames: the first call
+	// computes its fit against a layout that has not settled after a viewport,
+	// zoom, or module change, leaving the view off-centre. LimenWidget::step()
+	// calls zoomToModules() while this counter is positive.
+	std::atomic<int> zoomFrames{0};
+
 	Limen() {
 		config(0, 0, 0, NUM_LIGHTS);
 	}
@@ -709,10 +715,10 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 		}
 	}
 	else if (cmd == "zoom_to_modules") {
-		result = limen->runOnMainThread([]() -> std::string {
-			APP->scene->rackScroll->zoomToModules();
-			return ok_response(json_null());
-		});
+		// Re-run over the next few frames so the final fit lands on a settled
+		// layout (a single call right after a change leaves the view off-centre).
+		limen->zoomFrames.store(3);
+		result = ok_response(json_null());
 	}
 	else if (cmd == "quit") {
 		result = limen->runOnMainThread([]() -> std::string {
@@ -806,6 +812,13 @@ struct LimenWidget : ModuleWidget {
 				op->done = true;
 			}
 			m->pendingCv.notify_all();
+		}
+
+		// Pending zoom_to_modules: run on consecutive frames until the layout
+		// has settled, so the final fit is correctly centred.
+		if (m->zoomFrames.load() > 0) {
+			APP->scene->rackScroll->zoomToModules();
+			m->zoomFrames--;
 		}
 	}
 
