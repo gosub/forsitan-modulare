@@ -35,6 +35,7 @@ Iter select_randomly(Iter start, Iter end) {
 }
 
 void CreateRandomModule(std::vector<Model*>& modules) {
+  if (modules.empty()) return;
   Model* module = *select_randomly(modules.begin(), modules.end());
   CreateModule(module);
 }
