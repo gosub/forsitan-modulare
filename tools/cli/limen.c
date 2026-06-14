@@ -297,6 +297,37 @@ static void print_plugin_item(const char *item, void *user) {
     printf("%-24s  %-32s  %s\n", slug, name, version);
 }
 
+static int cmd_hello(int fd) {
+    char req[] = "{\"cmd\":\"hello\"}\n";
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+    long long proto = 0;
+    json_int64(resp, "protocol", &proto);
+    printf("protocol %lld\n", proto);
+    const char *c = strstr(resp, "\"commands\":[");
+    if (c) {
+        c += strlen("\"commands\":[");
+        fputs("commands: ", stdout);
+        int first = 1;
+        while (*c && *c != ']') {
+            if (*c == '"') {
+                c++;
+                if (!first) fputs(", ", stdout);
+                first = 0;
+                while (*c && *c != '"') putchar(*c++);
+                if (*c == '"') c++;
+            } else {
+                c++;
+            }
+        }
+        putchar('\n');
+    }
+    free(resp);
+    return 0;
+}
+
 static int cmd_plugins(int fd) {
     char req[] = "{\"cmd\":\"list_plugins\"}\n";
     char *resp = transact(fd, req);
@@ -709,6 +740,7 @@ static void usage(void) {
         "usage: limen [--port N] [--host H] [--json] <command> [args]\n"
         "\n"
         "commands:\n"
+        "  hello                                        protocol version and supported commands\n"
         "  plugins                                      list all loaded plugins\n"
         "  models [<plugin-slug>]                       list available models (opt. plugin filter)\n"
         "  modules [<plugin-slug>]                      list modules currently in the rack (opt. plugin filter)\n"
@@ -750,7 +782,9 @@ int main(int argc, char *argv[]) {
     if (fd < 0) return 1;
 
     int ret = 1;
-    if (strcmp(cmd, "plugins") == 0) {
+    if (strcmp(cmd, "hello") == 0) {
+        ret = cmd_hello(fd);
+    } else if (strcmp(cmd, "plugins") == 0) {
         ret = cmd_plugins(fd);
     } else if (strcmp(cmd, "models") == 0) {
         const char *slug = (i < argc) ? argv[i] : NULL;

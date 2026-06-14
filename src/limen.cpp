@@ -63,7 +63,30 @@ static std::string err_response(const char* msg) {
 }
 
 
+// ── Protocol version ─────────────────────────────────────────────────────────
+// Bump when the wire protocol changes in a way clients must adapt to.
+static const int LIMEN_PROTOCOL_VERSION = 1;
+
+
 // ── Read-only commands (safe to call from any thread) ────────────────────────
+
+// Capability discovery: clients call this first to learn the protocol version
+// and the set of supported commands. Keep the list in sync with dispatch().
+static std::string cmd_hello() {
+	static const char* commands[] = {
+		"hello",
+		"list_plugins", "list_models", "list_modules", "get_module",
+		"list_ports", "list_params", "get_param", "set_param",
+		"list_cables", "add_module", "remove_module", "add_cable", "remove_cable",
+	};
+	json_t* cmds = json_array();
+	for (const char* c : commands)
+		json_array_append_new(cmds, json_string(c));
+	json_t* obj = json_object();
+	json_object_set_new(obj, "protocol", json_integer(LIMEN_PROTOCOL_VERSION));
+	json_object_set_new(obj, "commands", cmds);
+	return ok_response(obj);
+}
 
 static std::string cmd_list_plugins() {
 	json_t* arr = json_array();
@@ -461,7 +484,10 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 
 	std::string result;
 
-	if (cmd == "list_plugins") {
+	if (cmd == "hello") {
+		result = cmd_hello();
+	}
+	else if (cmd == "list_plugins") {
 		result = cmd_list_plugins();
 	}
 	else if (cmd == "list_models") {

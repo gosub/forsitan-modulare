@@ -48,6 +48,12 @@ The server listens on `localhost:7000` by default. Send one JSON object per line
 
 ### Commands
 
+#### Discovery
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `hello` | — | `{protocol, commands}` | protocol version and the list of supported commands; call first to check compatibility |
+
 #### Plugin and model registry
 
 | cmd | extra fields | result | description |

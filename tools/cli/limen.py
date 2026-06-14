@@ -76,6 +76,12 @@ def parse_endpoint(args, spec):
 
 # ── commands ──────────────────────────────────────────────────────────────────
 
+def cmd_hello(args):
+    result = send(args, {"cmd": "hello"})
+    print(f"protocol {result.get('protocol')}")
+    print("commands: " + ", ".join(result.get("commands", [])))
+
+
 def cmd_plugins(args):
     result = send(args, {"cmd": "list_plugins"})
     print(f"{'slug':<24}  {'name':<32}  version")
@@ -216,6 +222,8 @@ def main():
     sub = p.add_subparsers(dest="cmd", metavar="command")
     sub.required = True
 
+    sub.add_parser("hello", help="protocol version and supported commands")
+
     sub.add_parser("plugins", help="list all loaded plugins")
 
     sp = sub.add_parser("models", help="list available models")
@@ -263,6 +271,7 @@ def main():
     args = p.parse_args()
 
     dispatch = {
+        "hello":      cmd_hello,
         "plugins":    cmd_plugins,
         "models":     cmd_models,
         "modules":    cmd_modules,
