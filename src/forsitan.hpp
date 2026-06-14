@@ -15,3 +15,4 @@ extern Model* deinde;
 extern Model* pavo;
 extern Model* limen;
 extern Model* modelMMCCCXCIX;
+extern Model* modelScando;

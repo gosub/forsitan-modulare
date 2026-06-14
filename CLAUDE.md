@@ -58,6 +58,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | pavo | polyphonic stereo spreader (Splay Ugen) | 25.4mm (5HP) |
 | limen | TCP+JSON Rack control interface | 15.24mm (3HP) |
 | MMCCCXCIX | PT2399 delay chip emulation with feedback send/return | 50.8mm (10HP) |
+| scando | scanned-synthesis oscillator (mass-spring string scanned into a wavetable) | 81.28mm (16HP) |
 
 ## limen module
 

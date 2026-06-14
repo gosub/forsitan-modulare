@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.4.0] - 2026-06-14
+### Added
+  - scando: scanned-synthesis oscillator (Verplank / Mathews / Shaw technique) — a
+    fixed-end mass-spring string (the non-circular topology of Csound's scansyn /
+    Qu-Bit Scanned) forms a slowly-evolving wavetable scanned at audio rate for a
+    pitched, organically-shifting tone
+  - scando: Mass, Stiffness, Damping, Centering and Hammer-shape controls reshape the
+    string dynamics; Shape morphs the hammer between sine, saw, noise and dual-pulse
+  - scando: Strength control drives the string continuously with the hammer shape for
+    a self-sustaining tone; Update Rate sets the string's physics rate (~500 Hz–8 kHz)
+  - scando: Fine tune (±7 semitones); Inject audio input with an In-Level attenuator
+  - scando: EXCITE trigger hammers the string to the current shape (a pluck)
+  - scando: 1V/oct pitch input and CV inputs for mass, stiffness, damping, centering,
+    shape, strength and rate
+  - scando: audio output with a self-levelling limiter, level LED, 16HP panel
+
 ## [2.3.1] - 2026-06-14
 ### Added
   - limen: `hello` command — protocol version and capability discovery

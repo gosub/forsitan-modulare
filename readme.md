@@ -17,6 +17,7 @@ A collection of VCV Rack modules.
 | [pavo](doc/pavo.md) | Polyphonic stereo spreader (Splay Ugen) | [doc/pavo.md](doc/pavo.md) |
 | [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack | [doc/limen.md](doc/limen.md) |
 | [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
+| [scando](doc/scando.md) | Scanned-synthesis oscillator (vibrating mass-spring string, scanned into a wavetable) | [doc/scando.md](doc/scando.md) |
 
 ## Tools
 
@@ -54,6 +55,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **pavo** | peacock (whose spreading tail mirrors the stereo spread) |
 | **limen** | threshold, doorway |
 | **MMCCCXCIX** | 2399 in Roman numerals — the PT2399 chip this module emulates |
+| **scando** | I climb / I scan — *scandere* is also the Latin for scanning verse, the root of "scan" |
 
 ## Author
 
