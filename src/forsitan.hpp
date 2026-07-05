@@ -16,3 +16,4 @@ extern Model* pavo;
 extern Model* limen;
 extern Model* modelMMCCCXCIX;
 extern Model* modelScando;
+extern Model* modelPellicula;

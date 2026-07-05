@@ -59,6 +59,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | limen | TCP+JSON Rack control interface | 15.24mm (3HP) |
 | MMCCCXCIX | PT2399 delay chip emulation with feedback send/return | 50.8mm (10HP) |
 | scando | scanned-synthesis oscillator (mass-spring string scanned into a wavetable) | 81.28mm (16HP) |
+| pellicula | exploded 8-voice drum sampler (Pico DRUM engine; poly-normalled sample/pitch/decay/level matrix) | 111.76mm (22HP) |
 
 ## limen module
 

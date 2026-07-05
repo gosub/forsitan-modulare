@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -11,7 +11,7 @@
   "manualUrl": "https://github.com/gosub/forsitan-modulare#forsitan-modulare",
   "sourceUrl": "https://github.com/gosub/forsitan-modulare",
   "donateUrl": "",
-  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.4.0/CHANGELOG.md",
+  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.5.0/CHANGELOG.md",
   "modules": [
     {
       "slug": "alea",
@@ -89,6 +89,17 @@
       "tags": [
         "Oscillator",
         "Physical modeling"
+      ]
+    },
+    {
+      "slug": "pellicula",
+      "name": "pellicula",
+      "description": "Exploded 8-voice drum sampler: per-voice sample/pitch/decay/level with knob + CV, poly-normalled matrix, per-voice/poly/mix outs.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/pellicula.md",
+      "tags": [
+        "Drum",
+        "Sampler",
+        "Polyphonic"
       ]
     }
   ]

@@ -18,6 +18,7 @@ A collection of VCV Rack modules.
 | [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack | [doc/limen.md](doc/limen.md) |
 | [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
 | [scando](doc/scando.md) | Scanned-synthesis oscillator (vibrating mass-spring string, scanned into a wavetable) | [doc/scando.md](doc/scando.md) |
+| [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level, poly-normalled | [doc/pellicula.md](doc/pellicula.md) |
 
 ## Tools
 
@@ -56,6 +57,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **limen** | threshold, doorway |
 | **MMCCCXCIX** | 2399 in Roman numerals — the PT2399 chip this module emulates |
 | **scando** | I climb / I scan — *scandere* is also the Latin for scanning verse, the root of "scan" |
+| **pellicula** | little skin, thin membrane (diminutive of *pellis*, skin/hide) — the drumhead, and an echo of "pico" (small) |
 
 ## Author
 
