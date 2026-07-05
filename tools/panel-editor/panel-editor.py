@@ -245,9 +245,16 @@ def regen_svg(layout, svg_path):
     font   = TTFont(font_path)
     glyphs = font.getGlyphSet()
     cap_h  = font['OS/2'].sCapHeight
+    cmap   = font.getBestCmap()
+
+    # resolve a character to its glyph name (letters are often named by the
+    # char itself, but digits/punctuation are named "one", "period", ... so a
+    # bare glyphs.get(ch) misses and falls back to .notdef)
+    def gname(ch):
+        return cmap.get(ord(ch), ch)
 
     def char_w(ch, sz):
-        g = glyphs.get(ch, glyphs.get('.notdef'))
+        g = glyphs.get(gname(ch), glyphs.get('.notdef'))
         return g.width * (sz / cap_h)
 
     def text_w(txt, sz):
@@ -257,7 +264,7 @@ def regen_svg(layout, svg_path):
         scale = sz / cap_h
         pen   = SVGPathPen(glyphs)
         tpen  = TransformPen(pen, (scale, 0, 0, -scale, x0, baseline_y))
-        g     = glyphs.get(ch, glyphs.get('.notdef'))
+        g     = glyphs.get(gname(ch), glyphs.get('.notdef'))
         g.draw(tpen)
         return pen.getCommands()
 
