@@ -603,6 +603,19 @@ struct PelliculaWidget : ModuleWidget {
                     [=]() { m->loadKit(k); }));
         }));
 
+        // audition the kit in banks of 8: shift every slot's sample by ±8 (wrapping)
+        auto shiftSamples = [=](int delta) {
+            for (int v = 0; v < kNumVoices; ++v) {
+                int cur = (int)std::round(m->params[Pellicula::SAMPLE_PARAM + v].getValue());
+                int nxt = ((cur - 1 + delta) % kNumSamples + kNumSamples) % kNumSamples + 1;
+                m->params[Pellicula::SAMPLE_PARAM + v].setValue((float)nxt);
+            }
+        };
+        menu->addChild(createMenuItem("Shift all samples +8 (next bank)", "",
+            [=]() { shiftSamples(+kNumVoices); }));
+        menu->addChild(createMenuItem("Shift all samples -8 (previous bank)", "",
+            [=]() { shiftSamples(-kNumVoices); }));
+
         menu->addChild(new MenuSeparator);
         menu->addChild(createBoolPtrMenuItem("12-bit playback grit", "", &m->crush12));
         menu->addChild(createSubmenuItem("Choke groups", "", [=](Menu* sub) {

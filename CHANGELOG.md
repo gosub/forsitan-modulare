@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.5.1] - 2026-07-07
+### Added
+  - pellicula: "Shift all samples +8 / -8" context-menu actions advance or rewind
+    every voice's sample selection by 8, wrapping at 64 — from the default 1-8 each
+    click steps the whole module to the next contiguous bank, to audition a 64-sample
+    kit eight sounds at a time
+
 ## [2.5.0] - 2026-07-07
 ### Added
   - pellicula: "exploded" 8-voice one-shot drum sampler in the spirit of the Erica

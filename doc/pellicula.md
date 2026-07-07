@@ -70,6 +70,10 @@ Triggering a voice restarts it from the beginning as a one-shot.
 - **Kits folder** — see *Kits* below. Set / change / clear the global folder your
   kits live in.
 - **Kit** — pick which kit this module plays (submenu lists the folder's kits).
+- **Shift all samples ±8** — advances (or rewinds) every voice's *sample* selection
+  by 8, wrapping at 64. Starting from the default 1–8, each click steps the whole
+  module to the next contiguous bank of 8 samples, so you can audition a 64-sample
+  kit eight sounds at a time without touching each knob.
 - **12-bit playback grit** — requantizes playback to 12 bits for the authentic
   Pico DRUM character. On by default; turn off for clean full-resolution playback.
 - **Choke groups** — assign each voice to one of 8 groups (or none). Voices in
