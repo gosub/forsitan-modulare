@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.1] - 2026-07-07
+### Added
+  - dræn: three more engines ported from dronecaster — **harm's way**
+    (@moonblind, 16 amplitude-modulated harmonics), **thx** (@infinitedigits,
+    the THX Deep Note sweep, with amp as the sweep position), and **hecker**
+    (@infinitedigits, stereo banks of filtered white/pink noise)
+  - dræn: per-engine makeup gain so engines are loudness-matched and switching
+    between them no longer jumps levels
+  - draen_ugens.hpp gains LFNoise2, WhiteNoise, PinkNoise, Dust, Latch, Lag
+    (VarLag), BLowPass, and the Pan2 / SelectX / linexp / linlin / midicps
+    helpers needed by the new engines
+
 ## [2.6.0] - 2026-07-07
 ### Added
   - dræn: drone synthesizer, a port of the dronecaster norns instrument

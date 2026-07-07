@@ -69,6 +69,13 @@ that layer fills out.
 | **square** | @taubaland | Band-limited square (50% pulse). |
 | **triangle** | @taubaland | Triangle wave. |
 | **supersaw** | @cfdrake | Five detuned, band-passed saws spread across the stereo field. |
+| **harm's way** | @moonblind | Sixteen harmonics, each slowly amplitude-modulated; a shimmering additive drone. |
+| **thx** | @infinitedigits | The THX "Deep Note": twelve saws sweep from a random cluster to a target chord. Here **amp doubles as the sweep position** (as in the original), so it shapes the sound rather than acting purely as a level. |
+| **hecker** | @infinitedigits | Two stereo banks of sixteen filtered-noise voices, morphing between white and pink noise around the fundamental — a dense, evolving noise drone. |
+
+Engines are loudness-normalized with a per-engine makeup gain so switching
+between them doesn't jump levels; the quieter originals (which relied on norns'
+master gain) are brought up to sit with the rest.
 
 ## Credits & license
 
