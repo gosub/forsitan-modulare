@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.0] - 2026-07-07
+### Added
+  - dræn: drone synthesizer, a port of the dronecaster norns instrument
+    (github.com/northern-information/dronecaster, GPL-3.0). A bank of drone
+    engines is played from two controls, fundamental (hz) and level (amp), with
+    a third selecting the engine; switching fades the current engine down and
+    the next one up, mirroring dronecaster's SynthSocket
+  - dræn: hz knob + CV (right-click switches the CV input between 1V/oct and
+    linear 100 Hz/V), amp knob + CV, and an engine knob + CV with a runtime
+    display of the selected engine's name
+  - dræn: fade time selectable from the context menu (0.25 s .. 8 s)
+  - dræn: initial engine roster — sine, square, triangle, supersaw — ported
+    faithfully from the original SynthDefs, with author credits preserved
+  - a reusable SuperCollider-UGEN DSP layer (src/draen_ugens.hpp) underpins the
+    engines: SinOsc, LFTri, band-limited Saw/Pulse (via Rack's MinBLEP), the
+    SC second-order filters over Rack's biquad, LFNoise0/1 and Splay — a
+    vocabulary for future SC-to-C++ ports
+
 ## [2.5.1] - 2026-07-07
 ### Added
   - pellicula: "Shift all samples +8 / -8" context-menu actions advance or rewind
