@@ -2722,6 +2722,408 @@ struct TwinPksEngine : DroneEngine {
 };
 
 
+// ── UNMEMQUA — @zebra. ────────────────────────────────────────────────────────
+// Lagged dust, brown/pink noise and two slow sines excite a 28-partial
+// DynKlank bank (ring times scaled by 1/hz), which is then torn by a bank of
+// six slowly-breathing SVFs and smeared by a pair of ~3.8 s combs, one with
+// negative feedback.
+struct UnmemquaEngine : DroneEngine {
+    static constexpr int NF = 28, NSVF = 6;
+    float fr[NF]; float frAmp[NF]; float frRing[NF];
+    Lag hzLag;
+    Dust dustA, dustB; LagUD dustLagA, dustLagB;
+    LFNoise2 sineModA, sineModB; SinOsc sineA, sineB;
+    BrownNoise brA, brB; PinkNoise pkA, pkB;
+    LFTri hzModA, hzModB;
+    Ringz klank[2][NF];
+    LeakDC dcA, dcB;
+    SVF svf[NSVF]; LFTri svfResLfo[NSVF]; SinOsc lpGainLfo[NSVF], hpGainLfo[NSVF];
+    CombC combA, combB; LFTri combTimeA, combTimeB;
+    AttackEnv linen;
+    const char* name() const override { return "unmemqua"; }
+    void init(uint32_t seed, float sr) override {
+        // f = [1,2,3,5,7,8,10,12,4,6,14,12/5,16,1/2] ++ (that * 5), folded below 8 by /3
+        static const float base[14] = {1, 2, 3, 5, 7, 8, 10, 12, 4, 6, 14, 12.f / 5.f, 16, 0.5f};
+        for (int i = 0; i < NF; ++i) {
+            float y = (i < 14) ? base[i] : base[i - 14] * 5.f;
+            while (y > 8.f) y /= 3.f;
+            fr[i] = y;
+            frAmp[i] = std::pow(0.99f, (float)i);
+        }
+        for (int i = 0; i < NF; ++i) frRing[i] = fr[(i + 2) % NF] * 0.25f;   // f.rotate(2)/4
+        hzLag.reset();
+        dustA.reset(seed + 1u); dustB.reset(seed + 2u);
+        dustLagA.reset(); dustLagB.reset();
+        sineModA.reset(seed + 3u); sineModB.reset(seed + 4u);
+        sineA.reset(); sineB.reset();
+        brA.reset(seed + 5u); brB.reset(seed + 6u);
+        pkA.reset(seed + 7u); pkB.reset(seed + 8u);
+        hzModA.reset(); hzModB.reset(0.25f);
+        for (int c = 0; c < 2; ++c)
+            for (int i = 0; i < NF; ++i) klank[c][i].reset();
+        dcA.reset(); dcB.reset();
+        static const float resPh[NSVF] = {0.1f, 0.7f, 0.1f, 0.7f, 0.1f, 0.7f};
+        for (int i = 0; i < NSVF; ++i) {
+            svf[i].reset();
+            svfResLfo[i].reset(resPh[i] / kTwoPi);
+            lpGainLfo[i].reset(); hpGainLfo[i].reset();
+        }
+        combA.dl.init(4.2f, sr); combB.dl.init(4.2f, sr);
+        combTimeA.reset(); combTimeB.reset(0.3f);
+        linen.reset(9.93f);
+    }
+    void process(float hzIn, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float hz = hzLag.process(hzIn, 6.f, st);
+        // excitation, per channel
+        float exA = distortSC(distortSC(dustLagA.process(dustA.process(7.f, st) * 0.73f, 0.017f, 0.07f, st)));
+        float exB = distortSC(distortSC(dustLagB.process(dustB.process(7.f, st) * 0.73f, 0.017f, 0.07f, st)));
+        exA += brA.process() * 0.03f + pkA.process() * 0.03f
+             + sineA.process(0.25f * hz + sineModA.process(1.f / 52.f, st) * 0.127f, st) * 0.011f;
+        exB += brB.process() * 0.03f + pkB.process() * 0.03f
+             + sineB.process(0.5f * hz + sineModB.process(1.f / 53.f, st) * 0.127f, st) * 0.011f;
+        float hz2A = hz + hzModA.process(1.f / 27.f, st) * 0.04f;
+        float hz2B = hz - hzModB.process(1.f / 33.f, st) * 0.04f;
+        // the Klank bank
+        float ringScale = 256.f / std::max(hz, 1.f);
+        float kA = 0.f, kB = 0.f;
+        for (int i = 0; i < NF; ++i) {
+            kA += klank[0][i].processRaw(exA, fr[i] * hz2A, frRing[i] * ringScale, st) * frAmp[i];
+            kB += klank[1][i].processRaw(exB, fr[i] * hz2B, frRing[i] * ringScale, st) * frAmp[i];
+        }
+        kA *= 0.1f; kB *= 0.1f;
+        float sndL = dcA.process(kA), sndR = dcB.process(kB);
+        // breathing SVF bank
+        static const float svfMul[NSVF] = {1.f, 2.f, 3.5f, 4.f, 8.f, 7.f};
+        static const float resRate[NSVF] = {1.f / 13.f, 1.f / 17.f, 1.f / 18.f, 1.f / 16.f, 1.f / 13.f, 1.f / 17.f};
+        static const float lpRate[NSVF] = {1.f / 31.f, 1.f / 27.f, 1.f / 19.f, 1.f / 20.f, 1.f / 31.f, 1.f / 27.f};
+        static const float hpRate[NSVF] = {1.f / 23.f, 1.f / 29.f, 1.f / 17.f, 1.f / 21.f, 1.f / 23.f, 1.f / 29.f};
+        float fffL = 0.f, fffR = 0.f;
+        for (int i = 0; i < NSVF; ++i) {
+            float in = std::tanh((i & 1) ? sndR : sndL);
+            float res = linlin(svfResLfo[i].process(resRate[i], st), -1.f, 1.f, 0.89f, 0.98f);
+            float lpg = std::pow(10.f, linlin(lpGainLfo[i].process(lpRate[i], st), -1.f, 1.f, -30.f, 0.f) / 20.f);
+            float hpg = std::pow(10.f, linlin(hpGainLfo[i].process(hpRate[i], st), -1.f, 1.f, -40.f, 4.f) / 20.f);
+            float y = svf[i].process(in, hz * svfMul[i], res, lpg, 0.f, hpg, st) * 0.2f;   // -14 dB
+            if (i & 1) fffR += y; else fffL += y;
+        }
+        // long combs, one negative
+        float ctA = linlin(combTimeA.process(1.f / 16.f, st), -1.f, 1.f, 3.7f, 3.9f);
+        float ctB = linlin(combTimeB.process(1.f / 14.f, st), -1.f, 1.f, 3.7f, 3.9f);
+        float cA = combA.process(fffL, ctA * sr, combFeedback(ctA, -23.f)) * 0.2f;
+        float cB = combB.process(fffR, ctB * sr, combFeedback(ctB, 23.f)) * 0.2f;
+        float cAl, cAr, cBl, cBr;
+        pan2(cA, 0.8f, 1.f, cAl, cAr);
+        pan2(cB, -0.8f, 1.f, cBl, cBr);
+        fffL += cAl + cBl; fffR += cAr + cBr;
+        float g = linen.process(st) * amp;
+        const float makeup = 2.f;                        // original sits at -32 dB
+        l = (sndL + fffL) * 0.0251f * g * makeup;
+        r = (sndR + fffR) * 0.0251f * g * makeup;
+    }
+};
+
+// ── UNEABLIN — @zebra. ────────────────────────────────────────────────────────
+// Six interval-tuned sine pairs phase-modulated by long, saw-swept delays of
+// each other's outputs (a slow cross-feedback ring), each morphing through a
+// ladder of cubic soft-clip and InsideOut waveshapes, panned by feedback
+// sines, and resonantly lowpassed. dt = 23 s rules every rate.
+struct UneablinEngine : DroneEngine {
+    static constexpr int N = 6;
+    static constexpr float DT = 23.f;
+    LFTri modScaleLfo;
+    struct Voice {
+        LFSaw modLfo, delTimeLfo; LagUD delLag;
+        DelayLine fbDelay;
+        SinOsc osc1, osc2;
+        LFTri morphLfo, panFbLfo, rqLfo;
+        SinOscFB panOsc;
+        Biquad rlpf;
+        float out = 0.f;
+    };
+    Voice v[N];
+    float ratios[N] = {1.f, 1.5f, 2.f, 1.2f, 1.8f, 0.5f};
+    float ampLin[N]; float rqBase[N];
+    AttackEnv linen;
+    const char* name() const override { return "uneablin"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        static const float ampsDb[8] = {2, -6, 0, -8, -9, -5, -10, -4};
+        float allLin[8];
+        for (int i = 0; i < 8; ++i) allLin[i] = std::pow(10.f, ampsDb[i] / 20.f);
+        for (int i = 0; i < N; ++i) ampLin[i] = allLin[i];
+        for (int i = 0; i < N; ++i) rqBase[i] = 0.34f / allLin[(i + 5) % 8];
+        modScaleLfo.reset();
+        for (int i = 0; i < N; ++i) {
+            Voice& w = v[i];
+            w.modLfo.reset(linlin((float)i, 0.f, N - 1.f, 3.f, 0.f) / 4.f + rng.uniform() * 0.03f);
+            w.delTimeLfo.reset((float)i * 2.f / N * 0.25f);
+            w.delLag.reset();
+            w.fbDelay.init(8.1f, sr);
+            w.osc1.reset(); w.osc2.reset();
+            w.morphLfo.reset(rng.uniform() * 0.03f);
+            w.panFbLfo.reset();
+            w.rqLfo.reset(rng.uniform() * 0.05f);        // 0.2.rand phase
+            w.panOsc.reset();
+            w.rlpf.reset();
+            w.out = 0.f;
+        }
+        linen.reset(5.55f);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float ms = modScaleLfo.process(1.f / (DT * 4.f), st);
+        float modscale = ms * ms * 0.34f;
+        float rsum = 0.f;
+        for (int i = 0; i < N; ++i) rsum += ratios[i];
+        l = r = 0.f;
+        float outs[N];
+        for (int i = 0; i < N; ++i) {
+            Voice& w = v[i];
+            float rt = ratios[i];
+            float mod = w.modLfo.process(1.f / (DT * rt * 7.f + i), st) * modscale;
+            // delayed neighbour output as PM source
+            float dts = linlin(w.delTimeLfo.process(1.f / (DT * rt * 4.f + i), st), -1.f, 1.f, 1.f / 16.f, 7.99f);
+            dts = w.delLag.process(dts, 0.0077f, 0.0277f, st);
+            float pm = v[(i + 1) % N].fbDelay.tapL(rack::clamp(dts * sr, 2.f, 8.f * sr)) * mod;
+            float x = 0.5f * ampLin[i]
+                    * (w.osc1.process(hz * rt + rt * 0.25f, st, pm)
+                     + w.osc2.process(hz * rt - rt * 0.25f, st, pm));
+            // waveshape ladder: x, dst, dst², dst³, then InsideOut mirrors
+            float d1 = 1.5f * x - 0.5f * x * x * x;
+            float d2 = 1.5f * d1 - 0.5f * d1 * d1 * d1;
+            float d3 = 1.5f * d2 - 0.5f * d2 * d2 * d2;
+            float srcs[8] = {x, d1, d2, d3, insideOut(d3), insideOut(d2), insideOut(d1), insideOut(x)};
+            float sel = linlin(w.morphLfo.process(1.f / DT * (rt + i / 16.f), st), -1.f, 1.f, 0.f, 7.f);
+            float osc = selectxN(sel, srcs, 8, false);
+            w.fbDelay.write(osc);                         // LocalOut
+            outs[i] = osc;
+        }
+        for (int i = 0; i < N; ++i) {
+            Voice& w = v[i];
+            float rq = w.rqLfo.process(1.f / (DT * ratios[i] * rsum), st) * 0.1f + rqBase[i];
+            float cut = hz * ratios[(i + 1) % N] * 2.f;
+            float s = w.rlpf.rlpf(outs[i], cut, rack::clamp(rq, 0.05f, 2.f), st);
+            float fb = w.panFbLfo.process(1.f / (DT * ratios[i]), st) * 0.8f;
+            float pos = w.panOsc.process(1.f / DT, fb, st);
+            float vl, vr; pan2(s, pos, 1.f, vl, vr);
+            l += vl; r += vr;
+        }
+        float g = linen.process(st) * amp * 0.3f / N;
+        const float makeup = 2.5f;
+        l *= g * makeup; r *= g * makeup;
+    }
+};
+
+// ── UNWEALNE — @zebra. ────────────────────────────────────────────────────────
+// Six pulse voices with envelope-wandering widths through triple resonant
+// lowpasses, plus the whole mix pitch-shifted an octave up and re-filtered
+// through a 13-ratio bank; a pair of ~3 s allpass delays cross-feed the
+// output back in reversed. Everything breathes at 16-beat triangle rates.
+struct UnwealneEngine : DroneEngine {
+    static constexpr int NV = 6, NSH = 13;
+    float r1[7] = {0.25f, 0.5f, 1.f, 3.f, 2.f, 2.25f, 2.5f};
+    float r2[6] = {1.f, 1.5f, 2.f, 2.25f, 8.f / 3.f, 3.5f};
+    float ampLin[7];
+    struct Voice {
+        LFNoise1 hzNoise;
+        Impulse widthImp; PercEnv widthEnv; LFTri widthTsLfo;
+        BlPulse pulse;
+        LFTri rqLfo;
+        Biquad rlpf[3];
+    };
+    Voice v[NV];
+    PitchShift shifter;
+    Biquad shRlp[NSH], shHp[NSH];
+    AllpassC apL, apR; LFTri apTimeL, apTimeR;
+    float loutL = 0.f, loutR = 0.f;
+    Biquad loHpL, loHpR, loLpL, loLpR;
+    AttackEnv linen;
+    const char* name() const override { return "unwealne"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        static const float ampsDb[7] = {0, 0, 2, -9, -4, -9, -12};
+        for (int i = 0; i < 7; ++i) ampLin[i] = std::pow(10.f, ampsDb[i] / 20.f);
+        for (int i = 0; i < NV; ++i) {
+            Voice& w = v[i];
+            w.hzNoise.reset(seed + i * 31u + 1u);
+            w.widthImp.reset(); w.widthEnv.reset(); w.widthTsLfo.reset();
+            w.pulse.reset();
+            w.rqLfo.reset(std::fmod(r1[(i + 3) % 7], 2.f) * 0.25f);
+            for (int k = 0; k < 3; ++k) w.rlpf[k].reset();
+        }
+        shifter.init(0.3f, sr, seed + 100u);
+        for (int i = 0; i < NSH; ++i) { shRlp[i].reset(); shHp[i].reset(); }
+        apL.dl.init(4.2f, sr); apR.dl.init(4.2f, sr);
+        apTimeL.reset(); apTimeR.reset(0.3f);
+        loutL = loutR = 0.f;
+        loHpL.reset(); loHpR.reset(); loLpL.reset(); loLpR.reset();
+        linen.reset(7.77f);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float sndL = 0.f, sndR = 0.f;
+        for (int i = 0; i < NV; ++i) {
+            Voice& w = v[i];
+            float rt = r2[i];
+            float phz = hz * rt + w.hzNoise.process(0.0625f * rt, st) * 0.12f;
+            float ts = rack::clamp(w.widthTsLfo.process(1.f / (16.f * rt), st) * 4.f + 3.f, 0.1f, 7.f);
+            float we = w.widthEnv.process(w.widthImp.process(rt * 0.25f, st), 0.01f * ts, 1.f * ts, -4.f, st);
+            float width = linlin(we, 0.f, 1.f, 0.25f, 0.8f);
+            float p = w.pulse.process(phz, width, st) * ampLin[i];
+            float rq = linlin(w.rqLfo.process(1.f / (16.f * rt), st), -1.f, 1.f, 0.13f, 0.34f);
+            float s = 0.f;
+            for (int k = 0; k < 3; ++k) {
+                float fc = std::min(hz * 2.f * r2[(i + 2 + 2 * k) % NV], 12000.f);
+                s += w.rlpf[k].rlpf(p, fc, rq, st);
+            }
+            float pos = linlin((float)i, 0.f, 6.f, -0.8f, 0.8f);
+            float vl, vr; pan2(s / 3.f, pos, 1.f, vl, vr);
+            sndL += vl; sndR += vr;
+        }
+        sndL /= NV; sndR /= NV;
+        // octave-up shift through a 13-ratio filter bank
+        float shiftu = shifter.process((sndL + sndR) * 0.5f, 0.23f, 2.f, 0.11f, st);
+        float shL = 0.f, shR = 0.f;
+        for (int i = 0; i < NSH; ++i) {
+            float ratio = (i < 7) ? r1[i] : r2[i - 7];
+            float fc = std::min(hz * 8.f * ratio, 12000.f);
+            float y = shHp[i].hpf(shRlp[i].rlpf(shiftu, fc, 0.8f, st), 20.f, st) * 0.5f;
+            if (i & 1) shR += y; else shL += y;
+        }
+        sndL += shR / 3.f; sndR += shL / 3.f;                 // shifted.reverse
+        // ~3 s cross-feeding allpasses
+        float dtL = linlin(apTimeL.process(1.f / 11.5f, st), -1.f, 1.f, 2.9f, 3.8f);
+        float dtR = linlin(apTimeR.process(1.f / 12.917f, st), -1.f, 1.f, 2.9f, 3.8f);
+        float delL = apL.process(loutL, dtL * sr, combFeedback(dtL, 1.f));
+        float delR = apR.process(loutR, dtR * sr, combFeedback(dtR, 1.f));
+        float lo_l = sndL + delL * 0.27f, lo_r = sndR + delR * 0.27f;
+        lo_l = loLpL.lpf(loHpL.hpf(lo_l, 10.f, st), 10101.f, st);
+        lo_r = loLpR.lpf(loHpR.hpf(lo_r, 10.f, st), 10101.f, st);
+        loutL = lo_r; loutR = lo_l;                           // .reverse
+        float g = linen.process(st) * amp * 0.23f;
+        const float makeup = 2.f;
+        l = (sndL + delL * 0.33f) * g * makeup;
+        r = (sndR + delR * 0.33f) * g * makeup;
+    }
+};
+
+// ── UNREANTH — @zebra. ────────────────────────────────────────────────────────
+// A 64-step buffer sequencer written and read at mutually-prime rates selects
+// which of ten just-ratio sine pairs fade in (slow lag-down gates); under it,
+// detuned saws through an SVF, a diode ring-mod of the two, and a 7–8 s
+// feedback delay pair with pitch-shifted smearing. Fades in over 12 s.
+struct UnreanthEngine : DroneEngine {
+    static constexpr int NSCL = 10, SEQN = 64, SEQM = 17;
+    float scl[NSCL] = {1.f, 20.f / 9.f, 6.f / 5.f, 8.f / 3.f, 3.f,
+                       8.f / 5.f, 7.f / 4.f, 2.f, 4.f, 9.f / 4.f};
+    Lag hzLag;
+    float seqbuf[SEQN];
+    SinOscFB dtOsc;
+    float ph = 0.f; float rstTimer = 0.f;
+    Impulse wrImp[3], rdImp[2];
+    int wrIdx = 0;
+    int deg[2] = {0, 0};
+    SinOsc sines[NSCL][2]; LagUD gates[NSCL][2]; LFTri gateDownLfo[NSCL][2];
+    DelayLine fbDel[2]; SinOscFB delTimeOsc;
+    PitchShift psDel[2], psSaw[2];
+    LeakDC delDc[2];
+    BlSaw saws[4]; SVF sawSvf[2]; LFTri sawResLfo;
+    Biquad ringHp[2];
+    float loutL = 0.f, loutR = 0.f;
+    AttackEnv linen;
+    const char* name() const override { return "unreanth"; }
+    void init(uint32_t seed, float sr) override {
+        hzLag.reset();
+        for (int i = 0; i < SEQN; ++i) seqbuf[i] = 0.f;
+        dtOsc.reset();
+        ph = 0.f; rstTimer = 0.f;
+        for (int k = 0; k < 3; ++k) wrImp[k].reset();
+        for (int k = 0; k < 2; ++k) rdImp[k].reset();
+        wrIdx = 0; deg[0] = deg[1] = 0;
+        for (int i = 0; i < NSCL; ++i)
+            for (int j = 0; j < 2; ++j) {
+                sines[i][j].reset();
+                gates[i][j].reset();
+                gateDownLfo[i][j].reset(j * 0.25f);
+            }
+        fbDel[0].init(9.5f, sr); fbDel[1].init(9.5f, sr);
+        delTimeOsc.reset();
+        psDel[0].init(0.25f, sr, seed + 1u); psDel[1].init(0.25f, sr, seed + 2u);
+        psSaw[0].init(0.3f, sr, seed + 3u); psSaw[1].init(0.3f, sr, seed + 4u);
+        delDc[0].reset(); delDc[1].reset();
+        for (int k = 0; k < 4; ++k) saws[k].reset();
+        sawSvf[0].reset(); sawSvf[1].reset(); sawResLfo.reset();
+        ringHp[0].reset(); ringHp[1].reset();
+        loutL = loutR = 0.f;
+        linen.reset(12.f);
+    }
+    void process(float hzIn, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float hz = hzLag.process(hzIn, 5.5f, st);
+        // sequence machinery (control-ish rates are fine at audio rate)
+        float dt = linlin(dtOsc.process(1.f / 117.f, 11.f, st), -1.f, 1.f, 1.f / 17.f, 0.25f) / 8.f;
+        rstTimer -= st;
+        if (rstTimer <= 0.f) { rstTimer += 23.f; ph = 0.f; }
+        ph += (19.f / 23.f) * 689.f * st;                    // Phasor.kr at ~689 Hz control rate
+        if (ph >= SEQN) ph -= SEQN;
+        static const float r1[3] = {1.5f, 2.4f, 3.2f};
+        static const float r2[2] = {1.f, 2.25f};
+        for (int k = 0; k < 3; ++k)
+            if (wrImp[k].process(r1[k] / dt, st) > 0.f) {
+                seqbuf[wrIdx] = ph; wrIdx = (wrIdx + 1) % SEQN;
+            }
+        for (int j = 0; j < 2; ++j)
+            if (rdImp[j].process(r2[j] / dt, st) > 0.f) {
+                float sv = seqbuf[((int)(ph + SEQM)) % SEQN];
+                deg[j] = rack::clamp((int)(sv / SEQN * (NSCL - 0.01f)), 0, NSCL - 1);
+            }
+        // ten sine pairs, gate-faded by the sequence
+        float mixL = 0.f, mixR = 0.f;
+        for (int i = 0; i < NSCL; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                float down = linlin(gateDownLfo[i][j].process(1.f / (1.f + i + j), st), -1.f, 1.f, 1.7f, 4.4f);
+                float gate = gates[i][j].process((deg[j] == i) ? 1.f : 0.f, 0.01f, down, st);
+                float s = sines[i][j].process(hz * scl[i] + j, st) * gate;
+                if (j) mixR += s; else mixL += s;
+            }
+        }
+        mixL /= NSCL; mixR /= NSCL;
+        // feedback delay pair (7–8 s) with pitch-shift smear
+        float dmod = delTimeOsc.process(1.f / 29.f, 1.7777f, st) * 0.1f;
+        float delL = fbDel[0].tapC(rack::clamp((7.f + dmod) * sr, 4.f, 9.4f * sr));
+        float delR = fbDel[1].tapC(rack::clamp((8.f + dmod) * sr, 4.f, 9.4f * sr));
+        fbDel[0].write(loutL); fbDel[1].write(loutR);
+        float delMono = (delL + delR) * 0.5f;
+        delL += psDel[0].process(delMono, 0.17f, 2.f, 0.09f, st) * 0.07f;
+        delR += psDel[1].process(delMono, 0.17f, 4.f, 0.09f, st) * 0.07f;
+        delL = softclip(delDc[0].process(delL * 0.5f));
+        delR = softclip(delDc[1].process(delR * 0.5f));
+        // saw bed
+        float s0 = saws[0].process(hz + 1.f / 77.f, st);
+        float s1 = saws[1].process(hz * 0.5f - 1.f / 66.f, st);
+        float s2 = saws[2].process(hz - 1.f / 51.f, st);
+        float s3 = saws[3].process(hz * 0.5f + 1.f / 86.f, st);
+        float sawL = (s0 + s2) * 0.124f, sawR = (s1 + s3) * 0.124f;
+        float res = 0.05f + sawResLfo.process(1.f / 19.f, st) * 0.04f + 0.04f;
+        sawL = sawSvf[0].process(sawL, hz * 2.f, 1.f - res, 1.f, 0.f, 0.f, st);
+        sawR = sawSvf[1].process(sawR, hz * 2.f, 1.f - res, 1.f, 0.f, 0.f, st);
+        float ringL = ringHp[0].hpf(diodeRingMod(mixL, sawL) * 0.2f, hz, st);
+        float ringR = ringHp[1].hpf(diodeRingMod(mixR, sawR) * 0.2f, hz, st);
+        sawL += psSaw[0].process(sawL, 0.2f, 0.5f, 0.06f, st);
+        sawR += psSaw[1].process(sawR, 0.2f, 0.5f, 0.06f, st);
+        float sndL = (mixL + delL + sawL + ringL) * 0.5f;
+        float sndR = (mixR + delR + sawR + ringR) * 0.5f;
+        loutL = delR + mixR + ringL;                          // .reverse mixes
+        loutR = delL + mixL + ringR;
+        float g = linen.process(st) * amp;
+        const float makeup = 1.f;
+        l = sndL * g * makeup;
+        r = sndR * g * makeup;
+    }
+};
+
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -2760,6 +3162,10 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new DrummEngine());
     v.emplace_back(new TakitaEngine());
     v.emplace_back(new TwinPksEngine());
+    v.emplace_back(new UnmemquaEngine());
+    v.emplace_back(new UneablinEngine());
+    v.emplace_back(new UnwealneEngine());
+    v.emplace_back(new UnreanthEngine());
     return v;
 }
 
