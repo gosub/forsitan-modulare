@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.12] - 2026-07-09
+### Changed
+  - dræn: DSP optimization pass, ~26% less CPU overall and the heaviest engine
+    (hecker) cut from 8.8% to 2.7% of real time — filter and lag coefficients
+    (biquad, Ringz, MoogFF, SVF, BAllPass, Lag/LagUD, Amplitude) now refresh on
+    16-sample blocks instead of every sample (SC itself uses 64-sample control
+    blocks, so this is finer-grained than the original), Env.perc advances its
+    exponential shape incrementally, and hecker's pow/trig control mappings are
+    evaluated at the same block rate
+  - verified against the pre-optimization build: per-engine RMS unchanged
+    within ±0.2%, all feedback engines stable over 60 s at 40/440 Hz
+
 ## [2.6.11] - 2026-07-09
 ### Added
   - dræn: the last four dronecaster engines, all @zebra — **unmemqua** (28-partial
