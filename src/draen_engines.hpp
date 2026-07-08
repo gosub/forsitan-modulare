@@ -2510,6 +2510,218 @@ struct DrummEngine : DroneEngine {
 };
 
 
+// ── Takita — @sixolet. "Rhythmic." ────────────────────────────────────────────
+// A self-clocked drum language: a beat impulse gates a self-suppressing
+// "division" window (LocalIn/Out), whose phasors flip tik/tok/tuk flip-flops;
+// each fires a filtered percussive click (RHPF→RLPF + BPF bands), with ki/ka
+// cross-triggered from tik and tok. Everything — band edges, resonances,
+// drumhead bite, trash noise — drifts on immensely slow sines.
+struct TakitaEngine : DroneEngine {
+    // slow global modulators
+    LFTri beatLfo; SinOsc divLfo; float divPhase = 0.f;
+    SinOsc mod1234Lfo, modGateLfo;
+    LFTri oneLfo, twoLfo;
+    static constexpr int NB = 5;                    // bands: ki tik tuk tok ka
+    SinOsc ampLfo[NB]; float ampRate[NB] = {}, ampPhase[NB] = {}; Lag ampLag[NB];
+    SinOsc resLfo[8]; float resRate[8] = {}, resPhase[8] = {};
+    SinOsc dhLfo[2]; float dhRate[2] = {}, dhPhase[2] = {};
+    SinOsc trashLfo[4]; float trashRate[4] = {}, trashPhase[4] = {};
+    // riddim core
+    Impulse takitakImp;
+    float tokitokTimer = -1.f; bool firstTok = true; float prevTokitok = 0.f;
+    Phasor prong, pring, prang;
+    SetResetFF ffTik, ffTok, ffTuk, ffKi, ffKa;
+    PercEnv bandEnv[NB], drumheadEnv;
+    PinkNoise trashNoise[NB];
+    Biquad rhp[NB], rlp[NB], bp[NB];
+    // lace: interleaved delayed copies
+    DelayC laceDelay[NB]; LFNoise2 laceAmpN[NB]; Lag laceAmpLag[NB]; LFNoise2 laceTimeN[4];
+    const char* name() const override { return "takita"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        beatLfo.reset(rng.uniform());
+        divPhase = rng.uniform() * kTwoPi; divLfo.reset();
+        mod1234Lfo.reset(); modGateLfo.reset();
+        oneLfo.reset(rng.uniform()); twoLfo.reset(rng.uniform());
+        for (int i = 0; i < NB; ++i) {
+            ampRate[i] = 1.f / (100.f + rng.uniform() * 400.f);
+            ampPhase[i] = rng.uniform() * kTwoPi;
+            ampLfo[i].reset(); ampLag[i].reset();
+            bandEnv[i].reset(); trashNoise[i].reset(seed + 40u + i);
+            rhp[i].reset(); rlp[i].reset(); bp[i].reset();
+            laceDelay[i].dl.init(0.02f, sr);
+            laceAmpN[i].reset(seed + 50u + i); laceAmpLag[i].reset();
+        }
+        for (int i = 0; i < 8; ++i) {
+            resRate[i] = 1.f / (200.f + rng.uniform() * 600.f);
+            resPhase[i] = rng.uniform() * kTwoPi; resLfo[i].reset();
+        }
+        for (int i = 0; i < 2; ++i) {
+            dhRate[i] = 1.f / (200.f + rng.uniform() * 600.f);
+            dhPhase[i] = rng.uniform() * kTwoPi; dhLfo[i].reset();
+        }
+        for (int i = 0; i < 4; ++i) {
+            trashRate[i] = 1.f / (200.f + rng.uniform() * 600.f);
+            trashPhase[i] = rng.uniform() * kTwoPi; trashLfo[i].reset();
+            laceTimeN[i].reset(seed + 60u + i);
+        }
+        takitakImp.reset();
+        tokitokTimer = -1.f; firstTok = true; prevTokitok = 0.f;
+        prong.reset(); pring.reset(); prang.reset();
+        ffTik.reset(); ffTok.reset(); ffTuk.reset(); ffKi.reset(); ffKa.reset();
+        drumheadEnv.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        // tempo language from very slow LFOs
+        float beat = linexp(beatLfo.process(1.f / 4000.f, st), -1.f, 1.f, 0.11f, 0.22f);
+        float div = rack::clamp(linlin(divLfo.process(1.f / 2111.f, st, divPhase), -1.f, 1.f, 5.f, 20.f), 7.1f, 15.9f);
+        float modGate = (modGateLfo.process(1.f / (2.f * beat * div), st) > 0.f) ? 1.f : 0.f;
+        float mod = (mod1234Lfo.process(1.f / 1234.f, st) * 0.5f + 0.5f) * modGate;
+        float one = linexp(oneLfo.process(1.f / 1111.f, st), -1.f, 1.f, 0.15f, div * 0.5f) + 1.f + mod;
+        float two = linexp(twoLfo.process(1.f / 1323.f, st), -1.f, 1.f, 0.17f, div * 0.5f) + 1.f;
+        float amps[NB], asum = 0.f;
+        for (int i = 0; i < NB; ++i) {
+            float a = ampLfo[i].process(ampRate[i], st, ampPhase[i]) * 0.5f + 0.5f;
+            amps[i] = ampLag[i].process(rack::clamp(a - 0.2f, 0.f, 1.f), 10.f, st);
+            asum += amps[i];
+        }
+        amps[0] = std::max(amps[0], 0.4f - asum);
+        float res[8];
+        for (int i = 0; i < 8; ++i)
+            res[i] = linexp(resLfo[i].process(resRate[i], st, resPhase[i]), -1.f, 1.f, 0.06f, 0.8f);
+        res[4] *= 0.5f;
+        float dh[2];
+        for (int i = 0; i < 2; ++i)
+            dh[i] = linlin(dhLfo[i].process(dhRate[i], st, dhPhase[i]), -1.f, 1.f, 0.f, 1.4f);
+        float trash[4];
+        for (int i = 0; i < 4; ++i)
+            trash[i] = rack::clamp(trashLfo[i].process(trashRate[i], st, trashPhase[i]), 0.f, 1.f);
+        // band edges from hz
+        bool isLow = hz < 150.f, isVeryLow = hz < 80.f;
+        int lowIdx = (isLow ? 1 : 0) + (isVeryLow ? 1 : 0);
+        float tikHp = isLow ? hz : hz * 0.5f;
+        float tokHp = hz * (lowIdx == 0 ? 1.f : (lowIdx == 1 ? 2.f : 3.f));
+        float kiHp = hz * (lowIdx == 0 ? 6.f : (lowIdx == 1 ? 9.f : 12.f));
+        float kaHp = isLow ? hz * 6.f : hz * 3.f;
+        float tikLp = isLow ? hz * 8.f : hz * 6.f;
+        float tokLp = isVeryLow ? hz * 12.f : hz * 9.f;
+        float kiLp = isLow ? hz * 30.f : hz * 20.f;
+        float kaLp = isVeryLow ? hz * 12.f : hz * 15.f;
+        // ── the riddim core ──
+        float takitak = takitakImp.process(1.f / beat, st);
+        float divEnvTime = beat * div;
+        float syncT1 = beat * one, syncT2 = beat * two;
+        float divFeedback = prevTokitok;                     // LocalIn (one sample)
+        float tokTrig = takitak * (1.f - divFeedback) + (firstTok ? 1.f : 0.f);
+        firstTok = false;
+        if (tokTrig > 0.5f && prevTokitok <= 0.f) tokitokTimer = divEnvTime;
+        float tokitok = (tokitokTimer > 0.f) ? 1.f : 0.f;
+        tokitokTimer -= st;
+        float prongV = prong.process(tokitok, 1.f / syncT2, st);
+        float pringV = pring.process(tokitok, 1.f / syncT1, st);
+        float prangV = prang.process(tokitok, 1.f / (syncT1 + syncT2), st);
+        float tik = ffTik.process(takitak, (prongV > 0.1f) ? 1.f : 0.f);
+        float tok = ffTok.process(takitak, (pringV > 0.1f) ? 1.f : 0.f);
+        float tuk = ffTuk.process(takitak, (prangV > 0.1f) ? 1.f : 0.f);
+        float ki = ffKi.process(tik, tok);
+        float ka = ffKa.process(tok, tik);
+        prevTokitok = tokitok;
+        float drumhead = drumheadEnv.process(takitak, 0.01f * beat, 0.24f * beat, -4.f, st);
+        // filt(thing, hp, lp, highres, lowres, trash)
+        auto filt = [&](int b, float thing, float hp, float lp, float hres, float lres, float tr) {
+            float gend = bandEnv[b].process(thing, 0.01f * beat, 0.24f * beat, -4.f, st);
+            gend += gend * tr * trashNoise[b].process();
+            float band = rlp[b].rlpf(rhp[b].rhpf(gend, hp, hres, st), lp, lres, st)
+                       + bp[b].bpf(gend, (hp + lp) * 0.5f, (hres + lres) * 0.5f, st);
+            return band;
+        };
+        float band[NB];
+        band[0] = amps[4] * filt(0, ki, kiHp, kiLp, res[4], res[5], trash[2] * 0.5f) * 0.5f;
+        band[1] = amps[1] * filt(1, tik, tikHp * (1.f + dh[0] * drumhead), tikLp, res[0], res[1], trash[0]);
+        band[2] = amps[2] * filt(2, tuk, std::min(tikLp, tokLp), std::max(tikLp, tokLp), res[0], res[3], 0.f);
+        band[3] = amps[3] * filt(3, tok, tokHp * (1.f + dh[1] * drumhead), tokLp, res[2], res[3], trash[1]);
+        band[4] = amps[0] * filt(4, ka, kaHp, kaLp, res[6], res[7], trash[3]);
+        // lace with slow-faded delayed copies → 10 channels splayed
+        float ch[NB * 2];
+        for (int i = 0; i < NB; ++i) {
+            float la = rack::clamp(laceAmpN[i].process(1.f / 500.f, st), 0.f, 0.5f);
+            la = laceAmpLag[i].process(la, 10.f, st);
+            float dt = 0.014f * (laceTimeN[i % 4].process(0.1f, st) * 0.5f + 0.5f);
+            float d = laceDelay[i].process(band[i], rack::clamp(dt * sr, 4.f, 0.019f * sr));
+            ch[i * 2] = band[i];
+            ch[i * 2 + 1] = la * d;
+        }
+        splay(ch, NB * 2, 0.7f, 0.f, l, r);
+        const float makeup = 10.f;   // intrinsically sparse; lift toward roster level
+        l = std::tanh(l * makeup) * amp;
+        r = std::tanh(r * makeup) * amp;
+    }
+};
+
+// ── Twin Pks — (uncredited). "Retro stylings, timeless horror." ───────────────
+// No oscillator bank at all: tape/vinyl noise (dust + crackle + a pink-driven
+// sine whistle) is compressed hard, band-passed at the fundamental, warbled
+// through a wow/flutter delay, saturated with a second noise layer, lightly
+// bit-crushed, and band-passed again.
+struct TwinPksEngine : DroneEngine {
+    Dust2 dust1, dust2; Crackle crack1, crack2;
+    PinkNoise pinkF1, pinkF2; SinOsc whistle1, whistle2;
+    Biquad hp25, bpf1, bpf2;
+    Compander comp; Limiter lim;
+    LFPar depthLfo;
+    DelayC wowDelay; SinOsc wowLfo;
+    Decimator decim;
+    const char* name() const override { return "twin pks"; }
+    void init(uint32_t seed, float sr) override {
+        dust1.reset(seed + 1u); dust2.reset(seed + 2u);
+        crack1.reset(); crack2.reset();
+        pinkF1.reset(seed + 3u); pinkF2.reset(seed + 4u);
+        whistle1.reset(); whistle2.reset();
+        hp25.reset(); bpf1.reset(); bpf2.reset();
+        comp.reset(); lim.reset();
+        depthLfo.reset();
+        wowDelay.dl.init(0.06f, sr);
+        wowLfo.reset();
+        decim.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        // main tape-noise voice
+        float wet = dust1.process(10.f, st)
+                  + crack1.process(1.95f) * 0.2f
+                  + whistle1.process(pinkF1.process() * 0.5f * 7500.f + 40.f, st) * 0.04f;
+        wet = hp25.hpf(wet, 25.f, st);
+        // "shitty compression" at drive = 0.75
+        const float ratio = 0.0197f;        // linexp(0.75, 0,1, 0.15, 0.01)        // linexp(drive, 0,1, 0.15, 0.01)
+        const float threshold = 0.4475f;    // linlin(drive, 0,1, 0.8, 0.33)
+        const float gain = 1.f / ((1.f - threshold) * ratio + threshold);
+        wet = comp.process(wet, wet, threshold, 1.f, ratio, 0.1f, 1.f, st) * gain;
+        wet = lim.process(wet, 1.f, 0.0008f, st);
+        wet = bpf1.bpf(wet, hz, 0.4f, st);
+        // wow / flutter / warble at wow = 0.6
+        const float wowRate = 1.741f;       // linexp(0.6, 0,1, 0.5, 4)
+        const float depthBase = 7.696f;     // linexp(0.6, 0,1, 1, 30)
+        const float depthLfoAmt = 3.f;      // floor(linlin(0.6, 0,1, 1, 5))
+        float depth = depthLfo.process(depthLfoAmt * 0.1f, st) * depthLfoAmt + depthBase;
+        float wowMul = (std::exp2(depth / 1200.f) - 1.f) / (4.f * wowRate);
+        const float maxDelay = 0.0509f;     // ((2^(35/1200))-1)/(4*0.5) * 2.5
+        float dsec = wowLfo.process(wowRate, st, 2.f) * wowMul + wowMul + 1.f / 689.f;
+        wet = wowDelay.process(wet, rack::clamp(dsec, 4.f / sr, maxDelay) * sr);
+        // second noise layer + saturation (drive gain linexp(0.75) ≈ 1.99)
+        float noise2 = dust2.process(10.f, st)
+                     + crack2.process(1.95f) * 0.2f
+                     + whistle2.process(pinkF2.process() * 0.5f * 7500.f + 40.f, st) * 0.006f;
+        wet = std::tanh(wet * 1.987f + noise2);
+        // a little bitcrushing
+        wet = decim.process(wet, 24000.f, 16.f, st) * 0.33f + wet * 0.67f;
+        wet = bpf2.bpf(wet, hz, 0.4f, st);
+        wet = softclip(wet * 15.85f * amp) * 0.65f;    // +24 dB, trimmed to roster level
+        l = r = wet;
+    }
+};
+
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -2546,6 +2758,8 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new SunnoEngine());
     v.emplace_back(new NautilusEngine());
     v.emplace_back(new DrummEngine());
+    v.emplace_back(new TakitaEngine());
+    v.emplace_back(new TwinPksEngine());
     return v;
 }
 
