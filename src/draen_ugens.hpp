@@ -1100,6 +1100,34 @@ inline float sineShaper(float x, float limit) {
     return limit * std::sin(rack::clamp(x, -2.f * limit, 2.f * limit) * (float)M_PI_2 / limit);
 }
 
+// ── Phasor.ar — resettable ramp in [0, 1); `rate` in cycles per second ───────
+struct Phasor {
+    float phase = 0.f, prevTrig = 0.f;
+    void reset() { phase = 0.f; prevTrig = 0.f; }
+    float process(float trig, float rate, float st) {
+        if (trig > 0.f && prevTrig <= 0.f) phase = 0.f;
+        prevTrig = trig;
+        float out = phase;
+        phase += rate * st; phase -= std::floor(phase);
+        return out;
+    }
+};
+
+// ── Decimator.ar — sample-rate and bit-depth reducer ─────────────────────────
+struct Decimator {
+    float held = 0.f, phase = 1.f;
+    void reset() { held = 0.f; phase = 1.f; }
+    float process(float in, float rate, float bits, float st) {
+        phase += rate * st;
+        if (phase >= 1.f) {
+            phase -= std::floor(phase);
+            float q = std::exp2(bits - 1.f);
+            held = std::round(in * q) / q;
+        }
+        return held;
+    }
+};
+
 // ── Decay2.ar — difference of two exponential decays (attack/decay) ──────────
 struct Decay2 {
     float ya = 0.f, yb = 0.f;
