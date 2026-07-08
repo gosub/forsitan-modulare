@@ -249,6 +249,13 @@ struct Biquad {
                         clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
         return f.process(in);
     }
+    // DFM1 approximation: resonant low- (type 0) or high-pass (type 1) biquad
+    float dfm1(float in, float freqHz, float res, int type, float st) {
+        auto t = (type == 1) ? rack::dsp::TBiquadFilter<float>::HIGHPASS
+                             : rack::dsp::TBiquadFilter<float>::LOWPASS;
+        f.setParameters(t, clampFreq(freqHz, st), 0.5f + res * 8.f, 1.f);
+        return f.process(in);
+    }
     float hpf(float in, float freqHz, float st) {
         f.setParameters(rack::dsp::TBiquadFilter<float>::HIGHPASS,
                         clampFreq(freqHz, st), M_SQRT1_2, 1.f);
@@ -573,6 +580,124 @@ inline void rotate2(float x, float y, float pos, float& outL, float& outR) {
     float a = pos * (float)M_PI, c = std::cos(a), s = std::sin(a);
     outL = x * c - y * s; outR = x * s + y * c;
 }
+
+// ── fold — reflect x back into [lo, hi] (wavefolder) ─────────────────────────
+inline float foldOver(float x, float lo, float hi) {
+    if (hi <= lo) return lo;
+    float range = hi - lo, twice = 2.f * range;
+    float y = x - lo;
+    y -= twice * std::floor(y / twice);
+    if (y > range) y = twice - y;
+    return y + lo;
+}
+
+// ── Changed.kr — 1 when the input changes by more than `thresh`, else 0 ──────
+struct Changed {
+    float x1 = 0.f; bool first = true;
+    void reset() { x1 = 0.f; first = true; }
+    float process(float x, float thresh = 0.f) {
+        float d = (first || std::fabs(x - x1) > thresh) ? 1.f : 0.f;
+        x1 = x; first = false; return d;
+    }
+};
+
+// ── LFSaw.ar — non-bandlimited bipolar ramp [-1, 1] ──────────────────────────
+struct LFSaw {
+    float phase = 0.f;
+    void reset(float ph = 0.f) { phase = ph; }
+    float process(float freq, float st) {
+        phase += freq * st; phase -= std::floor(phase);
+        return 2.f * phase - 1.f;
+    }
+};
+
+// ── HenonC.ar — Hénon-map chaotic oscillator, interpolated at `freq` ─────────
+struct HenonC {
+    float phase = 0.f, x1 = 0.3f, x2 = 0.3f;
+    void reset() { phase = 0.f; x1 = 0.3f; x2 = 0.3f; }
+    float process(float freq, float a, float b, float st) {
+        phase += std::fabs(freq) * st;
+        while (phase >= 1.f) {
+            phase -= 1.f;
+            float x0 = 1.f - a * x1 * x1 + b * x2;
+            x0 = rack::clamp(x0, -2.f, 2.f);
+            x2 = x1; x1 = x0;
+        }
+        return x2 + (x1 - x2) * phase;      // linear interp between iterations
+    }
+};
+
+// ── Amplitude.kr — envelope follower (attack/release smoothing of |x|) ───────
+struct Amplitude {
+    float env = 0.f;
+    void reset() { env = 0.f; }
+    float process(float x, float atkT, float relT, float st) {
+        float a = std::fabs(x);
+        float coef = (a > env) ? ((atkT > 0.f) ? std::exp(-st / atkT) : 0.f)
+                               : ((relT > 0.f) ? std::exp(-st / relT) : 0.f);
+        env = a + coef * (env - a);
+        return env;
+    }
+};
+
+// ── OnePole.ar — one-pole filter, y = (1-|c|)*x + c*y1 (c may be negative) ────
+struct OnePole {
+    float y1 = 0.f;
+    void reset() { y1 = 0.f; }
+    float process(float x, float coef) {
+        y1 = (1.f - std::fabs(coef)) * x + coef * y1;
+        return y1;
+    }
+};
+
+// ── Balance2.ar — equal-power stereo balance of a stereo signal ──────────────
+inline void balance2(float l, float r, float pos, float level, float& outL, float& outR) {
+    float a = (rack::clamp(pos, -1.f, 1.f) * 0.5f + 0.5f) * (float)M_PI_2;
+    outL = l * std::cos(a) * level;
+    outR = r * std::sin(a) * level;
+}
+
+// ── FreeVerb — Jezar's public-domain Freeverb (mono in → mono out) ───────────
+// Faithful port of the classic algorithm: 8 parallel damped combs → 4 series
+// allpasses. Comb/allpass lengths are the original 44.1 kHz tunings, scaled to
+// the running sample rate. `mix` is the wet/dry balance (0 dry … 1 wet).
+struct FreeVerbMono {
+    static const int NC = 8, NA = 4;
+    std::vector<float> cbuf[NC], abuf[NA];
+    int cidx[NC] = {}, aidx[NA] = {}; float cfilt[NC] = {};
+    void init(float sr) {
+        static const int ctun[NC] = {1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617};
+        static const int atun[NA] = {556, 441, 341, 225};
+        float scale = sr / 44100.f;
+        for (int i = 0; i < NC; ++i) { cbuf[i].assign(std::max(1, (int)(ctun[i] * scale)), 0.f); cidx[i] = 0; cfilt[i] = 0.f; }
+        for (int i = 0; i < NA; ++i) { abuf[i].assign(std::max(1, (int)(atun[i] * scale)), 0.f); aidx[i] = 0; }
+    }
+    void reset() {
+        for (int i = 0; i < NC; ++i) { std::fill(cbuf[i].begin(), cbuf[i].end(), 0.f); cidx[i] = 0; cfilt[i] = 0.f; }
+        for (int i = 0; i < NA; ++i) { std::fill(abuf[i].begin(), abuf[i].end(), 0.f); aidx[i] = 0; }
+    }
+    float process(float in, float mix, float room, float damp) {
+        float feedback = room * 0.28f + 0.7f;
+        float damp1 = damp * 0.4f, damp2 = 1.f - damp1;
+        float input = in * 0.015f;              // fixedgain
+        float out = 0.f;
+        for (int i = 0; i < NC; ++i) {
+            float o = cbuf[i][cidx[i]];
+            cfilt[i] = o * damp2 + cfilt[i] * damp1;
+            cbuf[i][cidx[i]] = input + cfilt[i] * feedback;
+            if (++cidx[i] >= (int)cbuf[i].size()) cidx[i] = 0;
+            out += o;
+        }
+        for (int i = 0; i < NA; ++i) {
+            float bufout = abuf[i][aidx[i]];
+            float o = -out + bufout;
+            abuf[i][aidx[i]] = out + bufout * 0.5f;
+            if (++aidx[i] >= (int)abuf[i].size()) aidx[i] = 0;
+            out = o;
+        }
+        return in * (1.f - mix) + out * 3.f * mix;    // scalewet = 3
+    }
+};
 
 // ── Splay.ar — spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
