@@ -54,6 +54,7 @@ struct Draen : Module {
     float fadeGain  = 1.f;
     FadePhase fadePhase = STEADY;
     uint32_t seedCounter = 0x1u;
+    float curSampleRate = 0.f;   // engines are (re)initialised when this changes
 
     // persisted settings
     int   hzMode   = HZ_VOCT;
@@ -77,8 +78,8 @@ struct Draen : Module {
         configOutput(LEFT_OUTPUT, "Left");
         configOutput(RIGHT_OUTPUT, "Right");
         configLight(LEVEL_LIGHT, "Output level");
-
-        if (n > 0) engines[activeIdx]->init(nextSeed());
+        // engines are initialised lazily on the first process() call, once the
+        // real sample rate is known (delay-line engines need it to size buffers)
     }
 
     uint32_t nextSeed() { return seedCounter = seedCounter * 1664525u + 1013904223u; }
@@ -88,11 +89,8 @@ struct Draen : Module {
         fadeGain = 1.f;
         fadePhase = STEADY;
         levelEnv = 0.f;
-        if (!engines.empty()) engines[activeIdx]->init(nextSeed());
-    }
-
-    void onSampleRateChange() override {
-        if (!engines.empty()) engines[activeIdx]->init(nextSeed());
+        if (!engines.empty() && curSampleRate > 0.f)
+            engines[activeIdx]->init(nextSeed(), curSampleRate);
     }
 
     const char* engineName(int i) const {
@@ -120,6 +118,13 @@ struct Draen : Module {
     void process(const ProcessArgs& args) override {
         int n = (int)engines.size();
         if (n == 0) { outputs[LEFT_OUTPUT].setVoltage(0.f); outputs[RIGHT_OUTPUT].setVoltage(0.f); return; }
+
+        // (re)initialise the active engine when the sample rate changes (also the
+        // first call): delay-line engines size their buffers from it
+        if (args.sampleRate != curSampleRate) {
+            curSampleRate = args.sampleRate;
+            engines[activeIdx]->init(nextSeed(), curSampleRate);
+        }
 
         // ── controls ────────────────────────────────────────────────────────
         float pitch = params[HZ_PARAM].getValue();
@@ -156,7 +161,7 @@ struct Draen : Module {
                 } else if (fadeGain <= 0.f) {
                     fadeGain = 0.f;
                     activeIdx = cuedIdx;
-                    engines[activeIdx]->init(nextSeed());
+                    engines[activeIdx]->init(nextSeed(), curSampleRate);
                     fadePhase = FADE_IN;
                 }
                 break;

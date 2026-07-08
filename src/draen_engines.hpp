@@ -19,7 +19,7 @@ struct DroneEngine {
     virtual ~DroneEngine() {}
     virtual const char* name() const = 0;
     // (re)seed and clear all state; called when this engine becomes active.
-    virtual void init(uint32_t seed) = 0;
+    virtual void init(uint32_t seed, float sampleRate) = 0;
     // render one stereo sample. `st` is the sample time (1/sampleRate).
     virtual void process(float hz, float amp, float st, float& outL, float& outR) = 0;
 };
@@ -28,7 +28,7 @@ struct DroneEngine {
 struct SineEngine : DroneEngine {
     SinOsc osc;
     const char* name() const override { return "sine"; }
-    void init(uint32_t) override { osc.reset(); }
+    void init(uint32_t, float) override { osc.reset(); }
     void process(float hz, float amp, float st, float& l, float& r) override {
         l = r = osc.process(hz, st) * amp;
     }
@@ -38,7 +38,7 @@ struct SineEngine : DroneEngine {
 struct SquareEngine : DroneEngine {
     BlPulse osc;
     const char* name() const override { return "square"; }
-    void init(uint32_t) override { osc.reset(); }
+    void init(uint32_t, float) override { osc.reset(); }
     void process(float hz, float amp, float st, float& l, float& r) override {
         l = r = osc.process(hz, 0.5f, st) * amp;
     }
@@ -48,7 +48,7 @@ struct SquareEngine : DroneEngine {
 struct TriangleEngine : DroneEngine {
     LFTri osc;
     const char* name() const override { return "triangle"; }
-    void init(uint32_t) override { osc.reset(); }
+    void init(uint32_t, float) override { osc.reset(); }
     void process(float hz, float amp, float st, float& l, float& r) override {
         l = r = osc.process(hz, st) * amp;
     }
@@ -65,7 +65,7 @@ struct SupersawEngine : DroneEngine {
     SinOsc bpfLfo[N];       // SinOsc.kr(0.05*i, mul:100): filter sweep
     Biquad bpf[N];
     const char* name() const override { return "supersaw"; }
-    void init(uint32_t) override {
+    void init(uint32_t, float) override {
         for (int i = 0; i < N; ++i) {
             saw[i].reset(); freqLfo[i].reset(); bpfLfo[i].reset(); bpf[i].reset();
         }
@@ -94,7 +94,7 @@ struct HarmsWayEngine : DroneEngine {
     SinOsc centerOsc;
     float amRate[N] = {};
     const char* name() const override { return "harm's way"; }
-    void init(uint32_t seed) override {
+    void init(uint32_t seed, float) override {
         Rng rng; rng.seed(seed);
         for (int i = 0; i < N; ++i) {
             osc[i].reset();
@@ -128,7 +128,7 @@ struct ThxEngine : DroneEngine {
     LFNoise2 initN[V], destN[V];
     float fund[V] = {}, sweepF[V] = {}, panPos[V] = {};
     const char* name() const override { return "thx"; }
-    void init(uint32_t seed) override {
+    void init(uint32_t seed, float) override {
         Rng rng; rng.seed(seed);
         for (int i = 0; i < V; ++i) {
             fund[i]   = linlin(rng.uniform(), 0.f, 1.f, 100.f, 500.f);
@@ -185,7 +185,7 @@ struct HeckerEngine : DroneEngine {
     };
     Voice left[16], right[16];
     const char* name() const override { return "hecker"; }
-    void init(uint32_t seed) override {
+    void init(uint32_t seed, float) override {
         for (int i = 0; i < 16; ++i) {
             left[i].reset(seed + i * 101u + 1u);
             right[i].reset(seed + i * 211u + 1009u);
@@ -197,6 +197,184 @@ struct HeckerEngine : DroneEngine {
         const float makeup = 3.f;    // normalise toward the other engines' level
         l = std::tanh(sl * 100.f) * amp / 8.f * makeup;
         r = std::tanh(sr * 100.f) * amp / 8.f * makeup;
+    }
+};
+
+// ── Coil — @infinitedigits. "Traversing the tunnels of goats." ───────────────
+// 12 voices of Dust-triggered events: each fires an AR envelope with random
+// attack/release, crossfades a feedback-sine against noise, band-limits and
+// micro-delays it, pans it with a moving envelope, all fed into the shared
+// reverb. Slow, cavernous, ever-shifting.
+struct CoilEngine : DroneEngine {
+    static constexpr int V = 12;
+    static constexpr float detuning = 0.5f;
+    struct Voice {
+        Dust dPulse, dHit;
+        Impulse imp;
+        LFNoise0 nAtk, nRel;
+        Latch latchAtk, latchRel;
+        Trig trigEnv;
+        BPEnv env, env2, env3;
+        TChoose chPanL, chPanR, chWhich;
+        SinOsc detuneLfo, fbLfo;
+        SinOscFB oscFB;
+        WhiteNoise wn;
+        Biquad blp;
+        DelayC delayc;
+        LFNoise1 delayMod;
+        float delayRate = 7.f;
+        void init(uint32_t seed, float sr) {
+            Rng rng; rng.seed(seed);
+            dPulse.reset(seed + 1u); dHit.reset(seed + 2u);
+            imp.reset();
+            nAtk.reset(seed + 3u); nRel.reset(seed + 4u);
+            latchAtk.reset(); latchRel.reset(); trigEnv.reset();
+            env.reset(); env2.reset(); env3.reset();
+            chPanL.reset(seed + 5u); chPanR.reset(seed + 6u); chWhich.reset(seed + 7u);
+            detuneLfo.reset();
+            fbLfo.reset(rng.uniform());          // SinOsc.kr(0.2, Rand(0,2pi))
+            oscFB.reset();
+            wn.reset(seed + 8u);
+            blp.reset();
+            delayc.dl.init(0.05f, sr);
+            delayMod.reset(seed + 9u);
+            delayRate = 5.f + rng.uniform() * 5.f;   // Rand(5,10)
+        }
+        void process(float hz, int i, float st, float sr, float& outL, float& outR) {
+            static const float arrPan[2] = {-1.f, 1.f};
+            static const float arrWhich[2] = {0.f, 1.f};
+            float pulse = dPulse.process(0.5f, st) + imp.process(0.f, st);
+            float pulseHit = dHit.process(1.f, st);
+            float atk = latchAtk.process(linlin(nAtk.process(0.2f, st), -1.f, 1.f, 0.5f, 3.f), pulse);
+            float rel = latchRel.process(linlin(nRel.process(0.2f, st), -1.f, 1.f, 0.1f, 3.f), pulse);
+            float gate = trigEnv.process(pulseHit, atk + rel, st);
+            float lv[3] = {0.f, 1.f, 0.f}, tm[2] = {atk, rel};
+            float e = env.process(gate, lv, tm, 2, true, st);
+            float pl = chPanL.process(pulse, arrPan, 2);
+            float pr = chPanR.process(pulse, arrPan, 2);
+            float ws = chWhich.process(pulse, arrWhich, 2);
+            float lv2[3] = {0.f, pl, pr}, tm2[2] = {0.001f, atk + rel};
+            float e2 = env2.process(gate, lv2, tm2, 2, false, st);
+            float lv3[3] = {0.f, ws, 1.f - ws}, tm3[2] = {0.001f, atk + rel};
+            float e3 = env3.process(gate, lv3, tm3, 2, false, st);
+            float midi = cpsmidi(hz);
+            float det = linlin(detuneLfo.process(0.1f * i, st), -1.f, 1.f, midi - detuning * i, midi + detuning * i);
+            float fb = linlin(fbLfo.process(0.2f, st), -1.f, 1.f, 0.f, 0.5f);
+            float snd1 = oscFB.process(hz + det, fb, st);
+            float snd2 = wn.process() * 0.1f;
+            float snd = selectx(e3, snd1, snd2);
+            snd = blp.blowpass(snd, hz * 6.f, 0.6f, st);
+            float dt = (0.02f + 0.01f * delayMod.process(delayRate, st)) / 15.f;
+            snd = delayc.process(snd, dt * sr);
+            snd *= e;
+            pan2(snd, e2, 1.f, outL, outR);
+        }
+    };
+    Voice voices[V];
+    SchroederReverb reverb;
+    const char* name() const override { return "coil"; }
+    void init(uint32_t seed, float sr) override {
+        for (int i = 0; i < V; ++i) voices[i].init(seed + i * 40009u + 1u, sr);
+        reverb.init(seed + 99991u, sr);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float dryL = 0.f, dryR = 0.f;
+        for (int i = 0; i < V; ++i) {
+            float vl, vr; voices[i].process(hz, i, st, sr, vl, vr);
+            dryL += vl; dryR += vr;
+        }
+        dryL *= amp; dryR *= amp;
+        float rvL, rvR; reverb.process(dryL, dryR, st, sr, rvL, rvR);
+        const float makeup = 3.f;   // -20 dBamp original is quiet; lift to roster level
+        l = (dryL + 0.05f * rvL) * 0.1f * makeup;
+        r = (dryR + 0.05f * rvR) * 0.1f * makeup;
+    }
+};
+
+// ── Sachiko — @infinitedigits. "High-tone space-cutting." ────────────────────
+// 4 voices of DPW pulses, each modulated by a bank of very slow wandering
+// triangle LFOs, resonant-lowpassed, panned, and run through a long per-voice
+// comb; summed, saturated into a global Moog ladder, then the shared reverb.
+struct SachikoEngine : DroneEngine {
+    static constexpr int V = 4;
+    // one slow triangle LFO whose rate is itself slowly randomised (SC:
+    // LFTri.kr(LFNoise0.kr(rrand(1/60,1/3)).range(1/60,1/3)))
+    struct ModTri {
+        LFNoise0 rateNoise; LFTri tri; float rateHz = 0.1f;
+        void reset(uint32_t seed, float rHz) { rateNoise.reset(seed); tri.reset(); rateHz = rHz; }
+        float process(float st) {
+            float f = linlin(rateNoise.process(rateHz, st), -1.f, 1.f, 1.f / 60.f, 1.f / 3.f);
+            return tri.process(f, st);
+        }
+    };
+    struct Voice {
+        ModTri mod[8];
+        BlPulse pulse;
+        AttackEnv env;
+        Biquad rlpf;
+        CombC combL, combR;
+        LeakDC dcL, dcR;
+        LFNoise0 combModNoise; Lag combModLag;
+        float combBase = 0.35f, combDecay = 10.f, combRate = 0.1f;
+        void init(uint32_t seed, float sr) {
+            Rng rng; rng.seed(seed);
+            for (int k = 0; k < 8; ++k) {
+                float rHz = linlin(rng.uniform(), 0.f, 1.f, 1.f / 60.f, 1.f / 3.f);
+                mod[k].reset(seed + k * 17u + 1u, rHz);
+            }
+            pulse.reset();
+            env.reset(linlin(rng.uniform(), 0.f, 1.f, 1.f, 10.f));   // Env.asr(rrand(1,10))
+            rlpf.reset();
+            combL.dl.init(0.6f, sr); combR.dl.init(0.6f, sr);
+            dcL.reset(); dcR.reset();
+            combModNoise.reset(seed + 200u); combModLag.reset();
+            combBase  = linlin(rng.uniform(), 0.f, 1.f, 0.2f, 0.5f);   // rrand(0.2,0.5)
+            combDecay = linlin(rng.uniform(), 0.f, 1.f, 5.f, 15.f);    // rrand(5,15)
+            combRate  = linlin(rng.uniform(), 0.f, 1.f, 1.f / 60.f, 1.f / 3.f);
+        }
+        void process(float hz, float st, float sr, float& outL, float& outR) {
+            float modAmp   = linlin(mod[0].process(st), -1.f, 1.f, 0.2f, 0.5f);
+            float modWidth = linlin(mod[1].process(st), -1.f, 1.f, 0.2f, 0.8f);
+            float midi = cpsmidi(hz);
+            float modFreq = midicps(linlin(mod[2].process(st), -1.f, 1.f, midi - 0.5f, midi + 0.5f));
+            float s = pulse.process(modFreq, modWidth, st) * modAmp;
+            s *= env.process(st);
+            float cutoff = linexp(mod[4].process(st), -1.f, 1.f, hz, 20000.f);
+            float rq = linlin(mod[5].process(st), -1.f, 1.f, 0.01f, 1.f);
+            s = rlpf.rlpf(s, cutoff, rq, st);
+            float pan = linlin(mod[6].process(st), -1.f, 1.f, -0.5f, 0.5f);
+            float pL, pR; pan2(s, pan, 1.f, pL, pR);
+            float dtMod = linlin(combModLag.process(combModNoise.process(combRate, st), 0.5f, st), -1.f, 1.f, -0.2f, 0.f);
+            float dt = rack::clamp(combBase + dtMod, 0.001f, 0.5f);
+            float g = combFeedback(dt, combDecay);
+            outL = dcL.process(pL + combL.process(pL, dt * sr, g));
+            outR = dcR.process(pR + combR.process(pR, dt * sr, g));
+        }
+    };
+    Voice voices[V];
+    MoogFF moogL, moogR;
+    Lag moogLag; LFNoise0 moogNoise;
+    SchroederReverb reverb;
+    const char* name() const override { return "sachiko"; }
+    void init(uint32_t seed, float sr) override {
+        for (int i = 0; i < V; ++i) voices[i].init(seed + i * 60013u + 1u, sr);
+        moogL.reset(); moogR.reset();
+        moogLag.reset(); moogNoise.reset(seed + 5u);
+        reverb.init(seed + 88883u, sr);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float sumL = 0.f, sumR = 0.f;
+        for (int i = 0; i < V; ++i) { float vl, vr; voices[i].process(hz, st, sr, vl, vr); sumL += vl; sumR += vr; }
+        sumL *= 0.70710678f; sumR *= 0.70710678f;   // Splay of a stereo pair ~ 1/sqrt(2)
+        float cutoff = linexp(moogLag.process(moogNoise.process(0.25f, st), 4.f, st), -1.f, 1.f, hz * 10.f, 18000.f);
+        float mL = moogL.process(std::tanh(sumL), cutoff, 1.2f, st);   // MoogFF gain ~2 -> moderate res
+        float mR = moogR.process(std::tanh(sumR), cutoff, 1.2f, st);
+        float rvL, rvR; reverb.process(mL, mR, st, sr, rvL, rvR);
+        const float makeup = 2.f;
+        l = (mL + 0.01f * rvL) * amp / 2.f * makeup;
+        r = (mR + 0.01f * rvR) * amp / 2.f * makeup;
     }
 };
 
@@ -212,6 +390,8 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new HarmsWayEngine());
     v.emplace_back(new ThxEngine());
     v.emplace_back(new HeckerEngine());
+    v.emplace_back(new CoilEngine());
+    v.emplace_back(new SachikoEngine());
     return v;
 }
 
