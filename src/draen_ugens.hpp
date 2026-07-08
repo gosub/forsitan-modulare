@@ -27,7 +27,12 @@ constexpr float kTwoPi = 6.28318530718f;
 // Local RNG keeps noise off Rack's shared random:: state (audio-thread safe).
 struct Rng {
     uint32_t s = 0x2545F491u;
-    void seed(uint32_t v) { s = v ? v : 0x2545F491u; }
+    // avalanche-hash the seed so nearby seeds (e.g. s, s+7, s+14 for per-voice
+    // seeding) decorrelate — xorshift alone gives correlated first outputs
+    void seed(uint32_t v) {
+        v ^= v >> 16; v *= 0x7feb352du; v ^= v >> 15; v *= 0x846ca68bu; v ^= v >> 16;
+        s = v ? v : 0x2545F491u;
+    }
     float uniform() {  // [0, 1)
         s ^= s << 13; s ^= s >> 17; s ^= s << 5;
         return (s >> 8) * (1.f / 16777216.f);
@@ -415,10 +420,12 @@ struct DelayLine {
     }
 };
 
-// feedback coefficient for a comb/allpass to decay 60 dB over `decaySec`
+// feedback coefficient for a comb/allpass to decay 60 dB over `decaySec`;
+// a negative decaytime gives negative feedback of the same magnitude (SC)
 inline float combFeedback(float delaySec, float decaySec) {
-    if (decaySec <= 0.f) return 0.f;
-    return std::exp(-6.907755f * delaySec / decaySec);     // ln(0.001) = -6.9078
+    if (decaySec == 0.f) return 0.f;
+    float g = std::exp(-6.907755f * delaySec / std::fabs(decaySec));  // ln(0.001)
+    return (decaySec < 0.f) ? -g : g;
 }
 
 // ── CombL / CombC — feedback comb, linear / cubic interpolated tap ────────────
@@ -501,6 +508,71 @@ struct SchroederReverb {
         outL = L.process(inL, st, sr); outR = R.process(inR, st, sr);
     }
 };
+
+// ── CombN — feedback comb, non-interpolated tap ──────────────────────────────
+struct CombN {
+    DelayLine dl;
+    float process(float x, int delaySamp, float g) {
+        float d = dl.tapN(delaySamp); dl.write(x + g * d); return d;
+    }
+};
+
+// ── LFPulse.ar — non-bandlimited unipolar (0/1) pulse ────────────────────────
+struct LFPulse {
+    float phase = 0.f;
+    void reset(float ph = 0.f) { phase = ph; }
+    float process(float freq, float width, float st) {
+        phase += freq * st; phase -= std::floor(phase);
+        return (phase < width) ? 1.f : 0.f;
+    }
+};
+
+// ── LFPar.ar — parabolic oscillator (cosine-like, made of parabola arcs) ─────
+inline float lfparWave(float phase) {
+    phase -= std::floor(phase);
+    float x = 4.f * phase;
+    if (x < 1.f) return 1.f - x * x;
+    if (x < 3.f) { float y = x - 2.f; return y * y - 1.f; }
+    float y = x - 4.f; return 1.f - y * y;
+}
+struct LFPar {
+    float phase = 0.f;
+    void reset(float ph = 0.f) { phase = ph; }
+    float process(float freq, float st) {
+        phase += freq * st; phase -= std::floor(phase);
+        return lfparWave(phase);
+    }
+};
+
+// ── Dust2.ar — random bipolar impulses at an average density (Hz) ────────────
+struct Dust2 {
+    Rng rng;
+    void reset(uint32_t seed) { rng.seed(seed); }
+    float process(float density, float st) {
+        return (rng.uniform() < density * st) ? rng.bipolar() : 0.f;
+    }
+};
+
+// ── Crackle.ar — chaotic "crackling" generator (2nd-order chaotic map) ───────
+struct Crackle {
+    float y1 = 0.3f, y2 = 0.f;
+    void reset() { y1 = 0.3f; y2 = 0.f; }
+    float process(float param) {
+        float y0 = std::fabs(y1 * param - y2 - 0.05f);
+        y2 = y1; y1 = y0; return y0;
+    }
+};
+
+// ── softclip / Rotate2 helpers ───────────────────────────────────────────────
+inline float softclip(float x) {
+    float a = std::fabs(x);
+    if (a <= 0.5f) return x;
+    return (x < 0.f ? -1.f : 1.f) * (1.f - 0.25f / a);
+}
+inline void rotate2(float x, float y, float pos, float& outL, float& outR) {
+    float a = pos * (float)M_PI, c = std::cos(a), s = std::sin(a);
+    outL = x * c - y * s; outR = x * s + y * c;
+}
 
 // ── Splay.ar — spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
