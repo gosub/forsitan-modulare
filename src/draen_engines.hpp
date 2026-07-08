@@ -1594,6 +1594,536 @@ struct ShieldsEngine : DroneEngine {
     }
 };
 
+// ── Eno — @infinitedigits. "Music for airports." ──────────────────────────────
+// Two low sines under a plane of eight chorused saws voicing a slowly changing
+// chord, a Klank bank ringing the chord tones, and a "piano" that walks the
+// actual Music-for-Airports note sequences — a Karplus comb-string crossfaded
+// with a PolyPerc pulse — all through Freeverb.
+struct EnoEngine : DroneEngine {
+    // note sequences from the original (semitone offsets)
+    static const float* airportAt(int i, int& len) {
+        static const float a0[] = {5, 7, 4, 2, 0, 12, 7, 5, 7, 4, 2, 0};
+        static const float a1[] = {5, 7, 4, 2, 0, 12, 4, 7, 5, 0};
+        static const float a2[] = {-5, 2, 0, 4, 7, 12, 5, 2, 7, 4, 0, 7, 2, 5, 5, 2, 4, 0};
+        static const float a3[] = {7, 7, 2, 4, 4, 4, 2, 0, 7, 0, 0};
+        static const float* as[4] = {a0, a1, a2, a3};
+        static const int ln[4] = {12, 10, 18, 11};
+        len = ln[i]; return as[i];
+    }
+    static constexpr int NPL = 4;
+    const float* planeAt(int i) const {
+        static const float p0[] = {0, 4, 7, 12};
+        static const float p1[] = {4, 7, 11, 16};
+        static const float p2[] = {-3, 0, 4, 7};
+        static const float p3[] = {-3, 0, 5, 9};
+        static const float* ps[NPL] = {p0, p1, p2, p3};
+        return ps[i];
+    }
+    Dust dPlane; bool firstPlane = true;
+    PercEnv planeEnv; TDelay planeDelay; Dxrand planePick; int planeIdx = 0;
+    Dust dRate; bool firstRate = true; TChoose chRate; float rateMul = 1.f, noterate = 0.5f;
+    Impulse impNote;
+    Dust dSeq; bool firstSeq = true; Dxrand seqPick; int airportIdx = 0; int seqPos = 0;
+    float seqnote = 0.f;
+    SinOsc lowSine1, lowSine2, lowAm1, lowAm2; float amRate1 = 0.005f, amRate2 = 0.005f;
+    struct SawVoice {
+        BlSaw saw; SinOsc cutLfo; float cutRate = 0.05f, cutPhase = 0.f;
+        DelayC chor; LFNoise1 chorN; float chorRate = 7.f, chorBase = 0.02f;
+        LFNoise0 nPan; Lag panLag; Biquad lp;
+    };
+    static constexpr int NV = 8;
+    SawVoice sv[NV];
+    LFNoise0 nLadder; Lag ladderLag; MoogFF ladL, ladR;
+    Ringz klank[2][4]; PinkNoise pinkL, pinkR;
+    // piano
+    LFNoise0 nNoiseHz; Lag noiseHzLag; LFNoise2 pnoise; Decay2 pDecay; Impulse impNoise;
+    CombL string1, string2;
+    Biquad pRlp, pHp;
+    PercEnv polyEnv; BlPulse polyPulse; MoogFF polyFF;
+    LFNoise0 nMixRate; SinOsc mixLfo;
+    Biquad outLp[2], outHp[2];
+    FreeVerbMono fvL, fvR;
+    float introT = 0.f;
+    const char* name() const override { return "eno"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        dPlane.reset(seed + 1u); firstPlane = true;
+        planeEnv.reset(); planeDelay.reset(); planePick.reset(seed + 2u); planeIdx = 0;
+        dRate.reset(seed + 3u); firstRate = true; chRate.reset(seed + 4u);
+        rateMul = 0.78f + rng.uniform() * 0.54f;      // Rand(0.78,1.32)
+        noterate = 0.5f * rateMul;
+        impNote.reset();
+        dSeq.reset(seed + 5u); firstSeq = true; seqPick.reset(seed + 6u);
+        airportIdx = 0; seqPos = 0; seqnote = 0.f;
+        lowSine1.reset(); lowSine2.reset(); lowAm1.reset(); lowAm2.reset();
+        amRate1 = 0.001f + rng.uniform() * 0.009f;
+        amRate2 = 0.001f + rng.uniform() * 0.009f;
+        for (int i = 0; i < NV; ++i) {
+            sv[i].saw.reset();
+            sv[i].cutRate = linlin(rng.uniform(), 0.f, 1.f, 1.f / 30.f, 1.f / 10.f);
+            sv[i].cutPhase = rng.uniform() * kTwoPi;
+            sv[i].cutLfo.reset();
+            sv[i].chor.dl.init(0.05f, sr);
+            sv[i].chorN.reset(seed + 10u + i);
+            sv[i].chorRate = 5.f + rng.uniform() * 5.f;
+            sv[i].chorBase = 0.01f + rng.uniform() * 0.02f;
+            sv[i].nPan.reset(seed + 30u + i); sv[i].panLag.reset();
+            sv[i].lp.reset();
+        }
+        nLadder.reset(seed + 50u); ladderLag.reset(); ladL.reset(); ladR.reset();
+        for (int c = 0; c < 2; ++c)
+            for (int j = 0; j < 4; ++j) klank[c][j].reset();
+        pinkL.reset(seed + 60u); pinkR.reset(seed + 61u);
+        nNoiseHz.reset(seed + 70u); noiseHzLag.reset(); pnoise.reset(seed + 71u);
+        pDecay.reset(); impNoise.reset();
+        string1.dl.init(1.0f, sr); string2.dl.init(1.0f, sr);
+        pRlp.reset(); pHp.reset();
+        polyEnv.reset(); polyPulse.reset(); polyFF.reset();
+        nMixRate.reset(seed + 80u); mixLfo.reset();
+        for (int c = 0; c < 2; ++c) { outLp[c].reset(); outHp[c].reset(); }
+        fvL.init(sr); fvR.init(sr);
+        introT = 0.f;
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float note = cpsmidi(hz);
+        // slow chord ("planes") selection, with a dip on each change
+        float planeTrig = dPlane.process(1.f / 30.f, st) + (firstPlane ? 1.f : 0.f);
+        firstPlane = false;
+        float planeenv = 1.f - planeEnv.process(planeTrig, 3.f, 10.f, -4.f, st) * 0.9f;
+        if (planeDelay.process(planeTrig, 3.f, st) > 0.f) planeIdx = planePick.next(NPL);
+        const float* plane = planeAt(planeIdx);
+        // note pulse rate: TChoose([0.02,0.05,1,2,0.5,0.25,2]/2) * Rand(0.78,1.32)
+        static const float rateVals[7] = {0.01f, 0.025f, 0.5f, 1.f, 0.25f, 0.125f, 1.f};
+        float rateTrig = dRate.process(1.f, st) + (firstRate ? 1.f : 0.f);
+        firstRate = false;
+        noterate = chRate.process(rateTrig, rateVals, 7) * rateMul;
+        if (noterate <= 0.f) noterate = 0.25f * rateMul;
+        float notepulse = impNote.process(noterate, st);
+        // airport sequence walk
+        float seqTrig = dSeq.process(0.1f, st) + (firstSeq ? 1.f : 0.f);
+        firstSeq = false;
+        if (seqTrig > 0.f) airportIdx = seqPick.next(4);
+        int alen; const float* airport = airportAt(airportIdx, alen);
+        if (notepulse > 0.f) { seqnote = airport[seqPos % alen]; ++seqPos; }
+        // low sines
+        float snd = lowSine1.process(midicps(note - 24.f), st)
+                    * linlin(lowAm1.process(amRate1, st), -1.f, 1.f, 0.05f, 0.15f);
+        snd += lowSine2.process(midicps(note - 12.f), st)
+               * linlin(lowAm2.process(amRate2, st), -1.f, 1.f, 0.001f, 0.05f);
+        // eight chorused saw voices on the plane chord
+        float planeL = 0.f, planeR = 0.f;
+        for (int i = 0; i < NV; ++i) {
+            SawVoice& w = sv[i];
+            float off = plane[i % 4] + ((i % 4) == 0 ? -36.f : -24.f);
+            float s = w.saw.process(midicps(note + off), st) * 0.9f;
+            float cut = linexp(w.cutLfo.process(w.cutRate, st, w.cutPhase), -1.f, 1.f, hz, hz * 5.f);
+            s = w.lp.lpf(s, cut, st);
+            float dt = (w.chorBase + 0.01f * w.chorN.process(w.chorRate, st)) / 15.f;
+            s = w.chor.process(s, rack::clamp(dt * sr, 8.f, 0.045f * sr));
+            float pan = w.panLag.process(w.nPan.process(1.f / 3.f, st), 3.f, st);
+            float vl, vr; pan2(s, pan, 1.f / 7.f, vl, vr);
+            planeL += vl; planeR += vr;
+        }
+        float sndL = snd + planeenv * planeL;
+        float sndR = snd + planeenv * planeR;
+        float lcut = linexp(ladderLag.process(nLadder.process(1.f / 6.f, st), 6.f, st), -1.f, 1.f, hz * 2.f, hz * 60.f);
+        sndL = ladL.process(std::tanh(sndL), lcut, 0.f, st);
+        sndR = ladR.process(std::tanh(sndR), lcut, 0.f, st);
+        // Klank ringing the chord tones (per-side pink noise excitation)
+        float kl = 0.f, kr_ = 0.f;
+        float exL = pinkL.process() * 0.004f, exR = pinkR.process() * 0.004f;
+        for (int j = 0; j < 4; ++j) {
+            float f = midicps(note + plane[j]);
+            kl += klank[0][j].process(exL, f, 1.f, st);
+            kr_ += klank[1][j].process(exR, f, 1.f, st);
+        }
+        sndL += 0.55f * kl; sndR += 0.55f * kr_;
+        // piano 1: noise burst into a detuned comb pair (Karplus string)
+        float noiseHz = linlin(noiseHzLag.process(nNoiseHz.process(0.1f, st), 10.f, st), -1.f, 1.f, 2000.f, 5000.f);
+        float pianohz = std::max(midicps(note + seqnote - 12.f), 2.f);
+        float nz = pnoise.process(noiseHz, st) * pDecay.process(impNoise.process(noterate, st), 0.01f, 1.f, st);
+        float dt1 = rack::clamp(sr / (pianohz * 1.0005f), 2.f, 0.95f * sr);
+        float dt2 = rack::clamp(sr / (pianohz * 0.9996f), 2.f, 0.95f * sr);
+        float string = string1.process(nz, dt1, combFeedback(dt1 / sr, 6.f))
+                     + string2.process(nz, dt2, combFeedback(dt2 / sr, 6.f));
+        float piano = pRlp.rlpf(string, 2.f * pianohz, 4.f, st) * amp;
+        piano = pHp.hpf(piano, 40.f, st);
+        // piano 2: PolyPerc (perc-enveloped pulse through a Moog)
+        float piano2 = polyEnv.process(notepulse, 0.01f, 4.f, -4.f, st)
+                     * polyFF.process(polyPulse.process(midicps(note + seqnote), 0.5f, st), hz * 1.5f, 2.f, st);
+        float mixFr = linlin(mixLfo.process(linlin(nMixRate.process(0.1f, st), -1.f, 1.f, 0.01f, 0.1f), st), -1.f, 1.f, 0.1f, 0.9f);
+        float pmix = selectx(mixFr, piano * 0.3f, piano2);
+        sndL += pmix; sndR += pmix;
+        float locut = midicps(note + 36.f);
+        sndL = outHp[0].hpf(outLp[0].lpf(sndL, locut, st), 120.f, st);
+        sndR = outHp[1].hpf(outLp[1].lpf(sndR, locut, st), 120.f, st);
+        introT += st;
+        float intro = rack::clamp((introT - 0.5f) / 3.f, 0.f, 1.f);
+        sndL *= intro; sndR *= intro;
+        const float makeup = 1.f;
+        l = fvL.process(sndL, 0.45f, 1.f, 0.5f) * amp * makeup;
+        r = fvR.process(sndR, 0.45f, 1.f, 0.5f) * amp * makeup;
+    }
+};
+
+// ── Belong — @infinitedigits. "Thick, enveloping, shimmering." ────────────────
+// Ten chorused saws walking scrambled chord tones, enveloped differently per
+// side, overdubbing themselves onto a 16-beat tape loop; with a pulse+noise
+// bass, a comb-bank reverb, and a spaced-out kick that only appears when the
+// amp knob is pushed past 0.7.
+struct BelongEngine : DroneEngine {
+    float bpm = 90.f;
+    float chords[4][3]; float notesAll[12];
+    Impulse impPulse, impFive, impFourth, impWin;
+    Impulse impEighth, impQuarter, impHalf;
+    Dseq seqChord, seqNote, seqOct;
+    TExpRand selRand;
+    float bassnote = 0.f, noteVal = 0.f, octOff = 0.f;
+    SinOsc envSelLfo; float envSelRate = 0.15f, envSelPhase = 0.f;
+    TExpRand et1[3], et2[3];
+    BPEnv envL, envR;
+    Lag noteLag;
+    static constexpr int NS = 10;
+    BlSaw saws[NS]; DelayC chor[NS]; LFNoise1 chorN[NS];
+    float chorRate[NS] = {}, chorBase[NS] = {};
+    LFNoise0 nCut; float cutConst = 0.f; Lag cutLag; MoogFF ladder;
+    // tape loop
+    std::vector<float> tapeL, tapeR; int loopN = 0, tapePos = 0;
+    float recT = 0.f; BPEnv winEnv;
+    // bass
+    Lag bassLag; SinOsc bassWidthLfo, bassNoiseAmpLfo, bassNoiseCutLfo, bassLpLfo, bassTremLfo;
+    float noiseT = 3.5f, noiseA = 3.5f, tremRate = 0.2f, tremPhase = 0.f;
+    BlPulse bassOsc; WhiteNoise wn; Biquad bassNoiseLp, bassHp[2], bassLp[2];
+    LFTri bassPanLfo;
+    float bassSwellT = 0.f;
+    // kick
+    SinOsc kickSelLfo; float kickSelRate = 1.f / 60.f;
+    TDelay kickDelay;
+    BPEnv kickEnv0, kickEnv1; LFPulse kickPulse; WhiteNoise kickNoise;
+    Biquad kickLp, kickEq; SinOsc kickSin; PercEnv kickGate;
+    CombVerb<16, 5> kickVerb;
+    // reverb + out
+    CombVerb<8, 4> verb;
+    AttackEnv intro;
+    Biquad outHp[2];
+    const char* name() const override { return "belong"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        bpm = 60.f + rng.uniform() * 70.f;
+        // chords scrambled at build time
+        static const float base[4][3] = {{4, 7, 11}, {0, 4, 7}, {7, 11, 14}, {2, 6, 9}};
+        int order[4] = {0, 1, 2, 3};
+        for (int i = 3; i > 0; --i) { int j = (int)(rng.uniform() * (i + 1)); std::swap(order[i], order[j]); }
+        for (int i = 0; i < 4; ++i) {
+            float c[3] = {base[order[i]][0], base[order[i]][1], base[order[i]][2]};
+            for (int k = 2; k > 0; --k) { int j = (int)(rng.uniform() * (k + 1)); std::swap(c[k], c[j]); }
+            for (int k = 0; k < 3; ++k) chords[i][k] = c[k];
+        }
+        for (int k = 0; k < 3; ++k)
+            for (int i = 0; i < 4; ++i) notesAll[k * 4 + i] = chords[i][k];   // flop.flatten
+        impPulse.reset(); impFive.reset(); impFourth.reset(); impWin.reset();
+        impEighth.reset(); impQuarter.reset(); impHalf.reset();
+        seqChord.reset(); seqNote.reset(); seqOct.reset();
+        selRand.reset(seed + 1u);
+        bassnote = 0.f; noteVal = 0.f; octOff = 0.f;
+        envSelRate = 0.1f + rng.uniform() * 0.1f; envSelPhase = rng.uniform() * 2.f;
+        envSelLfo.reset();
+        for (int k = 0; k < 3; ++k) { et1[k].reset(seed + 10u + k); et2[k].reset(seed + 20u + k); }
+        envL.reset(); envR.reset(); noteLag.reset();
+        for (int i = 0; i < NS; ++i) {
+            saws[i].reset();
+            chor[i].dl.init(0.05f, sr);
+            chorN[i].reset(seed + 30u + i);
+            chorRate[i] = 5.f + rng.uniform() * 5.f;
+            chorBase[i] = 0.01f + rng.uniform() * 0.02f;
+        }
+        nCut.reset(seed + 50u);
+        { Rng r2; r2.seed(seed + 51u); cutConst = r2.bipolar(); }
+        cutLag.reset(); ladder.reset();
+        loopN = std::max((int)(16.f * 60.f / bpm * sr), 1);
+        tapeL.assign(loopN, 0.f); tapeR.assign(loopN, 0.f);
+        tapePos = 0; recT = 0.f; winEnv.reset();
+        bassLag.reset(); bassWidthLfo.reset(); bassNoiseAmpLfo.reset();
+        bassNoiseCutLfo.reset(); bassLpLfo.reset();
+        noiseT = 3.f + rng.uniform(); noiseA = 3.f + rng.uniform();
+        tremRate = 0.1f + rng.uniform() * 0.2f; tremPhase = rng.uniform() * 2.f;
+        bassTremLfo.reset();
+        bassOsc.reset(); wn.reset(seed + 60u); bassNoiseLp.reset();
+        for (int c = 0; c < 2; ++c) { bassHp[c].reset(); bassLp[c].reset(); outHp[c].reset(); }
+        bassPanLfo.reset(); bassSwellT = 0.f;
+        kickSelRate = 1.f / (40.f + rng.uniform() * 40.f);
+        kickSelLfo.reset(); kickDelay.reset();
+        kickEnv0.reset(); kickEnv1.reset(); kickPulse.reset(); kickNoise.reset(seed + 70u);
+        kickLp.reset(); kickEq.reset(); kickSin.reset(); kickGate.reset();
+        kickVerb.init(seed + 80u, sr);
+        verb.init(seed + 90u, sr);
+        intro.reset(5.f);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float beat = 60.f / bpm;
+        float pulse = impPulse.process(1.f / (4.f * beat), st);
+        float five = impFive.process(5.f / (4.f * beat), st);
+        float fourth = impFourth.process(1.f / (16.f * beat), st);
+        float eighth = impEighth.process(1.f / (32.f * beat), st);
+        float quarter = impQuarter.process(1.f / (16.f * beat), st);
+        float half = impHalf.process(1.f / (8.f * beat), st);
+        float hzMidi = cpsmidi(hz);
+        if (pulse > 0.f) {
+            int ci = seqChord.next(4);
+            bassnote = std::min(chords[ci][0], std::min(chords[ci][1], chords[ci][2]));
+        }
+        float sel = selRand.process(pulse, 0.01f, 6.f);
+        float noteTrig = (sel >= 4.f) ? five : pulse;
+        if (noteTrig > 0.f) noteVal = notesAll[seqNote.next(12)];
+        static const float octs[4] = {12, -12, 0, 24};
+        if (fourth > 0.f) octOff = octs[seqOct.next(4)];
+        // per-side envelopes, re-randomized every pulse
+        float envSel = envSelLfo.process(envSelRate, st, envSelPhase) * 0.5f + 0.5f;
+        float t1[3], t2[3], s1 = 0.f, s2 = 0.f;
+        t1[0] = et1[0].process(pulse, 0.2f, 1.f); t1[1] = et1[1].process(pulse, 0.01f, 1.f); t1[2] = et1[2].process(pulse, 0.01f, 1.f);
+        t2[0] = et2[0].process(pulse, 0.2f, 1.f); t2[1] = et2[1].process(pulse, 0.01f, 1.f); t2[2] = et2[2].process(pulse, 0.01f, 1.f);
+        for (int k = 0; k < 3; ++k) { s1 += t1[k]; s2 += t2[k]; }
+        for (int k = 0; k < 3; ++k) { t1[k] *= 4.f * beat / s1; t2[k] *= 4.f * beat / s2; }
+        static const float elv[4] = {0.f, 1.f, 1.f, 0.f};
+        float e1 = envL.process(pulse, elv, t1, 3, true, st);
+        float e2 = envR.process(pulse, elv, t2, 3, true, st);
+        e1 = selectx(envSel, 1.f, e1);
+        e2 = selectx(envSel, 1.f, e2);
+        // saw stack (all voices on the same lagged note, chorused apart)
+        float noteHz = noteLag.process(midicps(noteVal + octOff + hzMidi), 0.02f, st);
+        float stack = 0.f;
+        for (int i = 0; i < NS; ++i) {
+            float s = saws[i].process(noteHz, st);
+            float dt = (chorBase[i] + 0.01f * chorN[i].process(chorRate[i], st)) / 15.f;
+            s = chor[i].process(s, rack::clamp(dt * sr, 8.f, 0.045f * sr));
+            stack += s * 0.25f;
+        }
+        stack *= (float)M_SQRT1_2;   // Pan2(x, 0)
+        float lcut = linexp(cutLag.process(nCut.process(1.f / 6.f, st) + cutConst, 6.f, st), -1.f, 1.f, hz * 8.f, hz * 15.f);
+        stack = ladder.process(std::tanh(stack), lcut, 0.f, st);
+        float sndL = stack * e1, sndR = stack * e2;
+        // tape loop overdub
+        recT += st;
+        float recamt = rack::clamp((recT - 16.f * beat) / 0.1f, 0.f, 1.f) * 0.9f;
+        float tapePlayL = tapeL[tapePos], tapePlayR = tapeR[tapePos];
+        float alevel = std::min(2.f * amp, 1.f);
+        sndL = sndL * 0.5f + tapePlayL * recamt * alevel;
+        sndR = sndR * 0.5f + tapePlayR * recamt * alevel;
+        float wtm[3] = {0.1f, std::max(16.f * beat - 0.2f, 0.1f), 0.1f};
+        float win = winEnv.process(impWin.process(1.f / (16.f * beat), st), elv, wtm, 3, false, st);
+        tapeL[tapePos] = sndL * win; tapeR[tapePos] = sndR * win;
+        if (++tapePos >= loopN) tapePos = 0;
+        // bass
+        float basshz = midicps(bassnote + hzMidi);
+        for (int k = 0; k < 3; ++k) if (basshz > 90.f) basshz *= 0.5f;
+        basshz = bassLag.process(basshz, 0.1f, st);
+        float width = linlin(bassWidthLfo.process(1.f / 3.f, st), -1.f, 1.f, 0.2f, 0.4f);
+        float bass = bassOsc.process(basshz, width, st);
+        float nAmp = linlin(bassNoiseAmpLfo.process(1.f / noiseT, st), -1.f, 1.f, 1.f, noiseA);
+        float ncut = linlin(bassNoiseCutLfo.process(0.123f, st), -1.f, 1.f, 1.5f, 2.5f) * basshz;
+        bass += bassNoiseLp.lpf(wn.process() * nAmp, ncut, st);
+        float bl, br;
+        pan2(bass, linlin(bassPanLfo.process(1.f / 6.12f, st), -1.f, 1.f, -0.2f, 0.2f), 1.f, bl, br);
+        float bcut = linlin(bassLpLfo.process(0.1f, st), -1.f, 1.f, 2.f, 3.f) * basshz;
+        bl = bassLp[0].lpf(bassHp[0].hpf(bl, 20.f, st), bcut, st);
+        br = bassLp[1].lpf(bassHp[1].hpf(br, 20.f, st), bcut, st);
+        bassSwellT += st;
+        float swell = rack::clamp((bassSwellT - 6.f) / 6.f, 0.f, 1.f) * 0.2f;
+        float trem = linlin(bassTremLfo.process(tremRate, st, tremPhase), -1.f, 1.f, 0.f, 0.2f);
+        float bgain = (trem + swell) * 0.1f;   // * -20 dB
+        sndL += bgain * bl; sndR += bgain * br;
+        // kick (gated: only when the amp knob is past 0.7)
+        float kick = 0.f;
+        {
+            static const int NOPT = 9;
+            float pulses[NOPT] = {eighth, eighth, quarter, half, half, pulse, pulse, pulse, pulse};
+            int ki = rack::clamp((int)((kickSelLfo.process(kickSelRate, st, 4.712389f) * 0.5f + 0.5f) * 9.f), 0, NOPT - 1);
+            float ktrig = kickDelay.process(pulses[ki], 2.f * beat, st);
+            static const float k0lv[4] = {0.5f, 1.f, 0.5f, 0.f};
+            static const float k0tm[3] = {0.005f, 0.06f, 15.6f};
+            float env0 = kickEnv0.process(ktrig, k0lv, k0tm, 3, false, st);
+            static const float k1lv[3] = {110.f, 59.f, 29.f};
+            static const float k1tm[2] = {0.005f, 0.29f};
+            float env1m = midicps(kickEnv1.process(ktrig, k1lv, k1tm, 2, false, st));
+            float out = kickPulse.process(env1m, 0.5f, st) - 0.5f;
+            out += kickNoise.process() * 60.f;
+            out = kickLp.lpf(out, env1m * 1.5f, st) * env0;
+            out += kickSin.process(env1m, st, 0.5f) * env0;
+            out = rack::clamp(out * 1.2f, -1.f, 1.f);
+            out *= kickGate.process(ktrig, 0.01f, 2.f, -4.f, st);
+            float kwL, kwR;
+            kickVerb.process(out, out, st, sr, kwL, kwR);
+            float ksum = out + 0.7f * (kwL + kwR) * 0.5f;
+            ksum = kickEq.peakeq(ksum, basshz, 1.f, 12.f, st);
+            kick = ksum * 0.0631f;                       // -24 dB
+        }
+        float kgate = (amp > 0.7f) ? 1.f : 0.f;
+        sndL = sndL * 0.6f + kgate * kick;
+        sndR = sndR * 0.6f + kgate * kick;
+        // reverb
+        float wL, wR;
+        verb.process(sndL, sndR, st, sr, wL, wR);
+        sndL += 0.4f * wL; sndR += 0.4f * wR;
+        float env = intro.process(st);
+        const float makeup = 1.6f;
+        l = outHp[0].hpf(sndL * amp * env * 0.5f, 40.f, st) * makeup;
+        r = outHp[1].hpf(sndR * amp * env * 0.5f, 40.f, st) * makeup;
+    }
+};
+
+// ── Ruins — @rplktr & @sixolet. "A reality darker than fiction." ──────────────
+// Metallic 2- and 3-operator FM hits (after James McCartney's "100 FM Synths")
+// fired by a self-clocked trigger loop, drowned in a very long reverb whose
+// level warbles with tape-style wow and flutter, over a windy noise floor.
+// Only the demand-selected instrument is rendered; all envelopes share the
+// global trigger, so switching mid-decay lands at the right envelope phase.
+struct RuinsEngine : DroneEngine {
+    static constexpr int NI = 12, NOPS = 6;
+    struct Op {
+        float atk = 0.1f, rel = 0.5f, lvl = 0.5f, mult = 1.f, phase = 0.f;
+        SinOsc osc[2];
+    };
+    struct Instr {
+        int kind = 0; float det2 = 0.f;
+        Op ops[NOPS];
+    };
+    Instr ins[NI];
+    Rng rng;
+    float trigElapsed = 1e9f;
+    float rate = 1.f; float sinceTrig = 1e9f; bool first = true;
+    Drand dRate, dInt1, dInt2, dChord, dVelo, dInstr; CoinGate coin;
+    float int1 = 1.f, int2 = 1.f, velo = 1.f; int which = 0;
+    LFNoise2 panN[2];
+    SinOsc wobbleOsc, flutterOsc; LFNoise2 flutterVar;
+    LFNoise0 nNoiseHz; Lag noiseHzLag; SinOsc noiseVol; LFNoise2 wind[2];
+    Compander compL, compR;
+    GVerbApprox gverb;
+    Limiter limL, limR;
+    const char* name() const override { return "ruins"; }
+    void init(uint32_t seed, float sr) override {
+        rng.seed(seed);
+        for (int i = 0; i < NI; ++i) {
+            Instr& I = ins[i];
+            I.kind = std::min((int)(rng.uniform() * 3), 2);
+            float d = (rng.uniform() * 2.f - 1.f) * 1.8f;
+            I.det2 = d * d;
+            for (int o = 0; o < NOPS; ++o) {
+                Op& op = I.ops[o];
+                op.atk = 0.001f * std::pow(400.f, rng.uniform());     // exprand(0.001, 0.4)
+                op.rel = 0.1f * std::pow(20.f, rng.uniform());        // exprand(0.1, 2.0)
+                bool carrier = (I.kind == 0) ? (o % 2 == 1)
+                             : (I.kind == 1 ? (o % 3 == 2) : (o % 3 != 0));
+                float u1 = rng.uniform(), u2 = rng.uniform();
+                if (carrier) {
+                    op.mult = std::floor(10.f * std::min(u1, u2)) + 1.f;   // linrand(10)+1
+                    float m = 0.5f + rng.uniform() * 0.1f;                 // rrand(0.5, 0.6)
+                    float x = rng.uniform() * m; op.lvl = x * x;
+                } else {
+                    op.mult = std::floor(5.f * std::min(u1, u2)) + 1.f;    // linrand(5)+1
+                    float x = rng.uniform() * 3.f; op.lvl = x * x;
+                }
+                float p = rng.uniform() * 1.3f;
+                op.phase = (!carrier) ? p * p * p : 0.f;                   // 1.3.rand.cubed
+                op.osc[0].reset(rng.uniform()); op.osc[1].reset(rng.uniform());
+            }
+        }
+        trigElapsed = 1e9f; rate = 1.f; sinceTrig = 1e9f; first = true;
+        dRate.reset(seed + 1u); dInt1.reset(seed + 2u); dInt2.reset(seed + 3u);
+        dChord.reset(seed + 4u); dVelo.reset(seed + 5u); dInstr.reset(seed + 6u);
+        coin.reset(seed + 7u);
+        int1 = int2 = 1.f; velo = 1.f; which = 0;
+        panN[0].reset(seed + 8u); panN[1].reset(seed + 9u);
+        wobbleOsc.reset(); flutterOsc.reset(); flutterVar.reset(seed + 10u);
+        nNoiseHz.reset(seed + 11u); noiseHzLag.reset(); noiseVol.reset();
+        wind[0].reset(seed + 12u); wind[1].reset(seed + 13u);
+        compL.reset(); compR.reset();
+        gverb.init(seed + 14u, sr);
+        limL.reset(); limR.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        static const float rates[12] = {1, 1, 1, 1, 2, 2, 2, 4, 4, 8, 8, 16};
+        static const float ivs1[17] = {0.25f, 0.891f, 0.5f, 0.5f, 0.5f, 1, 1, 1, 1, 1, 1,
+                                       1.189f, 1.782f, 2, 2, 2, 4};
+        static const float ivs2[9] = {0.25f, 0.891f, 0.5f, 1, 1.189f, 1.498f, 1.782f, 2, 2.378f};
+        static const float chordP[7] = {0, 0, 0, 0, 1, 1, 1};
+        static const float velos[7] = {1.f, 1.f, 1.f, 0.66f, 0.66f, 0.33f, 0.1f};
+        // self-clocked trigger: period = the demand-picked "rate" in seconds
+        sinceTrig += st;
+        if (first || sinceTrig >= rate) {
+            first = false; sinceTrig = 0.f;
+            rate = rates[dRate.next(12)];
+            int1 = ivs1[dInt1.next(17)];
+            int2 = ivs2[dInt2.next(9)];
+            if (chordP[dChord.next(7)] < 0.5f) int2 = int1;
+            velo = velos[dVelo.next(7)];
+            if (rng.uniform() < 0.69f) which = dInstr.next(NI);            // CoinGate(0.69)
+            trigElapsed = 0.f;
+        }
+        trigElapsed += st;
+        float t = trigElapsed;
+        // render only the selected instrument, on both interval channels
+        Instr& I = ins[which];
+        float freqs[2] = {hz * int1 + I.det2, hz * int2 + I.det2};
+        auto envAt = [&](const Op& op) -> float {
+            if (t < op.atk) return envCurve(t / op.atk, 4.f) * op.lvl;
+            float u = (t - op.atk) / op.rel;
+            if (u >= 1.f) return 0.f;
+            return (1.f - envCurve(u, -4.f)) * op.lvl;
+        };
+        float sL = 0.f, sR = 0.f;
+        float pans[2] = {panN[0].process(0.05f, st), panN[1].process(0.05f, st)};
+        for (int c = 0; c < 2; ++c) {
+            float f = freqs[c], out = 0.f;
+            Op* op = I.ops;
+            if (I.kind == 0) {
+                for (int k = 0; k < 3; ++k) {
+                    float m = op[k * 2].osc[c].process(f * op[k * 2].mult, st, op[k * 2].phase) * envAt(op[k * 2]);
+                    out += op[k * 2 + 1].osc[c].process(f * op[k * 2 + 1].mult, st, m) * envAt(op[k * 2 + 1]);
+                }
+            } else if (I.kind == 1) {
+                for (int k = 0; k < 2; ++k) {
+                    float m = op[k * 3].osc[c].process(f * op[k * 3].mult, st, op[k * 3].phase) * envAt(op[k * 3]);
+                    m = op[k * 3 + 1].osc[c].process(f * op[k * 3 + 1].mult, st, m) * envAt(op[k * 3 + 1]);
+                    out += op[k * 3 + 2].osc[c].process(f * op[k * 3 + 2].mult, st, m) * envAt(op[k * 3 + 2]);
+                }
+            } else {
+                for (int k = 0; k < 2; ++k) {
+                    float m = op[k * 3].osc[c].process(f * op[k * 3].mult, st, op[k * 3].phase) * envAt(op[k * 3]);
+                    out += op[k * 3 + 1].osc[c].process(f * op[k * 3 + 1].mult, st, m) * envAt(op[k * 3 + 1]);
+                    out += op[k * 3 + 2].osc[c].process(f * op[k * 3 + 2].mult, st, m) * envAt(op[k * 3 + 2]);
+                }
+            }
+            float pl, pr;
+            pan2(out, rack::clamp(pans[c], -1.f, 1.f), velo, pl, pr);
+            sL += pl; sR += pr;
+        }
+        float soundL = 0.2f * 0.5f * sL, soundR = 0.2f * 0.5f * sR;
+        soundL = compL.process(soundL, soundL, 0.1f, 1.f, 0.1f, 0.01f, 0.1f, st);
+        soundR = compR.process(soundR, soundR, 0.1f, 1.f, 0.1f, 0.01f, 0.1f, st);
+        // the wind
+        float nhz = linlin(noiseHzLag.process(nNoiseHz.process(0.1f, st), 10.f, st), -1.f, 1.f, 2000.f, 5000.f);
+        float nv = noiseVol.process(0.1f, st);
+        soundL += wind[0].process(nhz, st) * 0.0005f * rack::clamp(nv, 0.f, 1.f);
+        soundR += wind[1].process(nhz, st) * 0.0005f * (1.f - rack::clamp(nv, -1.f, 0.f));
+        // wow & flutter, modulating the reverb output level
+        float s = wobbleOsc.process(33.f / 60.f, st);
+        float wob = 0.07f * std::copysign(std::pow(std::fabs(s), 39.f), s);
+        float wow = (wob > 0.f) ? 0.f : wob;
+        float flut = 0.04f * flutterOsc.process(6.f + flutterVar.process(2.f, st), st);
+        float defects = 1.f + wow + flut;
+        float gl, gr;
+        gverb.process(soundL + soundR, 103.f, 0.43f, st, gl, gr);
+        float outL = (soundL * 0.562f + gl * 0.32f) * defects;  // dry -5 dB; tail lifted
+        float outR = (soundR * 0.562f + gr * 0.32f) * defects;  // (approx GVerb wash weight)
+        const float makeup = 14.f;
+        l = limL.process(outL, 1.f, 0.1f, st) * amp * makeup;
+        r = limR.process(outR, 1.f, 0.1f, st) * amp * makeup;
+    }
+};
+
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -1624,6 +2154,9 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new GristleEngine());
     v.emplace_back(new GroveEngine());
     v.emplace_back(new ShieldsEngine());
+    v.emplace_back(new EnoEngine());
+    v.emplace_back(new BelongEngine());
+    v.emplace_back(new RuinsEngine());
     return v;
 }
 
