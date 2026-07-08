@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.10] - 2026-07-09
+### Added
+  - dræn: two more dronecaster engines — **takita** (@sixolet, a self-clocked
+    flip-flop drum language of resonant filtered clicks) and **twin pks**
+    (oscillator-free tape-noise horror: compressed, band-passed, wow/fluttered,
+    saturated and bit-crushed)
+  - draen_ugens.hpp gains Phasor (resettable ramp) and Decimator (sample-rate /
+    bit-depth reducer)
+
 ## [2.6.9] - 2026-07-09
 ### Added
   - dræn: three more dronecaster engines — **sunno** (Karplus-Strong doom

@@ -96,6 +96,8 @@ that layer fills out.
 | **sunno** | (uncredited) | Five "guitars" of Karplus-Strong string pairs (one negative-decay for the octave-under growl), re-plucked at random, crushed through crossover distortion and cascaded tanh+filter gain stages. Doom. |
 | **nautilus** | @taubaland | A Lorenz attractor iterated at the fundamental drives six voices of overlapping sine grains with looping swells, into chaos-swept lowpasses. Dusty waves, chaotic undercurrent. |
 | **drumm** | @infinitedigits | Two slowly crossfading layers — chaos-width pulse pairs with phase-modulated subs, and ten Moog-swept voices stepping interlocking rows — sine-shaped and drenched in pumping Freeverb. |
+| **takita** | @sixolet | A self-clocked drum language: a beat gates a self-suppressing division window whose phasors flip tik/tok/tuk flip-flops, each firing resonant filtered clicks. Everything drifts on immensely slow sines. Rhythmic. |
+| **twin pks** | (uncredited) | No oscillators: tape/vinyl noise (dust, crackle, a pink-driven whistle) compressed hard, band-passed at the fundamental, warbled through wow and flutter, saturated and bit-crushed. Retro stylings, timeless horror. |
 
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 
