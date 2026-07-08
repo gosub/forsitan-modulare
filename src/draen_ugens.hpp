@@ -17,6 +17,7 @@
 #include <rack.hpp>
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 namespace draen {
 
@@ -129,6 +130,13 @@ struct LFNoise1 {
         }
         return cur + (target - cur) * phase;
     }
+};
+
+// ── LeakDC.ar — one-pole DC blocker (SC default coef 0.995) ───────────────────
+struct LeakDC {
+    float x1 = 0.f, y1 = 0.f;
+    void reset() { x1 = 0.f; y1 = 0.f; }
+    float process(float x) { float y = x - x1 + 0.995f * y1; x1 = x; y1 = y; return y; }
 };
 
 // ── LFNoise2.kr — quadratically-interpolated random at `freq` Hz ──────────────
@@ -271,6 +279,228 @@ inline float selectx(float frac, float a, float b) {
     float ang = rack::clamp(frac, 0.f, 1.f) * (float)M_PI_2;
     return a * std::cos(ang) + b * std::sin(ang);
 }
+
+// ── Impulse — single impulse at start (freq 0), else at `freq` Hz ─────────────
+struct Impulse {
+    float phase = 0.f;
+    bool first = true;
+    void reset() { phase = 0.f; first = true; }
+    float process(float freq, float st) {
+        if (first) { first = false; return 1.f; }
+        if (freq <= 0.f) return 0.f;
+        phase += freq * st;
+        if (phase >= 1.f) { phase -= std::floor(phase); return 1.f; }
+        return 0.f;
+    }
+};
+
+// ── Trig.kr — output 1 for `dur` seconds after `in` crosses > 0 ───────────────
+struct Trig {
+    float timer = 0.f, prev = 0.f;
+    void reset() { timer = 0.f; prev = 0.f; }
+    float process(float in, float dur, float st) {
+        if (in > 0.f && prev <= 0.f) timer = dur;
+        prev = in;
+        if (timer > 0.f) { timer -= st; return 1.f; }
+        return 0.f;
+    }
+};
+
+// ── TChoose.kr — pick a random array element on each trigger ──────────────────
+struct TChoose {
+    Rng rng; float val = 0.f, prev = 0.f;
+    void reset(uint32_t seed) { rng.seed(seed); val = 0.f; prev = 0.f; }
+    float process(float trig, const float* arr, int n) {
+        if (trig > 0.f && prev <= 0.f) {
+            int i = (int)(rng.uniform() * n); if (i >= n) i = n - 1;
+            val = arr[i];
+        }
+        prev = trig;
+        return val;
+    }
+};
+
+// ── SinOscFB.ar — sine with phase feedback (a one-oscillator FM growl) ────────
+struct SinOscFB {
+    float phase = 0.f, last = 0.f;
+    void reset(float ph = 0.f) { phase = ph; last = 0.f; }
+    float process(float freq, float fb, float st) {
+        float y = std::sin(kTwoPi * phase + fb * last);
+        last = y;
+        phase += freq * st;
+        phase -= std::floor(phase);
+        return y;
+    }
+};
+
+// ── EnvGen — breakpoint envelope, retriggered on gate's rising edge ───────────
+// Levels/times are latched at the trigger, so callers can pass live-modulated
+// values (as SC does with Env.new([...],[...]) built from UGens).
+struct BPEnv {
+    enum { MAX = 3 };
+    float lv[MAX + 1] = {}; float tm[MAX] = {}; int nseg = 0; bool sine = false;
+    int seg = 999; float phase = 0.f, prevGate = 0.f, out = 0.f;
+    void reset() { seg = 999; phase = 0.f; prevGate = 0.f; out = 0.f; }
+    float process(float gate, const float* levels, const float* times, int segs,
+                  bool sineCurve, float st) {
+        if (gate > 0.f && prevGate <= 0.f) {
+            segs = std::min(segs, (int)MAX);
+            for (int i = 0; i <= segs; ++i) lv[i] = levels[i];
+            for (int i = 0; i < segs; ++i) tm[i] = times[i];
+            nseg = segs; sine = sineCurve; seg = 0; phase = 0.f;
+        }
+        prevGate = gate;
+        if (seg >= nseg) { out = (nseg > 0) ? lv[nseg] : 0.f; return out; }
+        float T = tm[seg];
+        if (T <= 1e-6f) { out = lv[seg + 1]; ++seg; return out; }
+        phase += st / T;
+        float t = std::min(phase, 1.f);
+        float shaped = sine ? (0.5f - 0.5f * std::cos((float)M_PI * t)) : t;
+        out = lv[seg] + (lv[seg + 1] - lv[seg]) * shaped;
+        if (phase >= 1.f) { phase -= 1.f; ++seg; }
+        return out;
+    }
+};
+
+// ── Env.asr with gate held high — a one-shot attack ramp to 1, then hold ──────
+struct AttackEnv {
+    float v = 0.f, atk = 1.f;
+    void reset(float atkSec) { v = 0.f; atk = atkSec; }
+    float process(float st) {
+        v = std::min(v + ((atk > 1e-6f) ? st / atk : 1.f), 1.f);
+        return v;
+    }
+};
+
+// ── MoogFF.ar — 4-pole Moog-style ladder (cascaded one-poles + saturated fb) ──
+struct MoogFF {
+    float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+    void reset() { s0 = s1 = s2 = s3 = 0.f; }
+    float process(float in, float cutoffHz, float res, float st) {
+        float fc = rack::clamp(cutoffHz * st, 0.f, 0.45f);
+        float g = 1.f - std::exp(-kTwoPi * fc);
+        float x = std::tanh(in - res * s3);       // global resonant feedback
+        s0 += g * (x  - s0);
+        s1 += g * (s0 - s1);
+        s2 += g * (s1 - s2);
+        s3 += g * (s2 - s3);
+        return s3;
+    }
+};
+
+// ── delay line (power-of-two circular buffer; read-before-write) ──────────────
+struct DelayLine {
+    std::vector<float> buf; int mask = 0, w = 0;
+    void init(float maxSec, float sr) {
+        int need = (int)std::ceil(maxSec * sr) + 4;
+        int n = 1; while (n < need) n <<= 1;
+        buf.assign(n, 0.f); mask = n - 1; w = 0;
+    }
+    void reset() { std::fill(buf.begin(), buf.end(), 0.f); w = 0; }
+    void write(float x) { buf[w] = x; w = (w + 1) & mask; }
+    float tapN(int d) { return buf[(w - d) & mask]; }                 // d >= 1
+    float tapL(float ds) {
+        int d = std::max((int)ds, 1); float f = ds - d;
+        float a = buf[(w - d) & mask], b = buf[(w - d - 1) & mask];
+        return a + f * (b - a);
+    }
+    float tapC(float ds) {
+        int d = std::max((int)ds, 2); float f = ds - d;
+        float ym1 = buf[(w - d + 1) & mask], y0 = buf[(w - d) & mask];
+        float y1  = buf[(w - d - 1) & mask], y2 = buf[(w - d - 2) & mask];
+        float c1 = 0.5f * (y1 - ym1);
+        float c2 = ym1 - 2.5f * y0 + 2.f * y1 - 0.5f * y2;
+        float c3 = 0.5f * (y2 - ym1) + 1.5f * (y0 - y1);
+        return ((c3 * f + c2) * f + c1) * f + y0;
+    }
+};
+
+// feedback coefficient for a comb/allpass to decay 60 dB over `decaySec`
+inline float combFeedback(float delaySec, float decaySec) {
+    if (decaySec <= 0.f) return 0.f;
+    return std::exp(-6.907755f * delaySec / decaySec);     // ln(0.001) = -6.9078
+}
+
+// ── CombL / CombC — feedback comb, linear / cubic interpolated tap ────────────
+struct CombL {
+    DelayLine dl;
+    float process(float x, float delaySamp, float g) {
+        float d = dl.tapL(delaySamp); dl.write(x + g * d); return d;
+    }
+};
+struct CombC {
+    DelayLine dl;
+    float process(float x, float delaySamp, float g) {
+        float d = dl.tapC(delaySamp); dl.write(x + g * d); return d;
+    }
+};
+
+// ── AllpassN — Schroeder allpass, non-interpolated tap ────────────────────────
+struct AllpassN {
+    DelayLine dl;
+    float process(float x, int delaySamp, float g) {
+        float d = dl.tapN(delaySamp);
+        float w = x + g * d;
+        dl.write(w);
+        return d - g * w;
+    }
+};
+
+// ── DelayN / DelayC — pure delay, non-interp / cubic (feed-forward) ───────────
+struct DelayNode {
+    DelayLine dl;
+    float process(float x, int delaySamp) { float o = dl.tapN(delaySamp); dl.write(x); return o; }
+};
+struct DelayC {
+    DelayLine dl;
+    float process(float x, float delaySamp) { float o = dl.tapC(delaySamp); dl.write(x); return o; }
+};
+
+// ── SchroederReverb — the block shared by several dronecaster engines ─────────
+//   DelayN(0.048) pre-delay → 7 slowly-modulated parallel CombL → 4 series
+//   AllpassN. Built per channel with independent random taps for a wide image.
+struct SchroederReverb {
+    struct Chan {
+        DelayNode pre;
+        CombL comb[7]; LFNoise1 mod[7]; float rate[7] = {};
+        AllpassN ap[4]; float apSec[4] = {};
+        void init(uint32_t seed, float sr) {
+            Rng rng; rng.seed(seed);
+            pre.dl.init(0.06f, sr);
+            for (int i = 0; i < 7; ++i) {
+                comb[i].dl.init(0.12f, sr);
+                rate[i] = rng.uniform() * 0.1f;
+                mod[i].reset(seed + i * 131u + 7u);
+            }
+            for (int i = 0; i < 4; ++i) {
+                ap[i].dl.init(0.06f, sr);
+                apSec[i] = rng.uniform() * 0.05f + 0.001f;
+            }
+        }
+        void reset() {
+            pre.dl.reset();
+            for (int i = 0; i < 7; ++i) comb[i].dl.reset();
+            for (int i = 0; i < 4; ++i) ap[i].dl.reset();
+        }
+        float process(float x, float st, float sr) {
+            float z = pre.process(x, (int)(0.048f * sr));
+            float y = 0.f;
+            for (int i = 0; i < 7; ++i) {
+                float dt = 0.05f + 0.04f * mod[i].process(rate[i], st);
+                y += comb[i].process(z, dt * sr, combFeedback(dt, 15.f));
+            }
+            for (int i = 0; i < 4; ++i)
+                y = ap[i].process(y, (int)(apSec[i] * sr), combFeedback(apSec[i], 1.f));
+            return y;
+        }
+    };
+    Chan L, R;
+    void init(uint32_t seed, float sr) { L.init(seed, sr); R.init(seed * 2246822519u + 1u, sr); }
+    void reset() { L.reset(); R.reset(); }
+    void process(float inL, float inR, float st, float sr, float& outL, float& outR) {
+        outL = L.process(inL, st, sr); outR = R.process(inR, st, sr);
+    }
+};
 
 // ── Splay.ar — spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
