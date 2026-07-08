@@ -78,6 +78,11 @@ that layer fills out.
 | **mt. lion** | @license | Nine comb-resonated pulse voices, everything (pitch, width, delay, decay, pan, level) driven by slow sample-and-held noise. Roars through a twisting canyon. |
 | **apparatus** | Josue Arias (after Zé Craum / Ruviaro / Mitchell) | Clipped triangle oscillators with vibrato and mains hum, plus a crackle/dust interference bed — old sinusoidal test-generators drifting. |
 | **eliane** | @sixolet | Seven sine partials phase-modulating each other in a crosslinked feedback ring, with slow amplitude beatings. An homage to Éliane Radigue. |
+| **unrelacc** | @zebra | Six Hénon-map chaotic oscillators tuned to intervals, panned and slowly faded in — a bristling, metallic drone. |
+| **dreamcrusher** | @infinitedigits | A no-input-mixer feedback drone: a gated pulse driving a feedback loop of rotation, a modulated delay and soft-clip. Chaotic and strobey. |
+| **rehberg** | @infinitedigits | A detuned tape-warble pulse pair, wave-folded and DFM1-filtered with an FM sine and resonant band, drenched in Freeverb. Dense, distorted, overwhelming. |
+
+The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 
 Engines are loudness-normalized with a per-engine makeup gain so switching
 between them doesn't jump levels; the quieter originals (which relied on norns'

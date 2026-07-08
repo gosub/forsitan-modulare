@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.4] - 2026-07-08
+### Added
+  - dræn: three more dronecaster engines — **unrelacc** (@zebra, six Hénon-map
+    chaotic oscillators in intervals), **dreamcrusher** (@infinitedigits, a
+    no-input-mixer feedback drone), and **rehberg** (@infinitedigits, folded and
+    DFM1-filtered tape-warble pulses drenched in Freeverb)
+  - draen_ugens.hpp gains a faithful port of Jezar's public-domain **Freeverb**
+    (8 damped combs → 4 allpasses per channel), plus HenonC, LFSaw, fold,
+    Changed, Amplitude, OnePole, Balance2 and a DFM1 filter approximation
+
 ## [2.6.3] - 2026-07-08
 ### Added
   - dræn: four more dronecaster engines — **starlids** (@infinitedigits, PWM sub
