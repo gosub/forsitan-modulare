@@ -174,12 +174,22 @@ struct HeckerEngine : DroneEngine {
             lSel.reset(); lCut.reset(); lRq.reset();
             lpf.reset(); bpf.reset();
         }
+        int ctr = 0; float ga = 1.f, gb = 0.f, cutoff = 1000.f, rq = 0.01f;
         float process(float hz, float st) {
-            float sel = lSel.process(nSel.process(0.1f, st), 10.f, st) * 0.5f + 0.5f;
-            float s = selectx(sel, wn.process(), pn.process());
-            float cutoff = linexp(lCut.process(nCut.process(0.1f, st), 10.f, st), -1.f, 1.f, 20.f, 20000.f);
+            // the mapped controls only feed block-rate filter coefficients, so
+            // evaluate the pow/trig mappings at the same block rate
+            float selRaw = lSel.process(nSel.process(0.1f, st), 10.f, st);
+            float cutRaw = lCut.process(nCut.process(0.1f, st), 10.f, st);
+            float rqRaw = lRq.process(nRq.process(0.1f, st), 10.f, st);
+            if (--ctr <= 0) {
+                float ang = rack::clamp(selRaw * 0.5f + 0.5f, 0.f, 1.f) * (float)M_PI_2;
+                ga = std::cos(ang); gb = std::sin(ang);
+                cutoff = linexp(cutRaw, -1.f, 1.f, 20.f, 20000.f);
+                rq = linexp(rqRaw, -1.f, 1.f, 0.0001f, 0.02f);
+                ctr = kCoefUpdate;
+            }
+            float s = ga * wn.process() + gb * pn.process();
             s = lpf.lpf(s, cutoff, st);
-            float rq = linexp(lRq.process(nRq.process(0.1f, st), 10.f, st), -1.f, 1.f, 0.0001f, 0.02f);
             return bpf.bpf(s, hz, rq, st);
         }
     };

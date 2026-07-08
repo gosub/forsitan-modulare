@@ -23,6 +23,11 @@ namespace draen {
 
 constexpr float kTwoPi = 6.28318530718f;
 
+// filter/lag coefficient update interval, in samples (~0.33 ms at 48 kHz);
+// SC computes these at control block rate (64 samples), so a 16-sample block
+// is finer-grained than the original while skipping most of the trig/exp cost
+enum { kCoefUpdate = 16 };
+
 // ── tiny deterministic PRNG (xorshift32) ─────────────────────────────────────
 // Local RNG keeps noise off Rack's shared random:: state (audio-thread safe).
 struct Rng {
@@ -210,13 +215,18 @@ struct Latch {
 };
 
 // ── Lag.kr / VarLag — one-pole smoother toward the input over `time` seconds ──
+// The exp() is only re-evaluated when `time` changes (checked at block rate).
 struct Lag {
-    float y = 0.f;
+    float y = 0.f, b1 = 0.f, lastTime = -1.f;
+    int ctr = 0;
     bool primed = false;
-    void reset() { y = 0.f; primed = false; }
+    void reset() { y = 0.f; b1 = 0.f; lastTime = -1.f; ctr = 0; primed = false; }
     float process(float in, float time, float st) {
         if (!primed) { y = in; primed = true; }
-        float b1 = (time > 1e-6f) ? std::exp(-st / time) : 0.f;
+        if (--ctr <= 0 && time != lastTime) {
+            b1 = (time > 1e-6f) ? std::exp(-st / time) : 0.f;
+            lastTime = time; ctr = kCoefUpdate;
+        }
         y = in + b1 * (y - in);
         return y;
     }
@@ -225,60 +235,72 @@ struct Lag {
 // ── BPF / RLPF / LPF / HPF — SC's second-order filters over Rack's biquad ─────
 // SC parameterises resonance by `rq` (reciprocal Q, i.e. bandwidth); Rack's
 // biquad takes Q. These thin wrappers keep the SC call shape (freq, rq).
+// Coefficients are only recomputed every kCoefUpdate samples (see top).
 struct Biquad {
     rack::dsp::TBiquadFilter<float> f;
-    void reset() { f.reset(); }
+    int ctr = 0, lastType = -1;
+    void reset() { f.reset(); ctr = 0; lastType = -1; }
+    inline void ensure(int type, float fn, float Q, float V) {
+        if (lastType != type || --ctr <= 0) {
+            f.setParameters((rack::dsp::TBiquadFilter<float>::Type)type, fn, Q, V);
+            lastType = type; ctr = kCoefUpdate;
+        }
+    }
     float bpf(float in, float freqHz, float rq, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::BANDPASS,
-                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
+        ensure(rack::dsp::TBiquadFilter<float>::BANDPASS,
+               clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
         return f.process(in);
     }
     float rlpf(float in, float freqHz, float rq, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::LOWPASS,
-                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
+        ensure(rack::dsp::TBiquadFilter<float>::LOWPASS,
+               clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
         return f.process(in);
     }
     float lpf(float in, float freqHz, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::LOWPASS,
-                        clampFreq(freqHz, st), M_SQRT1_2, 1.f);
+        ensure(rack::dsp::TBiquadFilter<float>::LOWPASS,
+               clampFreq(freqHz, st), M_SQRT1_2, 1.f);
         return f.process(in);
     }
     // SC BLowPass(in, freq, rq): resonant RBJ lowpass parameterised by rq = 1/Q
     float blowpass(float in, float freqHz, float rq, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::LOWPASS,
-                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
+        ensure(rack::dsp::TBiquadFilter<float>::LOWPASS,
+               clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
         return f.process(in);
     }
     // DFM1 approximation: resonant low- (type 0) or high-pass (type 1) biquad
     float dfm1(float in, float freqHz, float res, int type, float st) {
-        auto t = (type == 1) ? rack::dsp::TBiquadFilter<float>::HIGHPASS
-                             : rack::dsp::TBiquadFilter<float>::LOWPASS;
-        f.setParameters(t, clampFreq(freqHz, st), 0.5f + res * 8.f, 1.f);
+        int t = (type == 1) ? rack::dsp::TBiquadFilter<float>::HIGHPASS
+                            : rack::dsp::TBiquadFilter<float>::LOWPASS;
+        ensure(t, clampFreq(freqHz, st), 0.5f + res * 8.f, 1.f);
         return f.process(in);
     }
     float hpf(float in, float freqHz, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::HIGHPASS,
-                        clampFreq(freqHz, st), M_SQRT1_2, 1.f);
+        ensure(rack::dsp::TBiquadFilter<float>::HIGHPASS,
+               clampFreq(freqHz, st), M_SQRT1_2, 1.f);
         return f.process(in);
     }
     // SC BPeakEQ(in, freq, rq, db): RBJ peaking EQ
     float peakeq(float in, float freqHz, float rq, float db, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::PEAK,
-                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f),
-                        std::pow(10.f, db / 20.f));
+        if (lastType != rack::dsp::TBiquadFilter<float>::PEAK || ctr <= 1)
+            ensure(rack::dsp::TBiquadFilter<float>::PEAK,
+                   clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f),
+                   std::pow(10.f, db / 20.f));
+        else --ctr;
         return f.process(in);
     }
     // resonant highpass (SC RHPF)
     float rhpf(float in, float freqHz, float rq, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::HIGHPASS,
-                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
+        ensure(rack::dsp::TBiquadFilter<float>::HIGHPASS,
+               clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
         return f.process(in);
     }
     // SC BHiShelf(in, freq, rs, db): RBJ high shelf
     float hishelf(float in, float freqHz, float db, float st) {
-        f.setParameters(rack::dsp::TBiquadFilter<float>::HIGHSHELF,
-                        clampFreq(freqHz, st), M_SQRT1_2,
-                        std::pow(10.f, db / 20.f));
+        if (lastType != rack::dsp::TBiquadFilter<float>::HIGHSHELF || ctr <= 1)
+            ensure(rack::dsp::TBiquadFilter<float>::HIGHSHELF,
+                   clampFreq(freqHz, st), M_SQRT1_2,
+                   std::pow(10.f, db / 20.f));
+        else --ctr;
         return f.process(in);
     }
 private:
@@ -407,10 +429,14 @@ struct AttackEnv {
 // ── MoogFF.ar — 4-pole Moog-style ladder (cascaded one-poles + saturated fb) ──
 struct MoogFF {
     float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
-    void reset() { s0 = s1 = s2 = s3 = 0.f; }
+    float g = 0.f; int ctr = 0;
+    void reset() { s0 = s1 = s2 = s3 = 0.f; g = 0.f; ctr = 0; }
     float process(float in, float cutoffHz, float res, float st) {
-        float fc = rack::clamp(cutoffHz * st, 0.f, 0.45f);
-        float g = 1.f - std::exp(-kTwoPi * fc);
+        if (--ctr <= 0) {
+            float fc = rack::clamp(cutoffHz * st, 0.f, 0.45f);
+            g = 1.f - std::exp(-kTwoPi * fc);
+            ctr = kCoefUpdate;
+        }
         float x = std::tanh(in - res * s3);       // global resonant feedback
         s0 += g * (x  - s0);
         s1 += g * (s0 - s1);
@@ -650,11 +676,13 @@ struct HenonC {
 // ── Amplitude.kr — envelope follower (attack/release smoothing of |x|) ───────
 struct Amplitude {
     float env = 0.f;
-    void reset() { env = 0.f; }
+    float cAtk = 0.f, cRel = 0.f, lastAtk = -1.f, lastRel = -1.f;
+    void reset() { env = 0.f; cAtk = cRel = 0.f; lastAtk = lastRel = -1.f; }
     float process(float x, float atkT, float relT, float st) {
+        if (atkT != lastAtk) { cAtk = (atkT > 0.f) ? std::exp(-st / atkT) : 0.f; lastAtk = atkT; }
+        if (relT != lastRel) { cRel = (relT > 0.f) ? std::exp(-st / relT) : 0.f; lastRel = relT; }
         float a = std::fabs(x);
-        float coef = (a > env) ? ((atkT > 0.f) ? std::exp(-st / atkT) : 0.f)
-                               : ((relT > 0.f) ? std::exp(-st / relT) : 0.f);
+        float coef = (a > env) ? cAtk : cRel;
         env = a + coef * (env - a);
         return env;
     }
@@ -682,11 +710,19 @@ inline void balance2(float l, float r, float pos, float level, float& outL, floa
 // (1 - R^2) so the resonant gain stays ~unity regardless of decay.
 struct Ringz {
     float y1 = 0.f, y2 = 0.f;
-    void reset() { y1 = 0.f; y2 = 0.f; }
+    float b1 = 0.f, b2 = 0.f, norm = 1.f; int ctr = 0;
+    void reset() { y1 = 0.f; y2 = 0.f; b1 = b2 = 0.f; norm = 1.f; ctr = 0; }
+    inline void ensure(float freq, float decay, float st) {
+        if (--ctr <= 0) {
+            float w = kTwoPi * rack::clamp(freq * st, 0.f, 0.49f);
+            float R = std::exp(-6.907755f * st / std::max(decay, 1e-4f));
+            b1 = 2.f * R * std::cos(w); b2 = R * R; norm = 1.f - R * R;
+            ctr = kCoefUpdate;
+        }
+    }
     float process(float in, float freq, float decay, float st) {
-        float w = kTwoPi * rack::clamp(freq * st, 0.f, 0.49f);
-        float R = std::exp(-6.907755f * st / std::max(decay, 1e-4f));
-        float y0 = in * (1.f - R * R) + 2.f * R * std::cos(w) * y1 - R * R * y2;
+        ensure(freq, decay, st);
+        float y0 = in * norm + b1 * y1 - b2 * y2;
         float out = y0 - y2;
         y2 = y1; y1 = y0;
         return out;
@@ -695,9 +731,8 @@ struct Ringz {
     // ring time (long partials ring louder), exactly like SC's Ringz/Klank.
     // Engines using this match the original's output-level constants.
     float processRaw(float in, float freq, float decay, float st) {
-        float w = kTwoPi * rack::clamp(freq * st, 0.f, 0.49f);
-        float R = std::exp(-6.907755f * st / std::max(decay, 1e-4f));
-        float y0 = in + 2.f * R * std::cos(w) * y1 - R * R * y2;
+        ensure(freq, decay, st);
+        float y0 = in + b1 * y1 - b2 * y2;
         float out = 0.5f * (y0 - y2);
         y2 = y1; y1 = y0;
         return out;
@@ -760,14 +795,18 @@ struct BrownNoise {
 // ── BAllPass.ar — second-order RBJ allpass; rq = 1/Q ─────────────────────────
 struct BAllPass {
     float x1 = 0, x2 = 0, y1 = 0, y2 = 0;
-    void reset() { x1 = x2 = y1 = y2 = 0.f; }
+    float b0 = 0.f, b1c = 0.f; int ctr = 0;
+    void reset() { x1 = x2 = y1 = y2 = 0.f; b0 = b1c = 0.f; ctr = 0; }
     float process(float x, float freqHz, float rq, float st) {
-        float w = kTwoPi * rack::clamp(freqHz * st, 1e-5f, 0.49f);
-        float cw = std::cos(w), sw = std::sin(w), alpha = sw * rq * 0.5f;
-        float a0 = 1.f + alpha;
-        float b0 = (1.f - alpha) / a0, b1 = -2.f * cw / a0, b2 = (1.f + alpha) / a0;
-        float a1 = -2.f * cw / a0, a2 = (1.f - alpha) / a0;
-        float y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+        if (--ctr <= 0) {
+            float w = kTwoPi * rack::clamp(freqHz * st, 1e-5f, 0.49f);
+            float cw = std::cos(w), sw = std::sin(w), alpha = sw * rq * 0.5f;
+            float a0 = 1.f + alpha;
+            b0 = (1.f - alpha) / a0; b1c = -2.f * cw / a0;
+            ctr = kCoefUpdate;
+        }
+        // allpass: b2 == 1/a0*(1+alpha) == 1, a1 == b1, a2 == b0
+        float y = b0 * x + b1c * x1 + x2 - b1c * y1 - b0 * y2;
         x2 = x1; x1 = x; y2 = y1; y1 = y;
         return y;
     }
@@ -776,11 +815,15 @@ struct BAllPass {
 // ── SVF.ar — TPT state-variable filter; returns a mix of lp/bp/hp outputs ────
 struct SVF {
     float ic1 = 0.f, ic2 = 0.f;
-    void reset() { ic1 = ic2 = 0.f; }
+    float a1 = 0.f, a2 = 0.f, a3 = 0.f, k = 1.f; int ctr = 0;
+    void reset() { ic1 = ic2 = 0.f; a1 = a2 = a3 = 0.f; k = 1.f; ctr = 0; }
     float process(float v0, float cutoffHz, float res, float lpMix, float bpMix, float hpMix, float st) {
-        float g = std::tan((float)M_PI * rack::clamp(cutoffHz * st, 1e-5f, 0.49f));
-        float k = 2.f - 1.98f * rack::clamp(res, 0.f, 1.f);
-        float a1 = 1.f / (1.f + g * (g + k)), a2 = g * a1, a3 = g * a2;
+        if (--ctr <= 0) {
+            float g = std::tan((float)M_PI * rack::clamp(cutoffHz * st, 1e-5f, 0.49f));
+            k = 2.f - 1.98f * rack::clamp(res, 0.f, 1.f);
+            a1 = 1.f / (1.f + g * (g + k)); a2 = g * a1; a3 = g * a2;
+            ctr = kCoefUpdate;
+        }
         float v3 = v0 - ic2;
         float v1 = a1 * ic1 + a2 * v3;
         float v2 = ic2 + a2 * ic1 + a3 * v3;
@@ -931,19 +974,42 @@ inline float envCurve(float t, float curve) {
 }
 
 // ── PercEnv — Env.perc: curved attack then curved release, one-shot ──────────
+// The exponential segment shape is advanced incrementally (one multiply per
+// sample) instead of calling exp() per sample.
 struct PercEnv {
     float t = 1e9f, atk = 0.01f, rel = 1.f, curve = -4.f, prevGate = 0.f;
-    void reset() { t = 1e9f; prevGate = 0.f; }
+    int stage = 2;                       // 0 attack, 1 release, 2 done
+    bool lin = false;
+    float e = 1.f, stepA = 1.f, stepR = 1.f, denomA = 1.f, denomR = 1.f;
+    void reset() { t = 1e9f; prevGate = 0.f; stage = 2; }
     float process(float gate, float attackT, float releaseT, float curv, float st) {
         if (gate > 0.f && prevGate <= 0.f) {
             t = 0.f; atk = std::max(attackT, 1e-5f); rel = std::max(releaseT, 1e-5f); curve = curv;
+            lin = std::fabs(curve) < 0.001f;
+            stage = 0; e = 1.f;
+            if (!lin) {
+                stepA = std::exp(-curve * st / atk);
+                stepR = std::exp(-curve * st / rel);
+                denomA = 1.f - std::exp(-curve);
+                denomR = denomA;
+            }
         }
         prevGate = gate;
+        if (stage == 2) return 0.f;
         t += st;
-        if (t < atk) return envCurve(t / atk, -curve);        // rising: mirror curve
+        if (stage == 0) {
+            if (t >= atk) { stage = 1; e = 1.f; }
+            else {
+                if (lin) return t / atk;
+                e *= stepA;                             // e = exp(-curve * t/atk)
+                return (1.f - e) / denomA;
+            }
+        }
         float u = (t - atk) / rel;
-        if (u >= 1.f) return 0.f;
-        return 1.f - envCurve(u, -curve);
+        if (u >= 1.f) { stage = 2; return 0.f; }
+        if (lin) return 1.f - u;
+        e *= stepR;                                     // e = exp(-curve * u)
+        return 1.f - (1.f - e) / denomR;
     }
 };
 
@@ -1114,11 +1180,16 @@ inline float sineShaper(float x, float limit) {
 // ── LagUD — one-pole smoother with separate up/down times ────────────────────
 struct LagUD {
     float y = 0.f; bool primed = false;
-    void reset() { y = 0.f; primed = false; }
+    float bUp = 0.f, bDn = 0.f, lastUp = -1.f, lastDn = -1.f; int ctr = 0;
+    void reset() { y = 0.f; primed = false; bUp = bDn = 0.f; lastUp = lastDn = -1.f; ctr = 0; }
     float process(float in, float up, float down, float st) {
         if (!primed) { y = in; primed = true; }
-        float time = (in > y) ? up : down;
-        float b1 = (time > 1e-6f) ? std::exp(-st / time) : 0.f;
+        if (--ctr <= 0 && (up != lastUp || down != lastDn)) {
+            bUp = (up > 1e-6f) ? std::exp(-st / up) : 0.f;
+            bDn = (down > 1e-6f) ? std::exp(-st / down) : 0.f;
+            lastUp = up; lastDn = down; ctr = kCoefUpdate;
+        }
+        float b1 = (in > y) ? bUp : bDn;
         y = in + b1 * (y - in);
         return y;
     }
