@@ -691,6 +691,17 @@ struct Ringz {
         y2 = y1; y1 = y0;
         return out;
     }
+    // SC-exact variant: input NOT normalized, so resonant gain grows with the
+    // ring time (long partials ring louder), exactly like SC's Ringz/Klank.
+    // Engines using this match the original's output-level constants.
+    float processRaw(float in, float freq, float decay, float st) {
+        float w = kTwoPi * rack::clamp(freq * st, 0.f, 0.49f);
+        float R = std::exp(-6.907755f * st / std::max(decay, 1e-4f));
+        float y0 = in + 2.f * R * std::cos(w) * y1 - R * R * y2;
+        float out = 0.5f * (y0 - y2);
+        y2 = y1; y1 = y0;
+        return out;
+    }
 };
 
 // ── FreeVerb — Jezar's public-domain Freeverb (mono in → mono out) ───────────
@@ -1099,6 +1110,56 @@ inline float crossoverDistortion(float x, float amount, float smooth) {
 inline float sineShaper(float x, float limit) {
     return limit * std::sin(rack::clamp(x, -2.f * limit, 2.f * limit) * (float)M_PI_2 / limit);
 }
+
+// ── LagUD — one-pole smoother with separate up/down times ────────────────────
+struct LagUD {
+    float y = 0.f; bool primed = false;
+    void reset() { y = 0.f; primed = false; }
+    float process(float in, float up, float down, float st) {
+        if (!primed) { y = in; primed = true; }
+        float time = (in > y) ? up : down;
+        float b1 = (time > 1e-6f) ? std::exp(-st / time) : 0.f;
+        y = in + b1 * (y - in);
+        return y;
+    }
+};
+
+// ── distort / InsideOut / DiodeRingMod — SC waveshaping one-liners ───────────
+inline float distortSC(float x) { return x / (1.f + std::fabs(x)); }
+inline float insideOut(float x) { return (x == 0.f) ? 0.f : std::copysign(1.f - std::fabs(x), x); }
+inline float diodeRingMod(float a, float b) {
+    return 0.5f * (std::fabs(a + b) - std::fabs(a - b));
+}
+
+// ── PitchShift.ar — granular pitch shifter (two overlapped taps) ─────────────
+// Simplified: the pitch/time dispersion arguments are accepted but only mildly
+// honoured (a per-grain time jitter); the core two-tap crossfade matches SC.
+struct PitchShift {
+    DelayLine dl; Rng rng;
+    float phase = 0.f; float jit0 = 0.f, jit1 = 0.f;
+    void init(float maxWindow, float sr, uint32_t seed = 1u) {
+        dl.init(maxWindow * 2.f + 0.05f, sr);
+        rng.seed(seed);
+        phase = 0.f; jit0 = jit1 = 0.f;
+    }
+    void reset() { dl.reset(); phase = 0.f; jit0 = jit1 = 0.f; }
+    float process(float in, float window, float ratio, float timeDisp, float st) {
+        dl.write(in);
+        float rate = (1.f - ratio) / std::max(window, 1e-3f);
+        float p0 = phase;
+        phase += rate * st;
+        if (phase >= 1.f) { phase -= 1.f; jit0 = rng.uniform() * timeDisp; }
+        else if (phase < 0.f) { phase += 1.f; jit0 = rng.uniform() * timeDisp; }
+        float p1 = p0 + 0.5f; p1 -= std::floor(p1);
+        if ((p0 + 0.5f) >= 1.f && (phase + 0.5f) < 1.f) jit1 = rng.uniform() * timeDisp;
+        float sr = 1.f / st;
+        float d0 = rack::clamp((p0 * window + jit0) * sr + 2.f, 2.f, (float)(dl.buf.size() - 4));
+        float d1 = rack::clamp((p1 * window + jit1) * sr + 2.f, 2.f, (float)(dl.buf.size() - 4));
+        float g0 = 0.5f - 0.5f * std::cos(kTwoPi * p0);
+        float g1 = 0.5f - 0.5f * std::cos(kTwoPi * p1);
+        return dl.tapL(d0) * g0 + dl.tapL(d1) * g1;
+    }
+};
 
 // ── Phasor.ar — resettable ramp in [0, 1); `rate` in cycles per second ───────
 struct Phasor {
