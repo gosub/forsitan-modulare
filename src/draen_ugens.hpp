@@ -769,6 +769,94 @@ inline float selectxN(float sel, const float* arr, int n, bool wrap) {
     return arr[i0] * std::cos(ang) + arr[i1] * std::sin(ang);
 }
 
+// ── Demand-rate generators — polled once per trigger (SC Demand.kr) ──────────
+// SC's demand UGens are pull-based: Demand.kr polls its stream on each trigger
+// edge. Here each generator is a tiny stateful object whose next() the caller
+// invokes from a trigger edge. The list variants return an *index* so callers
+// can sequence arrays of anything (notes, chords, durations).
+struct Dseq {           // cycle 0,1,…,n-1,0,…
+    int i = 0;
+    void reset() { i = 0; }
+    int next(int n) { if (n <= 0) return 0; int k = i % n; i = (i + 1) % n; return k; }
+};
+struct Drand {          // uniform random index
+    Rng rng;
+    void reset(uint32_t s) { rng.seed(s); }
+    int next(int n) { return std::min((int)(rng.uniform() * n), n - 1); }
+};
+struct Dxrand {         // random index, never the same twice in a row
+    Rng rng; int last = -1;
+    void reset(uint32_t s) { rng.seed(s); last = -1; }
+    int next(int n) {
+        if (n <= 1) return 0;
+        int k;
+        do { k = std::min((int)(rng.uniform() * n), n - 1); } while (k == last);
+        last = k; return k;
+    }
+};
+struct Dbrown {         // bounded random walk in [lo, hi], step per poll
+    Rng rng; float v = 0.f; bool primed = false;
+    void reset(uint32_t s) { rng.seed(s); primed = false; }
+    float next(float lo, float hi, float step) {
+        if (!primed) { v = lo + rng.uniform() * (hi - lo); primed = true; }
+        else v = rack::clamp(v + rng.bipolar() * step, lo, hi);
+        return v;
+    }
+};
+
+// ── TExpRand.kr — new exponentially-distributed random on each trigger ───────
+struct TExpRand {
+    Rng rng; float v = 1.f, prev = 0.f; bool primed = false;
+    void reset(uint32_t s) { rng.seed(s); prev = 0.f; primed = false; }
+    float process(float trig, float lo, float hi) {
+        if (!primed || (trig > 0.f && prev <= 0.f)) {
+            v = lo * std::pow(hi / lo, rng.uniform());
+            primed = true;
+        }
+        prev = trig; return v;
+    }
+};
+
+// ── TDelay.kr — delay each trigger by `dur` seconds (retrigger ignored) ───────
+struct TDelay {
+    float timer = -1.f, prev = 0.f;
+    void reset() { timer = -1.f; prev = 0.f; }
+    float process(float trig, float dur, float st) {
+        if (trig > 0.f && prev <= 0.f && timer < 0.f) timer = dur;
+        prev = trig;
+        if (timer >= 0.f) {
+            timer -= st;
+            if (timer < 0.f) return 1.f;
+        }
+        return 0.f;
+    }
+};
+
+// ── CoinGate.kr — pass each trigger with probability `prob` ──────────────────
+struct CoinGate {
+    Rng rng; float prev = 0.f;
+    void reset(uint32_t s) { rng.seed(s); prev = 0.f; }
+    float process(float trig, float prob) {
+        float out = (trig > 0.f && prev <= 0.f && rng.uniform() < prob) ? trig : 0.f;
+        prev = trig;
+        return out;
+    }
+};
+
+// ── AllpassC — Schroeder allpass, cubic-interpolated (modulatable) tap ────────
+struct AllpassC {
+    DelayLine dl;
+    float process(float x, float delaySamp, float g) {
+        float d = dl.tapC(delaySamp);
+        float w = x + g * d;
+        dl.write(w);
+        return d - g * w;
+    }
+};
+
+// ── midiratio — SC's .midiratio: semitone offset → frequency ratio ────────────
+inline float midiratio(float semis) { return std::exp2(semis * (1.f / 12.f)); }
+
 // ── Splay.ar — spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
 // out evenly across [-1, 1], panned equal-power, summed, and (by default)
