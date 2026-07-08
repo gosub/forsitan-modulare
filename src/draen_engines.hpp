@@ -2124,6 +2124,392 @@ struct RuinsEngine : DroneEngine {
 };
 
 
+// ── SUNNO — (uncredited in source; the doom of SUNN O))). ─────────────────────
+// Five "guitars", each two Karplus-Strong strings (one with negative-decay
+// feedback for the octave-under growl) re-plucked at random, crushed through
+// crossover distortion and two cascaded tanh+RLPF gain stages, with a local
+// feedback path on two of them; over a pulse-pair bass and the shared reverb.
+struct SunnoEngine : DroneEngine {
+    LFNoise0 nHz; Lag hzLag;
+    struct StringV {
+        Rng rng;
+        Dust dPick; bool first = true;
+        Pluck pluck;
+        float odd = 1.f;
+        PercEnv exEnv; float exT = 1e9f;
+        SinOsc exOsc;
+        DelayC chor; LFNoise1 chorN; float chorBase = 0.03f;
+        float chorRate = 5.f;
+        SinOsc trem; float tremRate = 0.05f, tremPhase = 1.f;
+        void init(uint32_t s, float sr, float odd_) {
+            rng.seed(s);
+            dPick.reset(s + 1u); first = true;
+            pluck.init(0.6f, sr);
+            odd = odd_;
+            exEnv.reset(); exT = 1e9f; exOsc.reset();
+            chor.dl.init(0.08f, sr);
+            chorN.reset(s + 2u);
+            chorBase = 0.01f + rng.uniform() * 0.05f;      // Rand(0.01, 0.06)
+            chorRate = 1.f + rng.uniform() * 9.f;
+            tremRate = (1.f + rng.uniform() * 99.f) / 1000.f;   // Rand(1,100)/1000
+            tremPhase = 1.f + rng.uniform() * 9.f;              // Rand(1,10) rad
+            trem.reset();
+        }
+        float process(float freq, float st, float sr) {
+            float pick = (first ? 1.f : 0.f) + dPick.process(0.1f, st);
+            first = false;
+            if (pick > 0.f) exT = 0.f;
+            // exciter: 10 ms chirp 1000→50 Hz under a fast perc envelope
+            float ex = 0.f;
+            if (exT < 0.02f) {
+                float f = std::max(1000.f - 95000.f * exT, 50.f);
+                ex = exOsc.process(f, st) * exEnv.process(pick, 0.001f, 0.01f, -4.f, st);
+            }
+            exT += st;
+            float delay = sr / rack::clamp(freq, 2.f, 10000.f);
+            float s = pluck.process(ex, pick, delay, 1000.f * odd, 0.1f, st);
+            float dt = (chorBase + 0.01f * chorN.process(chorRate, st) + 0.02f) / 15.f;
+            s = chor.process(s, rack::clamp(dt * sr, 4.f, 0.075f * sr));
+            return s * std::fabs(trem.process(tremRate, st, tremPhase));
+        }
+    };
+    struct Guitar {
+        StringV s1, s2;
+        float doFeedback = 0.f, freqMod = 1.f;
+        float fbPrev = 0.f;
+        LFNoise0 nFbAmt; Lag fbLag; Biquad hpFb;
+        LFNoise0 nRq1, nRq2; Lag rqLag1, rqLag2;
+        Biquad rlpf1, rlpf2, shelf; LeakDC dc;
+        DelayC micro; SinOsc microLfo; float microRate = 0.5f;
+        LFNoise0 nPan; Lag panLag;
+        void init(uint32_t s, float sr, float doFb, float fm) {
+            Rng rng; rng.seed(s);
+            s1.init(s + 100u, sr, -1.f);
+            s2.init(s + 200u, sr, 1.f);
+            doFeedback = doFb; freqMod = fm; fbPrev = 0.f;
+            nFbAmt.reset(s + 1u); fbLag.reset(); hpFb.reset();
+            nRq1.reset(s + 2u); nRq2.reset(s + 3u); rqLag1.reset(); rqLag2.reset();
+            rlpf1.reset(); rlpf2.reset(); shelf.reset(); dc.reset();
+            micro.dl.init(0.12f, sr);
+            microRate = (1.f + rng.uniform() * 99.f) / 100.f;
+            microLfo.reset();
+            nPan.reset(s + 4u); panLag.reset();
+        }
+        void process(float hz, float st, float sr, float& outL, float& outR) {
+            float snd = s1.process(hz * freqMod, st, sr) + s2.process(hz * 1.5f * freqMod, st, sr);
+            float fbAmt = std::pow(10.f, linlin(fbLag.process(nFbAmt.process(1.f / 3.f, st), 3.f, st), -1.f, 1.f, -60.f, 0.f) / 20.f);
+            snd += hpFb.hpf(fbPrev, 30.f, st) * fbAmt;
+            snd = crossoverDistortion(snd, 0.5f, 0.5f);
+            snd = std::tanh(snd * 3.162f);                       // +10 dB
+            float rq1 = linexp(rqLag1.process(nRq1.process(1.f / 3.f, st), 3.f, st), -1.f, 1.f, 0.2f, 0.6f);
+            snd = rlpf1.rlpf(snd, hz * 4.f, rq1, st);
+            snd = std::tanh(snd * 39.8f);                        // +32 dB
+            float rq2 = linexp(rqLag2.process(nRq2.process(1.f / 3.f, st), 3.f, st), -1.f, 1.f, 0.1f, 0.5f);
+            snd = rlpf2.rlpf(snd, hz * 2.f, rq2, st);
+            snd = std::tanh(snd * 39.8f);                        // +32 dB
+            snd = shelf.hishelf(snd, hz * 6.f, -2.f, st);
+            snd = dc.process(snd);
+            fbPrev = snd * doFeedback;
+            float mdt = linlin(microLfo.process(microRate, st), -1.f, 1.f, 0.f, 1e-4f);
+            snd = micro.process(snd, rack::clamp(mdt * sr + 4.f, 4.f, 0.11f * sr));
+            float pan = panLag.process(nPan.process(0.1f, st), 10.f, st);
+            pan2(snd, pan, 1.f, outL, outR);
+        }
+    };
+    static constexpr int NG = 5;
+    Guitar g[NG]; float gGain[NG] = {1.f, 1.f, 1.f, 1.f, 0.1f};
+    BlPulse b1, b2; SinOsc widthLfo, bassCutLfo, bassAmpLfo;
+    Biquad bassLp1, bassLp2;
+    SchroederReverb rev; LFNoise0 nRevMix; Lag revMixLag;
+    const char* name() const override { return "sunno"; }
+    void init(uint32_t seed, float sr) override {
+        static const float fb[NG] = {1, 0, 0, 0, 1};
+        static const float fm[NG] = {1, 1, 1, 0.5f, 2};
+        nHz.reset(seed + 1u); hzLag.reset();
+        for (int i = 0; i < NG; ++i) g[i].init(seed + i * 9013u + 10u, sr, fb[i], fm[i]);
+        b1.reset(); b2.reset(); widthLfo.reset(); bassCutLfo.reset(); bassAmpLfo.reset();
+        bassLp1.reset(); bassLp2.reset();
+        rev.init(seed + 90001u, sr);
+        nRevMix.reset(seed + 2u); revMixLag.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        hz *= linlin(hzLag.process(nHz.process(0.1f, st), 10.f, st), -1.f, 1.f, 0.95f, 1.f);
+        float sumL = 0.f, sumR = 0.f;
+        for (int i = 0; i < NG; ++i) {
+            float gl, gr; g[i].process(hz, st, sr, gl, gr);
+            sumL += gl * gGain[i]; sumR += gr * gGain[i];
+        }
+        sumL /= 30.f; sumR /= 30.f;
+        // bass
+        float width = linlin(widthLfo.process(1.f / 3.f, st), -1.f, 1.f, 0.2f, 0.4f);
+        float cut = hz * linlin(bassCutLfo.process(0.1f, st), -1.f, 1.f, 1.f, 2.f);
+        float bass1 = bassLp1.lpf(b1.process(hz * 0.5f, width, st), cut, st);
+        float bass2 = bassLp2.lpf(b2.process(hz * 0.75f, width, st), cut, st);
+        float bgain = (60.f / std::max(hz, 1.f))
+                    * std::pow(10.f, linlin(bassAmpLfo.process(0.123f, st), -1.f, 1.f, -25.f, -16.f) / 20.f);
+        sumL += bass1 * bgain; sumR += bass2 * bgain;
+        float rvL, rvR; rev.process(sumL, sumR, st, sr, rvL, rvR);
+        float rmix = linlin(revMixLag.process(nRevMix.process(0.1f, st), 10.f, st), -1.f, 1.f, 0.025f, 0.06f);
+        const float makeup = 0.5f;
+        l = (sumL + rmix * rvL) * amp * makeup;
+        r = (sumR + rmix * rvR) * amp * makeup;
+    }
+};
+
+// ── Nautilus — @taubaland. "Dusty waves, chaotic undercurrent." ───────────────
+// A Lorenz attractor iterated at the fundamental drives everything: six voices
+// of overlapping sine grains (10/s), each with a looping swell envelope, into
+// chaos-swept lowpasses with a whisper of noise. Voicing after Supersaw.
+struct NautilusEngine : DroneEngine {
+    static constexpr int NV = 6, NGRAIN = 8;
+    LorenzL lorenz;
+    struct Grain { bool on = false; float t = 0.f, dur = 1.f, freq = 100.f, phase = 0.f; };
+    struct Voice {
+        Grain grains[NGRAIN]; int slot = 0;
+        float trigTimer = 0.f;
+        SinOsc envLfo1, envLfo2;
+        int envSeg = 0; float envT = 0.f, segDur = 1.f;
+        Biquad dfm1; WhiteNoise wn; SinOsc noiseLfo; Lag cutSmooth;
+        void init(uint32_t s) {
+            for (int k = 0; k < NGRAIN; ++k) grains[k].on = false;
+            slot = 0; trigTimer = 0.f;
+            envLfo1.reset(); envLfo2.reset();
+            envSeg = 0; envT = 0.f; segDur = 1.f;
+            dfm1.reset(); wn.reset(s); noiseLfo.reset(); cutSmooth.reset();
+        }
+    };
+    Voice v[NV];
+    const char* name() const override { return "nautilus"; }
+    void init(uint32_t seed, float) override {
+        lorenz.reset();
+        for (int i = 0; i < NV; ++i) v[i].init(seed + i * 5501u + 3u);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float lz = lorenz.process(hz, 10.f, 28.f, 8.f / 3.f, 0.05f, st);
+        float ch[NV];
+        for (int i = 0; i < NV; ++i) {
+            Voice& w = v[i];
+            // Pulse.ar(10) trigger → new grain every 0.1 s (oldest slot stolen)
+            w.trigTimer -= st;
+            if (w.trigTimer <= 0.f) {
+                w.trigTimer += 0.1f;
+                Grain& gr = w.grains[w.slot];
+                w.slot = (w.slot + 1) % NGRAIN;
+                gr.on = true; gr.t = 0.f;
+                gr.dur = std::max(2.f * i + lz, 0.02f);
+                gr.freq = hz + i * lz;
+                gr.phase = 0.f;
+            }
+            float s = 0.f;
+            for (int k = 0; k < NGRAIN; ++k) {
+                Grain& gr = w.grains[k];
+                if (!gr.on) continue;
+                gr.t += st;
+                if (gr.t >= gr.dur) { gr.on = false; continue; }
+                float u = gr.t / gr.dur;
+                float win = 0.5f - 0.5f * std::cos(kTwoPi * u);       // hann
+                gr.phase += gr.freq * st; gr.phase -= std::floor(gr.phase);
+                s += std::sin(kTwoPi * gr.phase) * win;
+            }
+            // looping swell envelope 0 → 0.5 → 0, times from slow sines
+            float lfo1 = w.envLfo1.process(0.1f * i + lz, st);
+            float lfo2 = w.envLfo2.process(0.1f * i + lz, st);
+            w.envT += st;
+            if (w.envT >= w.segDur) {
+                w.envT = 0.f;
+                w.envSeg ^= 1;
+                w.segDur = std::max((w.envSeg == 0) ? lfo1 : lfo2, 0.05f);
+            }
+            float u = w.envT / w.segDur;
+            float shaped = 0.5f - 0.5f * std::cos((float)M_PI * u);
+            float env = (w.envSeg == 0) ? 0.5f * shaped : 0.5f * (1.f - shaped);
+            s *= env;
+            // the raw chaos would modulate the biquad at audio rate and blow it
+            // up; DFM1 proper tolerates that, our biquad needs a smoothed cutoff
+            float cutoff = w.cutSmooth.process(hz + (10.f * i * lz) * 0.5f, 0.005f, st);
+            float nl = 0.08f + 0.02f * 0.1f * w.noiseLfo.process(lz, st);
+            ch[i] = w.dfm1.dfm1(s * 0.5f + w.wn.process() * nl, std::max(cutoff, 20.f), 0.05f, 0, st);
+        }
+        splay(ch, NV, 1.f, 0.f, l, r);
+        const float makeup = 6.f;
+        l = softclip(l * amp * makeup); r = softclip(r * amp * makeup);
+    }
+};
+
+// ── Drumm — @infinitedigits. "Sometimes gentle, the other time intense." ──────
+// Two layers crossfaded by slow sines: a bass layer of chaos-width pulse pairs
+// and phase-modulated sub sines, and a "kind" layer of ten Moog-swept melodic
+// voices stepping three interlocking rows; both DFM1-swept, sine-shaped, and
+// drenched in Freeverb whose character pumps with a random stomp envelope.
+struct DrummEngine : DroneEngine {
+    LFTri osc1Lfo, osc2Lfo; float o1Rate = 0.02f, o1Phase = 0.f, o2Rate = 0.02f, o2Phase = 0.f;
+    float mainrate = 0.2f;
+    LFNoise0 nSpeed; Lag speedLag; SinOsc pOsc, qOsc;
+    float introT = 0.f;
+    FBSineN fbs1, fbs2; float fbsRate1 = 22500.f, fbsRate2 = 22500.f;
+    Lag width1Lag, width2Lag;
+    BlPulse pulseA[2], pulseB[2];
+    SinOsc sin2[2], sin4[2], sinBass[2], sinBassPm, sinSub[2], sinSubPm;
+    Dust dChord; TChoose chChord;
+    LFNoise0 nAmp1, nAmp2; Lag amp1Lag, amp2Lag;
+    Impulse impMain;
+    struct KindVoice {
+        Rng rng;
+        int seqPos = 0;
+        float noteOff = 0.f;
+        SinOsc osc; VarSaw vsaw; SinOsc vsawWidthLfo;
+        PinkNoise pink;
+        MoogFF ff; SinOsc cutLfo; float cutRate = 0.05f, cutPhase = 0.f;
+        DelayC chor; LFNoise1 chorN; float chorBase = 0.02f, chorRate = 7.f;
+        PercEnv env;
+        LFNoise0 nPan; Lag panLag;
+        void init(uint32_t s, float sr) {
+            rng.seed(s);
+            seqPos = 0; noteOff = 0.f;
+            osc.reset(); vsaw.reset(); vsawWidthLfo.reset();
+            pink.reset(s + 1u);
+            ff.reset();
+            cutRate = linlin(rng.uniform(), 0.f, 1.f, 1.f / 30.f, 1.f / 10.f);
+            cutPhase = rng.uniform() * kTwoPi;
+            cutLfo.reset();
+            chor.dl.init(0.05f, sr);
+            chorN.reset(s + 2u);
+            chorBase = 0.01f + rng.uniform() * 0.02f;
+            chorRate = 5.f + rng.uniform() * 5.f;
+            env.reset();
+            nPan.reset(s + 3u); panLag.reset();
+        }
+    };
+    static constexpr int NK = 10;
+    KindVoice kv[NK];
+    Biquad dfmA[2], dfmB[2];
+    LFNoise0 nDrop; Lag dropLag; SinOsc dropOsc;
+    BPEnv stompEnv; Dust dStomp; Lag stompLag;
+    LFNoise0 nStompDur; Lag stompDurLag;
+    SinOsc introLfo;
+    FreeVerbMono fvL, fvR;
+    const char* name() const override { return "drumm"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        o1Rate = 1.f / linlin(rng.uniform(), 0.f, 1.f, 30.f, 100.f);
+        o1Phase = rng.uniform() * kTwoPi;
+        o2Rate = 1.f / linlin(rng.uniform(), 0.f, 1.f, 30.f, 100.f);
+        o2Phase = rng.uniform() * kTwoPi;
+        osc1Lfo.reset(); osc2Lfo.reset();
+        mainrate = 0.15f + rng.uniform() * 0.1f;
+        nSpeed.reset(seed + 1u); speedLag.reset(); pOsc.reset(); qOsc.reset();
+        introT = 0.f;
+        fbs1.reset(); fbs2.reset();
+        fbsRate1 = 22000.f + rng.uniform() * 1000.f;
+        fbsRate2 = 22000.f + rng.uniform() * 1000.f;
+        width1Lag.reset(); width2Lag.reset();
+        for (int c = 0; c < 2; ++c) {
+            pulseA[c].reset(); pulseB[c].reset();
+            sin2[c].reset(); sin4[c].reset(); sinBass[c].reset(); sinSub[c].reset();
+            dfmA[c].reset(); dfmB[c].reset();
+        }
+        sinBassPm.reset(); sinSubPm.reset();
+        dChord.reset(seed + 2u); chChord.reset(seed + 3u);
+        nAmp1.reset(seed + 4u); nAmp2.reset(seed + 5u); amp1Lag.reset(); amp2Lag.reset();
+        impMain.reset();
+        for (int i = 0; i < NK; ++i) kv[i].init(seed + i * 6007u + 100u, sr);
+        nDrop.reset(seed + 6u); dropLag.reset(); dropOsc.reset();
+        stompEnv.reset(); dStomp.reset(seed + 7u); stompLag.reset();
+        nStompDur.reset(seed + 8u); stompDurLag.reset();
+        introLfo.reset();
+        fvL.init(sr); fvR.init(sr);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        // slow global modulators
+        float osc1 = std::floor(rack::clamp(linlin(osc1Lfo.process(o1Rate, st), -1.f, 1.f, 0.f, 2.f), 0.f, 1.999f));
+        float osc2 = std::floor(rack::clamp(linlin(osc2Lfo.process(o2Rate, st), -1.f, 1.f, 0.f, 2.f), 0.f, 1.999f));
+        (void)o1Phase; (void)o2Phase;
+        float speed = linlin(speedLag.process(nSpeed.process(0.1f, st), 10.f, st), -1.f, 1.f, 1.f / 3000.f, 1.f / 30.f);
+        float p = pOsc.process(speed, st);
+        float q = qOsc.process(speed, st, (float)M_PI_2);
+        introT += st;
+        float intro = rack::clamp((introT - 4.f / mainrate) / (4.f / mainrate), 0.f, 1.f);
+        // bass layer
+        float basshz2 = hz;
+        for (int k = 0; k < 2; ++k) if (basshz2 >= 200.f) basshz2 *= 0.5f;
+        float basshz = hz;
+        for (int k = 0; k < 4; ++k) if (basshz >= 70.f) basshz *= 0.5f;
+        float w1 = width1Lag.process(linlin(fbs1.process(fbsRate1, 1.f, 0.1f, 1.1f, 0.5f, st), -1.f, 1.f, 0.1f, 0.9f), 0.5f, st);
+        float w2 = width2Lag.process(linlin(fbs2.process(fbsRate2, 1.f, 0.1f, 1.1f, 0.5f, st), -1.f, 1.f, 0.12f, 0.9f), 0.9f, st);
+        static const float chordOffs[4] = {3, 7, 8, 10};
+        float chordOff = chChord.process(dChord.process(0.1f, st), chordOffs, 4);
+        float bhz2 = midicps(cpsmidi(basshz2) + chordOff);
+        float amp1 = linlin(amp1Lag.process(nAmp1.process(4.f, st), 0.25f, st), -1.f, 1.f, 0.1f, 0.3f);
+        float amp2 = linlin(amp2Lag.process(nAmp2.process(4.f, st), 0.25f, st), -1.f, 1.f, 0.1f, 0.3f);
+        float pmBass = sinBassPm.process(basshz / 16.f, st);
+        float pmSub = sinSubPm.process(basshz / 128.f, st);
+        float sndB[2];
+        for (int c = 0; c < 2; ++c) {
+            float s = pulseA[c].process(basshz2, w1, st) * 0.3f;
+            s += sin2[c].process(basshz2 * (c ? 2.01f : 2.f), st) * 0.1f;
+            s += sin4[c].process(basshz2 * (c ? 4.01f : 4.f), st) * 0.05f;
+            s += pulseB[c].process(bhz2, w2, st) * 0.2f;
+            s += sinBass[c].process(basshz * (c ? 1.01f : 1.f), st, pmBass) * amp1;
+            s += sinSub[c].process(basshz * 0.5f * (c ? 1.01f : 1.f), st, pmSub) * amp2;
+            sndB[c] = s;
+        }
+        // melodic "kind" layer
+        float note = cpsmidi(hz);
+        for (int k = 0; k < 4; ++k) if (note <= 50.f) note += 12.f;
+        float imp = impMain.process(mainrate, st);
+        static const float m0[13] = {0, 0, 3, 3, 0, 3, 3, 2, 0, 0, -2, -2, 0};
+        static const float m1[13] = {3, 3, 7, 8, 3, 8, 7, 7, 3, 3, 3, -7, 3};
+        static const float m2[13] = {8, 7, 10, 12, 7, 12, 10, 10, 7, 8, 7, 5, 7};
+        static const float* mel[3] = {m0, m1, m2};
+        float kindL = 0.f, kindR = 0.f;
+        for (int i = 0; i < NK; ++i) {
+            KindVoice& w = kv[i];
+            if (imp > 0.f) { w.noteOff = mel[i % 3][w.seqPos % 13]; ++w.seqPos; }
+            float nhz = midicps(note + w.noteOff);
+            float s = w.osc.process(nhz, st) * 0.8f;
+            float vw = linlin(w.vsawWidthLfo.process(4.f, st), -1.f, 1.f, 0.4f, 0.6f);
+            s += w.vsaw.process(nhz * 0.5f, vw, st) * 0.8f;
+            s += w.pink.process() * q * 0.05f;
+            float cut = linexp(w.cutLfo.process(w.cutRate, st, w.cutPhase), -1.f, 1.f, nhz, 12000.f);
+            s = w.ff.process(s, cut, 2.f, st);
+            float dt = (w.chorBase + 0.01f * w.chorN.process(w.chorRate, st)) / 15.f;
+            s = w.chor.process(s, rack::clamp(dt * sr, 8.f, 0.045f * sr));
+            s *= w.env.process(imp, 3.f, 5.f, -4.f, st);
+            float pan = w.panLag.process(w.nPan.process(1.f / 3.f, st), 3.f, st);
+            float vl, vr; pan2(s, pan, 0.25f, vl, vr);
+            kindL += vl; kindR += vr;
+        }
+        (void)osc1; (void)osc2;
+        // filters + shaping
+        float cutB = basshz * 2.f * linlin(p, -1.f, 1.f, 1.f, 10.f);
+        float cutK = basshz * 3.f * linlin(1.f - p, -1.f, 1.f, 1.f, 10.f);
+        for (int c = 0; c < 2; ++c) sndB[c] = dfmA[c].dfm1(sndB[c], cutB, 0.1f, 0, st);
+        kindL = dfmB[0].dfm1(kindL, cutK, 0.1f, 0, st);
+        kindR = dfmB[1].dfm1(kindR, cutK, 0.1f, 0, st);
+        float dropFreq = linlin(dropLag.process(nDrop.process(4.f, st), 0.25f, st), -1.f, 1.f, 0.7f, 1.f);
+        float drop = rack::clamp(dropOsc.process(dropFreq, st) + 1.7f, -1.f, 1.f) * 2.f;
+        for (int c = 0; c < 2; ++c) sndB[c] = sineShaper(sndB[c], 0.5f) * drop;
+        // stomp + intro crossfade between the layers
+        float stompDur = linlin(stompDurLag.process(nStompDur.process(0.1f, st), 10.f, st), -1.f, 1.f, 5.f, 12.f);
+        static const float slv[4] = {0.f, 1.f, 1.f, 0.f};
+        float stm[3] = {0.5f, stompDur, 0.2f};
+        float stomp = stompEnv.process(dStomp.process(1.f / 20.f, st), slv, stm, 3, false, st);
+        float introp = (1.f - (q * 0.5f + 0.5f)) * intro;
+        float xf = 1.f - rack::clamp(introp + linlin(introLfo.process(mainrate / 64.f, st), -1.f, 1.f, 0.f, 0.1f) * intro, 0.f, 1.f);
+        float outL = selectx(xf, kindL, sndB[0]);
+        float outR = selectx(xf, kindR, sndB[1]);
+        // Freeverb whose mix pumps with the stomp
+        float mix = linlin(stompLag.process(stomp, 1.f, st), 0.f, 1.f, 0.3f, 0.5f);
+        float room = rack::clamp(drop, 0.f, 1.f);
+        const float makeup = 0.7f;
+        l = fvL.process(outL, mix, room, room) * amp * 0.5f * makeup;
+        r = fvR.process(outR, mix, room, room) * amp * 0.5f * makeup;
+    }
+};
+
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -2157,6 +2543,9 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new EnoEngine());
     v.emplace_back(new BelongEngine());
     v.emplace_back(new RuinsEngine());
+    v.emplace_back(new SunnoEngine());
+    v.emplace_back(new NautilusEngine());
+    v.emplace_back(new DrummEngine());
     return v;
 }
 
