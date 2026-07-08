@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.3] - 2026-07-08
+### Added
+  - dræn: four more dronecaster engines — **starlids** (@infinitedigits, PWM sub
+    + 12 interval-stepping saws through a Moog ladder), **mt. lion** (@license,
+    9 comb-resonated pulse voices driven by sample-and-held noise), **apparatus**
+    (Josue Arias, clipped-triangle generators with mains hum and a crackle bed),
+    and **eliane** (@sixolet, 7 sines phase-modulating in a feedback ring — an
+    Éliane Radigue homage)
+  - draen_ugens.hpp gains CombN, LFPulse, LFPar, Dust2, Crackle, and softclip /
+    Rotate2 helpers; SC LocalIn/LocalOut is modelled as a one-sample feedback bus
+### Fixed
+  - draen_ugens.hpp: the per-voice RNG now avalanche-hashes its seed, so nearby
+    seeds (s, s+7, …) decorrelate — xorshift alone gave correlated first outputs,
+    which could e.g. clip all of Eliane's amplitude gates to zero (silence)
+  - draen_ugens.hpp: combFeedback now handles negative decay times (negative
+    feedback of equal magnitude), matching SC's comb behaviour
+
 ## [2.6.2] - 2026-07-08
 ### Added
   - dræn: two more dronecaster engines, both @infinitedigits — **coil**
