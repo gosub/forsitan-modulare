@@ -90,6 +90,9 @@ that layer fills out.
 | **gristle** | @infinitedigits | Three octave-stacked triangle-saws, noise-detuned and band-passed by a wandering filter, heard entirely through a Greyhole diffusion cloud. A primal sawtooth. |
 | **grove** | @sixolet | Five pulsar-synthesis voices: slow sine "pulses" fire formant-period grains, self-gated by a fed-back guard window; washed in and out of Greyhole. There is no conductor. |
 | **shields** | @infinitedigits | Six detuned, double-combed saw pairs recorded to a tape loop and read back slower (a slipping repitch), combed again, Moog-swept and drowned in a 32-comb reverb. Bendy, bloody, loud. |
+| **eno** | @infinitedigits | Two low sines under eight chorused saws voicing a slow chord, a Klank ringing the chord tones, and a "piano" walking the actual Music-for-Airports note rows, through Freeverb. |
+| **belong** | @infinitedigits | Ten chorused saws walking scrambled chord tones, enveloped differently per side, overdubbing themselves onto a 16-beat tape loop; push **amp** past 0.7 and a spaced-out kick appears. |
+| **ruins** | @rplktr & @sixolet | Metallic 2/3-operator FM hits (after McCartney's "100 FM Synths") on a self-clocked trigger, drowned in a very long wash that warbles with tape wow and flutter, over a windy noise floor. |
 
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 

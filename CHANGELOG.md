@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.8] - 2026-07-08
+### Added
+  - dræn: three more dronecaster engines — **eno** (@infinitedigits, Music for
+    Airports: chorused chord saws, a Klank, and a comb-string "piano" walking
+    Eno's note rows), **belong** (@infinitedigits, saws overdubbing a 16-beat
+    tape loop, with a kick gated behind amp > 0.7), and **ruins** (@rplktr &
+    @sixolet, self-clocked metallic FM hits in a long wow-and-flutter wash)
+  - draen_ugens.hpp gains Decay2, Compander, a peaking-EQ and resonant-highpass
+    biquad, and a GVerb approximation (8 damped combs, odd/even split to stereo)
+
 ## [2.6.7] - 2026-07-08
 ### Added
   - dræn: three more dronecaster engines — **gristle** (@infinitedigits, octave
