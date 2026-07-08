@@ -1285,6 +1285,315 @@ struct MaloneEngine : DroneEngine {
     }
 };
 
+// ── Gristle — @infinitedigits. "A primal sawtooth." ───────────────────────────
+// Three octave-stacked VarSaws (default width 0.5), each detuned by a sine
+// whose rate is itself noise, band-passed by a slowly wandering filter, and
+// heard entirely through Greyhole (wet-only).
+struct GristleEngine : DroneEngine {
+    VarSaw saw[3]; LFNoise0 detN[3]; SinOsc detLfo[3];
+    LFNoise0 bpfN; SinOsc bpfLfo; Biquad bpf;
+    Greyhole hole;
+    const char* name() const override { return "gristle"; }
+    void init(uint32_t seed, float sr) override {
+        for (int i = 0; i < 3; ++i) { saw[i].reset(); detN[i].reset(seed + i * 17u + 1u); detLfo[i].reset(); }
+        bpfN.reset(seed + 91u); bpfLfo.reset(); bpf.reset();
+        hole.init(seed + 301u, 0.6f, sr);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sig = 0.f;
+        for (int i = 0; i < 3; ++i) {
+            float det = linlin(detLfo[i].process(detN[i].process(1.f, st), st), -1.f, 1.f, 0.99f, 1.01f);
+            sig += saw[i].process(hz * (float)(1 << i) * det, 0.5f, st) * amp / (float)(1 << i);
+        }
+        sig = bpf.bpf(sig, linlin(bpfLfo.process(bpfN.process(1.f, st) * 0.1f, st), -1.f, 1.f, 30.f, 2000.f), 1.f, st);
+        hole.process(sig, sig, 0.1f, 0.f, 1.f, 0.707f, 0.9f, st, l, r);
+        const float makeup = 0.55f;
+        l *= makeup; r *= makeup;
+    }
+};
+
+// ── Grove — @sixolet. "The orchestra is preparing to play among the arching
+// roots. There is no conductor." ──────────────────────────────────────────────
+// Five pulsar-synthesis voices: a slow sine "pulse" fires formant-period grain
+// envelopes at its zero crossings, self-gated by an audio-rate guard window fed
+// back LocalIn-style; ratios are demand-picked when each voice's amplitude LFO
+// turns positive. Washed in and out of Greyhole.
+struct GroveEngine : DroneEngine {
+    static constexpr int C = 5;
+    float tempo = 1.5f; int backup = 0;
+    struct Chan {
+        Rng rng;
+        SinOsc formantLfo, ampLfo, envLfo, intervalLfo, widthLfo;
+        float formantRate = 0.01f, ampRate = 0.005f, envRate = 0.003f,
+              intervalRate = 0.01f, widthRate = 0.01f;
+        Drand dNum, dNum2, dBasis, dBasis2;
+        float ratio = 1.f, ratio2 = 1.f, ctlRatio = 2.f, ctlRatio2 = 1.f;
+        float prevAmp = -1.f;
+        LFNoise1 phaseNoise; SinOsc osc1, osc2; float ph1 = 0.f, ph2 = 0.f;
+        Impulse impA, impB; SetResetFF ff; Trig1 trigC, trigA;
+        float guardTimer = -1.f, guardCtlTimer = -1.f;
+        float prevGuard = 0.f, prevGuardCtl = 0.f;      // one-sample feedback
+        bool firstGuard = true, firstGuardCtl = true;
+        PercEnv grain, slow; float grainCurve = -2.f, slowCurve = -2.f;
+        float air0 = 2.f;
+        LeakDC dc; OnePole onep; Lag ampLag;
+        void init(uint32_t s) {
+            rng.seed(s);
+            formantRate = 1.f / (40.f + rng.uniform() * 360.f);
+            ampRate = 1.f / (100.f + rng.uniform() * 300.f);
+            envRate = 1.f / (200.f + rng.uniform() * 600.f);
+            intervalRate = 1.f / (10.f + rng.uniform() * 390.f);
+            widthRate = 1.f / (10.f + rng.uniform() * 390.f);
+            formantLfo.reset(rng.uniform()); ampLfo.reset(rng.uniform());
+            envLfo.reset(rng.uniform()); intervalLfo.reset(rng.uniform());
+            widthLfo.reset(rng.uniform());
+            dNum.reset(s + 11u); dNum2.reset(s + 12u); dBasis.reset(s + 13u); dBasis2.reset(s + 14u);
+            ratio = 1.f; ratio2 = 1.f; ctlRatio = 2.f; ctlRatio2 = 1.f;
+            prevAmp = -1.f;
+            phaseNoise.reset(s + 15u);
+            ph1 = rng.uniform() * kTwoPi; ph2 = rng.uniform() * kTwoPi;
+            osc1.reset(); osc2.reset();
+            impA.reset(); impB.reset(); ff.reset(); trigC.reset(); trigA.reset();
+            guardTimer = guardCtlTimer = -1.f;
+            prevGuard = prevGuardCtl = 0.f;
+            firstGuard = firstGuardCtl = true;
+            grain.reset(); slow.reset();
+            grainCurve = rack::clamp(-4.f + rng.uniform() * 6.f, -4.f, 0.f);   // Rand(-4,2).clip(-4,0)
+            slowCurve = -4.f + rng.uniform() * 4.f;                            // Rand(-4,0)
+            air0 = rng.uniform() * 4.f;                                        // Rand(0,4)
+            dc.reset(); onep.reset(); ampLag.reset();
+        }
+    };
+    Chan ch[C];
+    SinOsc rotLfo; float rotPhase = 0.f;
+    LeakDC dcL, dcR;
+    Greyhole hole;
+    SinOsc xfLfo; float xfRate = 0.003f, xfPhase = 0.f;
+    const char* name() const override { return "grove"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        tempo = 1.f + rng.uniform() * 1.5f;
+        backup = std::min((int)(rng.uniform() * C), C - 1);
+        for (int i = 0; i < C; ++i) ch[i].init(seed + i * 6151u + 1u);
+        rotLfo.reset(); rotPhase = rng.uniform() * kTwoPi - (float)M_PI;
+        dcL.reset(); dcR.reset();
+        hole.init(seed + 40961u, 4.f, sr);
+        xfRate = 1.f / (100.f + rng.uniform() * 700.f);
+        xfPhase = rng.uniform() * kTwoPi;
+        xfLfo.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        static const float nums[9] = {1, 1, 2, 3, 4, 6, 7, 8, 9};
+        static const float basis[2] = {2, 4};
+        static const float basis2[13] = {2.f/4, 3.f/4, 4.f/4, 5.f/4, 6.f/4, 7.f/4,
+                                         8.f/4, 9.f/4, 10.f/4, 11.f/4, 12.f/4, 13.f/4, 14.f/4};
+        float amps[C], sig[C];
+        // first pass: amplitude LFOs (they also clock the demand streams)
+        for (int i = 0; i < C; ++i) {
+            Chan& c = ch[i];
+            float a = c.ampLfo.process(c.ampRate, st);
+            if (a > 0.f && c.prevAmp <= 0.f) {
+                c.ratio = nums[c.dNum.next(9)];
+                c.ratio2 = nums[c.dNum2.next(9)];
+                c.ctlRatio = basis[c.dBasis.next(2)];
+                c.ctlRatio2 = basis2[c.dBasis2.next(13)];
+            }
+            c.prevAmp = a;
+            amps[i] = c.ampLag.process(rack::clamp(a, 0.f, 1.f), 4.f, st);
+        }
+        float ampSum = 0.f;
+        for (int i = 0; i < C; ++i) ampSum += amps[i];
+        amps[backup] = std::max(amps[backup], 0.4f - ampSum);
+        for (int i = 0; i < C; ++i) {
+            Chan& c = ch[i];
+            float fl = c.formantLfo.process(c.formantRate, st);
+            float formantHz = linexp(fl, -1.f, 1.f, std::max(55.f, hz * c.ratio / 8.f), 1000.f);
+            float e = c.envLfo.process(c.envRate, st);
+            float envLen = linexp(e, -1.f, 1.f, 0.5f * tempo, 8.f * tempo);
+            float widthCtl = linexp(e, -1.f, 1.f, 0.005f, 0.5f);
+            float interval = c.intervalLfo.process(c.intervalRate, st) * 0.5f + 0.5f;
+            float pm = 0.02f * c.phaseNoise.process(hz * c.ratio, st);
+            float pulse = (1.f - interval) * c.osc1.process(hz * c.ratio, st, pm + c.ph1)
+                        + interval * c.osc2.process(hz * c.ratio2, st, c.ph2);
+            float pulseCtl = c.trigC.process(
+                c.ff.process(c.impA.process(tempo * c.ctlRatio, st),
+                             c.impB.process(tempo * c.ctlRatio2, st)), 0.01f, st);
+            float width = linlin(c.widthLfo.process(c.widthRate, st), -1.f, 1.f, 0.1f, 0.9f);
+            // audio-rate retrigger, gated by the fed-back guard window
+            float rt = c.trigA.process(pulse, 1.f / 4000.f, st) * (1.f - c.prevGuard);
+            float rtc = pulseCtl * (1.f - c.prevGuardCtl);
+            if (rt > 0.5f || c.firstGuard) { c.guardTimer = width / formantHz; c.firstGuard = false; }
+            if (rtc > 0.5f || c.firstGuardCtl) { c.guardCtlTimer = widthCtl * envLen; c.firstGuardCtl = false; }
+            float guard = (c.guardTimer > 0.f) ? 1.f : 0.f;
+            float guardCtl = (c.guardCtlTimer > 0.f) ? 1.f : 0.f;
+            c.guardTimer -= st; c.guardCtlTimer -= st;
+            float sound = c.grain.process(rt, width / formantHz, (1.f - width) / formantHz, c.grainCurve, st);
+            float slowEnv = c.slow.process(rtc, widthCtl * envLen, (1.f - widthCtl) * envLen, c.slowCurve, st);
+            float air = (1.f + c.air0 * amps[i]) * slowEnv;
+            sound = c.dc.process(sound);
+            sound = c.onep.process(std::tanh(sound * air), 1.f - slowEnv) * amps[i];
+            sound /= linexp(fl, -1.f, 1.f, 1.f, 7.f);
+            sig[i] = sound;
+            c.prevGuard = guard; c.prevGuardCtl = guardCtl;
+        }
+        float sL, sR;
+        splay(sig, C, 0.9f, 0.f, sL, sR);
+        float roL, roR;
+        rotate2(sL, sR, rotLfo.process(0.001f, st, rotPhase), roL, roR);
+        roL = softclip(dcL.process(roL)) * amp;
+        roR = softclip(dcR.process(roR)) * amp;
+        float wL, wR;
+        hole.process(roL, roR, 1.5f / tempo, 0.2f, 2.f, 0.5f, 0.8f, st, wL, wR);
+        // XFade2(dry, wet, pan in [-1, 0]): -1 = dry only, 0 = equal mix
+        float pos = linlin(xfLfo.process(xfRate, st, xfPhase), -1.f, 1.f, -1.f, 0.f);
+        float a1 = std::cos((pos + 1.f) * (float)M_PI_4), a2 = std::sin((pos + 1.f) * (float)M_PI_4);
+        const float makeup = 2.5f;
+        l = (roL * a1 + wL * a2) * makeup;
+        r = (roR * a1 + wR * a2) * makeup;
+    }
+};
+
+// ── Shields — @infinitedigits. "Bendy, Bloody, Loud." ─────────────────────────
+// Six detuned saw pairs, each double-combed, splayed to stereo; the mix is
+// recorded onto an 8 s tape loop and read back slower (a slipping repitch),
+// combed once more, swept by a Moog ladder, and widened with a big 32-comb
+// reverb. Limited, with a 10 s fade-in.
+struct ShieldsEngine : DroneEngine {
+    static constexpr int V = 6;
+    struct Voice {
+        Rng rng;
+        float det1 = 1.f, det2 = 1.f, lagT = 1.f, mult = 1.f;
+        Dust dMult; bool first = true;
+        Lag hzLag1, hzLag2;
+        BlSaw saw1, saw2;
+        struct CombStage {
+            CombC cA, cB; LFNoise0 n; Lag lag;
+            float maxD = 0.5f, minD = 0.3f, decay = 0.7f;
+        } s1, s2;
+        void init(uint32_t s, float sr) {
+            rng.seed(s);
+            det1 = 0.995f + rng.uniform() * 0.005f;
+            det2 = 1.f + rng.uniform() * 0.005f;
+            lagT = 0.5f + rng.uniform() * 1.5f;
+            mult = 1.f; first = true;
+            dMult.reset(s + 1u);
+            hzLag1.reset(); hzLag2.reset();
+            saw1.reset(); saw2.reset();
+            s1.maxD = 0.3f + rng.uniform() * 0.3f;
+            s1.minD = s1.maxD * (0.5f + rng.uniform() * 0.4f);
+            s1.decay = 0.5f + rng.uniform() * 0.5f;
+            s2.maxD = 0.2f + rng.uniform() * 0.2f;
+            s2.minD = s2.maxD * (0.5f + rng.uniform() * 0.4f);
+            s2.decay = 0.5f + rng.uniform() * 0.5f;
+            s1.cA.dl.init(0.65f, sr); s1.cB.dl.init(0.65f, sr);
+            s2.cA.dl.init(0.45f, sr); s2.cB.dl.init(0.45f, sr);
+            s1.n.reset(s + 2u); s2.n.reset(s + 3u);
+            s1.lag.reset(); s2.lag.reset();
+        }
+    };
+    Voice v[V];
+    Biquad hp80L, hp80R;
+    std::vector<float> tapeL, tapeR; int tapeN = 0;
+    double mph = 0.0, rph = 0.0;
+    LFNoise0 nRate, nRateLag; Lag rateLag;
+    CombC c3L, c3R; LFNoise0 n3; Lag l3; float dec3 = 0.7f;
+    MoogFF ladL, ladR;
+    LFNoise0 nSweepRate, nCutLow; Lag lSweepRate, lCutLow; SinOsc sweepOsc;
+    CombVerb<32, 5> verb; LeakDC vdcL, vdcR;
+    LFNoise0 nVerbMix; Lag lVerbMix;
+    Limiter limL, limR;
+    AttackEnv intro;
+    const char* name() const override { return "shields"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        for (int i = 0; i < V; ++i) v[i].init(seed + i * 7013u + 1u, sr);
+        hp80L.reset(); hp80R.reset();
+        tapeN = (int)(8.f * sr);
+        tapeL.assign(tapeN, 0.f); tapeR.assign(tapeN, 0.f);
+        mph = 0.0; rph = 0.0;
+        nRate.reset(seed + 101u); nRateLag.reset(seed + 102u); rateLag.reset();
+        c3L.dl.init(0.55f, sr); c3R.dl.init(0.55f, sr);
+        n3.reset(seed + 103u); l3.reset(); dec3 = 0.5f + rng.uniform() * 0.5f;
+        ladL.reset(); ladR.reset();
+        nSweepRate.reset(seed + 104u); nCutLow.reset(seed + 105u);
+        lSweepRate.reset(); lCutLow.reset(); sweepOsc.reset();
+        verb.init(seed + 106u, sr);
+        vdcL.reset(); vdcR.reset();
+        nVerbMix.reset(seed + 107u); lVerbMix.reset();
+        limL.reset(); limR.reset();
+        intro.reset(10.f);
+    }
+    static float tapeRead(const std::vector<float>& buf, int n, double pos) {
+        int i0 = (int)pos; float f = (float)(pos - i0);
+        int im1 = (i0 - 1 + n) % n, i1 = (i0 + 1) % n, i2 = (i0 + 2) % n;
+        float ym1 = buf[im1], y0 = buf[i0 % n], y1 = buf[i1], y2 = buf[i2];
+        float c1 = 0.5f * (y1 - ym1);
+        float c2 = ym1 - 2.5f * y0 + 2.f * y1 - 0.5f * y2;
+        float c3 = 0.5f * (y2 - ym1) + 1.5f * (y0 - y1);
+        return ((c3 * f + c2) * f + c1) * f + y0;
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        static const float mults[12] = {0.5f, 0.5f, 1, 1, 1, 1, 2, 2, 3, 4, 0.5f, 0.25f};
+        float chans[V * 2];
+        for (int i = 0; i < V; ++i) {
+            Voice& w = v[i];
+            if (w.first || w.dMult.process(1.f / 30.f, st) > 0.f) {
+                w.mult = mults[std::min((int)(w.rng.uniform() * 12), 11)];
+                w.first = false;
+            }
+            float f1 = w.hzLag1.process(hz * w.det1 * w.mult, w.lagT, st);
+            float f2 = w.hzLag2.process(hz * w.det2 * w.mult, w.lagT, st);
+            float a = w.saw1.process(f1, st), b = w.saw2.process(f2, st);
+            // stage 1 comb (per sub-channel), then stage 2 on the sum
+            float d1 = linlin(w.s1.lag.process(w.s1.n.process(0.2f, st), 5.f, st), -1.f, 1.f, w.s1.minD, w.s1.maxD);
+            float g1 = combFeedback(d1, w.s1.decay);
+            a += w.s1.cA.process(a, d1 * sr, g1);
+            b += w.s1.cB.process(b, d1 * sr, g1);
+            float d2 = linlin(w.s2.lag.process(w.s2.n.process(0.2f, st), 5.f, st), -1.f, 1.f, w.s2.minD, w.s2.maxD);
+            float g2 = combFeedback(d2, w.s2.decay);
+            a += w.s2.cA.process(a, d2 * sr, g2);
+            b += w.s2.cB.process(b, d2 * sr, g2);
+            chans[i * 2] = a; chans[i * 2 + 1] = b;
+        }
+        float sL, sR;
+        splay(chans, V * 2, 1.f, 0.f, sL, sR);
+        sL = hp80L.hpf(sL, 80.f, st);
+        sR = hp80R.hpf(sR, 80.f, st);
+        // tape loop: write 0.5 s behind the master head, read at a slipping rate
+        float lagT = linlin(nRateLag.process(0.1f, st), -1.f, 1.f, 0.1f, 10.f);
+        float rate = linlin(rateLag.process(nRate.process(0.1f, st), lagT, st), -1.f, 1.f, 0.5f, 1.f);
+        int wpos = ((int)mph - (int)(0.5f * sr) % tapeN + tapeN) % tapeN;
+        tapeL[wpos] = sL; tapeR[wpos] = sR;
+        float tL = tapeRead(tapeL, tapeN, rph), tR = tapeRead(tapeR, tapeN, rph);
+        mph += 1.0; if (mph >= tapeN) mph -= tapeN;
+        rph += rate; if (rph >= tapeN) rph -= tapeN;
+        // one more comb
+        float d3 = linlin(l3.process(n3.process(0.2f, st), 5.f, st), -1.f, 1.f, 0.3f, 0.5f);
+        float g3 = combFeedback(d3, dec3);
+        tL += c3L.process(tL, d3 * sr, g3);
+        tR += c3R.process(tR, d3 * sr, g3);
+        // oscillating Moog ladder
+        float swRate = linexp(lSweepRate.process(nSweepRate.process(0.2f, st), 5.f, st), -1.f, 1.f, 0.001f, 20.f);
+        float cutLow = linlin(lCutLow.process(nCutLow.process(0.1f, st), 0.1f, st), -1.f, 1.f, 600.f, 6000.f);
+        float cut = linexp(sweepOsc.process(swRate, st), -1.f, 1.f, cutLow, 9000.f);
+        tL = ladL.process(tL, cut, 0.f, st);
+        tR = ladR.process(tR, cut, 0.f, st);
+        // reverb
+        float wetL, wetR;
+        verb.process(tL, tR, st, sr, wetL, wetR);
+        wetL = vdcL.process(wetL); wetR = vdcR.process(wetR);
+        float vm = linlin(lVerbMix.process(nVerbMix.process(0.2f, st), 5.f, st), -1.f, 1.f, 0.1f, 0.4f);
+        tL += vm * wetL; tR += vm * wetR;
+        tL = limL.process(tL, 0.95f, 0.1f, st);
+        tR = limR.process(tR, 0.95f, 0.1f, st);
+        float env = intro.process(st);
+        const float makeup = 1.f;
+        l = tL * env * amp * 0.5f * makeup;
+        r = tR * env * amp * 0.5f * makeup;
+    }
+};
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -1312,6 +1621,9 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new MikaEngine());
     v.emplace_back(new FieldsteelEngine());
     v.emplace_back(new MaloneEngine());
+    v.emplace_back(new GristleEngine());
+    v.emplace_back(new GroveEngine());
+    v.emplace_back(new ShieldsEngine());
     return v;
 }
 
