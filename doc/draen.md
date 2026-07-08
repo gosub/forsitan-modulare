@@ -72,6 +72,8 @@ that layer fills out.
 | **harm's way** | @moonblind | Sixteen harmonics, each slowly amplitude-modulated; a shimmering additive drone. |
 | **thx** | @infinitedigits | The THX "Deep Note": twelve saws sweep from a random cluster to a target chord. Here **amp doubles as the sweep position** (as in the original), so it shapes the sound rather than acting purely as a level. |
 | **hecker** | @infinitedigits | Two stereo banks of sixteen filtered-noise voices, morphing between white and pink noise around the fundamental — a dense, evolving noise drone. |
+| **coil** | @infinitedigits | Twelve Dust-triggered voices — a feedback sine crossfading with noise, band-limited, micro-delayed and panned by moving envelopes — poured into a long reverb. Slow and cavernous. |
+| **sachiko** | @infinitedigits | Four DPW-pulse voices modulated by banks of very slow wandering triangles, resonant-lowpassed and comb-delayed, summed into a global Moog ladder and reverb. High, glassy, space-cutting. |
 
 Engines are loudness-normalized with a per-engine makeup gain so switching
 between them doesn't jump levels; the quieter originals (which relied on norns'

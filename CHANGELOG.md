@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.2] - 2026-07-08
+### Added
+  - dræn: two more dronecaster engines, both @infinitedigits — **coil**
+    (12 Dust-triggered feedback-sine/noise voices through a long reverb) and
+    **sachiko** (4 DPW-pulse voices modulated by slow triangle banks, into a
+    global Moog ladder and reverb)
+  - draen_ugens.hpp gains a reusable delay-line layer: interpolated delay lines,
+    CombL/CombC feedback combs, Schroeder AllpassN, and a shared SchroederReverb
+    (DelayN → 7×CombL → 4×AllpassN) — the reverb block copied across many
+    dronecaster SynthDefs, now built once
+  - draen_ugens.hpp also gains Impulse, Trig, TChoose, SinOscFB, a breakpoint
+    EnvGen, an ASR attack env, a Moog ladder (MoogFF) and LeakDC
+  - dræn: engine init now receives the sample rate, so delay-based engines size
+    their buffers correctly and rebuild on sample-rate changes
+
 ## [2.6.1] - 2026-07-07
 ### Added
   - dræn: three more engines ported from dronecaster — **harm's way**
