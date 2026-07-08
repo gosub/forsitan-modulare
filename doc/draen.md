@@ -60,8 +60,7 @@ evolving ones start somewhere new each time you select them.
 
 ## Engines
 
-The initial roster is the set that needs only the base UGEN layer; it grows as
-that layer fills out.
+The full dronecaster roster — all 37 drones — is ported.
 
 | engine | source | description |
 |--------|--------|-------------|
@@ -98,6 +97,10 @@ that layer fills out.
 | **drumm** | @infinitedigits | Two slowly crossfading layers — chaos-width pulse pairs with phase-modulated subs, and ten Moog-swept voices stepping interlocking rows — sine-shaped and drenched in pumping Freeverb. |
 | **takita** | @sixolet | A self-clocked drum language: a beat gates a self-suppressing division window whose phasors flip tik/tok/tuk flip-flops, each firing resonant filtered clicks. Everything drifts on immensely slow sines. Rhythmic. |
 | **twin pks** | (uncredited) | No oscillators: tape/vinyl noise (dust, crackle, a pink-driven whistle) compressed hard, band-passed at the fundamental, warbled through wow and flutter, saturated and bit-crushed. Retro stylings, timeless horror. |
+| **unmemqua** | @zebra | Lagged dust and noise excite a 28-partial Klank bank whose ring times scale with 1/hz, torn by six slowly-breathing filters and smeared by ~4 s combs (one with negative feedback). |
+| **uneablin** | @zebra | Six interval sine pairs phase-modulated by long saw-swept delays of each other, morphing through a ladder of cubic and inside-out waveshapes. Everything moves at multiples of 23 seconds. |
+| **unwealne** | @zebra | Six wandering-width pulse voices through triple resonant lowpasses, the whole mix shifted an octave up through a 13-ratio filter bank, with ~3 s allpasses cross-feeding it back reversed. |
+| **unreanth** | @zebra | A 64-step buffer sequencer read and written at mutually-prime rates fades ten just-ratio sine pairs in and out, over detuned saws, a diode ring-mod, and a 7–8 s pitch-smeared feedback delay. |
 
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 

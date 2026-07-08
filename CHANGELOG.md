@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.11] - 2026-07-09
+### Added
+  - dræn: the last four dronecaster engines, all @zebra — **unmemqua** (28-partial
+    Klank torn by breathing filters), **uneablin** (cross-delayed PM sine ring
+    with waveshape morphing), **unwealne** (wandering pulses octave-shifted
+    through a 13-ratio bank), and **unreanth** (buffer-sequenced sine fades over
+    ring-mod saws and a long pitch-smeared feedback delay) — **completing the
+    full 37-engine dronecaster roster**
+  - draen_ugens.hpp gains PitchShift (two-tap granular shifter), LagUD, and the
+    distort / InsideOut / DiodeRingMod waveshapers; Ringz gains an SC-exact
+    un-normalized mode (long partials ring louder, as in SC's Klank)
+
 ## [2.6.10] - 2026-07-09
 ### Added
   - dræn: two more dronecaster engines — **takita** (@sixolet, a self-clocked
