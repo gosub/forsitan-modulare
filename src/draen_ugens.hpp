@@ -657,6 +657,22 @@ inline void balance2(float l, float r, float pos, float level, float& outL, floa
     outR = r * std::sin(a) * level;
 }
 
+// ── Ringz — a resonator (ringing 2-pole BPF); the building block of Klank ─────
+// freq = resonant frequency, decay = -60 dB ring time. Input is scaled by
+// (1 - R^2) so the resonant gain stays ~unity regardless of decay.
+struct Ringz {
+    float y1 = 0.f, y2 = 0.f;
+    void reset() { y1 = 0.f; y2 = 0.f; }
+    float process(float in, float freq, float decay, float st) {
+        float w = kTwoPi * rack::clamp(freq * st, 0.f, 0.49f);
+        float R = std::exp(-6.907755f * st / std::max(decay, 1e-4f));
+        float y0 = in * (1.f - R * R) + 2.f * R * std::cos(w) * y1 - R * R * y2;
+        float out = y0 - y2;
+        y2 = y1; y1 = y0;
+        return out;
+    }
+};
+
 // ── FreeVerb — Jezar's public-domain Freeverb (mono in → mono out) ───────────
 // Faithful port of the classic algorithm: 8 parallel damped combs → 4 series
 // allpasses. Comb/allpass lengths are the original 44.1 kHz tunings, scaled to
@@ -698,6 +714,60 @@ struct FreeVerbMono {
         return in * (1.f - mix) + out * 3.f * mix;    // scalewet = 3
     }
 };
+
+// ── BrownNoise.ar — Brownian noise (integrated white, reflected at ±1) ───────
+struct BrownNoise {
+    Rng rng; float y = 0.f;
+    void reset(uint32_t s) { rng.seed(s); y = 0.f; }
+    float process() {
+        y += rng.bipolar() * 0.125f;
+        if (y > 1.f) y = 2.f - y; else if (y < -1.f) y = -2.f - y;
+        return y;
+    }
+};
+
+// ── BAllPass.ar — second-order RBJ allpass; rq = 1/Q ─────────────────────────
+struct BAllPass {
+    float x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    void reset() { x1 = x2 = y1 = y2 = 0.f; }
+    float process(float x, float freqHz, float rq, float st) {
+        float w = kTwoPi * rack::clamp(freqHz * st, 1e-5f, 0.49f);
+        float cw = std::cos(w), sw = std::sin(w), alpha = sw * rq * 0.5f;
+        float a0 = 1.f + alpha;
+        float b0 = (1.f - alpha) / a0, b1 = -2.f * cw / a0, b2 = (1.f + alpha) / a0;
+        float a1 = -2.f * cw / a0, a2 = (1.f - alpha) / a0;
+        float y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+        x2 = x1; x1 = x; y2 = y1; y1 = y;
+        return y;
+    }
+};
+
+// ── SVF.ar — TPT state-variable filter; returns a mix of lp/bp/hp outputs ────
+struct SVF {
+    float ic1 = 0.f, ic2 = 0.f;
+    void reset() { ic1 = ic2 = 0.f; }
+    float process(float v0, float cutoffHz, float res, float lpMix, float bpMix, float hpMix, float st) {
+        float g = std::tan((float)M_PI * rack::clamp(cutoffHz * st, 1e-5f, 0.49f));
+        float k = 2.f - 1.98f * rack::clamp(res, 0.f, 1.f);
+        float a1 = 1.f / (1.f + g * (g + k)), a2 = g * a1, a3 = g * a2;
+        float v3 = v0 - ic2;
+        float v1 = a1 * ic1 + a2 * v3;
+        float v2 = ic2 + a2 * ic1 + a3 * v3;
+        ic1 = 2.f * v1 - ic1; ic2 = 2.f * v2 - ic2;
+        return lpMix * v2 + bpMix * v1 + hpMix * (v0 - k * v1 - v2);
+    }
+};
+
+// ── SelectX.ar (N-element) — equal-power crossfade across an array ────────────
+inline float selectxN(float sel, const float* arr, int n, bool wrap) {
+    if (n <= 1) return (n == 1) ? arr[0] : 0.f;
+    int i0 = (int)std::floor(sel), i1;
+    float f = sel - i0;
+    if (wrap) { i0 = ((i0 % n) + n) % n; i1 = (i0 + 1) % n; }
+    else { i0 = (int)rack::clamp((float)i0, 0.f, (float)(n - 1)); i1 = std::min(i0 + 1, n - 1); }
+    float ang = rack::clamp(f, 0.f, 1.f) * (float)M_PI_2;
+    return arr[i0] * std::cos(ang) + arr[i1] * std::sin(ang);
+}
 
 // ── Splay.ar — spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
