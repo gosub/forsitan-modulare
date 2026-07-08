@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.7] - 2026-07-08
+### Added
+  - dræn: three more dronecaster engines — **gristle** (@infinitedigits, octave
+    triangle-saws through a Greyhole cloud), **grove** (@sixolet, five self-gating
+    pulsar-synthesis voices washed through Greyhole), and **shields**
+    (@infinitedigits, double-combed saw pairs re-pitched off a slipping tape loop)
+  - draen_ugens.hpp gains VarSaw, SetResetFF, Trig1, a curved Env.perc generator,
+    a peak Limiter, the CombN-bank reverb block several engines share, and an
+    approximation of Julian Parker's **Greyhole** (modulated allpass diffusers in
+    a damped cross-fed stereo delay loop)
+
 ## [2.6.6] - 2026-07-08
 ### Added
   - dræn: four more dronecaster engines — **mt. zion** (@license, five S&H-wandering

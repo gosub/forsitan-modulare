@@ -87,6 +87,9 @@ that layer fills out.
 | **mika** | @infinitedigits | A chord-walking sine ping shot through a randomly re-timed allpass (the delay jumps *are* the beeps), over a slow pulse+noise bass. Hum and beeps. |
 | **fieldsteel** | after Eli Fieldsteel | Three band-passed saws demand-picking notes from a four-note set, blended with a "marimba" of high-resonance bandpasses rung by slow ramps. From Tutorial 15, "Composing a Piece". |
 | **malone** | @infinitedigits | Eight organ voices (pulse stack + sub triangle) stepping through a demand-sequenced chord table, tremolo'd after each change, into a Moog ladder. Thick, organ, stepped. |
+| **gristle** | @infinitedigits | Three octave-stacked triangle-saws, noise-detuned and band-passed by a wandering filter, heard entirely through a Greyhole diffusion cloud. A primal sawtooth. |
+| **grove** | @sixolet | Five pulsar-synthesis voices: slow sine "pulses" fire formant-period grains, self-gated by a fed-back guard window; washed in and out of Greyhole. There is no conductor. |
+| **shields** | @infinitedigits | Six detuned, double-combed saw pairs recorded to a tape loop and read back slower (a slipping repitch), combed again, Moog-swept and drowned in a 32-comb reverb. Bendy, bloody, loud. |
 
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 
