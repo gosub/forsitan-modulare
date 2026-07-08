@@ -947,6 +947,344 @@ struct MagicicadaEngine : DroneEngine {
     }
 };
 
+// ── mt. zion — @license. "Thee rusted satellites gather + sing." ──────────────
+// Five pulse-wave harmonics where everything — pitch wander, pulse width, pan,
+// level — is Latch(WhiteNoise, Dust).lag, i.e. slow lagged sample-and-hold
+// randomness. The original's pulse width wanders in [1, 2]; SC's Pulse treats
+// width modulo 1, so a voice thins to silence as its width passes an integer —
+// kept faithfully by wrapping the width here too.
+struct MtZionEngine : DroneEngine {
+    static constexpr int N = 5;
+    struct SH {                       // Latch.ar(WhiteNoise.ar, Dust.ar(f)).lag(t)
+        Rng rng; Dust dust; float held = 0.f; Lag lag;
+        void init(uint32_t s) {
+            rng.seed(s); dust.reset(s ^ 0x9e3779b9u); held = rng.bipolar(); lag.reset();
+        }
+        float process(float density, float lagTime, float st) {
+            if (dust.process(density, st) > 0.f) held = rng.bipolar();
+            return lag.process(held, lagTime, st);
+        }
+    };
+    struct Voice { SH shNote, shWidth, shPan, shLevel; BlPulse pulse; };
+    Voice v[N];
+    const char* name() const override { return "mt. zion"; }
+    void init(uint32_t seed, float) override {
+        for (int i = 0; i < N; ++i) {
+            v[i].shNote.init(seed + i * 197u + 1u);
+            v[i].shWidth.init(seed + i * 197u + 2u);
+            v[i].shPan.init(seed + i * 197u + 3u);
+            v[i].shLevel.init(seed + i * 197u + 4u);
+            v[i].pulse.reset();
+        }
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float midi = cpsmidi(hz);
+        float baseNote = std::round(midi);
+        float detune = std::fabs(baseNote - midi);
+        float maxAmp = amp / N;
+        l = r = 0.f;
+        for (int i = 0; i < N; ++i) {
+            float note = baseNote + v[i].shNote.process(0.2f, 2.f, st) * detune;
+            float w = v[i].shWidth.process(0.5f, 0.5f, st) * 0.5f + 1.5f;   // [1, 2]
+            w -= std::floor(w);                                            // SC width wrap
+            float s = v[i].pulse.process(midicps(note) * (i + 1), w, st);
+            float pan = v[i].shPan.process(0.3f, 0.5f, st);
+            float lev = v[i].shLevel.process(0.1f, 0.5f, st) * maxAmp;      // bipolar level
+            float vl, vr; pan2(s, pan, lev, vl, vr);
+            l += vl; r += vr;
+        }
+        const float makeup = 1.2f;
+        l *= makeup; r *= makeup;
+    }
+};
+
+// ── Mika — @infinitedigits. "Hum and beeps." ──────────────────────────────────
+// A chord-walking sine ping fed through a randomly re-timed allpass (after
+// Batuhan Bozkurt's sc140 tweet — the delay-time jumps *are* the beeps), over a
+// pulse+noise bass. The PMOsc in the original has mul:0 (silent) and the
+// Compander uses identity slopes, so both are omitted.
+struct MikaEngine : DroneEngine {
+    // chords: Dseq of semitone-offset sets, stepped every 2 bars at 86 bpm
+    static constexpr int NCH = 4;
+    const float* chordAt(int i, int& len) const {
+        static const float c0[] = {-3, -3, -3, 4, 4, 2};
+        static const float c1[] = {-7, -7, -7, 0, 0, -3};
+        static const float c2[] = {0, 0, 0, 2, 4, 7, 7};
+        static const float c3[] = {-8, -8, 7, -1, -8, -1, 1};
+        static const float* cs[NCH] = {c0, c1, c2, c3};
+        static const int ln[NCH] = {6, 6, 7, 7};
+        len = ln[i]; return cs[i];
+    }
+    Rng rng;
+    Dust dMult; float mult = 1.f;                    // hz * TChoose([1,1,1,2])
+    Impulse impChord; Dseq seqChord; int chordIdx = 0;
+    Impulse impFreq; float freq = 220.f;
+    SinOsc osc;
+    Dust dRate; float apRate = 8.f;                  // allpass retime rate
+    Impulse impAp; TExpRand apRand;
+    AllpassC apL, apR;
+    float lpfCut = 650.f;                            // effectively-static LFNoise0 cutoff
+    Biquad lpMain[2], hpMain[2];
+    // bass
+    SinOsc bassWidthLfo, noiseAmpLfo, bassLpfLfo, bassGainLfo;
+    LFTri bassPanLfo;
+    float noiseT = 3.5f, noiseA = 3.5f;              // rrand(3,4) pair
+    BlPulse bassOsc; WhiteNoise wn; Biquad bassNoiseLp, bassHp[2], bassLp[2];
+    LeakDC dc[2];
+    const char* name() const override { return "mika"; }
+    void init(uint32_t seed, float sr) override {
+        rng.seed(seed);
+        dMult.reset(seed + 1u); mult = 1.f;
+        impChord.reset(); seqChord.reset(); chordIdx = 0;
+        impFreq.reset(); freq = 220.f;
+        osc.reset();
+        dRate.reset(seed + 2u); apRate = 8.f;
+        impAp.reset(); apRand.reset(seed + 3u);
+        apL.dl.init(0.45f, sr); apR.dl.init(0.45f, sr);
+        lpfCut = linlin(rng.bipolar(), -1.f, 1.f, 300.f, 1000.f);
+        for (int c = 0; c < 2; ++c) { lpMain[c].reset(); hpMain[c].reset(); bassHp[c].reset(); bassLp[c].reset(); dc[c].reset(); }
+        bassWidthLfo.reset(); noiseAmpLfo.reset(); bassLpfLfo.reset(); bassGainLfo.reset();
+        bassPanLfo.reset();
+        noiseT = 3.f + rng.uniform(); noiseA = 3.f + rng.uniform();
+        bassOsc.reset(); wn.reset(seed + 4u); bassNoiseLp.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        // hz octave hops + chord walk
+        static const float mults[4] = {1.f, 1.f, 1.f, 2.f};
+        if (dMult.process(0.05f, st) > 0.f) mult = mults[std::min((int)(rng.uniform() * 4), 3)];
+        float hzEff = hz * mult;
+        if (impChord.process(86.f / 60.f / 8.f, st) > 0.f) chordIdx = seqChord.next(NCH);
+        int clen; const float* chord = chordAt(chordIdx, clen);
+        if (impFreq.process(1.4333f, st) > 0.f) {
+            int j = std::min((int)(rng.uniform() * clen), clen - 1);
+            freq = midicps(chord[j] + cpsmidi(hzEff));
+        }
+        float ping = std::tanh(osc.process(freq, st));
+        // allpass with randomly re-timed delay, rounded to 2 ms (L) / 4 ms (R)
+        static const float rates[9] = {8, 8, 8, 8, 8, 4, 4, 2, 1};
+        if (dRate.process(0.1f, st) > 0.f) apRate = rates[std::min((int)(rng.uniform() * 9), 8)];
+        float v = apRand.process(impAp.process(apRate, st), 2e-4f, 0.4f);
+        float dL = std::max(std::round(v / 2e-3f) * 2e-3f, 2e-3f);
+        float dR = std::max(std::round(v / 4e-3f) * 4e-3f, 4e-3f);
+        float ch[2];
+        ch[0] = apL.process(ping, dL * sr, combFeedback(dL, 2.f));
+        ch[1] = apR.process(ping, dR * sr, combFeedback(dR, 2.f));
+        for (int c = 0; c < 2; ++c) {
+            ch[c] = lpMain[c].lpf(ch[c] * 0.5f, lpfCut, st);
+            ch[c] = hpMain[c].hpf(ch[c], 70.f, st);
+        }
+        // bass: min chord tone, octaved below 90 Hz
+        float basshz = midicps(chord[0] + cpsmidi(hzEff));
+        for (int j = 1; j < clen; ++j) basshz = std::min(basshz, midicps(chord[j] + cpsmidi(hzEff)));
+        for (int k = 0; k < 3; ++k) if (basshz > 90.f) basshz *= 0.5f;
+        float width = linlin(bassWidthLfo.process(1.f / 3.f, st), -1.f, 1.f, 0.2f, 0.4f);
+        float bass = bassOsc.process(basshz, width, st);
+        float nAmp = linlin(noiseAmpLfo.process(1.f / noiseT, st), -1.f, 1.f, 1.f, noiseA);
+        bass += bassNoiseLp.lpf(wn.process() * nAmp, 2.f * basshz, st);
+        float bl, br;
+        pan2(bass, linlin(bassPanLfo.process(1.f / 6.12f, st), -1.f, 1.f, -0.2f, 0.2f), 1.f, bl, br);
+        float bassCut = linlin(bassLpfLfo.process(0.1f, st), -1.f, 1.f, 2.f, 3.f) * basshz;
+        bl = bassLp[0].lpf(bassHp[0].hpf(bl, 20.f, st), bassCut, st);
+        br = bassLp[1].lpf(bassHp[1].hpf(br, 20.f, st), bassCut, st);
+        float bGain = linlin(bassGainLfo.process(0.123f, st), -1.f, 1.f, 1.5f, 2.5f);
+        const float makeup = 3.f;
+        l = std::tanh(dc[0].process(ch[0] + bGain * bl)) * 0.1f * amp * makeup;
+        r = std::tanh(dc[1].process(ch[1] + bGain * br)) * 0.1f * amp * makeup;
+    }
+};
+
+// ── Fieldsteel — after Eli Fieldsteel's Tutorial 15 ("Composing a Piece"). ────
+// A drone of three band-passed saws whose notes are demand-picked from a
+// four-note set, blended with a "marimba": three high-resonance SVF bandpasses
+// rung by slow LFSaw ramps at demand-picked rhythms and pitches.
+struct FieldsteelEngine : DroneEngine {
+    struct DroneVoice {
+        Impulse imp; float phaseOff = 0.f;
+        Dxrand notes; Dbrown gain;
+        BPEnv env; LFNoise1 vib; BlSaw saw; Biquad bpf;
+        float freq = 220.f, sawGain = 0.7f;
+        void init(uint32_t s, float phase) {
+            imp.reset(); imp.phase = phase; imp.first = (phase == 0.f);
+            phaseOff = phase;
+            notes.reset(s + 1u); gain.reset(s + 2u);
+            env.reset(); vib.reset(s + 3u); saw.reset(); bpf.reset();
+            freq = 220.f; sawGain = 0.7f;
+        }
+    };
+    static constexpr int ND = 3;
+    DroneVoice dv[ND];
+    LFNoise1 cfLfo[2], rqLfo[2];
+    // marimba: shared demand streams, polled by the three layers in order
+    Impulse mTrig;
+    Dxrand mRhythms; Drand mPitches; Dbrown mGain;
+    struct MarimbaLayer {
+        LFSaw saw; SVF svf; LFNoise1 resLfo;
+        float rate = 0.25f, pitch = 220.f, gain = 0.6f;
+    };
+    static constexpr int NM = 3;
+    MarimbaLayer ml[NM];
+    const char* name() const override { return "fieldsteel"; }
+    void init(uint32_t seed, float) override {
+        static const float phases[ND] = {0.f, 1.f / 3.f, 3.f / 5.f};
+        for (int i = 0; i < ND; ++i) dv[i].init(seed + i * 1009u, phases[i]);
+        for (int c = 0; c < 2; ++c) { cfLfo[c].reset(seed + 7000u + c); rqLfo[c].reset(seed + 7100u + c); }
+        mTrig.reset();
+        mRhythms.reset(seed + 8001u); mPitches.reset(seed + 8002u); mGain.reset(seed + 8003u);
+        for (int k = 0; k < NM; ++k) {
+            ml[k].saw.reset(); ml[k].svf.reset(); ml[k].resLfo.reset(seed + 8100u + k);
+            ml[k].rate = 0.25f; ml[k].pitch = 220.f; ml[k].gain = 0.6f;
+        }
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        static const float noteOffs[4] = {20.f, 13.f, 0.f, 5.f};
+        float midi = cpsmidi(hz);
+        // drone: two shared BPF-modulation LFO pairs, voices use them cyclically
+        float cf[2], rq[2];
+        for (int c = 0; c < 2; ++c) {
+            cf[c] = linexp(cfLfo[c].process(0.2f, st), -1.f, 1.f, hz * 0.5f, 3.f * hz);
+            rq[c] = linexp(rqLfo[c].process(0.1f, st), -1.f, 1.f, 0.1f, 0.2f);
+        }
+        float dch[ND];
+        for (int i = 0; i < ND; ++i) {
+            DroneVoice& v = dv[i];
+            float trig = v.imp.process(1.f / 8.f, st);
+            if (trig > 0.f) {
+                v.freq = midicps(midi - noteOffs[v.notes.next(4)]);
+                v.sawGain = v.gain.next(0.6f, 0.8f, 0.125f);
+            }
+            static const float lv[4] = {0.f, 1.f, 1.f, 0.f};
+            static const float tm[3] = {2.f, 5.f, 3.f};
+            float e = v.env.process(trig, lv, tm, 3, false, st);
+            float f = v.freq * midiratio(v.vib.process(0.1f, st) * 0.1f);
+            float s = softclip(v.saw.process(f, st) * v.sawGain) * 0.75f;
+            s = v.bpf.bpf(s, cf[i % 2], rq[i % 2], st);
+            dch[i] = softclip(s * e * 1.5f);
+        }
+        float droneL, droneR;
+        splay(dch, ND, 0.85f, 0.f, droneL, droneR);
+        // marimba: one shared demand stream trio, polled by each layer in order
+        float mtrig = mTrig.process(0.25f, st);
+        static const float rhythmMul[8] = {0.5f, 1.5f, 2.25f, 11.f / 17.f, 1.f, 2.f, 4.f, 5.f};
+        static const float pitchMul[5] = {0.5f, 1.f, 2.f, 1.25f, 4.f};
+        float mch[NM];
+        for (int k = 0; k < NM; ++k) {
+            MarimbaLayer& m = ml[k];
+            if (mtrig > 0.f) {
+                m.rate = 0.25f * rhythmMul[mRhythms.next(8)];
+                m.pitch = hz * pitchMul[mPitches.next(5)];
+                m.gain = mGain.next(0.6f, 1.f, 0.125f);
+            }
+            float res = 1.f - linexp(m.resLfo.process(0.1f, st), -1.f, 1.f, 0.002f, 0.01f);
+            float s = m.svf.process(m.saw.process(m.rate, st) * m.gain,
+                                    m.pitch, res, 0.f, 1.f, 0.f, st);
+            mch[k] = softclip(s * 0.1f);
+        }
+        float marL, marR;
+        splay(mch, NM, 0.7f, 0.f, marL, marR);
+        // bal = -0.35 → drone 0.675, marimba 0.325
+        const float makeup = 4.f;
+        l = (0.675f * droneL + 0.325f * marL) * amp * makeup;
+        r = (0.675f * droneR + 0.325f * marR) * amp * makeup;
+    }
+};
+
+// ── Malone — @infinitedigits. "Thick, organ, stepped." ────────────────────────
+// Eight organ voices (pulse stack + sub triangle), each picking a random tone
+// of a demand-sequenced chord at its own Dust rate, resonant-lowpassed and
+// tremolo'd by an LFPar burst after each chord change, into a Moog ladder and
+// a whisper of the shared Schroeder reverb. The original's second RLPF channel
+// lands on buses 3/4 and is inaudible, so only the first is ported.
+struct MaloneEngine : DroneEngine {
+    static constexpr int NCH = 13, NV = 8;
+    const float* chordAt(int i, int& len) const {
+        static const float c0[] = {0, 12};
+        static const float c1[] = {0, 4, 7, 12};
+        static const float c2[] = {-1, 4, 7, 12};
+        static const float c3[] = {0, 0, 7, 12, 12};
+        static const float c4[] = {0, 0, 7, 12, 12};
+        static const float c5[] = {0, 4, 7, 12};
+        static const float c6[] = {-3, 4, 7, 12};
+        static const float c7[] = {-3, 4, 7, 11};
+        static const float c8[] = {0, 12};
+        static const float c9[] = {0, 4, 7, 12};
+        static const float c10[] = {0, 4, 7, 11};
+        static const float c11[] = {-3, 4, 7, 9};
+        static const float c12[] = {0, 0, 7, 12, 12};
+        static const float* cs[NCH] = {c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12};
+        static const int ln[NCH] = {2, 4, 4, 5, 5, 4, 4, 4, 2, 4, 4, 4, 5};
+        len = ln[i]; return cs[i];
+    }
+    Impulse impChord; Dust dChord; Dseq seqChord; int chordIdx = 0;
+    struct Voice {
+        Rng rng; Dust dPick; float offset = 0.f;
+        SinOsc vibLfo; float vibRate = 0.3f;
+        BlPulse p1, p2, p3; LFTri sub;
+        Biquad rlpf;
+        Trig tremTrig; float tremDur = 4.f; LFPar trem;
+        LFNoise0 nPan; Lag panLag;
+        void init(uint32_t s) {
+            rng.seed(s);
+            dPick.reset(s + 1u); offset = 0.f;
+            vibRate = 0.1f + rng.uniform() * 0.4f;                 // Rand(0.1,0.5)
+            vibLfo.reset(rng.uniform() * 0.5f);                    // Rand(0,pi) phase
+            p1.reset(); p2.reset(); p3.reset(); sub.reset(); rlpf.reset();
+            tremTrig.reset(); tremDur = 1.f + rng.uniform() * 7.f; // Rand(1,8)
+            trem.reset(); nPan.reset(s + 2u); panLag.reset();
+        }
+    };
+    Voice v[NV];
+    LFTri rqLfo;
+    MoogFF ladder[2];
+    SchroederReverb reverb;
+    LFNoise0 nRevMix; Lag revMixLag;
+    Biquad hp20[2];
+    const char* name() const override { return "malone"; }
+    void init(uint32_t seed, float sr) override {
+        impChord.reset(); dChord.reset(seed + 11u); seqChord.reset(); chordIdx = 0;
+        for (int i = 0; i < NV; ++i) v[i].init(seed + i * 3001u + 100u);
+        rqLfo.reset();
+        ladder[0].reset(); ladder[1].reset();
+        reverb.init(seed + 77777u, sr);
+        nRevMix.reset(seed + 5u); revMixLag.reset();
+        hp20[0].reset(); hp20[1].reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float chordchange = impChord.process(0.06f, st) + dChord.process(0.005f, st);
+        if (chordchange > 0.f) chordIdx = seqChord.next(NCH);
+        int clen; const float* chord = chordAt(chordIdx, clen);
+        float midi = cpsmidi(hz);
+        float rq = linlin(rqLfo.process(0.5f, st), -1.f, 1.f, 0.3f, 1.f);
+        float sumL = 0.f, sumR = 0.f;
+        for (int i = 0; i < NV; ++i) {
+            Voice& w = v[i];
+            if (w.dPick.process(0.1f, st) > 0.f)
+                w.offset = chord[std::min((int)(w.rng.uniform() * clen), clen - 1)];
+            float vib = w.vibLfo.process(w.vibRate, st) * 0.04f;
+            float vhz = midicps(midi + w.offset + vib);
+            float s = w.p1.process(vhz, 0.17f, st)
+                    + w.p2.process(vhz * 0.5f, 0.17f, st)
+                    + w.p3.process(vhz * 2.f, 0.17f, st)
+                    + w.sub.process(vhz * 0.25f, st);
+            s = w.rlpf.rlpf(s, vhz * 6.f, rq, st);
+            float tf = w.tremTrig.process(chordchange, w.tremDur, st) * 3.5f;
+            s *= w.trem.process(tf, st) * 0.5f + 0.5f;
+            float pan = w.panLag.process(w.nPan.process(1.f / 3.f, st), 3.f, st);
+            float vl, vr; pan2(s, pan, 1.f / 40.f, vl, vr);
+            sumL += vl; sumR += vr;
+        }
+        float cut = hz * 40.f;
+        sumL = ladder[0].process(sumL, cut, 0.f, st);
+        sumR = ladder[1].process(sumR, cut, 0.f, st);
+        float rvL, rvR; reverb.process(sumL, sumR, st, sr, rvL, rvR);
+        float rmix = linlin(revMixLag.process(nRevMix.process(0.1f, st), 10.f, st), -1.f, 1.f, 0.01f, 0.03f);
+        const float makeup = 6.f;
+        l = hp20[0].hpf(sumL + rmix * rvL, 20.f, st) * 0.5f * amp * makeup;
+        r = hp20[1].hpf(sumR + rmix * rvR, 20.f, st) * 0.5f * amp * makeup;
+    }
+};
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -970,6 +1308,10 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new RehbergEngine());
     v.emplace_back(new ToshiyaEngine());
     v.emplace_back(new MagicicadaEngine());
+    v.emplace_back(new MtZionEngine());
+    v.emplace_back(new MikaEngine());
+    v.emplace_back(new FieldsteelEngine());
+    v.emplace_back(new MaloneEngine());
     return v;
 }
 
