@@ -788,6 +788,165 @@ struct RehbergEngine : DroneEngine {
     }
 };
 
+// ── Toshiya — @infinitedigits. "Object-bound resonate space." ───────────────
+// Twelve sine voices whose pitches jump through intervals, chorus-delayed and
+// swept by a Moog ladder, into the shared reverb, with a pink-noise-excited
+// Klank resonator bank ringing underneath.
+struct ToshiyaEngine : DroneEngine {
+    static constexpr int V = 12;
+    SinOsc sub, subPan; LFTri subPhase;
+    struct Voice {
+        SinOsc osc; TChoose interval; Impulse imp; float impRate = 0.1f;
+        Biquad lpf; SinOsc cutLfo; float cutRate = 0.05f;
+        DelayC delayc; LFNoise1 delayMod; float delayRate = 7.f, delayDiv = 15.f;
+        LFNoise0 panN; Lag panLag;
+        void init(uint32_t seed, float sr) {
+            Rng rng; rng.seed(seed);
+            osc.reset(); interval.reset(seed + 1u); imp.reset();
+            impRate = linlin(rng.uniform(), 0.f, 1.f, 1.f / 30.f, 1.f / 5.f);
+            lpf.reset(); cutLfo.reset(rng.uniform());
+            cutRate = linlin(rng.uniform(), 0.f, 1.f, 1.f / 30.f, 1.f / 10.f);
+            delayc.dl.init(0.05f, sr); delayMod.reset(seed + 2u);
+            delayRate = 5.f + rng.uniform() * 5.f;
+            delayDiv = 10.f + rng.uniform() * 10.f;      // NRand(10,20,3)
+            panN.reset(seed + 3u); panLag.reset();
+        }
+        void process(float note, float st, float sr, float& L, float& R) {
+            static const float intervals[7] = {0, 9, 4, 14, 5, 2, 17};
+            float iv = interval.process(imp.process(impRate, st), intervals, 7);
+            float s = osc.process(midicps(note + iv), st);
+            s = lpf.lpf(s, linexp(cutLfo.process(cutRate, st), -1.f, 1.f, 20.f, 12000.f), st) * 2.f;
+            float dt = (0.02f + 0.01f * delayMod.process(delayRate, st)) / delayDiv;
+            s = delayc.process(s, dt * sr);
+            pan2(s, panLag.process(panN.process(1.f / 3.f, st), 3.f, st), 1.f / 12.f, L, R);
+        }
+    };
+    Voice voices[V];
+    MoogFF moogL, moogR; Lag moogLag; LFNoise0 moogNoise;
+    SchroederReverb reverb; Lag reverbGainLag; LFNoise0 reverbGainN;
+    Amplitude ampL, ampR; Lag klankGainLag; LFNoise0 klankGainN;
+    PinkNoise pinkL, pinkR; Ringz ringL[3], ringR[3];
+    Biquad finalLpL, finalLpR, finalHpL, finalHpR;
+    const char* name() const override { return "toshiya"; }
+    void init(uint32_t seed, float sr) override {
+        sub.reset(); subPan.reset(); subPhase.reset();
+        for (int i = 0; i < V; ++i) voices[i].init(seed + i * 30011u + 1u, sr);
+        moogL.reset(); moogR.reset(); moogLag.reset(); moogNoise.reset(seed + 1u);
+        reverb.init(seed + 7u, sr); reverbGainLag.reset(); reverbGainN.reset(seed + 2u);
+        ampL.reset(); ampR.reset(); klankGainLag.reset(); klankGainN.reset(seed + 3u);
+        pinkL.reset(seed + 4u); pinkR.reset(seed + 5u);
+        for (int i = 0; i < 3; ++i) { ringL[i].reset(); ringR[i].reset(); }
+        finalLpL.reset(); finalLpR.reset(); finalHpL.reset(); finalHpR.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st, note = cpsmidi(hz);
+        float subPh = linlin(subPhase.process(0.5f, st), -1.f, 1.f, 0.2f, 0.8f);
+        float subS = sub.process(midicps(note - 12.f), st, subPh) / 12.f * amp;
+        float sL, sR; pan2(subS, subPan.process(0.1f, st) * 0.2f, 1.f, sL, sR);
+        for (int i = 0; i < V; ++i) { float vl, vr; voices[i].process(note, st, sr, vl, vr); sL += vl * amp; sR += vr * amp; }
+        float mcut = linexp(moogLag.process(moogNoise.process(1.f / 6.f, st), 6.f, st), -1.f, 1.f, hz * 2.f, hz * 10.f);
+        sL = moogL.process(std::tanh(sL), mcut, 1.f, st);
+        sR = moogR.process(std::tanh(sR), mcut, 1.f, st);
+        float rvL, rvR; reverb.process(sL, sR, st, sr, rvL, rvR);
+        float rg = linlin(reverbGainLag.process(reverbGainN.process(1.f / 10.f, st), 10.f, st), -1.f, 1.f, 0.01f, 0.06f);
+        sL += rg * rvL; sR += rg * rvR;
+        float kg = linlin(klankGainLag.process(klankGainN.process(1.f, st), 1.f, st), -1.f, 1.f, 0.f, 0.5f);
+        float kfreqs[3] = {hz, hz * 2.f + 23.f, hz * 4.f + 53.f};
+        float pnL = pinkL.process() * 0.007f, pnR = pinkR.process() * 0.007f, kL = 0.f, kR = 0.f;
+        for (int i = 0; i < 3; ++i) { kL += ringL[i].process(pnL, kfreqs[i], 1.f, st); kR += ringR[i].process(pnR, kfreqs[i], 1.f, st); }
+        sL += ampL.process(sL, 0.01f, 0.01f, st) * kg * kL;
+        sR += ampR.process(sR, 0.01f, 0.01f, st) * kg * kR;
+        sL = finalLpL.lpf(sL, 15000.f, st); sR = finalLpR.lpf(sR, 15000.f, st);
+        const float makeup = 3.f;   // normalise toward roster level
+        l = finalHpL.hpf(std::tanh(sL) * 0.5f, 20.f, st) * makeup;
+        r = finalHpR.hpf(std::tanh(sR) * 0.5f, 20.f, st) * makeup;
+    }
+};
+
+// ── Magicicada — @sixolet. "Unsettling, organic, chaotic." ──────────────────
+// A no-input-mixing drone: two parallel crossfading delay selectors (3 and 4
+// delays) inside a feedback loop, filtered/warped and fed back with a touch of
+// noise. The audible output is the filtered feedback signal itself.
+struct MagicicadaEngine : DroneEngine {
+    float fbL = 0.f, fbR = 0.f;
+    PinkNoise pink; BrownNoise brown;
+    LFNoise2 nBeat, nDist, nHighRes, nLowRes, nBp[3], nOutHpf, nFbGain, nRot, nFinalLpf;
+    SinOsc oDelaySel1, oFilterSel1, oDelaySel2, oFilterSel2;
+    LeakDC dcL, dcR;
+    BAllPass apL[3], apR[3];
+    DelayC d1a_L, d1a_R, d1b_L, d1b_R, d1c_L, d1c_R;
+    DelayC d2a_L, d2a_R, d2b_L, d2b_R, d2c_L, d2c_R, d2d_L, d2d_R;
+    Biquad rlpf1L, rlpf1R, rlpf2L, rlpf2R;
+    SVF svfL, svfR;
+    Biquad outHpfL, outHpfR, finalHpL, finalHpR, finalLpL, finalLpR;
+    const char* name() const override { return "magicicada"; }
+    void init(uint32_t seed, float sr) override {
+        uint32_t s = seed;
+        pink.reset(s += 7u); brown.reset(s += 7u);
+        nBeat.reset(s += 7u); nDist.reset(s += 7u); nHighRes.reset(s += 7u); nLowRes.reset(s += 7u);
+        for (int i = 0; i < 3; ++i) nBp[i].reset(s += 7u);
+        nOutHpf.reset(s += 7u); nFbGain.reset(s += 7u); nRot.reset(s += 7u); nFinalLpf.reset(s += 7u);
+        Rng rng; rng.seed(s += 7u);
+        oDelaySel1.reset(rng.uniform()); oFilterSel1.reset(rng.uniform());
+        oDelaySel2.reset(rng.uniform()); oFilterSel2.reset(rng.uniform());
+        dcL.reset(); dcR.reset();
+        for (int i = 0; i < 3; ++i) { apL[i].reset(); apR[i].reset(); }
+        d1a_L.dl.init(3.0f, sr); d1a_R.dl.init(3.0f, sr);
+        d1b_L.dl.init(2.1f, sr); d1b_R.dl.init(2.1f, sr);
+        d1c_L.dl.init(1.6f, sr); d1c_R.dl.init(1.6f, sr);
+        d2a_L.dl.init(0.8f, sr); d2a_R.dl.init(0.8f, sr);
+        d2b_L.dl.init(2.6f, sr); d2b_R.dl.init(2.6f, sr);
+        d2c_L.dl.init(1.6f, sr); d2c_R.dl.init(1.6f, sr);
+        d2d_L.dl.init(0.35f, sr); d2d_R.dl.init(0.35f, sr);
+        rlpf1L.reset(); rlpf1R.reset(); rlpf2L.reset(); rlpf2R.reset();
+        svfL.reset(); svfR.reset();
+        outHpfL.reset(); outHpfR.reset(); finalHpL.reset(); finalHpR.reset(); finalLpL.reset(); finalLpR.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float beat = linexp(nBeat.process(1.f / 600.f, st), -1.f, 1.f, 0.5f, 2.8f);
+        float distGain = linlin(nDist.process(1.f / 60.f, st), -1.f, 1.f, 1.f, 2.5f);
+        float highRes = linlin(nHighRes.process(1.f / 30.f, st), -1.f, 1.f, 0.05f, 0.2f);
+        float lowRes = linlin(nLowRes.process(1.f / 30.f, st), -1.f, 1.f, 0.05f, 0.2f);
+        float delaySel1 = linlin(oDelaySel1.process(1.f / 166.6f, st), -1.f, 1.f, 0.f, 3.f);
+        float filterSel1 = rack::clamp(linlin(oFilterSel1.process(1.f / 82.f, st), -1.f, 1.f, -0.3f, 1.1f), 0.f, 1.f);
+        float delaySel2 = linlin(oDelaySel2.process(1.f / (float)(M_PI * 60.0), st), -1.f, 1.f, 0.f, 4.f);
+        float filterSel2 = linlin(oFilterSel2.process(1.f / 123.4f, st), -1.f, 1.f, 0.f, 3.f);
+        float mid = pink.process(), side = 0.1f * brown.process();
+        float nL = (mid + side) * 0.01f, nR = (mid - side) * 0.01f;
+        float sigL = dcL.process(fbL), sigR = dcR.process(fbR);
+        float phL = sigL, phR = sigR;
+        for (int i = 0; i < 3; ++i) {
+            float bf = linlin(nBp[i].process(1.f / 30.f, st), -1.f, 1.f, 20.f, 2000.f);
+            phL = apL[i].process(phL, bf, 0.7f, st); phR = apR[i].process(phR, bf, 0.7f, st);
+        }
+        sigL = (sigL + phL) * 0.5f; sigR = (sigR + phR) * 0.5f;
+        float diL = sigL + nL, diR = sigR + nR;
+        float a1L[3] = {d1a_L.process(diL, beat * sr), d1b_L.process(diL, (2.f * beat / 3.f) * sr), d1c_L.process(diL, (0.5f * beat) * sr)};
+        float a1R[3] = {d1a_R.process(diR, beat * sr), d1b_R.process(diR, (2.f * beat / 3.f) * sr), d1c_R.process(diR, (0.5f * beat) * sr)};
+        float del1L = selectxN(delaySel1, a1L, 3, true), del1R = selectxN(delaySel1, a1R, 3, true);
+        float f1L[2] = {rlpf1L.rlpf(del1L, hz, lowRes, st), del1L};
+        float f1R[2] = {rlpf1R.rlpf(del1R, hz, lowRes, st), del1R};
+        del1L = selectxN(filterSel1, f1L, 2, false); del1R = selectxN(filterSel1, f1R, 2, false);
+        float muL = diL + foldOver(diL, -0.1f, 0.1f), muR = diR + foldOver(diR, -0.1f, 0.1f);
+        float a2L[4] = {d2a_L.process(muL, (beat / 4.f) * sr), d2b_L.process(muL, (0.75f * beat) * sr), d2c_L.process(diL, (0.5f * beat) * sr), d2d_L.process(diL, (0.1f * beat) * sr)};
+        float a2R[4] = {d2a_R.process(muR, (beat / 4.f) * sr), d2b_R.process(muR, (0.75f * beat) * sr), d2c_R.process(diR, (0.5f * beat) * sr), d2d_R.process(diR, (0.1f * beat) * sr)};
+        float del2L = selectxN(delaySel2, a2L, 4, true), del2R = selectxN(delaySel2, a2R, 4, true);
+        float f2L[3] = {rlpf2L.rlpf(del2L, (12.f / 5.f) * hz, highRes, st), svfL.process(del2L, (9.f / 2.f) * hz, highRes, 0.f, 1.f, 0.f, st), del2L};
+        float f2R[3] = {rlpf2R.rlpf(del2R, (12.f / 5.f) * hz, highRes, st), svfR.process(del2R, (9.f / 2.f) * hz, highRes, 0.f, 1.f, 0.f, st), del2R};
+        del2L = selectxN(filterSel2, f2L, 3, true); del2R = selectxN(filterSel2, f2R, 3, true);
+        float outHpf = linlin(nOutHpf.process(1.f / 30.f, st), -1.f, 1.f, 20.f, std::max(hz, 25.f));
+        float dL = outHpfL.hpf(std::sin(distGain * (del1L + del2L)), outHpf, st);
+        float dR = outHpfR.hpf(std::sin(distGain * (del1R + del2R)), outHpf, st);
+        float fbGain = linlin(nFbGain.process(1.f / 20.f, st), -1.f, 1.f, 0.48f, 0.75f);
+        fbL = fbGain * dL; fbR = fbGain * dR;
+        float roL, roR; rotate2(sigL, sigR, nRot.process(1.f / 30.f, st), roL, roR);
+        float finalCut = linexp(nFinalLpf.process(1.f / 43.f, st), -1.f, 1.f, 3000.f, 20000.f);
+        l = std::tanh(finalLpL.lpf(finalHpL.hpf(roL, 20.f, st), finalCut, st) * amp);
+        r = std::tanh(finalLpR.lpf(finalHpR.hpf(roR, 20.f, st), finalCut, st) * amp);
+    }
+};
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -809,6 +968,8 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new UnrelaccEngine());
     v.emplace_back(new DreamcrusherEngine());
     v.emplace_back(new RehbergEngine());
+    v.emplace_back(new ToshiyaEngine());
+    v.emplace_back(new MagicicadaEngine());
     return v;
 }
 
