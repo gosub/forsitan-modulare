@@ -274,6 +274,13 @@ struct Biquad {
                         clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
         return f.process(in);
     }
+    // SC BHiShelf(in, freq, rs, db): RBJ high shelf
+    float hishelf(float in, float freqHz, float db, float st) {
+        f.setParameters(rack::dsp::TBiquadFilter<float>::HIGHSHELF,
+                        clampFreq(freqHz, st), M_SQRT1_2,
+                        std::pow(10.f, db / 20.f));
+        return f.process(in);
+    }
 private:
     static float clampFreq(float freqHz, float st) {
         // normalised cutoff must stay below Nyquist for a stable biquad
@@ -1016,6 +1023,82 @@ struct CombVerb {
         outR = lp2R.lpf(r, 1500.f, st);
     }
 };
+
+// ── Pluck.ar — Karplus-Strong: excited delay loop with one-pole damping ──────
+// `coef` is the loop damping coefficient; a negative `decaySec` flips the loop
+// feedback sign (the octave-down "negative decay" trick). Input is fed into
+// the loop for one delay period after each trigger.
+struct Pluck {
+    DelayLine dl; float lpState = 0.f;
+    float feedTimer = 0.f, prevTrig = 0.f;
+    void init(float maxSec, float sr) { dl.init(maxSec, sr); lpState = 0.f; feedTimer = 0.f; prevTrig = 0.f; }
+    void reset() { dl.reset(); lpState = 0.f; feedTimer = 0.f; prevTrig = 0.f; }
+    float process(float in, float trig, float delaySamp, float decaySec, float coef, float st) {
+        if (trig > 0.f && prevTrig <= 0.f) feedTimer = delaySamp * st;
+        prevTrig = trig;
+        float d = dl.tapL(std::max(delaySamp, 2.f));
+        lpState = (1.f - std::fabs(coef)) * d + coef * lpState;
+        float fb = combFeedback(delaySamp * st, decaySec);
+        float x = fb * lpState;
+        if (feedTimer > 0.f) { x += in; feedTimer -= st; }
+        dl.write(x);
+        return d;
+    }
+};
+
+// ── LorenzL.ar — Lorenz attractor, iterated at `freq`, linear interpolation ──
+// Integrated in four Euler substeps per iteration (plain Euler at the SC
+// default h = 0.05 diverges), with a divergence reset as a belt-and-braces.
+struct LorenzL {
+    float x = 0.1f, y = 0.f, z = 0.f, x1 = 0.1f;
+    float phase = 1.f;
+    void reset(float xi = 0.1f) { x = x1 = xi; y = 0.f; z = 0.f; phase = 1.f; }
+    float process(float freq, float s, float r, float b, float h, float st) {
+        phase += std::fabs(freq) * st;
+        while (phase >= 1.f) {
+            phase -= 1.f;
+            x1 = x;
+            float hs = h * 0.25f;
+            for (int k = 0; k < 4; ++k) {
+                float dx = s * (y - x), dy = x * (r - z) - y, dz = x * y - b * z;
+                x += hs * dx; y += hs * dy; z += hs * dz;
+            }
+            if (!std::isfinite(x) || std::fabs(x) > 1000.f || std::fabs(y) > 1000.f || std::fabs(z) > 1000.f) {
+                x = x1 = 0.1f; y = 0.f; z = 0.f;
+            }
+        }
+        return (x1 + (x - x1) * phase) * 0.04f;   // scale into ~[-1, 1]
+    }
+};
+
+// ── FBSineN.ar — feedback sine map, iterated at `freq`, no interpolation ─────
+struct FBSineN {
+    float x = 0.1f, y = 0.1f, phase = 1.f;
+    void reset() { x = 0.1f; y = 0.1f; phase = 1.f; }
+    float process(float freq, float im, float fb, float a, float c, float st) {
+        phase += std::fabs(freq) * st;
+        while (phase >= 1.f) {
+            phase -= 1.f;
+            float xn = std::sin(im * y + fb * x);
+            y = std::fmod(a * y + c, kTwoPi);
+            x = xn;
+        }
+        return x;
+    }
+};
+
+// ── CrossoverDistortion.ar — class-B style crossover deadzone ────────────────
+inline float crossoverDistortion(float x, float amount, float smooth) {
+    float a = std::fabs(x) - amount;
+    if (a < 0.f) a *= (1.f - smooth);           // smoothing keeps a bleed-through
+    else a += amount * (1.f - smooth);
+    return std::copysign(std::max(a, 0.f), x);
+}
+
+// ── SineShaper.ar — sine-function waveshaper up to `limit` ───────────────────
+inline float sineShaper(float x, float limit) {
+    return limit * std::sin(rack::clamp(x, -2.f * limit, 2.f * limit) * (float)M_PI_2 / limit);
+}
 
 // ── Decay2.ar — difference of two exponential decays (attack/decay) ──────────
 struct Decay2 {
