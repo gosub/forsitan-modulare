@@ -82,6 +82,9 @@ that layer fills out.
 | **dreamcrusher** | @infinitedigits | A no-input-mixer feedback drone: a gated pulse driving a feedback loop of rotation, a modulated delay and soft-clip. Chaotic and strobey. |
 | **rehberg** | @infinitedigits | A detuned tape-warble pulse pair, wave-folded and DFM1-filtered with an FM sine and resonant band, drenched in Freeverb. Dense, distorted, overwhelming. |
 
+| **toshiya** | @infinitedigits | Twelve sine voices jumping through intervals, chorus-delayed and Moog-swept into a reverb, with a pink-noise-excited Klank resonator bank ringing underneath. |
+| **magicicada** | @sixolet | A no-input-mixer drone: two crossfading banks of delays (three and four) inside a feedback loop, filtered and warped. Unsettling and organic. |
+
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 
 Engines are loudness-normalized with a per-engine makeup gain so switching

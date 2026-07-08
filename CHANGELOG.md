@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.5] - 2026-07-08
+### Added
+  - dræn: two more dronecaster engines — **toshiya** (@infinitedigits, interval-
+    jumping sines with a Klank resonator bank) and **magicicada** (@sixolet, a
+    no-input-mixer feedback drone with crossfading delay banks)
+  - draen_ugens.hpp gains Ringz (the resonator behind Klank), BrownNoise, a
+    second-order BAllPass, a TPT state-variable filter (SVF), and an N-element
+    SelectX crossfade
+
 ## [2.6.4] - 2026-07-08
 ### Added
   - dræn: three more dronecaster engines — **unrelacc** (@zebra, six Hénon-map
