@@ -81,9 +81,12 @@ that layer fills out.
 | **unrelacc** | @zebra | Six Hénon-map chaotic oscillators tuned to intervals, panned and slowly faded in — a bristling, metallic drone. |
 | **dreamcrusher** | @infinitedigits | A no-input-mixer feedback drone: a gated pulse driving a feedback loop of rotation, a modulated delay and soft-clip. Chaotic and strobey. |
 | **rehberg** | @infinitedigits | A detuned tape-warble pulse pair, wave-folded and DFM1-filtered with an FM sine and resonant band, drenched in Freeverb. Dense, distorted, overwhelming. |
-
 | **toshiya** | @infinitedigits | Twelve sine voices jumping through intervals, chorus-delayed and Moog-swept into a reverb, with a pink-noise-excited Klank resonator bank ringing underneath. |
 | **magicicada** | @sixolet | A no-input-mixer drone: two crossfading banks of delays (three and four) inside a feedback loop, filtered and warped. Unsettling and organic. |
+| **mt. zion** | @license | Five pulse-wave harmonics where pitch, width, pan and level all wander on lagged sample-and-hold noise; voices thin out and vanish as their pulse width crosses full. "Thee rusted satellites gather + sing." |
+| **mika** | @infinitedigits | A chord-walking sine ping shot through a randomly re-timed allpass (the delay jumps *are* the beeps), over a slow pulse+noise bass. Hum and beeps. |
+| **fieldsteel** | after Eli Fieldsteel | Three band-passed saws demand-picking notes from a four-note set, blended with a "marimba" of high-resonance bandpasses rung by slow ramps. From Tutorial 15, "Composing a Piece". |
+| **malone** | @infinitedigits | Eight organ voices (pulse stack + sub triangle) stepping through a demand-sequenced chord table, tremolo'd after each change, into a Moog ladder. Thick, organ, stepped. |
 
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 

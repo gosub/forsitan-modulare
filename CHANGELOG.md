@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.6] - 2026-07-08
+### Added
+  - dræn: four more dronecaster engines — **mt. zion** (@license, five S&H-wandering
+    pulse harmonics), **mika** (@infinitedigits, allpass-retimed sine pings over a
+    pulse+noise bass), **fieldsteel** (after Eli Fieldsteel's Tutorial 15, demand-
+    picked band-passed saws with a resonant "marimba"), and **malone**
+    (@infinitedigits, eight organ voices stepping a demand-sequenced chord table)
+  - draen_ugens.hpp gains the demand-rate layer — Dseq, Drand, Dxrand and Dbrown
+    generators polled on trigger edges — plus TExpRand, TDelay, CoinGate, an
+    interpolated AllpassC and a midiratio helper
+
 ## [2.6.5] - 2026-07-08
 ### Added
   - dræn: two more dronecaster engines — **toshiya** (@infinitedigits, interval-
