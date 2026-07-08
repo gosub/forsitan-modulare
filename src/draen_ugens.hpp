@@ -261,6 +261,19 @@ struct Biquad {
                         clampFreq(freqHz, st), M_SQRT1_2, 1.f);
         return f.process(in);
     }
+    // SC BPeakEQ(in, freq, rq, db): RBJ peaking EQ
+    float peakeq(float in, float freqHz, float rq, float db, float st) {
+        f.setParameters(rack::dsp::TBiquadFilter<float>::PEAK,
+                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f),
+                        std::pow(10.f, db / 20.f));
+        return f.process(in);
+    }
+    // resonant highpass (SC RHPF)
+    float rhpf(float in, float freqHz, float rq, float st) {
+        f.setParameters(rack::dsp::TBiquadFilter<float>::HIGHPASS,
+                        clampFreq(freqHz, st), 1.f / std::max(rq, 1e-3f), 1.f);
+        return f.process(in);
+    }
 private:
     static float clampFreq(float freqHz, float st) {
         // normalised cutoff must stay below Nyquist for a stable biquad
@@ -1001,6 +1014,83 @@ struct CombVerb {
         }
         outL = lp2L.lpf(l, 1500.f, st);
         outR = lp2R.lpf(r, 1500.f, st);
+    }
+};
+
+// ── Decay2.ar — difference of two exponential decays (attack/decay) ──────────
+struct Decay2 {
+    float ya = 0.f, yb = 0.f;
+    void reset() { ya = yb = 0.f; }
+    float process(float in, float atk, float dcy, float st) {
+        float ca = std::exp(-6.907755f * st / std::max(atk, 1e-5f));
+        float cb = std::exp(-6.907755f * st / std::max(dcy, 1e-5f));
+        ya = in + ca * ya; yb = in + cb * yb;
+        return yb - ya;
+    }
+};
+
+// ── Compander.ar — compressor/expander with a control-signal follower ────────
+struct Compander {
+    Amplitude follower;
+    void reset() { follower.reset(); }
+    float process(float in, float ctrl, float thresh, float slopeBelow,
+                  float slopeAbove, float clampT, float relaxT, float st) {
+        float e = std::max(follower.process(ctrl, clampT, relaxT, st), 1e-9f);
+        float slope = (e > thresh) ? slopeAbove : slopeBelow;
+        return in * std::pow(e / thresh, slope - 1.f);
+    }
+};
+
+// ── GVerb (approximation) — a long stereo tail with damping ──────────────────
+// GVerb proper is a Griesinger FDN; this stands in with 8 damped feedback
+// combs (odd/even split to L/R) into two allpasses per side. `revtime` sets
+// the -60 dB decay, `damp` the high-frequency loss in the loop.
+struct GVerbApprox {
+    struct DampedComb {
+        DelayLine dl; float filt = 0.f;
+        float process(float x, float delaySamp, float g, float damp) {
+            float d = dl.tapL(delaySamp);
+            filt = filt * damp + d * (1.f - damp);
+            dl.write(x + g * filt);
+            return d;
+        }
+    };
+    static const int NC = 8;
+    DampedComb comb[NC]; float cSec[NC] = {};
+    AllpassN apL[2], apR[2]; int apSampL[2] = {}, apSampR[2] = {};
+    float apGL[2] = {}, apGR[2] = {};
+    void init(uint32_t seed, float sr) {
+        static const float base[NC] = {0.0297f, 0.0371f, 0.0411f, 0.0437f,
+                                       0.0533f, 0.0619f, 0.0787f, 0.0937f};
+        Rng rng; rng.seed(seed);
+        for (int i = 0; i < NC; ++i) {
+            cSec[i] = base[i] * (1.f + 0.05f * rng.bipolar());
+            comb[i].dl.init(0.12f, sr); comb[i].filt = 0.f;
+        }
+        static const float apSec[2] = {0.0051f, 0.0126f};
+        for (int i = 0; i < 2; ++i) {
+            apL[i].dl.init(0.02f, sr); apR[i].dl.init(0.02f, sr);
+            float dl_ = apSec[i] * (1.f + 0.05f * rng.bipolar());
+            float dr_ = apSec[i] * (1.f + 0.05f * rng.bipolar());
+            apSampL[i] = std::max((int)(dl_ * sr), 1);
+            apSampR[i] = std::max((int)(dr_ * sr), 1);
+            apGL[i] = 0.5f; apGR[i] = 0.5f;
+        }
+    }
+    void process(float in, float revtime, float damp, float st,
+                 float& outL, float& outR) {
+        float sr = 1.f / st;
+        float l = 0.f, r = 0.f;
+        for (int i = 0; i < NC; ++i) {
+            float g = combFeedback(cSec[i], revtime);
+            float y = comb[i].process(in, cSec[i] * sr, g, rack::clamp(damp, 0.f, 0.99f));
+            if (i & 1) r += y; else l += y;
+        }
+        for (int i = 0; i < 2; ++i) {
+            l = apL[i].process(l, apSampL[i], apGL[i]);
+            r = apR[i].process(r, apSampR[i], apGR[i]);
+        }
+        outL = l * 0.5f; outR = r * 0.5f;
     }
 };
 
