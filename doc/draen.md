@@ -93,6 +93,9 @@ that layer fills out.
 | **eno** | @infinitedigits | Two low sines under eight chorused saws voicing a slow chord, a Klank ringing the chord tones, and a "piano" walking the actual Music-for-Airports note rows, through Freeverb. |
 | **belong** | @infinitedigits | Ten chorused saws walking scrambled chord tones, enveloped differently per side, overdubbing themselves onto a 16-beat tape loop; push **amp** past 0.7 and a spaced-out kick appears. |
 | **ruins** | @rplktr & @sixolet | Metallic 2/3-operator FM hits (after McCartney's "100 FM Synths") on a self-clocked trigger, drowned in a very long wash that warbles with tape wow and flutter, over a windy noise floor. |
+| **sunno** | (uncredited) | Five "guitars" of Karplus-Strong string pairs (one negative-decay for the octave-under growl), re-plucked at random, crushed through crossover distortion and cascaded tanh+filter gain stages. Doom. |
+| **nautilus** | @taubaland | A Lorenz attractor iterated at the fundamental drives six voices of overlapping sine grains with looping swells, into chaos-swept lowpasses. Dusty waves, chaotic undercurrent. |
+| **drumm** | @infinitedigits | Two slowly crossfading layers — chaos-width pulse pairs with phase-modulated subs, and ten Moog-swept voices stepping interlocking rows — sine-shaped and drenched in pumping Freeverb. |
 
 The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
 

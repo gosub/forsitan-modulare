@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.9] - 2026-07-09
+### Added
+  - dræn: three more dronecaster engines — **sunno** (Karplus-Strong doom
+    guitars through crossover distortion and cascaded tanh stages), **nautilus**
+    (@taubaland, Lorenz-driven sine-grain clouds), and **drumm**
+    (@infinitedigits, crossfading bass/melodic layers in pumping Freeverb)
+  - draen_ugens.hpp gains Pluck (Karplus-Strong), LorenzL (sub-stepped Euler with
+    divergence guard), FBSineN, a high-shelf biquad, and crossover-distortion and
+    sine-shaper waveshapers
+
 ## [2.6.8] - 2026-07-08
 ### Added
   - dræn: three more dronecaster engines — **eno** (@infinitedigits, Music for
