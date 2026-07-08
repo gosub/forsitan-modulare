@@ -102,11 +102,59 @@ The full dronecaster roster — all 37 drones — is ported.
 | **unwealne** | @zebra | Six wandering-width pulse voices through triple resonant lowpasses, the whole mix shifted an octave up through a 13-ratio filter bank, with ~3 s allpasses cross-feeding it back reversed. |
 | **unreanth** | @zebra | A 64-step buffer sequencer read and written at mutually-prime rates fades ten just-ratio sine pairs in and out, over detuned saws, a diode ring-mod, and a 7–8 s pitch-smeared feedback delay. |
 
-The **rehberg** engine uses a faithful port of Jezar's public-domain Freeverb.
+The **rehberg**, **eno**, **drumm** and **belong** engines use a faithful port
+of Jezar's public-domain Freeverb.
 
 Engines are loudness-normalized with a per-engine makeup gain so switching
 between them doesn't jump levels; the quieter originals (which relied on norns'
 master gain) are brought up to sit with the rest.
+
+## Fidelity notes
+
+The ports follow the SynthDef graphs closely, but a few SuperCollider UGens
+have no direct equivalent here and are approximated. For anyone A/B-ing
+against the originals, the known deviations:
+
+- **Filter/lag coefficients** update on 16-sample blocks. SC computes control
+  signals on 64-sample blocks, so this is *finer*-grained than the original.
+- **DFM1** (rehberg, nautilus, drumm) is approximated with a resonant biquad;
+  its `noiselevel` input is modelled as added white noise. In nautilus the
+  chaos-driven cutoff is smoothed over 5 ms (the real DFM1 tolerates
+  audio-rate cutoff modulation; a biquad does not).
+- **Greyhole** (gristle, grove) is approximated by two series modulated
+  allpass diffusers per channel inside a damped cross-fed stereo delay loop,
+  with the same control surface.
+- **GVerb** (ruins) is approximated by eight damped feedback combs split
+  odd/even to the two outputs, into two allpasses per side.
+- **PitchShift** (unwealne, unreanth) is a two-tap granular shifter; the
+  dispersion arguments are only loosely honoured.
+- **Compander / Limiter** are simplified followers without lookahead delay.
+- **VarLag(warp: \sine)** is a plain one-pole lag; **LFDNoise3** is LFNoise2;
+  **SawDPW/PulseDPW** are MinBLEP band-limited equivalents; curved envelope
+  segments are linear or sine where noted in the source.
+- **mika**: the original's PMOsc has `mul: 0` (silent) and its Compander uses
+  identity slopes; both are omitted. Its LPF cutoff is driven by
+  `LFNoise0.kr(Dust.kr(1))`, which in practice never advances — kept as an
+  effectively static random cutoff.
+- **malone**: the original's second RLPF channel lands on output buses 3/4
+  (inaudible on a stereo out); only the audible channel is ported.
+- **ruins**: only the Select-ed instrument is rendered (in SC the other
+  eleven run inaudibly); all envelopes share the global trigger, so switching
+  mid-decay lands at the correct envelope phase. GVerb's early-reflection tap
+  is folded into the tail.
+- **nautilus**: the SinGrain cloud is an eight-slot grain pool per voice
+  (oldest grain stolen); LorenzL is integrated in four Euler substeps with a
+  divergence guard (plain Euler at SC's default h = 0.05 blows up).
+- **uneablin**: SC writes all six feedback taps into *one* shared LocalBuf
+  (overlapping writers); here each voice gets its own delay line.
+- **unreanth**: the control-rate Phasor assumes a 689 Hz control rate; the
+  original's `dst` waveshape array is computed but never mixed in (dead code)
+  and is omitted.
+- **unmemqua** uses an SC-exact (un-normalized) Ringz so the Klank bank's
+  long partials ring louder, matching the original's -32 dB output stage;
+  toshiya's Klank uses the normalized Ringz with its own level calibration.
+- **mt. zion**: SC's Pulse treats width modulo 1, so voices vanish as their
+  wandering width crosses an integer — reproduced by wrapping the width.
 
 ## Credits & license
 
