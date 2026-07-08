@@ -857,12 +857,171 @@ struct AllpassC {
 // ── midiratio — SC's .midiratio: semitone offset → frequency ratio ────────────
 inline float midiratio(float semis) { return std::exp2(semis * (1.f / 12.f)); }
 
+// ── VarSaw.ar — variable-duty triangle/saw (width 0.5 = triangle) ─────────────
+struct VarSaw {
+    float phase = 0.f;
+    void reset(float ph = 0.f) { phase = ph; }
+    float process(float freq, float width, float st) {
+        phase += freq * st; phase -= std::floor(phase);
+        width = rack::clamp(width, 0.001f, 0.999f);
+        float y = (phase < width) ? phase / width : (1.f - phase) / (1.f - width);
+        return 2.f * y - 1.f;
+    }
+};
+
+// ── SetResetFF — flip-flop: 1 on `trig` edge, 0 on `reset` edge ───────────────
+struct SetResetFF {
+    float level = 0.f, prevT = 0.f, prevR = 0.f;
+    void reset() { level = 0.f; prevT = 0.f; prevR = 0.f; }
+    float process(float trig, float rst) {
+        if (rst > 0.f && prevR <= 0.f) level = 0.f;
+        if (trig > 0.f && prevT <= 0.f) level = 1.f;
+        prevT = trig; prevR = rst;
+        return level;
+    }
+};
+
+// ── Trig1 — 1 for `dur` seconds after a trigger; ignores triggers while high ──
+struct Trig1 {
+    float timer = 0.f, prev = 0.f;
+    void reset() { timer = 0.f; prev = 0.f; }
+    float process(float in, float dur, float st) {
+        if (timer <= 0.f && in > 0.f && prev <= 0.f) timer = dur;
+        prev = in;
+        if (timer > 0.f) { timer -= st; return 1.f; }
+        return 0.f;
+    }
+};
+
+// ── envCurve — SC's curved envelope segment shape (curve 0 = linear) ──────────
+inline float envCurve(float t, float curve) {
+    if (std::fabs(curve) < 0.001f) return t;
+    return (1.f - std::exp(curve * t)) / (1.f - std::exp(curve));
+}
+
+// ── PercEnv — Env.perc: curved attack then curved release, one-shot ──────────
+struct PercEnv {
+    float t = 1e9f, atk = 0.01f, rel = 1.f, curve = -4.f, prevGate = 0.f;
+    void reset() { t = 1e9f; prevGate = 0.f; }
+    float process(float gate, float attackT, float releaseT, float curv, float st) {
+        if (gate > 0.f && prevGate <= 0.f) {
+            t = 0.f; atk = std::max(attackT, 1e-5f); rel = std::max(releaseT, 1e-5f); curve = curv;
+        }
+        prevGate = gate;
+        t += st;
+        if (t < atk) return envCurve(t / atk, -curve);        // rising: mirror curve
+        float u = (t - atk) / rel;
+        if (u >= 1.f) return 0.f;
+        return 1.f - envCurve(u, -curve);
+    }
+};
+
+// ── Greyhole (approximation) — diffuse modulated feedback-delay cloud ─────────
+// Julian Parker's Greyhole is a coupled DEISF network; this stands in for it
+// with the same control surface: two series modulated allpass diffusers per
+// channel inside a damped, cross-fed stereo delay loop. Wet-only output.
+struct Greyhole {
+    AllpassC apL1, apL2, apR1, apR2;
+    DelayLine dlL, dlR;
+    SinOsc modL, modR;
+    float lpL = 0.f, lpR = 0.f, fbL = 0.f, fbR = 0.f;
+    void init(uint32_t seed, float maxDelaySec, float sr) {
+        Rng rng; rng.seed(seed);
+        apL1.dl.init(0.03f, sr); apL2.dl.init(0.03f, sr);
+        apR1.dl.init(0.03f, sr); apR2.dl.init(0.03f, sr);
+        dlL.init(maxDelaySec, sr); dlR.init(maxDelaySec, sr);
+        modL.reset(rng.uniform()); modR.reset(rng.uniform());
+        lpL = lpR = fbL = fbR = 0.f;
+    }
+    void process(float inL, float inR, float delayTime, float damp, float size,
+                 float diff, float feedback, float st, float& outL, float& outR) {
+        float sr = 1.f / st;
+        float dt = rack::clamp(delayTime * size, 0.005f, 0.95f * dlL.buf.size() * st) * sr;
+        float g = rack::clamp(diff, 0.f, 0.85f);
+        // modulated diffusers (fixed prime-ish times, scaled a little by size)
+        float s = std::sqrt(std::max(size, 0.1f));
+        float xL = apL2.process(apL1.process(inL + feedback * fbR, 0.0047f * s * sr, g), 0.0131f * s * sr, g);
+        float xR = apR2.process(apR1.process(inR + feedback * fbL, 0.0067f * s * sr, g), 0.0177f * s * sr, g);
+        float mL = 1.f + 0.003f * modL.process(2.f, st);
+        float mR = 1.f + 0.003f * modR.process(2.f, st);
+        float dL = dlL.tapC(dt * mL); dlL.write(xL);
+        float dR = dlR.tapC(dt * mR); dlR.write(xR);
+        // one-pole damping in the loop
+        float k = rack::clamp(damp, 0.f, 0.99f);
+        lpL += (dL - lpL) * (1.f - k); lpR += (dR - lpR) * (1.f - k);
+        fbL = lpL; fbR = lpR;
+        outL = lpL; outR = lpR;
+    }
+};
+
+inline void splay(const float* chans, int n, float spread, float center,
+                  float& outL, float& outR, bool levelComp = true);
+
+// ── CombVerb — the "CombN bank → Splay → LPF → AllpassN chain" reverb ─────────
+// Several dronecaster engines build a reverb as: DelayN(0.03) → N parallel
+// CombN (0.01–0.099 s, decay 4) → SplayAz to stereo → LPF 1500 → a few stereo
+// AllpassN passes (0.01–0.099 s, decay 3) → LPF 1500. Built once, sized by
+// (nComb, nAp) per engine.
+template <int NCOMB, int NAP>
+struct CombVerb {
+    DelayNode preL, preR;
+    CombN comb[NCOMB]; int combSamp[NCOMB] = {}; float combG[NCOMB] = {};
+    AllpassN apL[NAP], apR[NAP]; int apSampL[NAP] = {}, apSampR[NAP] = {};
+    Biquad lp1L, lp1R, lp2L, lp2R;
+    void init(uint32_t seed, float sr) {
+        Rng rng; rng.seed(seed);
+        preL.dl.init(0.04f, sr); preR.dl.init(0.04f, sr);
+        for (int i = 0; i < NCOMB; ++i) {
+            comb[i].dl.init(0.11f, sr);
+            float d = 0.01f + rng.uniform() * 0.089f;
+            combSamp[i] = std::max((int)(d * sr), 1);
+            combG[i] = combFeedback(d, 4.f);
+        }
+        for (int i = 0; i < NAP; ++i) {
+            apL[i].dl.init(0.11f, sr); apR[i].dl.init(0.11f, sr);
+            float dl_ = 0.01f + rng.uniform() * 0.089f, dr_ = 0.01f + rng.uniform() * 0.089f;
+            apSampL[i] = std::max((int)(dl_ * sr), 1); apSampR[i] = std::max((int)(dr_ * sr), 1);
+            // decay 3 s at each tap's own delay
+            apGL[i] = combFeedback(dl_, 3.f); apGR[i] = combFeedback(dr_, 3.f);
+        }
+        lp1L.reset(); lp1R.reset(); lp2L.reset(); lp2R.reset();
+    }
+    float apGL[NAP] = {}, apGR[NAP] = {};
+    void process(float inL, float inR, float st, float sr, float& outL, float& outR) {
+        float zL = preL.process(inL, (int)(0.03f * sr));
+        float zR = preR.process(inR, (int)(0.03f * sr));
+        float ch[NCOMB];
+        for (int i = 0; i < NCOMB; ++i)
+            ch[i] = comb[i].process((i & 1) ? zR : zL, combSamp[i], combG[i]);
+        float l, r; splay(ch, NCOMB, 1.f, 0.f, l, r);
+        l = lp1L.lpf(l, 1500.f, st); r = lp1R.lpf(r, 1500.f, st);
+        for (int i = 0; i < NAP; ++i) {
+            l = apL[i].process(l, apSampL[i], apGL[i]);
+            r = apR[i].process(r, apSampR[i], apGR[i]);
+        }
+        outL = lp2L.lpf(l, 1500.f, st);
+        outR = lp2R.lpf(r, 1500.f, st);
+    }
+};
+
+// ── Limiter.ar — peak limiter (simplified: no lookahead delay) ────────────────
+struct Limiter {
+    float env = 0.f;
+    void reset() { env = 0.f; }
+    float process(float x, float level, float dur, float st) {
+        float a = std::fabs(x);
+        if (a > env) env = a;
+        else env *= std::exp(-st / std::max(dur, 1e-4f));
+        return (env > level) ? x * level / env : x;
+    }
+};
+
 // ── Splay.ar — spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
 // out evenly across [-1, 1], panned equal-power, summed, and (by default)
 // amplitude-compensated by 1/sqrt(n).
 inline void splay(const float* chans, int n, float spread, float center,
-                  float& outL, float& outR, bool levelComp = true) {
+                  float& outL, float& outR, bool levelComp) {
     outL = 0.f; outR = 0.f;
     if (n <= 0) return;
     for (int k = 0; k < n; ++k) {
