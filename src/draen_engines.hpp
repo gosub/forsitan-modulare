@@ -626,6 +626,168 @@ struct ElianeEngine : DroneEngine {
     }
 };
 
+// ── UNRELACC — @zebra. Six Hénon-map chaotic oscillators in intervals. ───────
+struct UnrelaccEngine : DroneEngine {
+    static constexpr int V = 6;
+    Lag hzLag;
+    LFTri aLfo[V], bLfo[V];
+    HenonC henon[V];
+    LFSaw fmSaw[V];
+    SinOsc panLfo[V];
+    LeakDC dcL, dcR;
+    AttackEnv linen;
+    const float ratios[V] = {0.5f, 1.f, 4.f / 3.f, 7.f / 4.f, 2.f, 12.f / 5.f};
+    const float amps[V]   = {1.f, 1.f, 1.f, 0.56234f, 0.63096f, 0.44668f};   // [0,0,0,-5,-4,-7].dbamp
+    const char* name() const override { return "unrelacc"; }
+    void init(uint32_t, float) override {
+        hzLag.reset(); dcL.reset(); dcR.reset(); linen.reset(6.66f);
+        for (int i = 0; i < V; ++i) {
+            aLfo[i].reset(); bLfo[i].reset(); henon[i].reset(); fmSaw[i].reset(0.04f);
+            panLfo[i].reset(std::fmod((float)(i * 14), (float)M_PI) / kTwoPi);
+        }
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float h = hzLag.process(hz * 2.f, 4.f, st);
+        float sumL = 0.f, sumR = 0.f;
+        for (int i = 0; i < V; ++i) {
+            float a = linlin(aLfo[i].process(1.f / (ratios[i] * 9.f), st), -1.f, 1.f, 1.01f, 1.2f);
+            float b = linlin(bLfo[i].process(1.f / (ratios[i] * 8.f), st), -1.f, 1.f, 0.11f, 0.214f);
+            float freq = h * 2.f * ratios[i] + fmSaw[i].process((i + 1) * (i + 2) / 14.f * (i * 3.f), st);
+            float x = henon[i].process(freq, a, b, st);
+            float pan = panLfo[i].process((i + 1) / 31.f, st) * 0.77f;
+            float pL, pR; pan2(x, pan, amps[i], pL, pR);
+            sumL += pL; sumR += pR;
+        }
+        float e = linen.process(st);
+        l = dcL.process(sumL) * amp * 0.5f * e;
+        r = dcR.process(sumR) * amp * 0.5f * e;
+    }
+};
+
+// ── Dreamcrusher — @infinitedigits. No-input-mixer feedback drone. ───────────
+// A gated pulse feeds a feedback loop (one-poles, rotation, a modulated delay,
+// soft-clip and lowpass) whose gain exceeds unity — held in check by the clip.
+struct DreamcrusherEngine : DroneEngine {
+    LFNoise0 nFreq, nWidth, nBal, nDelay, nLpf, nFbGain, nBalOut;
+    SinOsc sFreq, sWidth, sBal, sBalOut;
+    Lag freqLag, delayLag, lpfLag, fbGainLag;
+    BlPulse pulse;
+    Amplitude ampFollow;
+    OnePole op1L, op1R, op2L, op2R;
+    DelayC delayL, delayR;
+    LeakDC dcL, dcR;
+    Biquad lpfL, lpfR;
+    float fbL = 0.f, fbR = 0.f;
+    const char* name() const override { return "dreamcrusher"; }
+    void init(uint32_t seed, float sr) override {
+        uint32_t s = seed;
+        nFreq.reset(s += 7u); nWidth.reset(s += 7u); nBal.reset(s += 7u); nDelay.reset(s += 7u);
+        nLpf.reset(s += 7u); nFbGain.reset(s += 7u); nBalOut.reset(s += 7u);
+        sFreq.reset(); sWidth.reset(); sBal.reset(); sBalOut.reset();
+        freqLag.reset(); delayLag.reset(); lpfLag.reset(); fbGainLag.reset();
+        pulse.reset(); ampFollow.reset();
+        op1L.reset(); op1R.reset(); op2L.reset(); op2R.reset();
+        delayL.dl.init(0.4f, sr); delayR.dl.init(0.4f, sr);
+        dcL.reset(); dcR.reset(); lpfL.reset(); lpfR.reset();
+        fbL = fbR = 0.f;
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float fmod_ = linlin(sFreq.process(nFreq.process(1.f, st) * 0.5f, st), -1.f, 1.f, 0.99f, 1.01f);
+        float pfreq = freqLag.process(hz * fmod_, 1.f, st);
+        float pwidth = linlin(sWidth.process(nWidth.process(1.f, st), st), -1.f, 1.f, 0.45f, 0.55f);
+        float pin = pulse.process(pfreq, pwidth, st) * 0.70710678f;      // Splay(mono) → centre
+        float balPos = sBal.process(linlin(nBal.process(0.1f, st), -1.f, 1.f, 0.05f, 0.2f), st) * 0.1f;
+        float inL, inR; balance2(pin, pin, balPos, 1.f, inL, inR);
+        float gate = (ampFollow.process(inL + inR, 0.01f, 0.01f, st) > 0.02f) ? 1.f : 0.f;
+        inL *= gate; inR *= gate;
+        // feedback loop (local = previous LocalOut)
+        float lL = op1L.process(fbL, 0.4f),  lR = op1R.process(fbR, 0.4f);
+        lL = op2L.process(lL, -0.08f);       lR = op2R.process(lR, -0.08f);
+        float rL, rR; rotate2(lL, lR, 0.2f, rL, rR);
+        float dtime = delayLag.process(linlin(nDelay.process(0.1f, st), -1.f, 1.f, 0.15f, 0.3f), 10.f, st);
+        float dL = dcL.process(delayL.process(rL, dtime * sr));
+        float dR = dcR.process(delayR.process(rR, dtime * sr));
+        float mL = softclip((dL + inL) * 1.25f), mR = softclip((dR + inR) * 1.25f);
+        float cut = lpfLag.process(linlin(nLpf.process(0.3f, st), -1.f, 1.f, std::min(hz, 80.f), 16000.f), 3.333f, st);
+        mL = lpfL.lpf(mL, cut, st); mR = lpfR.lpf(mR, cut, st);
+        float fbGain = fbGainLag.process(linlin(nFbGain.process(2.f, st), -1.f, 1.f, 1.01f, 1.5f), 0.5f, st);
+        fbL = mL * fbGain; fbR = mR * fbGain;
+        float outPos = sBalOut.process(linlin(nBalOut.process(0.1f, st), -1.f, 1.f, 0.05f, 0.2f), st) * 0.1f;
+        balance2(mL * 0.2f, mR * 0.2f, outPos, amp * 3.f, l, r);   // makeup to roster level
+    }
+};
+
+// ── Rehberg — @infinitedigits. "Dense, distorted, overwhelming." ─────────────
+// A detuned tape-warble pulse pair, folded and DFM1-filtered, with an FM sine
+// and resonant band, poured into Freeverb. Random dips/bumps modulate the pitch.
+struct RehbergEngine : DroneEngine {
+    SinOsc wobbleAmp, flutterAmp, wobbleOsc, flutterOsc;
+    LFNoise2 flutterVar;
+    LFNoise0 d1atk, d1rel, d1rate; Dust d1; BPEnv env1;
+    LFNoise0 d2atk, d2rel, d2rate; Dust d2; BPEnv env2;
+    LFNoise0 eiatk, eirel; Changed changed; BPEnv envinv;
+    LFTri pwmL, pwmR; BlPulse pulseL, pulseR;
+    WhiteNoise wn; SinOsc noiseAmp; LFNoise0 noiseCut; Lag noiseCutLag; Biquad noiseLpf;
+    Biquad dfmLpL, dfmLpR, dfmHpL, dfmHpR, bpfL, bpfR;
+    SinOsc fmOsc, fmModOsc, fmAmp, bpfMul;
+    FreeVerbMono fvL, fvR; SinOsc roomOsc; LFNoise0 mixN;
+    float rWobA = 0.015f, rFluA = 0.015f, rNoiseA = 0.015f, rFmA = 0.015f, rBpfMul = 0.015f;
+    const char* name() const override { return "rehberg"; }
+    void init(uint32_t seed, float sr) override {
+        Rng rng; rng.seed(seed);
+        rWobA = linlin(rng.uniform(), 0.f, 1.f, 0.01f, 0.02f);
+        rFluA = linlin(rng.uniform(), 0.f, 1.f, 0.01f, 0.02f);
+        rNoiseA = linlin(rng.uniform(), 0.f, 1.f, 0.005f, 0.01f);
+        rFmA = linlin(rng.uniform(), 0.f, 1.f, 0.01f, 0.02f);
+        rBpfMul = linlin(rng.uniform(), 0.f, 1.f, 0.01f, 0.02f);
+        wobbleAmp.reset(); flutterAmp.reset(); wobbleOsc.reset(); flutterOsc.reset(); flutterVar.reset(seed + 1u);
+        uint32_t s = seed;
+        d1atk.reset(s += 7u); d1rel.reset(s += 7u); d1rate.reset(s += 7u); d1.reset(s += 7u); env1.reset();
+        d2atk.reset(s += 7u); d2rel.reset(s += 7u); d2rate.reset(s += 7u); d2.reset(s += 7u); env2.reset();
+        eiatk.reset(s += 7u); eirel.reset(s += 7u); changed.reset(); envinv.reset();
+        pwmL.reset(); pwmR.reset(); pulseL.reset(); pulseR.reset();
+        wn.reset(s += 7u); noiseAmp.reset(); noiseCut.reset(s += 7u); noiseCutLag.reset(); noiseLpf.reset();
+        dfmLpL.reset(); dfmLpR.reset(); dfmHpL.reset(); dfmHpR.reset(); bpfL.reset(); bpfR.reset();
+        fmOsc.reset(); fmModOsc.reset(); fmAmp.reset(); bpfMul.reset();
+        fvL.init(sr); fvR.init(sr); roomOsc.reset(); mixN.reset(s += 7u);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float wobA = linlin(wobbleAmp.process(rWobA, st), -1.f, 1.f, 0.1f, 0.5f);
+        float fluA = linlin(flutterAmp.process(rFluA, st), -1.f, 1.f, 0.1f, 0.5f);
+        float wow = std::max(wobA * std::pow(wobbleOsc.process(33.f / 60.f, st), 39.f), 0.f);
+        float flutter = fluA * flutterOsc.process(6.f + flutterVar.process(2.f, st), st);
+        float combined = 1.f + wow + flutter;
+        float lv[3] = {0.f, 1.f, 0.f};
+        float freq = hz;
+        float tmA[2] = {linlin(d1atk.process(0.1f, st), -1.f, 1.f, 0.f, 1.f), linlin(d1rel.process(0.1f, st), -1.f, 1.f, 0.f, 1.f)};
+        freq *= 1.f - env1.process(d1.process(linlin(d1rate.process(0.1f, st), -1.f, 1.f, 0.001f, 0.1f), st), lv, tmA, 2, false, st);
+        float tmB[2] = {linlin(d2atk.process(0.1f, st), -1.f, 1.f, 0.f, 1.f), linlin(d2rel.process(0.1f, st), -1.f, 1.f, 0.f, 1.f)};
+        freq *= 1.f + env2.process(d2.process(linlin(d2rate.process(0.1f, st), -1.f, 1.f, 0.001f, 0.1f), st), lv, tmB, 2, false, st);
+        float tmC[2] = {linlin(eiatk.process(0.1f, st), -1.f, 1.f, 0.f, 0.2f), linlin(eirel.process(0.1f, st), -1.f, 1.f, 0.f, 0.2f)};
+        float envinvV = 1.f - envinv.process(changed.process(freq), lv, tmC, 2, false, st);
+        // detuned PWM pulse pair (stereo)
+        float sL = pulseL.process(freq,        linlin(pwmL.process(0.5f / 3.f, st),  -1.f, 1.f, 0.2f, 0.8f), st);
+        float sR = pulseR.process(freq + 0.1f, linlin(pwmR.process(0.51f / 3.f, st), -1.f, 1.f, 0.2f, 0.8f), st);
+        float nz = noiseLpf.lpf(wn.process() * linlin(noiseAmp.process(rNoiseA, st), -1.f, 1.f, 0.005f, 0.01f),
+                                noiseCutLag.process(linlin(noiseCut.process(freq, st), -1.f, 1.f, 20.f, 20000.f), 0.1f, st), st);
+        sL += nz; sR += nz;
+        sL = foldOver(sL, -0.2f, 0.2f); sR = foldOver(sR, -0.2f, 0.2f);
+        sL = dfmLpL.dfm1(sL, freq * 24.f, 0.3f, 0, st); sR = dfmLpR.dfm1(sR, freq * 24.f, 0.3f, 0, st);
+        sL = dfmHpL.dfm1(sL, 90.f, 0.1f, 1, st);         sR = dfmHpR.dfm1(sR, 90.f, 0.1f, 1, st);
+        float fm = fmOsc.process(freq * 1.5f, st, fmModOsc.process(freq, st) * 2.f) * linlin(fmAmp.process(rFmA, st), -1.f, 1.f, 0.01f, 0.2f);
+        sL += fm; sR += fm;
+        float bpfMulV = linlin(bpfMul.process(rBpfMul, st), -1.f, 1.f, 0.01f, 0.5f);
+        sL += bpfL.bpf(sL, freq * combined, 2.f, st) * bpfMulV;
+        sR += bpfR.bpf(sR, freq * combined, 2.f, st) * bpfMulV;
+        float room = linlin(roomOsc.process(0.1f, st), -1.f, 1.f, 0.3f, 0.6f);
+        float mixv = linlin(mixN.process(0.2f, st), -1.f, 1.f, 0.1f, 0.6f);
+        sL = fvL.process(sL, mixv, room, 0.5f); sR = fvR.process(sR, mixv, room, 0.5f);
+        float g = amp * envinvV * 0.35f * 3.f;   // last factor is makeup to roster level
+        l = sL * g; r = sR * g;
+    }
+};
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -644,6 +806,9 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new MtLionEngine());
     v.emplace_back(new ApparatusEngine());
     v.emplace_back(new ElianeEngine());
+    v.emplace_back(new UnrelaccEngine());
+    v.emplace_back(new DreamcrusherEngine());
+    v.emplace_back(new RehbergEngine());
     return v;
 }
 
