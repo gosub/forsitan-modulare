@@ -378,6 +378,254 @@ struct SachikoEngine : DroneEngine {
     }
 };
 
+// ── Starlids — @infinitedigits. "Symphonic, meek, radiant." ─────────────────
+// A PWM sub-oscillator plus 12 sawtooth voices whose pitches step through major
+// third/fourth/sixth intervals, each chorus-delayed and panned, the whole thing
+// swept by a global Moog ladder.
+struct StarlidsEngine : DroneEngine {
+    static constexpr int V = 12;
+    BlPulse sub; LFTri subWidth;
+    struct Voice {
+        LFTri o1, o2; BlSaw saw; Biquad lpf; SinOsc cutLfo;
+        DelayC delayc; LFNoise1 delayMod; LFNoise0 panN; Lag panLag;
+        float o1rate = 0.02f, o2rate = 0.02f, cutRate = 0.05f, delayRate = 7.f;
+        void init(uint32_t seed, float sr) {
+            Rng rng; rng.seed(seed);
+            o1rate  = linlin(rng.uniform(), 0.f, 1.f, 1.f / 100.f, 1.f / 30.f);
+            o2rate  = linlin(rng.uniform(), 0.f, 1.f, 1.f / 100.f, 1.f / 30.f);
+            cutRate = linlin(rng.uniform(), 0.f, 1.f, 1.f / 30.f, 1.f / 10.f);
+            delayRate = 5.f + rng.uniform() * 5.f;
+            o1.reset(rng.uniform()); o2.reset(rng.uniform());
+            saw.reset(); lpf.reset(); cutLfo.reset(rng.uniform());
+            delayc.dl.init(0.05f, sr); delayMod.reset(seed + 3u);
+            panN.reset(seed + 4u); panLag.reset();
+        }
+        void process(float note, float st, float sr, float& L, float& R) {
+            float os1 = rack::clamp(std::floor(linlin(o1.process(o1rate, st), -1.f, 1.f, 0.f, 2.f)), 0.f, 1.f);
+            float os2 = rack::clamp(std::floor(linlin(o2.process(o2rate, st), -1.f, 1.f, 0.f, 2.f)), 0.f, 1.f);
+            float s = saw.process(midicps(note + 4.f * os1 + 5.f * os2), st);
+            s = lpf.lpf(s, linexp(cutLfo.process(cutRate, st), -1.f, 1.f, 20.f, 12000.f), st);
+            float dt = (0.02f + 0.01f * delayMod.process(delayRate, st)) / 15.f;
+            s = delayc.process(s, dt * sr);
+            float pan = panLag.process(panN.process(1.f / 3.f, st), 3.f, st);
+            pan2(s, pan, 1.f / 12.f, L, R);
+        }
+    };
+    Voice voices[V];
+    MoogFF moogL, moogR; Lag moogLag; LFNoise0 moogNoise;
+    Biquad hpfL, hpfR;
+    const char* name() const override { return "starlids"; }
+    void init(uint32_t seed, float sr) override {
+        sub.reset(); subWidth.reset();
+        for (int i = 0; i < V; ++i) voices[i].init(seed + i * 30011u + 1u, sr);
+        moogL.reset(); moogR.reset(); moogLag.reset(); moogNoise.reset(seed + 7u);
+        hpfL.reset(); hpfR.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st, note = cpsmidi(hz);
+        float sw = linlin(subWidth.process(0.5f, st), -1.f, 1.f, 0.2f, 0.8f);
+        float subS = sub.process(midicps(note - 12.f), sw, st) / 12.f * amp;
+        float sL, sR; pan2(subS, 0.f, 1.f, sL, sR);
+        for (int i = 0; i < V; ++i) {
+            float vl, vr; voices[i].process(note, st, sr, vl, vr);
+            sL += vl * amp; sR += vr * amp;
+        }
+        float cutoff = linexp(moogLag.process(moogNoise.process(1.f / 6.f, st), 6.f, st), -1.f, 1.f, hz * 8.f, hz * 60.f);
+        const float makeup = 3.5f;   // normalise toward the other engines' level
+        l = hpfL.hpf(moogL.process(std::tanh(sL), cutoff, 1.f, st), 20.f, st) * makeup;
+        r = hpfR.hpf(moogR.process(std::tanh(sR), cutoff, 1.f, st), 20.f, st) * makeup;
+    }
+};
+
+// sample-and-hold random used by the Mt. * engines:
+//   Latch(WhiteNoise*mul+add, Dust(freq)).lag(lag)
+struct SHRand {
+    WhiteNoise wn; Dust dust; Latch latch; Lag lag;
+    void reset(uint32_t seed) { wn.reset(seed); dust.reset(seed * 2u + 1u); latch.reset(); lag.reset(); }
+    float process(float freq, float mul, float add, float lagt, float st) {
+        float d = dust.process(freq, st);
+        return lag.process(latch.process(wn.process() * mul + add, d), lagt, st);
+    }
+};
+
+// ── Mt. Lion — @license. "Roars through a twisting canyon." ──────────────────
+// 9 comb-resonated pulse voices, everything (pitch, width, delay, decay, pan,
+// level) driven by slow sample-and-held noise.
+struct MtLionEngine : DroneEngine {
+    static constexpr int V = 9;
+    struct Voice {
+        SHRand rFreq, rWidth, rDelayNote, rDelayMul, rDecay, rPan, rLevel;
+        LFPulse pulse; CombN comb;
+        void init(uint32_t seed, float sr) {
+            uint32_t s = seed;
+            rFreq.reset(s += 7u); rWidth.reset(s += 7u); rDelayNote.reset(s += 7u);
+            rDelayMul.reset(s += 7u); rDecay.reset(s += 7u); rPan.reset(s += 7u); rLevel.reset(s += 7u);
+            pulse.reset(); comb.dl.init(1.0f, sr);
+        }
+        void process(float baseNote, float noteDetune, float maxAmp, int index, float st, float sr, float& L, float& R) {
+            float freq = midicps(rFreq.process(0.2f, noteDetune, baseNote, 2.f, st)) * index;
+            float width = rack::clamp(rWidth.process(0.5f, 0.5f, 0.5f, 0.5f, st), 0.f, 1.f);
+            float p = pulse.process(freq, width, st);
+            float delayNote = midicps(rDelayNote.process(0.3f, noteDetune, baseNote, 5.f, st));
+            float mul = std::round(rDelayMul.process(0.2f, 3.f, 4.f, 5.f, st));
+            float dt = rack::clamp((1.f / std::max(delayNote, 1.f)) * mul, 0.001f, 1.f);
+            float decay = rDecay.process(0.2f, 10.f, 0.f, 3.f, st);
+            float s = std::tanh(comb.process(p, dt * sr, combFeedback(dt, decay)));
+            pan2(s, rPan.process(0.4f, 1.f, 0.f, 2.f, st), rLevel.process(0.1f, maxAmp, 0.f, 0.5f, st), L, R);
+        }
+    };
+    Voice voices[V];
+    LeakDC dcL, dcR;
+    const char* name() const override { return "mt. lion"; }
+    void init(uint32_t seed, float sr) override {
+        for (int i = 0; i < V; ++i) voices[i].init(seed + i * 50021u + 1u, sr);
+        dcL.reset(); dcR.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float baseNote = std::round(cpsmidi(hz));
+        float noteDetune = std::fabs(baseNote - cpsmidi(hz));
+        float maxAmp = amp / V;
+        float sL = 0.f, sR = 0.f;
+        for (int i = 0; i < V; ++i) {
+            float vl, vr; voices[i].process(baseNote, noteDetune, maxAmp, i + 1, st, sr, vl, vr);
+            sL += vl; sR += vr;
+        }
+        const float makeup = 3.f;
+        l = dcL.process(sL) * makeup; r = dcR.process(sR) * makeup;
+    }
+};
+
+// ── Apparatus — Josue Arias (after Zé Craum / Ruviaro / Mitchell). ───────────
+// "Drone simulating old sinusoidal generators": clipped triangle oscillators
+// with vibrato + mains hum, plus a crackle/dust interference bed.
+struct ApparatusEngine : DroneEngine {
+    PinkNoise pink1;
+    LFPar mainsPar, hzPar;
+    LFNoise2 vib, vib2;
+    SinOsc lfo1, lfo2;
+    LFTri t1, t2, t3, t4;
+    Dust2 dust2; Crackle crackle; PinkNoise pinkMod; SinOsc dustSine;
+    Biquad hpf, bpf;
+    LeakDC dc;
+    static constexpr float noiseAmp = 0.08f, mainsDepth = 0.5f, vrate = 0.19f, vrate2 = 0.67f,
+                           vdepth = 0.007f, vdepth2 = 0.01f, sineClip = 0.825f, interference = 1.4f;
+    const char* name() const override { return "apparatus"; }
+    void init(uint32_t seed, float sr) override {
+        pink1.reset(seed + 1u);
+        mainsPar.reset(); hzPar.reset();
+        vib.reset(seed + 3u); vib2.reset(seed + 4u);
+        lfo1.reset(); lfo2.reset();
+        t1.reset(); t2.reset(); t3.reset(); t4.reset();
+        dust2.reset(seed + 5u); crackle.reset(); pinkMod.reset(seed + 6u); dustSine.reset();
+        hpf.reset(); bpf.reset(); dc.reset();
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float noise = pink1.process() * (noiseAmp * linlin(mainsPar.process(hz * 2.f, st), -1.f, 1.f, 1.f - mainsDepth, 1.f));
+        noise += hzPar.process(hz, st) * (noiseAmp / 8.f);
+        float vibrato  = hz * linlin(vib.process(vrate, st),  -1.f, 1.f, 1.f / (1.f + vdepth),  1.f + vdepth);
+        float vibrato2 = hz * 3.f * linlin(vib2.process(vrate2, st), -1.f, 1.f, 1.f / (1.f + vdepth2), 1.f + vdepth2);
+        float l1 = lfo1.process(0.009f, st);
+        float l2 = lfo2.process(0.011f, st);
+        float snd  = softclip(rack::clamp(t1.process(vibrato, st),  -sineClip, sineClip));
+        snd = (snd + noise) * amp;
+        float snd2 = softclip(rack::clamp(t2.process(vibrato2, st), -sineClip, 0.5f)) * (amp / 7.f);
+        float snd3 = softclip(rack::clamp(t3.process(hz * 5.f - l2, st), -sineClip, 0.65f)) * l1 * (amp / 10.f);
+        float snd4 = softclip(rack::clamp(t4.process(hz * 2.f - l1, st), -sineClip, 0.70f)) * l2 * (amp / 6.f);
+        float sndall = snd + snd2 + snd3 + snd4;
+        float dustSig = dust2.process(10.f, st) + crackle.process(1.95f) * 0.2f
+                      + dustSine.process(pinkMod.process() * 3750.f + 40.f, st) * 0.011f;
+        dustSig = hpf.hpf(dustSig, 25.f, st);
+        dustSig = bpf.bpf(dustSig, hz * 8.f, 1.f, st);
+        dustSig = dustSig * (interference + noise) * amp;
+        l = r = dc.process(sndall + dustSig) * 0.5f;   // normalise toward roster level
+    }
+};
+
+// ── Eliane — @sixolet. "Feedback, slow beatings, highs and lows." ────────────
+// Seven sine partials phase-modulating each other in a crosslinked feedback
+// ring (an homage to Éliane Radigue). SC's LocalIn/LocalOut(14) is a one-sample
+// feedback bus — here just the previous frame's per-partial stereo output.
+struct ElianeEngine : DroneEngine {
+    static constexpr int N = 7;
+    float bus[2 * N] = {};
+    float intervals[N] = {};
+    SinOsc mainL[N], mainR[N], subL[N], subR[N];
+    LFNoise2 detL[N], detR[N], subDetL[N], subDetR[N], modExp[N], rotN[N];
+    LFNoise2 gRateFb[N], gRateSn[N], gNoiseFb[N], gNoiseSn[N];
+    Lag gLagFb[N], gLagSn[N];
+    LFNoise2 nice, combRate;
+    CombN combL, combR;
+    const char* name() const override { return "eliane"; }
+    void init(uint32_t seed, float sr) override {
+        static const int steps[N] = {0, 7, 14, 20, 27, 34, 41};
+        for (int x = 0; x < N; ++x) intervals[x] = std::pow(2.f, steps[x] / 12.f);
+        for (int i = 0; i < 2 * N; ++i) bus[i] = 0.f;
+        uint32_t s = seed;
+        for (int x = 0; x < N; ++x) {
+            mainL[x].reset(); mainR[x].reset(); subL[x].reset(); subR[x].reset();
+            detL[x].reset(s += 7u); detR[x].reset(s += 7u);
+            subDetL[x].reset(s += 7u); subDetR[x].reset(s += 7u);
+            modExp[x].reset(s += 7u); rotN[x].reset(s += 7u);
+            gRateFb[x].reset(s += 7u); gRateSn[x].reset(s += 7u);
+            gNoiseFb[x].reset(s += 7u); gNoiseSn[x].reset(s += 7u);
+            gLagFb[x].reset(); gLagSn[x].reset();
+        }
+        nice.reset(s += 7u); combRate.reset(s += 7u);
+        combL.dl.init(0.35f, sr); combR.dl.init(0.35f, sr);
+    }
+    // LFDNoise3(rate, add:0.2).clip(0,1).lag2(13), rate from LFNoise2(1/300)
+    float gate(LFNoise2& rate, LFNoise2& noise, Lag& lag, float st) {
+        float rHz = linlin(rate.process(1.f / 300.f, st), -1.f, 1.f, 1.f / 120.f, 1.f / 30.f);
+        float v = rack::clamp(noise.process(rHz, st) + 0.2f, 0.f, 1.f);
+        return lag.process(v, 13.f, st);
+    }
+    void process(float hz, float amp, float st, float& l, float& r) override {
+        float sr = 1.f / st;
+        float expo = linlin(nice.process(1.f / 200.f, st), -1.f, 1.f, 0.9f, 1.7f);
+        float newbus[2 * N];
+        float sumL = 0.f, sumR = 0.f;
+        for (int x = 0; x < N; ++x) {
+            int nx = (x + 1) % N, nx2 = (x + 2) % N;
+            float modL = (x + 1) * bus[2 * nx]     + bus[2 * nx2];
+            float modR = (x + 1) * bus[2 * nx + 1] + bus[2 * nx2 + 1];
+            float base = modExp[x].process(1.f / 66.f, st) * 0.5f + 0.5f;   // unipolar
+            float coeff = (float)M_PI * std::pow(rack::clamp(base, 0.f, 1.f), expo);
+            modL *= coeff; modR *= coeff;
+            float pitch = hz * intervals[x];
+            float sL = mainL[x].process(pitch + (x * 0.5f) * detL[x].process(1.f / 15.f, st), st, modL);
+            float sR = mainR[x].process(pitch + (x * 0.5f) * detR[x].process(1.f / 15.f, st), st, modR);
+            if (x == 6) {
+                float bL = subL[x].process(hz * 0.5f + subDetL[x].process(1.f / 15.f, st), st, modL);
+                float bR = subR[x].process(hz * 0.5f + subDetR[x].process(1.f / 15.f, st), st, modR);
+                float sel = hz / (150.f + hz);
+                sL = selectx(sel, sL / (1.5f * x + 1.f), bL);
+                sR = selectx(sel, sR / (1.5f * x + 1.f), bR);
+            } else if (x == 5) {
+                float bL = subL[x].process(hz / 3.f + subDetL[x].process(1.f / 15.f, st), st, modL) * 0.5f;
+                float bR = subR[x].process(hz / 3.f + subDetR[x].process(1.f / 15.f, st), st, modR) * 0.5f;
+                float sel = hz / (300.f + hz);
+                sL = selectx(sel, sL / (1.3f * x + 1.f), bL);
+                sR = selectx(sel, sR / (1.3f * x + 1.f), bR);
+            } else {
+                sL /= (x + 1); sR /= (x + 1);
+            }
+            float rL, rR;
+            rotate2(sL, sR, rotN[x].process(1.f / 25.f, st) * 0.5f, rL, rR);
+            float gFb = gate(gRateFb[x], gNoiseFb[x], gLagFb[x], st);   // feedback gate
+            float gSn = gate(gRateSn[x], gNoiseSn[x], gLagSn[x], st);   // output gate
+            newbus[2 * x]     = rL * gFb;
+            newbus[2 * x + 1] = rR * gFb;
+            sumL += 0.5f * rL * gSn * amp;
+            sumR += 0.5f * rR * gSn * amp;
+        }
+        for (int i = 0; i < 2 * N; ++i) bus[i] = newbus[i];             // LocalOut
+        float cr = linexp(combRate.process(0.02f, st), -1.f, 1.f, 0.3f, 3.0f);
+        l = std::tanh(combL.process(sumL, 0.3f * sr, combFeedback(0.3f, cr)));
+        r = std::tanh(combR.process(sumR, 0.3f * sr, combFeedback(0.3f, cr)));
+    }
+};
+
 // ── registry ─────────────────────────────────────────────────────────────────
 // Phase 1 roster: the four engines that need only Tier-1 UGENs. Grows as the
 // UGEN library fills out (see project notes / CHANGELOG).
@@ -392,6 +640,10 @@ inline std::vector<std::unique_ptr<DroneEngine>> makeEngines() {
     v.emplace_back(new HeckerEngine());
     v.emplace_back(new CoilEngine());
     v.emplace_back(new SachikoEngine());
+    v.emplace_back(new StarlidsEngine());
+    v.emplace_back(new MtLionEngine());
+    v.emplace_back(new ApparatusEngine());
+    v.emplace_back(new ElianeEngine());
     return v;
 }
 
