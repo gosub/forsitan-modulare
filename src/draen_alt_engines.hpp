@@ -135,7 +135,7 @@ struct GlassEngine : DroneEngine {
             amRate[i] = 0.03f + rng.uniform() * 0.12f;
             pos[i] = rng.bipolar() * 0.8f;
         }
-        dc[0].reset(); dc[1].reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         l = r = 0.f;
@@ -256,7 +256,7 @@ struct FoldEngine : DroneEngine {
     void init(uint32_t seed, float) override {
         osc.reset(); osc2.reset(0.31f);
         depthN.reset(seed + 1u); depthLfo.reset();
-        for (int c = 0; c < 2; ++c) { lp[c].reset(); dc[c].reset(); }
+        for (int c = 0; c < 2; ++c) { lp[c].reset(); dc[c].reset(0.999f); }
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float depth = 1.2f + 2.4f * (depthN.process(0.05f, st) * 0.5f + 0.5f)
@@ -275,7 +275,7 @@ struct PhaseEngine : DroneEngine {
     void init(uint32_t seed, float) override {
         p1 = 0.f; p2 = 0.33f;
         kneeN.reset(seed + 1u); kneeLfo.reset();
-        dc[0].reset(); dc[1].reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     static float pd(float p, float d) {
         // piecewise-linear phase warp: knee at d, then read a cosine
@@ -318,12 +318,13 @@ struct TideEngine : DroneEngine {
 // ── ember — fire: crackle, flickering roar, sub rumble, occasional pops ──────
 struct EmberEngine : DroneEngine {
     Crackle crk; BrownNoise bn; Biquad roarLp; LFNoise1 flick1, flick2;
-    SinOsc sub; Dust2 dPop; Ringz pop;
+    SinOsc sub; Dust2 dPop; Ringz pop; LeakDC dc[2];
     const char* name() const override { return "ember"; }
     void init(uint32_t seed, float) override {
         crk.reset(); bn.reset(seed + 1u); roarLp.reset();
         flick1.reset(seed + 2u); flick2.reset(seed + 3u);
         sub.reset(); dPop.reset(seed + 4u); pop.reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float f1 = flick1.process(7.f, st) * 0.5f + 0.5f;
@@ -333,8 +334,8 @@ struct EmberEngine : DroneEngine {
         float s = sub.process(hz * 0.5f, st) * 0.3f * (0.6f + 0.4f * f2);
         float pp = pop.process(dPop.process(0.5f, st), hz * 1.5f, 0.2f, st) * 2.f;
         float m = roar + cr + s + pp;
-        l = std::tanh(m * 1.2f) * amp * 0.45f;
-        r = std::tanh((roar * 0.9f + cr * 1.1f + s + pp * 0.8f) * 1.2f) * amp * 0.45f;
+        l = dc[0].process(std::tanh(m * 1.2f)) * amp * 0.45f;
+        r = dc[1].process(std::tanh((roar * 0.9f + cr * 1.1f + s + pp * 0.8f) * 1.2f)) * amp * 0.45f;
     }
 };
 
@@ -456,7 +457,7 @@ struct RainEngine : DroneEngine {
     Pluck pl[N]; Dust2 dDrop; Rng rng; int next = 0;
     float pos[N] = {}, freq[N] = {};
     LFTri pad1, pad2; Biquad padLp;
-    SchroederReverb rev;
+    SchroederReverb rev; LeakDC dc[2];
     const char* name() const override { return "rain"; }
     void init(uint32_t seed, float sr) override {
         rng.seed(seed);
@@ -464,6 +465,7 @@ struct RainEngine : DroneEngine {
         dDrop.reset(seed + 1u); next = 0;
         pad1.reset(); pad2.reset(0.4f); padLp.reset();
         rev.init(seed + 2u, sr);
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float sr = 1.f / st;
@@ -486,8 +488,9 @@ struct RainEngine : DroneEngine {
         }
         float pad = padLp.lpf(pad1.process(hz * 0.5f, st) + pad2.process(hz * 0.501f, st), hz * 2.f, st) * 0.18f;
         float wl, wr; rev.process(dl, dr, st, sr, wl, wr);
-        l = softclip((dl * 0.6f + wl * 0.12f + pad) * 1.5f) * amp;
-        r = softclip((dr * 0.6f + wr * 0.12f + pad) * 1.5f) * amp;
+        // the Pluck loops recirculate excitation DC: block after the clip
+        l = dc[0].process(softclip((dl * 0.6f + wl * 0.12f + pad) * 1.5f)) * amp;
+        r = dc[1].process(softclip((dr * 0.6f + wr * 0.12f + pad) * 1.5f)) * amp;
     }
 };
 
@@ -495,7 +498,7 @@ struct RainEngine : DroneEngine {
 struct WireEngine : DroneEngine {
     DelayLine loop[2]; float lp[2] = {}; WhiteNoise wn; Biquad bowLp;
     LFNoise2 pressureN; Dust dFlip; Lag flipLag; float mult = 1.f;
-    Rng rng;
+    Rng rng; LeakDC dc[2];
     const char* name() const override { return "wire"; }
     void init(uint32_t seed, float sr) override {
         loop[0].init(0.6f, sr); loop[1].init(0.6f, sr);
@@ -504,6 +507,7 @@ struct WireEngine : DroneEngine {
         pressureN.reset(seed + 2u);
         dFlip.reset(seed + 3u); flipLag.reset(); mult = 1.f;
         rng.seed(seed + 4u);
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float sr = 1.f / st;
@@ -522,7 +526,8 @@ struct WireEngine : DroneEngine {
             loop[c].write(softclip(lp[c] * 0.996f + bow));
             out[c] = y;
         }
-        l = out[0] * amp * 1.4f; r = out[1] * amp * 1.4f;
+        // the 0.996 loop recirculates any bow-noise DC ~250x: block it
+        l = dc[0].process(out[0]) * amp * 1.4f; r = dc[1].process(out[1]) * amp * 1.4f;
     }
 };
 
@@ -530,7 +535,7 @@ struct WireEngine : DroneEngine {
 struct PulseworkEngine : DroneEngine {
     Impulse tick[3]; PercEnv env[3]; WhiteNoise wn;
     CombC comb[3]; float pos[3] = {-0.7f, 0.f, 0.7f};
-    LFTri pad; Biquad padLp;
+    LFTri pad; Biquad padLp; LeakDC dc[2];
     const char* name() const override { return "pulsework"; }
     void init(uint32_t seed, float sr) override {
         for (int k = 0; k < 3; ++k) {
@@ -539,6 +544,7 @@ struct PulseworkEngine : DroneEngine {
         }
         wn.reset(seed + 1u);
         pad.reset(); padLp.reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float sr = 1.f / st;
@@ -554,7 +560,9 @@ struct PulseworkEngine : DroneEngine {
             l += vl; r += vr;
         }
         float p = padLp.lpf(pad.process(hz * 0.5f, st), hz * 1.5f, st) * 0.15f;
-        l = softclip(l * 0.4f + p) * amp; r = softclip(r * 0.4f + p) * amp;
+        // the combs recirculate tick DC: block after the clip
+        l = dc[0].process(softclip(l * 0.4f + p)) * amp;
+        r = dc[1].process(softclip(r * 0.4f + p)) * amp;
     }
 };
 
@@ -600,7 +608,7 @@ struct CoronaEngine : DroneEngine {
             shimRate[i] = 0.06f + rng.uniform() * 0.14f;
         }
         foldN.reset(seed + 99u);
-        for (int c = 0; c < 2; ++c) { hp[c].reset(); dc[c].reset(); }
+        for (int c = 0; c < 2; ++c) { hp[c].reset(); dc[c].reset(0.999f); }
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float g = 1.4f + 1.2f * (foldN.process(0.07f, st) * 0.5f + 0.5f);
@@ -656,7 +664,7 @@ struct LatticeEngine : DroneEngine {
         Rng rng; rng.seed(seed);
         for (int k = 0; k < 3; ++k) { a[k].reset(rng.uniform()); b[k].reset(rng.uniform()); }
         rot.reset(rng.uniform());
-        dc[0].reset(); dc[1].reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         static const float PHI = 1.618034f;
@@ -674,19 +682,22 @@ struct LatticeEngine : DroneEngine {
 
 // ── aster — sustained two-operator FM with a wandering index ─────────────────
 struct AsterEngine : DroneEngine {
-    SinOsc car1, mod1, car2, mod2; LFNoise2 idxN; Lag idxLag; SinOsc idxLfo;
+    SinOsc car1, mod1, car2, mod2; LFNoise2 idxN; Lag idxLag; SinOsc idxLfo; LeakDC dc;
     const char* name() const override { return "aster"; }
     void init(uint32_t seed, float) override {
         Rng rng; rng.seed(seed);
         car1.reset(rng.uniform()); mod1.reset(rng.uniform());
         car2.reset(rng.uniform()); mod2.reset(rng.uniform());
         idxN.reset(seed + 1u); idxLag.reset(); idxLfo.reset();
+        dc.reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float idx = idxLag.process(2.f * (idxN.process(0.05f, st) * 0.5f + 0.5f), 1.f, st)
                   + 0.6f + 0.4f * idxLfo.process(0.13f, st);
         float m1 = mod1.process(hz * 1.001f, st) * idx;
-        float v1 = car1.process(hz, st, m1);
+        // mod sits at hz·1.001, so PM drops a sideband at 0.001·hz — near-DC
+        // at drone pitches; block it at the carrier
+        float v1 = dc.process(car1.process(hz, st, m1));
         float m2 = mod2.process(hz * 3.f, st) * idx * 0.5f;
         float v2 = car2.process(hz * 2.f, st, m2) * 0.22f;
         l = (v1 * 0.6f + v2) * amp * 0.55f;
@@ -740,11 +751,12 @@ struct VeldtEngine : DroneEngine {
 
 // ── mirror — tuned comb-space: noise sustained inside two long combs ─────────
 struct MirrorEngine : DroneEngine {
-    CombC c1, c2; WhiteNoise wn; PinkNoise pk; Biquad exLp;
+    CombC c1, c2; WhiteNoise wn; PinkNoise pk; Biquad exLp; LeakDC dc[2];
     const char* name() const override { return "mirror"; }
     void init(uint32_t seed, float sr) override {
         c1.dl.init(0.6f, sr); c2.dl.init(0.6f, sr);
         wn.reset(seed + 1u); pk.reset(seed + 2u); exLp.reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float sr = 1.f / st;
@@ -753,8 +765,9 @@ struct MirrorEngine : DroneEngine {
         float d2 = rack::clamp(sr / std::max(hz * 1.5f, 8.f), 4.f, 0.55f * sr);
         float s1 = c1.process(ex, d1, 0.985f);
         float s2 = c2.process(ex, d2, 0.982f);
-        l = softclip((s1 + s2 * 0.6f) * 2.2f) * amp * 0.9f;
-        r = softclip((s2 + s1 * 0.6f) * 2.2f) * amp * 0.9f;
+        // comb feedback 0.985 gives ~66x gain at DC: block after the clip
+        l = dc[0].process(softclip((s1 + s2 * 0.6f) * 2.2f)) * amp * 0.9f;
+        r = dc[1].process(softclip((s2 + s1 * 0.6f) * 2.2f)) * amp * 0.9f;
     }
 };
 
@@ -785,18 +798,21 @@ struct HaloEngine : DroneEngine {
 // ── turbine — machine-room hum: sub square and a sweeping high whine ─────────
 struct TurbineEngine : DroneEngine {
     BlPulse sq; SinOsc whine, whineLfo; Biquad peak[2]; BrownNoise bn; Biquad rumbleLp;
+    LeakDC dc;
     const char* name() const override { return "turbine"; }
     void init(uint32_t seed, float) override {
         sq.reset(); whine.reset(); whineLfo.reset();
         peak[0].reset(); peak[1].reset();
         bn.reset(seed + 1u); rumbleLp.reset();
+        dc.reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float s = sq.process(hz * 0.5f, 0.5f, st) * 0.4f;
         float wf = hz * 8.f * (1.f + 0.03f * whineLfo.process(0.09f, st));
         float w = whine.process(std::min(wf, 0.35f / st), st) * 0.09f;
+        // brown noise wanders around a nonzero mean; the lpf keeps it
         float rum = rumbleLp.lpf(bn.process(), hz, st) * 0.5f;
-        float m = s + rum;
+        float m = dc.process(s + rum);
         l = (peak[0].peakeq(m, hz * 2.f, 0.7f, 6.f, st) + w) * amp * 0.5f;
         r = (peak[1].peakeq(m, hz * 3.f, 0.7f, 6.f, st) - w) * amp * 0.5f;
     }
@@ -849,19 +865,20 @@ struct FrostEngine : DroneEngine {
 
 // ── root — sub-octave breathing meditation drone ─────────────────────────────
 struct RootEngine : DroneEngine {
-    SinOsc s1, s2, fifth; SinOsc breathLfo;
+    SinOsc s1, s2, fifth; SinOsc breathLfo; LeakDC dc;
     const char* name() const override { return "root"; }
     void init(uint32_t seed, float) override {
         Rng rng; rng.seed(seed);
         s1.reset(); s2.reset(rng.uniform()); fifth.reset(rng.uniform());
         breathLfo.reset(rng.uniform());
+        dc.reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float br = 0.7f + 0.3f * breathLfo.process(0.05f, st);
         float s = s1.process(hz * 0.5f, st) * 0.5f
                 + s2.process(hz * 0.25f, st) * 0.4f
                 + fifth.process(hz * 0.75f, st) * 0.08f;
-        s = std::tanh(s * 1.3f) * br;
+        s = dc.process(std::tanh(s * 1.3f)) * br;
         l = s * amp * 0.62f; r = s * amp * 0.62f;
     }
 };
@@ -871,13 +888,14 @@ struct SputterEngine : DroneEngine {
     static constexpr int N = 12;
     struct Grain { bool on = false; float t = 0.f, dur = 0.05f, ph = 0.f, f = 220.f, pos = 0.f; };
     Grain g[N]; int slot = 0;
-    Dust dG; Rng rng; Biquad bp[2];
+    Dust dG; Rng rng; Biquad bp[2]; LeakDC dc[2];
     const char* name() const override { return "sputter"; }
     void init(uint32_t seed, float) override {
         for (int i = 0; i < N; ++i) g[i].on = false;
         slot = 0;
         dG.reset(seed + 1u); rng.seed(seed + 2u);
         bp[0].reset(); bp[1].reset();
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         if (dG.process(14.f, st) > 0.f) {
@@ -902,8 +920,8 @@ struct SputterEngine : DroneEngine {
             float vl, vr; pan2(s, n.pos, 1.f, vl, vr);
             sl += vl; sr_ += vr;
         }
-        l = softclip(bp[0].bpf(sl, hz * 2.f, 1.8f, st) * 1.3f) * amp;
-        r = softclip(bp[1].bpf(sr_, hz * 2.f, 1.8f, st) * 1.3f) * amp;
+        l = dc[0].process(softclip(bp[0].bpf(sl, hz * 2.f, 1.8f, st) * 1.3f)) * amp;
+        r = dc[1].process(softclip(bp[1].bpf(sr_, hz * 2.f, 1.8f, st) * 1.3f)) * amp;
     }
 };
 
@@ -997,7 +1015,7 @@ struct QuillEngine : DroneEngine {
     Pluck pl[N]; int next = 0, step = 0;
     float freq[N] = {}, pos[N] = {};
     float timer = 0.f, interval = 3.f; bool first = true;
-    Rng rng; SchroederReverb rev;
+    Rng rng; SchroederReverb rev; LeakDC dc[2];
     const char* name() const override { return "quill"; }
     void init(uint32_t seed, float sr) override {
         rng.seed(seed);
@@ -1005,6 +1023,7 @@ struct QuillEngine : DroneEngine {
         next = 0; step = 0; timer = 0.f; first = true;
         interval = 2.5f + rng.uniform() * 1.5f;
         rev.init(seed + 1u, sr);
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float sr = 1.f / st;
@@ -1027,8 +1046,9 @@ struct QuillEngine : DroneEngine {
             dl += vl; dr += vr;
         }
         float wl, wr; rev.process(dl, dr, st, sr, wl, wr);
-        l = softclip((dl * 0.7f + wl * 0.1f) * 4.5f) * amp;
-        r = softclip((dr * 0.7f + wr * 0.1f) * 4.5f) * amp;
+        // the Pluck loops recirculate excitation DC: block after the clip
+        l = dc[0].process(softclip((dl * 0.7f + wl * 0.1f) * 4.5f)) * amp;
+        r = dc[1].process(softclip((dr * 0.7f + wr * 0.1f) * 4.5f)) * amp;
     }
 };
 
@@ -1072,7 +1092,7 @@ struct SarosEngine : DroneEngine {
 struct HiveEngine : DroneEngine {
     static constexpr int N = 12;
     SinOscFB osc[N]; LFNoise2 fbN[N]; float harm[N] = {}, det[N] = {}, pos[N] = {};
-    CombC comb[2];
+    CombC comb[2]; LeakDC dc[2];
     const char* name() const override { return "hive"; }
     void init(uint32_t seed, float sr) override {
         static const float h[N] = {1, 1, 1.5f, 2, 2, 2.5f, 3, 3, 4, 5, 6, 8};
@@ -1085,6 +1105,7 @@ struct HiveEngine : DroneEngine {
             pos[i] = rng.bipolar() * 0.85f;
         }
         comb[0].dl.init(0.3f, sr); comb[1].dl.init(0.3f, sr);
+        dc[0].reset(0.999f); dc[1].reset(0.999f);
     }
     void process(float hz, float amp, float st, float& l, float& r) override {
         float sr = 1.f / st;
@@ -1098,8 +1119,9 @@ struct HiveEngine : DroneEngine {
             l += vl; r += vr;
         }
         float d = rack::clamp(sr / std::max(hz, 12.f), 4.f, 0.28f * sr);
-        l = std::tanh((l + comb[0].process(l, d, 0.4f)) * 0.5f) * amp * 0.42f;
-        r = std::tanh((r + comb[1].process(r, d * 1.001f, 0.4f)) * 0.5f) * amp * 0.42f;
+        // feedback sines carry intrinsic DC (mean of sin(φ + fb·sin) ≠ 0)
+        l = dc[0].process(std::tanh((l + comb[0].process(l, d, 0.4f)) * 0.5f)) * amp * 0.42f;
+        r = dc[1].process(std::tanh((r + comb[1].process(r, d * 1.001f, 0.4f)) * 0.5f)) * amp * 0.42f;
     }
 };
 
