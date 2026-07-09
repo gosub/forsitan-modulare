@@ -9,7 +9,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
   - test: `draen_sweep`, an offline octave sweep (27.5 Hz → 3.52 kHz) of both
     dræn engine banks reporting per-channel DC, AC RMS, peak and NaN counts
+  - MMCCCXCIX: delta-sigma oversampling selectable from the context menu
+    (1×/2×/4×/8×/16×, saved with the patch); the new default 8× sounds
+    identical to the previous hardcoded 16× at half the CPU
+### Changed
+  - MMCCCXCIX: the delta-sigma loop and parameter handling were optimized
+    (dead demod pole removed, cheaper TPDF dither, single-pass RAM bit
+    exchange, coefficient math only runs while a knob/CV moves); combined
+    with the 8× default the module's CPU use drops to roughly a third
 ### Fixed
+  - dræn: a MinBLEP discontinuity landing within float rounding of a sample
+    boundary read past the impulse table and permanently NaN'd the voice
+    (the thx engine reliably died above ~1.7 kHz)
+  - dræn: DC offsets in twelve dronecaster-bank engines (sunno reached -0.85
+    at 27.5 Hz) removed with output DC blockers, leaving the SynthDef-faithful
+    interiors untouched
   - dræn: the band-limited saw leaked DC proportional to its frequency (a
     minBLEP residual artifact), audible as offset on saw-heavy engines in
     both banks (wall, anthem, supersaw)
