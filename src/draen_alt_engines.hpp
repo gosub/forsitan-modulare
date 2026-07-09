@@ -14,6 +14,20 @@
 
 namespace draen {
 
+// ── hz-dependent makeup gain ─────────────────────────────────────────────────
+// Some engines' loudness varies strongly with the fundamental: fixed formants
+// drift in and out of the harmonic stack, pitch-tracking filters change
+// bandwidth, pluck/comb loops store more energy at longer delays. For those,
+// the makeup gain is a table over the sweep octaves 27.5·2^k Hz (k = 0..7,
+// the grid used by test/draen_sweep), interpolated linearly in log2(hz),
+// calibrated so AC RMS at amp 1 stays near the bank target across the range.
+inline float octaveGain(float hz, const float (&g)[8]) {
+    float x = rack::clamp(std::log2(std::max(hz, 1.f) * (1.f / 27.5f)), 0.f, 7.f);
+    int i = std::min((int)x, 6);
+    float t = x - (float)i;
+    return g[i] + (g[i + 1] - g[i]) * t;
+}
+
 // ── beam — binaural beating: two pure sines a few Hz apart, plus a sub ───────
 struct BeamEngine : DroneEngine {
     SinOsc oscL, oscR, sub; LFNoise2 deltaN;
@@ -86,7 +100,10 @@ struct ChoirEngine : DroneEngine {
             ol += form[0][k].bpf(sL, f[k], 0.12f, st) * G[k];
             orr += form[1][k].bpf(sR, f[k] * 1.01f, 0.12f, st) * G[k];
         }
-        l = ol * amp * 2.2f; r = orr * amp * 2.2f;
+        // fixed formants drift through the saw's harmonic stack as hz moves
+        static const float MG[8] = {2.09f, 1.53f, 1.18f, 0.77f, 0.41f, 0.95f, 3.93f, 3.20f};
+        float g = 2.2f * octaveGain(hz, MG);
+        l = ol * amp * g; r = orr * amp * g;
     }
 };
 
@@ -117,7 +134,9 @@ struct BreathEngine : DroneEngine {
             for (int k = 0; k < 3; ++k) s += form[c][k].bpf(n, f[k] * (c ? 1.02f : 1.f), 0.08f, st) * G[k];
             out[c] = hp[c].hpf(s + t, 90.f, st);
         }
-        l = out[0] * amp * 6.f; r = out[1] * amp * 6.f;
+        static const float MG[8] = {2.27f, 1.91f, 1.21f, 1.06f, 1.04f, 1.05f, 1.05f, 1.05f};
+        float g = 6.f * octaveGain(hz, MG);
+        l = out[0] * amp * g; r = out[1] * amp * g;
     }
 };
 
@@ -178,7 +197,9 @@ struct GongEngine : DroneEngine {
             l += res[0][i].process(ex, hz * ratio[i], decay, st) / (1.f + i * 0.5f);
             r += res[1][i].process(ex, hz * ratio[i] * 1.004f, decay, st) / (1.f + i * 0.5f);
         }
-        l = softclip(l * 90.f) * amp; r = softclip(r * 90.f) * amp;
+        static const float MG[8] = {4.00f, 4.00f, 3.89f, 2.56f, 2.43f, 1.92f, 2.29f, 1.86f};
+        float g = 90.f * octaveGain(hz, MG);
+        l = softclip(l * g) * amp; r = softclip(r * g) * amp;
     }
 };
 
@@ -311,7 +332,10 @@ struct TideEngine : DroneEngine {
             float cf = linexp(gustN[c].process(0.06f, st), -1.f, 1.f, hz, hz * 14.f);
             out[c] = band[c].process(bn[c].process(), cf, 0.55f, 0.f, 1.f, 0.f, st) * swell * 2.8f;
         }
-        l = (out[0] + s) * amp; r = (out[1] + s) * amp;
+        // the gust sweep hz..14·hz loses band energy as it nears Nyquist
+        static const float MG[8] = {0.96f, 1.17f, 1.47f, 1.85f, 2.27f, 2.68f, 3.01f, 3.29f};
+        float g = octaveGain(hz, MG);
+        l = (out[0] + s) * amp * g; r = (out[1] + s) * amp * g;
     }
 };
 
@@ -385,7 +409,10 @@ struct BowlEngine : DroneEngine {
                 s += res[c][i].process(ex, hz * ratio[i] * detune, 12.f / (1.f + i), st) / (1.f + i);
             out[c] = s;
         }
-        l = out[0] * amp * 80.f; r = out[1] * amp * 80.f;
+        // Ringz stores less energy per strike as the resonances rise
+        static const float MG[8] = {0.84f, 1.32f, 1.41f, 1.82f, 3.01f, 3.85f, 4.00f, 4.00f};
+        float g = 80.f * octaveGain(hz, MG);
+        l = out[0] * amp * g; r = out[1] * amp * g;
     }
 };
 
@@ -488,9 +515,11 @@ struct RainEngine : DroneEngine {
         }
         float pad = padLp.lpf(pad1.process(hz * 0.5f, st) + pad2.process(hz * 0.501f, st), hz * 2.f, st) * 0.18f;
         float wl, wr; rev.process(dl, dr, st, sr, wl, wr);
+        static const float MG[8] = {1.30f, 0.67f, 0.85f, 0.77f, 0.84f, 1.10f, 1.53f, 1.97f};
+        float g = 1.5f * octaveGain(hz, MG);
         // the Pluck loops recirculate excitation DC: block after the clip
-        l = dc[0].process(softclip((dl * 0.6f + wl * 0.12f + pad) * 1.5f)) * amp;
-        r = dc[1].process(softclip((dr * 0.6f + wr * 0.12f + pad) * 1.5f)) * amp;
+        l = dc[0].process(softclip((dl * 0.6f + wl * 0.12f + pad) * g)) * amp;
+        r = dc[1].process(softclip((dr * 0.6f + wr * 0.12f + pad) * g)) * amp;
     }
 };
 
@@ -560,9 +589,11 @@ struct PulseworkEngine : DroneEngine {
             l += vl; r += vr;
         }
         float p = padLp.lpf(pad.process(hz * 0.5f, st), hz * 1.5f, st) * 0.15f;
+        static const float MG[8] = {2.67f, 1.87f, 1.11f, 0.80f, 0.72f, 0.65f, 0.60f, 0.63f};
+        float g = octaveGain(hz, MG);
         // the combs recirculate tick DC: block after the clip
-        l = dc[0].process(softclip(l * 0.4f + p)) * amp;
-        r = dc[1].process(softclip(r * 0.4f + p)) * amp;
+        l = dc[0].process(softclip((l * 0.4f + p) * g)) * amp;
+        r = dc[1].process(softclip((r * 0.4f + p) * g)) * amp;
     }
 };
 
@@ -765,9 +796,12 @@ struct MirrorEngine : DroneEngine {
         float d2 = rack::clamp(sr / std::max(hz * 1.5f, 8.f), 4.f, 0.55f * sr);
         float s1 = c1.process(ex, d1, 0.985f);
         float s2 = c2.process(ex, d2, 0.982f);
+        // the combs hold more modes (louder) as their delay shortens
+        static const float MG[8] = {3.32f, 3.08f, 2.71f, 2.22f, 1.67f, 1.23f, 0.92f, 0.74f};
+        float g = 2.2f * octaveGain(hz, MG);
         // comb feedback 0.985 gives ~66x gain at DC: block after the clip
-        l = dc[0].process(softclip((s1 + s2 * 0.6f) * 2.2f)) * amp * 0.9f;
-        r = dc[1].process(softclip((s2 + s1 * 0.6f) * 2.2f)) * amp * 0.9f;
+        l = dc[0].process(softclip((s1 + s2 * 0.6f) * g)) * amp * 0.9f;
+        r = dc[1].process(softclip((s2 + s1 * 0.6f) * g)) * amp * 0.9f;
     }
 };
 
@@ -858,8 +892,11 @@ struct FrostEngine : DroneEngine {
             }
         }
         float sheen = air.process(sum, 0.031f * sr, 0.75f) * 0.4f;
-        l = softclip(l + sheen) * amp * 0.65f;
-        r = softclip(r + sheen * 0.9f) * amp * 0.65f;
+        // top octave left alone: the ice partials sit beyond Nyquist there
+        static const float MG[8] = {0.85f, 0.90f, 1.14f, 1.13f, 0.80f, 0.94f, 1.74f, 1.00f};
+        float g = octaveGain(hz, MG);
+        l = softclip((l + sheen) * g) * amp * 0.65f;
+        r = softclip((r + sheen * 0.9f) * g) * amp * 0.65f;
     }
 };
 
@@ -1046,9 +1083,11 @@ struct QuillEngine : DroneEngine {
             dl += vl; dr += vr;
         }
         float wl, wr; rev.process(dl, dr, st, sr, wl, wr);
-        // the Pluck loops recirculate excitation DC: block after the clip
-        l = dc[0].process(softclip((dl * 0.7f + wl * 0.1f) * 4.5f)) * amp;
-        r = dc[1].process(softclip((dr * 0.7f + wr * 0.1f) * 4.5f)) * amp;
+        // the Pluck loops recirculate excitation DC: block after the clip.
+        // 9.0: the original 4.5 was calibrated against that drift, which
+        // inflated the measured level; the actual plucks sat far too low.
+        l = dc[0].process(softclip((dl * 0.7f + wl * 0.1f) * 9.f)) * amp;
+        r = dc[1].process(softclip((dr * 0.7f + wr * 0.1f) * 9.f)) * amp;
     }
 };
 
