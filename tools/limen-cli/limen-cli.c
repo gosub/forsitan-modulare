@@ -13,6 +13,7 @@
  *   params <module-id>                           list params for a module
  *   set <module-id> <param-id> <value>           set a parameter value
  *   get <module-id>                              get module detail
+ *   info <module-id>                             module info (description, tags, plugin, links)
  *   add <plugin-slug> <model-slug>               add a module to the patch
  *   rm <module-id>                               remove a module from the patch
  *   connect <out-mod>:<out-port> <in-mod>:<in-port>  connect two ports with a cable
@@ -199,6 +200,28 @@ static int json_str(const char *obj, const char *key, char *dest, size_t dest_si
     }
     dest[i] = '\0';
     return 1;
+}
+
+/* Extract the JSON object value of "key":{...} as a malloc'd substring. */
+static char *extract_obj(const char *s, const char *key) {
+    char search[64];
+    snprintf(search, sizeof(search), "\"%s\":{", key);
+    const char *p = strstr(s, search);
+    if (!p) return NULL;
+    p += strlen(search) - 1;  /* point at '{' */
+    const char *start = p;
+    int depth = 0;
+    for (; *p; p++) {
+        if (*p == '{') depth++;
+        else if (*p == '}') { depth--; if (!depth) break; }
+    }
+    if (depth) return NULL;
+    size_t len = (size_t)(p - start + 1);
+    char *out = malloc(len + 1);
+    if (!out) return NULL;
+    memcpy(out, start, len);
+    out[len] = '\0';
+    return out;
 }
 
 /* Extract a numeric field (integer or float) as double. Returns 1 on success. */
@@ -442,6 +465,85 @@ static int cmd_get(int fd, long long id) {
             free(item);
         }
     }
+    free(resp);
+    return 0;
+}
+
+/* Print the strings of "tags":[...] joined by ", " on one labelled line. */
+static void print_tags(const char *obj) {
+    const char *p = strstr(obj, "\"tags\":[");
+    if (!p) return;
+    p += strlen("\"tags\":[");
+    if (*p == ']') return;
+    printf("%-12s ", "tags");
+    int first = 1;
+    while (*p && *p != ']') {
+        if (*p == '"') {
+            p++;
+            if (!first) fputs(", ", stdout);
+            first = 0;
+            while (*p && *p != '"') putchar(*p++);
+            if (*p == '"') p++;
+        } else {
+            p++;
+        }
+    }
+    putchar('\n');
+}
+
+static int cmd_info(int fd, long long id) {
+    char req[128];
+    snprintf(req, sizeof(req), "{\"cmd\":\"get_module_info\",\"id\":%lld}\n", id);
+    char *resp = transact(fd, req);
+    if (!resp) return 1;
+    if (opt_json) { puts(resp); free(resp); return 0; }
+    if (!json_ok(resp)) { int r = print_error(resp); free(resp); return r; }
+
+    char *mdl  = extract_obj(resp, "model");
+    char *plug = extract_obj(resp, "plugin");
+    char buf[1024];
+
+    if (mdl) {
+        char name[256] = "", pslug[128] = "", mslug[128] = "";
+        json_str(mdl, "name", name, sizeof(name));
+        json_str(mdl, "slug", mslug, sizeof(mslug));
+        if (plug) json_str(plug, "slug", pslug, sizeof(pslug));
+        printf("%-12s %s  (%s/%s)\n", "module", name, pslug, mslug);
+        if (json_str(mdl, "description", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "description", buf);
+        print_tags(mdl);
+    }
+    if (plug) {
+        char brand[256] = "", ver[64] = "";
+        json_str(plug, "brand", brand, sizeof(brand));
+        if (!brand[0]) json_str(plug, "name", brand, sizeof(brand));
+        json_str(plug, "version", ver, sizeof(ver));
+        printf("%-12s %s v%s\n", "plugin", brand, ver);
+        if (json_str(plug, "license", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "license", buf);
+        if (json_str(plug, "author", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "author", buf);
+        if (json_str(plug, "authorUrl", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "author url", buf);
+        /* manual: prefer the model's own manual over the plugin-wide one */
+        buf[0] = '\0';
+        if (mdl) json_str(mdl, "manualUrl", buf, sizeof(buf));
+        if (!buf[0]) json_str(plug, "manualUrl", buf, sizeof(buf));
+        if (buf[0])
+            printf("%-12s %s\n", "manual", buf);
+        if (json_str(plug, "pluginUrl", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "website", buf);
+        if (json_str(plug, "sourceUrl", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "source", buf);
+        if (json_str(plug, "donateUrl", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "donate", buf);
+        if (json_str(plug, "changelogUrl", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "changelog", buf);
+        if (mdl && json_str(mdl, "modularGridUrl", buf, sizeof(buf)) && buf[0])
+            printf("%-12s %s\n", "modulargrid", buf);
+    }
+    free(mdl);
+    free(plug);
     free(resp);
     return 0;
 }
@@ -788,6 +890,7 @@ static void usage(void) {
         "  param <module-id> <param-id>                 get a single parameter value\n"
         "  set <module-id> <param-id> <value>           set a parameter value\n"
         "  get <module-id>                              get module detail\n"
+        "  info <module-id>                             module info (description, tags, plugin, links)\n"
         "  add <plugin-slug> <model-slug>               add a module to the patch\n"
         "  rm <module-id>                               remove a module from the patch\n"
         "  connect <out-mod>:<out-port> <in-mod>:<in-port>  connect two ports\n"
@@ -846,6 +949,12 @@ int main(int argc, char *argv[]) {
         else {
             long long id = resolve_id(fd, argv[i]);
             if (id >= 0) ret = cmd_get(fd, id);
+        }
+    } else if (strcmp(cmd, "info") == 0) {
+        if (i >= argc) { fprintf(stderr, "limen-cli: info requires module-id\n"); }
+        else {
+            long long id = resolve_id(fd, argv[i]);
+            if (id >= 0) ret = cmd_info(fd, id);
         }
     } else if (strcmp(cmd, "ports") == 0) {
         if (i >= argc) { fprintf(stderr, "limen-cli: ports requires module-id\n"); }

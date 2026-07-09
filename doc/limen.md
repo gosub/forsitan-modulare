@@ -71,6 +71,7 @@ The server listens on `localhost:7000` by default. It handles **one client at a 
 |-----|-------------|--------|-------------|
 | `list_modules` | `"plugin": "<slug>"` (opt.) | `[{id, plugin, model, name, numParams, numInputs, numOutputs}]` | modules currently in the patch |
 | `get_module` | `"id": <int>` | `{id, plugin, model, name, numParams, numInputs, numOutputs}` | detail for one module |
+| `get_module_info` | `"id": <int>` | `{id, model: {slug, name, description, tags, manualUrl, modularGridUrl}, plugin: {slug, name, brand, version, license, author, authorUrl, pluginUrl, manualUrl, sourceUrl, donateUrl, changelogUrl}}` | the metadata Rack shows in a module's right-click Info menu |
 | `list_ports` | `"id": <int>` | `{inputs: [{id, name}], outputs: [{id, name}]}` | input and output port names |
 | `list_params` | `"id": <int>` | `[{id, value, name, min, max, unit}]` | params for a module |
 | `get_param` | `"id": <int>`, `"param": <int>` | `{id, value, name, min, max, unit}` | one parameter's current value and metadata |
@@ -164,6 +165,7 @@ limen-cli [--port N] [--host H] [--json] <command> [args]
 | `models [<plugin-slug>]` | list available models, optionally filtered by plugin |
 | `modules [<plugin-slug>]` | list modules currently in the rack |
 | `get <module-id>` | get detail for one module |
+| `info <module-id>` | module info: description, tags, plugin, version, license, links |
 | `ports <module-id>` | list input/output port names |
 | `params <module-id>` | list params for a module |
 | `set <module-id> <param-id> <value>` | set a parameter value |

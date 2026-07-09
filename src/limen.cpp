@@ -36,6 +36,7 @@
 #endif
 
 #include <jansson.h>
+#include <tag.hpp>
 
 
 // ── JSON helpers ─────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ static const int LIMEN_PROTOCOL_VERSION = 1;
 static std::string cmd_hello() {
 	static const char* commands[] = {
 		"hello",
-		"list_plugins", "list_models", "list_modules", "get_module",
+		"list_plugins", "list_models", "list_modules", "get_module", "get_module_info",
 		"list_ports", "list_params", "get_param", "set_param",
 		"list_cables", "add_module", "remove_module", "add_cable", "remove_cable",
 		"set_fullscreen", "zoom_to_modules", "quit",
@@ -159,6 +160,51 @@ static std::string cmd_get_module(int64_t id) {
 	json_object_set_new(obj, "numParams",  json_integer(m->getNumParams()));
 	json_object_set_new(obj, "numInputs",  json_integer(m->getNumInputs()));
 	json_object_set_new(obj, "numOutputs", json_integer(m->getNumOutputs()));
+	return ok_response(obj);
+}
+
+// The metadata Rack shows in a module's right-click Info menu: model
+// description, tags and links, plus the owning plugin's identity and URLs.
+static std::string cmd_get_module_info(int64_t id) {
+	engine::Module* m = APP->engine->getModule(id);
+	if (!m)
+		return err_response("module not found");
+	plugin::Model* mdl = m->model;
+	if (!mdl)
+		return err_response("module has no model");
+
+	json_t* model_j = json_object();
+	json_object_set_new(model_j, "slug",        json_string(mdl->slug.c_str()));
+	json_object_set_new(model_j, "name",        json_string(mdl->name.c_str()));
+	json_object_set_new(model_j, "description", json_string(mdl->description.c_str()));
+	json_t* tags_j = json_array();
+	for (int tagId : mdl->tagIds)
+		json_array_append_new(tags_j, json_string(rack::tag::getTag(tagId).c_str()));
+	json_object_set_new(model_j, "tags", tags_j);
+	json_object_set_new(model_j, "manualUrl",      json_string(mdl->manualUrl.c_str()));
+	json_object_set_new(model_j, "modularGridUrl", json_string(mdl->modularGridUrl.c_str()));
+
+	json_t* plugin_j = json_object();
+	plugin::Plugin* plug = mdl->plugin;
+	if (plug) {
+		json_object_set_new(plugin_j, "slug",         json_string(plug->slug.c_str()));
+		json_object_set_new(plugin_j, "name",         json_string(plug->name.c_str()));
+		json_object_set_new(plugin_j, "brand",        json_string(plug->brand.c_str()));
+		json_object_set_new(plugin_j, "version",      json_string(plug->version.c_str()));
+		json_object_set_new(plugin_j, "license",      json_string(plug->license.c_str()));
+		json_object_set_new(plugin_j, "author",       json_string(plug->author.c_str()));
+		json_object_set_new(plugin_j, "authorUrl",    json_string(plug->authorUrl.c_str()));
+		json_object_set_new(plugin_j, "pluginUrl",    json_string(plug->pluginUrl.c_str()));
+		json_object_set_new(plugin_j, "manualUrl",    json_string(plug->manualUrl.c_str()));
+		json_object_set_new(plugin_j, "sourceUrl",    json_string(plug->sourceUrl.c_str()));
+		json_object_set_new(plugin_j, "donateUrl",    json_string(plug->donateUrl.c_str()));
+		json_object_set_new(plugin_j, "changelogUrl", json_string(plug->changelogUrl.c_str()));
+	}
+
+	json_t* obj = json_object();
+	json_object_set_new(obj, "id",     json_integer(id));
+	json_object_set_new(obj, "model",  model_j);
+	json_object_set_new(obj, "plugin", plugin_j);
 	return ok_response(obj);
 }
 
@@ -520,6 +566,14 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 			result = err_response("missing id");
 		} else {
 			result = cmd_get_module(json_integer_value(id_j));
+		}
+	}
+	else if (cmd == "get_module_info") {
+		json_t* id_j = json_object_get(req, "id");
+		if (!id_j || !json_is_integer(id_j)) {
+			result = err_response("missing id");
+		} else {
+			result = cmd_get_module_info(json_integer_value(id_j));
 		}
 	}
 	else if (cmd == "list_params") {

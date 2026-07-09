@@ -119,6 +119,33 @@ def cmd_get(args):
           f"  {m['numParams']:>3}  {m['numInputs']:>3}  {m['numOutputs']:>3}")
 
 
+def cmd_info(args):
+    mid = resolve_id(args, args.id)
+    result = send(args, {"cmd": "get_module_info", "id": mid})
+    mdl = result.get("model", {})
+    plug = result.get("plugin", {})
+    print(f"{'module':<12} {mdl.get('name', '')}  ({plug.get('slug', '')}/{mdl.get('slug', '')})")
+    if mdl.get("description"):
+        print(f"{'description':<12} {mdl['description']}")
+    if mdl.get("tags"):
+        print(f"{'tags':<12} {', '.join(mdl['tags'])}")
+    brand = plug.get("brand") or plug.get("name", "")
+    print(f"{'plugin':<12} {brand} v{plug.get('version', '')}")
+    for label, value in [
+        ("license",     plug.get("license")),
+        ("author",      plug.get("author")),
+        ("author url",  plug.get("authorUrl")),
+        ("manual",      mdl.get("manualUrl") or plug.get("manualUrl")),
+        ("website",     plug.get("pluginUrl")),
+        ("source",      plug.get("sourceUrl")),
+        ("donate",      plug.get("donateUrl")),
+        ("changelog",   plug.get("changelogUrl")),
+        ("modulargrid", mdl.get("modularGridUrl")),
+    ]:
+        if value:
+            print(f"{label:<12} {value}")
+
+
 def cmd_ports(args):
     mid = resolve_id(args, args.id)
     result = send(args, {"cmd": "list_ports", "id": mid})
@@ -251,6 +278,9 @@ def main():
     sp = sub.add_parser("get", help="get module detail")
     sp.add_argument("id", metavar="module-id")
 
+    sp = sub.add_parser("info", help="module info (description, tags, plugin, links)")
+    sp.add_argument("id", metavar="module-id")
+
     sp = sub.add_parser("ports", help="list input/output port names")
     sp.add_argument("id", metavar="module-id")
 
@@ -299,6 +329,7 @@ def main():
         "models":     cmd_models,
         "modules":    cmd_modules,
         "get":        cmd_get,
+        "info":       cmd_info,
         "ports":      cmd_ports,
         "params":     cmd_params,
         "param":      cmd_param,

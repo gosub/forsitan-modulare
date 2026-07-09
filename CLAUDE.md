@@ -70,8 +70,8 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 - Started in `onAdd()`, stopped in `onRemove()` via `std::thread`.
 - Port is configurable from the right-click context menu (7000/7001/7002/7777/8000).
 - Green LED at y=64mm indicates listening state.
-- Commands: `list_modules`, `get_module`, `list_params`, `set_param`,
-  `list_cables`.
+- Commands: `list_modules`, `get_module`, `get_module_info`, `list_params`,
+  `set_param`, `list_cables`, and more — `hello` returns the full list.
 - Client tools live in `tools/limen-cli/` (C `limen-cli.c` + Python `limen-cli.py`).
 
 ## Panel structure
