@@ -71,6 +71,15 @@ struct LFTri {
     }
 };
 
+// Rack's MinBlepGenerator reads one float past its 2·Z·O+1 impulse table when
+// p sits within rounding distance of -1: ((2Z-1) - p)·O lands on exactly 512
+// and interpolateLinear touches impulse[513]. A wrap landing epsilon after a
+// sample boundary produces such a p and the garbage read poisons the buffer
+// (NaNs). Keep a safety margin on p.
+inline void insertBlep(rack::dsp::MinBlepGenerator<16, 16>& g, float p, float x) {
+    g.insertDiscontinuity(rack::clamp(p, -0.9999f, 0.f), x);
+}
+
 // ── Saw.ar — band-limited sawtooth via MinBLEP ───────────────────────────────
 struct BlSaw {
     float phase = 0.f;
@@ -94,10 +103,10 @@ struct BlSaw {
         phase += dp;
         if (phase >= 1.f) {
             phase -= 1.f;
-            blep.insertDiscontinuity(phase / dp - 1.f, -2.f);
+            insertBlep(blep, phase / dp - 1.f, -2.f);
         } else if (phase < 0.f) {
             phase += 1.f;
-            blep.insertDiscontinuity(phase / dp, 2.f);
+            insertBlep(blep, phase / dp, 2.f);
         }
         return 2.f * phase - 1.f - wrapDC() * dp + blep.process();
     }
@@ -115,10 +124,10 @@ struct BlPulse {
         float adv = phase + dp;               // pre-wrap advanced phase
         // falling edge when the phase passes `width` (high -> low, jump -2)
         if (phase < width && adv >= width)
-            blep.insertDiscontinuity((adv - width) / dp - 1.f, -2.f);
+            insertBlep(blep, (adv - width) / dp - 1.f, -2.f);
         // rising edge at the period wrap (low -> high, jump +2)
         if (adv >= 1.f)
-            blep.insertDiscontinuity((adv - 1.f) / dp - 1.f, 2.f);
+            insertBlep(blep, (adv - 1.f) / dp - 1.f, 2.f);
         phase = adv - std::floor(adv);
         float naive = (phase < width) ? 1.f : -1.f;
         return naive + blep.process();
