@@ -136,84 +136,17 @@ print(json.loads(s.recv(65536)))
 
 ## CLI tool
 
-Two clients live in the separate
-[limen-tools](https://github.com/gosub/limen-tools) repository:
-
-### C client (compiled, no runtime dependency)
-
-Prebuilt binaries for Linux, Windows and macOS are attached to
-[limen-tools releases](https://github.com/gosub/limen-tools/releases), or
-build from source:
-
-```bash
-cd limen-cli && make
-# optionally install to ~/.local/bin
-make install
-```
-
-### Python client (no compilation needed)
+A ready-made command-line client, **limen-cli**, lives in the separate
+[limen-tools](https://github.com/gosub/limen-tools) repository, in two
+flavors with the same interface: a compiled C client (prebuilt binaries for
+Linux, Windows and macOS on the
+[releases page](https://github.com/gosub/limen-tools/releases)) and a
+dependency-free Python client. It covers the whole protocol — see the
+[limen-tools readme](https://github.com/gosub/limen-tools#readme) for the
+full command reference.
 
 ```bash
-python limen-cli/limen-cli.py <command> [args]
-```
-
-Requires Python 3.6+, no third-party packages.
-
-**Usage:**
-```
-limen-cli [--port N] [--host H] [--json] <command> [args]
-```
-
-| command | description |
-|---------|-------------|
-| `plugins` | list all loaded plugins |
-| `models [<plugin-slug>]` | list available models, optionally filtered by plugin |
-| `modules [<plugin-slug>]` | list modules currently in the rack |
-| `get <module-id>` | get detail for one module |
-| `info <module-id>` | module info: description, tags, plugin, version, license, links |
-| `ports <module-id>` | list input/output port names |
-| `params <module-id>` | list params for a module |
-| `set <module-id> <param-id> <value>` | set a parameter value |
-| `cables [-v] [<module-id>]` | list cables; `-v` adds module and port names; optional module filter |
-| `add <plugin-slug> <model-slug>` | add a module, prints its id |
-| `rm <module-id>` | remove a module |
-| `connect <out-mod>:<out-port> <in-mod>:<in-port>` | connect two ports, prints cable id |
-| `disconnect <cable-id>` | remove a cable |
-
-Module IDs and cable IDs can be given as unique prefixes instead of the full number.
-
-**Options:**
-
-| option | description |
-|--------|-------------|
-| `--port N` | TCP port (default: 7000) |
-| `--host H` | host (default: 127.0.0.1) |
-| `--json` | print raw JSON response (pipe to `jq`) |
-
-**Examples:**
-
-```bash
-# list all modules in the rack
-limen modules
-
-# list all models available in the Fundamental plugin
-limen models Fundamental
-
-# get port names for a module
-limen ports 8518972980240757
-
-# add a VCO, capture its id
-ID=$(limen add Fundamental VCO)
-
-# connect VCO output 0 to VCA input 0
-limen connect ${ID}:0 9876543210:0
-
-# list cables with names (verbose)
-limen cables -v
-
-# disconnect a cable by prefix
-limen disconnect 1234
-
-# raw JSON output
-limen --json modules | jq .
+limen-cli hello
+limen-cli modules
+limen-cli set 8518972980240757 0 0.5
 ```
