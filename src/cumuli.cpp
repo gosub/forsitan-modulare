@@ -26,6 +26,8 @@ struct Cumuli : Module {
 	};
 
 	float accumulator = 0.f;
+	// super-slow mode: rates are 100x slower (0.0001..1 V/sec, center 0.01)
+	bool superSlow = false;
 
 	Cumuli() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -43,6 +45,25 @@ struct Cumuli : Module {
 		configOutput(OUT_OUTPUT, "Envelope CV");
 	}
 
+	// keep the rate knobs' displayed V/sec in sync with super-slow mode
+	void setSuperSlow(bool slow) {
+		superSlow = slow;
+		float mult = slow ? 0.01f : 1.f;
+		paramQuantities[UPRATE_PARAM]->displayMultiplier = mult;
+		paramQuantities[DOWNRATE_PARAM]->displayMultiplier = mult;
+	}
+
+	json_t* dataToJson() override {
+		json_t* root = json_object();
+		json_object_set_new(root, "superSlow", json_boolean(superSlow));
+		return root;
+	}
+
+	void dataFromJson(json_t* root) override {
+		if (json_t* j = json_object_get(root, "superSlow"))
+			setSuperSlow(json_boolean_value(j));
+	}
+
 	void process(const ProcessArgs& args) override {
 		float upVperSec = 0;
 		float downVperSec = 0;
@@ -57,12 +78,14 @@ struct Cumuli : Module {
 			accumulator = bipolar ? 5.f : 0.f ;
 		}
 
+		float rateScale = superSlow ? 0.01f : 1.f;
+
 		if(inputs[UP_INPUT].getVoltage() + params[UPGATE_PARAM].getValue() > 0.5) {
-			upVperSec = std::pow(10.f, params[UPRATE_PARAM].getValue());
+			upVperSec = std::pow(10.f, params[UPRATE_PARAM].getValue()) * rateScale;
 			accumulator += upVperSec * args.sampleTime;
 		}
 		if(inputs[DOWN_INPUT].getVoltage() + params[DOWNGATE_PARAM].getValue() > 0.5) {
-			downVperSec = std::pow(10.f, params[DOWNRATE_PARAM].getValue());
+			downVperSec = std::pow(10.f, params[DOWNRATE_PARAM].getValue()) * rateScale;
 			accumulator -= downVperSec * args.sampleTime;
 		}
 		// internal value of the accumulator is always between 0 and + 10V
@@ -95,6 +118,15 @@ struct CumuliWidget : ModuleWidget {
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.992, 73.495)), module, Cumuli::DOWN_INPUT));
 
 		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.467, 106.332)), module, Cumuli::OUT_OUTPUT));
+	}
+
+	void appendContextMenu(Menu* menu) override {
+		Cumuli* m = dynamic_cast<Cumuli*>(module);
+		if (!m) return;
+		menu->addChild(new MenuSeparator);
+		menu->addChild(createBoolMenuItem("Super-slow mode (rates ÷100)", "",
+			[m]() { return m->superSlow; },
+			[m](bool v) { m->setSuperSlow(v); }));
 	}
 };
 
