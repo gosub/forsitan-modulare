@@ -136,12 +136,17 @@ print(json.loads(s.recv(65536)))
 
 ## CLI tool
 
-Two clients are available in `tools/limen-cli/`:
+Two clients live in the separate
+[limen-tools](https://github.com/gosub/limen-tools) repository:
 
 ### C client (compiled, no runtime dependency)
 
+Prebuilt binaries for Linux, Windows and macOS are attached to
+[limen-tools releases](https://github.com/gosub/limen-tools/releases), or
+build from source:
+
 ```bash
-cd tools/limen-cli && make
+cd limen-cli && make
 # optionally install to ~/.local/bin
 make install
 ```
@@ -149,7 +154,7 @@ make install
 ### Python client (no compilation needed)
 
 ```bash
-python tools/limen-cli/limen-cli.py <command> [args]
+python limen-cli/limen-cli.py <command> [args]
 ```
 
 Requires Python 3.6+, no third-party packages.

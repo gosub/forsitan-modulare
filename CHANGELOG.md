@@ -10,13 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - limen: `get_module_info` protocol command — the metadata Rack shows in a
     module's right-click Info menu: model description, tags and links, plus
     the owning plugin's brand, version, license, author and URLs
-  - limen-cli: `info <module-id>` command in both the C and Python clients
-  - limen-cli: Windows support (winsock)
-  - ci: new tools workflow builds limen-cli for Linux, Windows and macOS
-    (universal binary) and attaches the binaries to releases
 ### Changed
-  - tools: `cli/` renamed to `limen-cli/`; the clients and the built binary
-    renamed from `limen` to `limen-cli`
+  - tools: the limen CLI clients (former `tools/cli/`) moved to their own
+    repository, [gosub/limen-tools](https://github.com/gosub/limen-tools),
+    renamed `limen` → `limen-cli`, with a new `info` command, Windows
+    support, and CI-built binaries for Linux/Windows/macOS on its releases
   - tools: loose scripts organized into `typography/`, `panels/` and
     `patches/` subdirectories
 

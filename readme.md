@@ -25,7 +25,7 @@ A collection of VCV Rack modules.
 
 | tool | description |
 |------|-------------|
-| [tools/limen-cli/](tools/limen-cli/) | limen CLI client — C (`limen-cli.c`) and Python (`limen-cli.py`) |
+| [limen-tools](https://github.com/gosub/limen-tools) | limen CLI client (separate repo) — C and Python, prebuilt binaries on releases |
 | [tools/panel-editor/](tools/panel-editor/) | Browser-based drag-and-drop panel layout editor |
 
 ## Controlling Rack externally (limen)
@@ -35,7 +35,7 @@ The [limen](doc/limen.md) module runs a small TCP server speaking newline-delimi
 Quickstart:
 
 1. Launch Rack straight into a controllable state with the bundled patch — it contains a single limen module with the server already enabled: `./Rack patches/limen.vcv`. (Or add a **limen** module to any patch and enable its server from the right-click menu.)
-2. Talk to it with the bundled client: `python3 tools/limen-cli/limen-cli.py hello` (or `list_modules`, `set 0 0 0.5`, …).
+2. Talk to it with the [limen-cli client](https://github.com/gosub/limen-tools): `limen-cli hello` (or `list_modules`, `set 0 0 0.5`, …).
 3. Or from anything that opens a socket: `echo '{"cmd":"hello"}' | nc localhost 7000`.
 
 **Security:** the server binds loopback only (`127.0.0.1`) and has no authentication by design, so it is reachable only from your own machine. Do not expose the port to untrusted networks. See [doc/limen.md](doc/limen.md) for the full protocol and command reference.
