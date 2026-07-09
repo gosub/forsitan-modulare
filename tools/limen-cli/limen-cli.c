@@ -24,10 +24,23 @@
 #include <string.h>
 #include <errno.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#ifdef _WIN32
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
+#  define closesock(s)  closesocket(s)
+#  define sockread(s,b,n)   recv(s,(char *)(b),(int)(n),0)
+#  define sockwrite(s,b,n)  send(s,(const char *)(b),(int)(n),0)
+typedef long long sockssize_t;
+#else
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <arpa/inet.h>
+#  include <unistd.h>
+#  define closesock(s)  close(s)
+#  define sockread(s,b,n)   read(s,(b),(n))
+#  define sockwrite(s,b,n)  write(s,(b),(n))
+typedef ssize_t sockssize_t;
+#endif
 
 #define BUF_SIZE (1 << 20)  /* 1 MB response buffer */
 
@@ -47,13 +60,13 @@ static int connect_to(const char *host, int port) {
     addr.sin_port   = htons((unsigned short)port);
     if (inet_pton(AF_INET, host, &addr.sin_addr) != 1) {
         fprintf(stderr, "limen-cli: invalid host: %s\n", host);
-        close(fd);
+        closesock(fd);
         return -1;
     }
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         fprintf(stderr, "limen-cli: cannot connect to %s:%d: %s\n",
                 host, port, strerror(errno));
-        close(fd);
+        closesock(fd);
         return -1;
     }
     return fd;
@@ -62,7 +75,7 @@ static int connect_to(const char *host, int port) {
 /* Send a line, read one line response. Returns malloc'd string or NULL. */
 static char *transact(int fd, const char *req) {
     size_t len = strlen(req);
-    if (write(fd, req, len) != (ssize_t)len) {
+    if (sockwrite(fd, req, len) != (sockssize_t)len) {
         perror("write");
         return NULL;
     }
@@ -76,7 +89,7 @@ static char *transact(int fd, const char *req) {
             free(buf);
             return NULL;
         }
-        ssize_t n = read(fd, buf + pos, BUF_SIZE - 1 - pos);
+        sockssize_t n = sockread(fd, buf + pos, BUF_SIZE - 1 - pos);
         if (n < 0) { perror("read"); free(buf); return NULL; }
         if (n == 0) break;
         pos += (size_t)n;
@@ -806,6 +819,14 @@ int main(int argc, char *argv[]) {
     if (i >= argc) { usage(); return 1; }
     const char *cmd = argv[i++];
 
+#ifdef _WIN32
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+        fprintf(stderr, "limen-cli: WSAStartup failed\n");
+        return 1;
+    }
+#endif
+
     int fd = connect_to(opt_host, opt_port);
     if (fd < 0) return 1;
 
@@ -867,7 +888,7 @@ int main(int argc, char *argv[]) {
                 verbose = 1;
             else {
                 module_id = resolve_id(fd, argv[i]);
-                if (module_id < 0) { close(fd); return 1; }
+                if (module_id < 0) { closesock(fd); return 1; }
             }
         }
         ret = cmd_cables(fd, module_id, verbose);
@@ -904,6 +925,6 @@ int main(int argc, char *argv[]) {
         usage();
     }
 
-    close(fd);
+    closesock(fd);
     return ret;
 }
