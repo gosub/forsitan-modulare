@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.14] - 2026-07-09
+### Added
+  - cumuli: super-slow mode in the right-click menu — both rates 100x slower
+    (0.0001 V/s to 1 V/s, center default 0.01 V/s), knob tooltips rescale,
+    saved with the patch
+### Fixed
+  - dræn: loading a patch with a saved engine now fades that engine in from
+    silence, instead of playing engine 0 first and fading out of it
+
 ## [2.6.13] - 2026-07-09
 ### Added
   - dræn: a second engine bank — **hyf** (Old English for *hive*), 37 original
