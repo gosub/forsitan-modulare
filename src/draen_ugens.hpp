@@ -75,6 +75,19 @@ struct LFTri {
 struct BlSaw {
     float phase = 0.f;
     rack::dsp::MinBlepGenerator<16, 16> blep;
+    // The minBLEP residual of one wrap does not integrate to zero, so each
+    // event leaks (residual sum)·dp of DC into the output (~5.21·f/sr for the
+    // -2 step). Sum it once from the generator and subtract per sample.
+    static float wrapDC() {
+        static const float k = [] {
+            rack::dsp::MinBlepGenerator<16, 16> g;
+            g.insertDiscontinuity(-0.5f, -2.f);
+            float s = 0.f;
+            for (int i = 0; i < 64; ++i) s += g.process();
+            return s;
+        }();
+        return k;
+    }
     void reset(float ph = 0.5f) { phase = ph; }
     float process(float freq, float st) {
         float dp = rack::clamp(freq * st, -0.35f, 0.35f);
@@ -86,7 +99,7 @@ struct BlSaw {
             phase += 1.f;
             blep.insertDiscontinuity(phase / dp, 2.f);
         }
-        return 2.f * phase - 1.f + blep.process();
+        return 2.f * phase - 1.f - wrapDC() * dp + blep.process();
     }
 };
 
@@ -144,9 +157,12 @@ struct LFNoise1 {
 
 // ── LeakDC.ar — one-pole DC blocker (SC default coef 0.995) ───────────────────
 struct LeakDC {
-    float x1 = 0.f, y1 = 0.f;
-    void reset() { x1 = 0.f; y1 = 0.f; }
-    float process(float x) { float y = x - x1 + 0.995f * y1; x1 = x; y1 = y; return y; }
+    float x1 = 0.f, y1 = 0.f, coef = 0.995f;
+    // SC's default coef 0.995 is a ~38 Hz highpass at 48 kHz; engines whose
+    // fundamental reaches down to 27.5 Hz should reset with a gentler 0.999
+    // (~7.6 Hz) so the low octaves keep their level.
+    void reset(float k = 0.995f) { x1 = 0.f; y1 = 0.f; coef = k; }
+    float process(float x) { float y = x - x1 + coef * y1; x1 = x; y1 = y; return y; }
 };
 
 // ── LFNoise2.kr — quadratically-interpolated random at `freq` Hz ──────────────
