@@ -16,6 +16,7 @@
 
 #include "forsitan.hpp"
 #include "draen_engines.hpp"
+#include "draen_alt_engines.hpp"
 
 using namespace draen;
 
@@ -44,7 +45,10 @@ struct Draen : Module {
 
     enum HzMode { HZ_VOCT, HZ_LINEAR };
 
-    std::vector<std::unique_ptr<DroneEngine>> engines;
+    // two banks of 37 engines: the dronecaster ports and the "hyf" originals
+    std::vector<std::unique_ptr<DroneEngine>> banks[2];
+    int bank = 0;          // bank the audio is currently on
+    int bankRequest = 0;   // bank chosen in the menu (applied through the fade)
 
     // engine switching / fade state (sequential fade-down then fade-up)
     enum FadePhase { STEADY, FADE_OUT, FADE_IN };
@@ -63,8 +67,9 @@ struct Draen : Module {
     float levelEnv = 0.f;
 
     Draen() {
-        engines = makeEngines();
-        int n = (int)engines.size();
+        banks[0] = makeEngines();
+        banks[1] = makeAltEngines();
+        int n = (int)banks[0].size();   // both banks hold 37 engines
 
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam(HZ_PARAM, -5.f, 5.f, -1.25f, "Frequency", " Hz", 2.f, dsp::FREQ_C4);  // default A2 (110 Hz)
@@ -89,18 +94,20 @@ struct Draen : Module {
         fadeGain = 1.f;
         fadePhase = STEADY;
         levelEnv = 0.f;
-        if (!engines.empty() && curSampleRate > 0.f)
-            engines[activeIdx]->init(nextSeed(), curSampleRate);
+        if (!banks[bank].empty() && curSampleRate > 0.f)
+            banks[bank][activeIdx]->init(nextSeed(), curSampleRate);
     }
 
     const char* engineName(int i) const {
-        if (i < 0 || i >= (int)engines.size()) return "";
-        return engines[i]->name();
+        // show the requested bank immediately; the audio catches up via the fade
+        const auto& b = banks[clamp(bankRequest, 0, 1)];
+        if (i < 0 || i >= (int)b.size()) return "";
+        return b[i]->name();
     }
 
     // knob + CV -> selected engine index
     int selectEngine() {
-        int n = (int)engines.size();
+        int n = (int)banks[bank].size();
         if (n == 0) return 0;
         float p = params[ENGINE_PARAM].getValue();
         if (inputs[ENGINE_CV_INPUT].isConnected())
@@ -116,14 +123,14 @@ struct Draen : Module {
     }
 
     void process(const ProcessArgs& args) override {
-        int n = (int)engines.size();
+        int n = (int)banks[bank].size();
         if (n == 0) { outputs[LEFT_OUTPUT].setVoltage(0.f); outputs[RIGHT_OUTPUT].setVoltage(0.f); return; }
 
         // (re)initialise the active engine when the sample rate changes (also the
         // first call): delay-line engines size their buffers from it
         if (args.sampleRate != curSampleRate) {
             curSampleRate = args.sampleRate;
-            engines[activeIdx]->init(nextSeed(), curSampleRate);
+            banks[bank][activeIdx]->init(nextSeed(), curSampleRate);
         }
 
         // ── controls ────────────────────────────────────────────────────────
@@ -151,30 +158,31 @@ struct Draen : Module {
         float step = args.sampleTime / std::max(fadeTime, 0.01f);
         switch (fadePhase) {
             case STEADY:
-                if (target != activeIdx) { cuedIdx = target; fadePhase = FADE_OUT; }
+                if (target != activeIdx || bankRequest != bank) { cuedIdx = target; fadePhase = FADE_OUT; }
                 break;
             case FADE_OUT:
                 cuedIdx = target;                       // latest selection wins
                 fadeGain -= step;
-                if (cuedIdx == activeIdx) {              // returned home: abort switch
+                if (cuedIdx == activeIdx && bankRequest == bank) {   // returned home: abort switch
                     fadePhase = FADE_IN;
                 } else if (fadeGain <= 0.f) {
                     fadeGain = 0.f;
+                    bank = clamp(bankRequest, 0, 1);
                     activeIdx = cuedIdx;
-                    engines[activeIdx]->init(nextSeed(), curSampleRate);
+                    banks[bank][activeIdx]->init(nextSeed(), curSampleRate);
                     fadePhase = FADE_IN;
                 }
                 break;
             case FADE_IN:
                 fadeGain += step;
                 if (fadeGain >= 1.f) { fadeGain = 1.f; fadePhase = STEADY; }
-                if (target != activeIdx) { cuedIdx = target; fadePhase = FADE_OUT; }
+                if (target != activeIdx || bankRequest != bank) { cuedIdx = target; fadePhase = FADE_OUT; }
                 break;
         }
 
         // ── render active engine ────────────────────────────────────────────
         float l = 0.f, r = 0.f;
-        engines[activeIdx]->process(hz, amp, args.sampleTime, l, r);
+        banks[bank][activeIdx]->process(hz, amp, args.sampleTime, l, r);
         l *= fadeGain; r *= fadeGain;
 
         outputs[LEFT_OUTPUT].setVoltage(5.f * softLimit(l));
@@ -190,12 +198,17 @@ struct Draen : Module {
         json_t* root = json_object();
         json_object_set_new(root, "hzMode", json_integer(hzMode));
         json_object_set_new(root, "fadeTime", json_real(fadeTime));
+        json_object_set_new(root, "bank", json_integer(bankRequest));
         return root;
     }
 
     void dataFromJson(json_t* root) override {
         if (json_t* j = json_object_get(root, "hzMode")) hzMode = json_integer_value(j);
         if (json_t* j = json_object_get(root, "fadeTime")) fadeTime = json_real_value(j);
+        if (json_t* j = json_object_get(root, "bank")) {
+            bankRequest = clamp((int)json_integer_value(j), 0, 1);
+            bank = bankRequest;   // loading a patch lands directly on the saved bank
+        }
     }
 };
 
@@ -289,6 +302,8 @@ struct DraenWidget : ModuleWidget {
         Draen* m = dynamic_cast<Draen*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
+        menu->addChild(createIndexPtrSubmenuItem("Engine bank",
+            {"dr\u00e6n (dronecaster ports)", "hyf (original instruments)"}, &m->bankRequest));
         menu->addChild(createIndexPtrSubmenuItem("Hz CV input",
             {"1V/oct", "Linear (100 Hz/V)"}, &m->hzMode));
         menu->addChild(createIndexSubmenuItem("Fade time",
