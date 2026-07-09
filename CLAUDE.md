@@ -95,6 +95,39 @@ pre-baked `<path>` elements). Shared visual grammar:
   (narrowest module is 15.24mm / 3HP).
 - `res/palette.svg` holds the reference swatches.
 
+## Panel design principles
+
+When laying out a panel (by hand or generated), follow these rules:
+
+- **Symmetry**: center single elements on the panel's vertical midline
+  (`width/2`); place paired elements (L/R outputs, dual knobs) at equal
+  offsets from it. Prefer mirrored left/right columns over ragged placement.
+- **Balance**: distribute visual weight evenly left/right and top/bottom.
+  Big knobs are heavy, jacks and labels light — offset a large control on one
+  side with a group of smaller ones on the other. Don't crowd everything into
+  the top half; keep roughly even vertical density, and don't leave dead
+  bands taller than ~15mm unless intentional breathing room around the title
+  or logo.
+- **No overlap**: no two element bounding boxes may intersect — knobs, jacks,
+  buttons, LEDs, labels, badges, title, logo, and the 4 screw zones
+  (~8×8mm at each corner). Use real widget sizes (Rogan2P ≈ 12.7mm ⌀,
+  RoundBlackKnob ≈ 9mm ⌀, RoundBigBlackKnob ≈ 12mm ⌀, PJ301M jack ≈ 8.4mm ⌀,
+  TL1105 ≈ 6mm, CKSS switch ≈ 4×10mm) and keep ≥1.5mm clearance between
+  edges, ≥1mm between a label and the element it names.
+- **Readability**: every jack and control gets a label; labels sit
+  consistently (below jacks/knobs unless space forces otherwise), at ≥2.0mm
+  cap height, never split across an element. Output badges must fully
+  contain their text with ~1mm padding. Verify label widths with
+  `tools/measure_text.py` before placing.
+- **Alignment & grouping**: snap centers to a coarse grid (whole or half
+  mm); align related elements on shared rows/columns. Group by function
+  (control + its CV jack + label as one cluster) and separate groups with
+  more space than within them. Signal flow reads top→bottom: title, then
+  controls/inputs, outputs near the bottom, logo last.
+- **Consistency**: repeat spacing rhythms (equal row pitch for jack rows),
+  reuse the shared grammar above, and match the look of existing panels in
+  `res/` before inventing a new arrangement.
+
 ## Color palette
 
 | Role               | Value     |
