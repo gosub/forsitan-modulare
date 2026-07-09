@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.16] - 2026-07-09
+### Added
+  - test: `draen_sweep`, an offline octave sweep (27.5 Hz → 3.52 kHz) of both
+    dræn engine banks reporting per-channel DC, AC RMS, peak and NaN counts
+### Fixed
+  - dræn: the band-limited saw leaked DC proportional to its frequency (a
+    minBLEP residual artifact), audible as offset on saw-heavy engines in
+    both banks (wall, anthem, supersaw)
+  - dræn: DC offsets across the hyf bank — feedback loops (mirror, wire,
+    quill, rain, pulsework, hive), tracking lowpasses over noise (turbine,
+    ember), waveshaping and near-zero PM sidebands (root, sputter, aster)
+    now go through DC blockers; existing blockers relaxed to a 7.6 Hz cutoff
+    so 27.5 Hz fundamentals keep their level
+  - dræn: hyf engine levels no longer swing with pitch — engines whose
+    loudness genuinely depends on hz (choir, breath, bowl, gong, tide, rain,
+    mirror, pulsework, frost) get an octave-table makeup gain interpolated
+    in log2(hz); quill's gain doubled (its old level was mostly the drift)
+
 ## [2.6.15] - 2026-07-09
 ### Added
   - limen: `get_module_info` protocol command — the metadata Rack shows in a

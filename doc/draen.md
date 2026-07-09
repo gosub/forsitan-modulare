@@ -164,6 +164,13 @@ as before.
 | **turbine** | Machine-room hum: sub square and a sweeping high whine through resonant peaks. |
 | **eclipse** | A dark vowel of brown noise over a deep sub, morphing very slowly. |
 
+The hyf bank is calibrated across the whole pitch range (octaves of 27.5 Hz up
+to 3.5 kHz, measured by `test/draen_sweep`): outputs are DC-free, and engines
+whose loudness naturally depends on the fundamental — formant voices, tracking
+filters, pluck and comb resonators — carry an hz-dependent makeup gain so the
+perceived level stays put as you sweep. Sparse percussive engines (gong, quill,
+rain, frost) sit deliberately lower than the sustained drones.
+
 ## Fidelity notes
 
 The ports follow the SynthDef graphs closely, but a few SuperCollider UGens
