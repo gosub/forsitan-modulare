@@ -26,6 +26,8 @@ engine from the roster, and the display shows its name. When the selection
 changes, the current engine fades out over the **fade time**, then the newly
 selected engine fades in — a sequential cross-fade rather than two engines
 overlapping. The fade time is set from the right-click menu (0.25 s to 8 s).
+When a patch loads, dræn starts directly on the saved engine and fades it in
+from silence.
 
 Some engines are steady oscillators; others evolve on their own through internal
 modulation. Because a fresh engine is (re)seeded when it becomes active, the

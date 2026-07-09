@@ -57,6 +57,7 @@ struct Draen : Module {
     int   uiSelected = 0;      // engine the controls currently point at (for display)
     float fadeGain  = 1.f;
     FadePhase fadePhase = STEADY;
+    bool firstFrame = true;   // adopt the patch's saved engine before making sound
     uint32_t seedCounter = 0x1u;
     float curSampleRate = 0.f;   // engines are (re)initialised when this changes
 
@@ -153,6 +154,18 @@ struct Draen : Module {
 
         int target = selectEngine();
         uiSelected = target;
+
+        // on the first frame (fresh add or patch load) start directly on the
+        // selected engine and fade it in from silence, instead of fading out
+        // from engine 0 first
+        if (firstFrame) {
+            firstFrame = false;
+            bank = clamp(bankRequest, 0, 1);
+            activeIdx = cuedIdx = target;
+            banks[bank][activeIdx]->init(nextSeed(), curSampleRate);
+            fadeGain = 0.f;
+            fadePhase = FADE_IN;
+        }
 
         // ── engine-switch fade state machine ────────────────────────────────
         float step = args.sampleTime / std::max(fadeTime, 0.01f);
