@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.15] - 2026-07-09
+### Added
+  - limen: `get_module_info` protocol command — the metadata Rack shows in a
+    module's right-click Info menu: model description, tags and links, plus
+    the owning plugin's brand, version, license, author and URLs
+  - limen-cli: `info <module-id>` command in both the C and Python clients
+  - limen-cli: Windows support (winsock)
+  - ci: new tools workflow builds limen-cli for Linux, Windows and macOS
+    (universal binary) and attaches the binaries to releases
+### Changed
+  - tools: `cli/` renamed to `limen-cli/`; the clients and the built binary
+    renamed from `limen` to `limen-cli`
+  - tools: loose scripts organized into `typography/`, `panels/` and
+    `patches/` subdirectories
+
 ## [2.6.14] - 2026-07-09
 ### Added
   - cumuli: super-slow mode in the right-click menu — both rates 100x slower
