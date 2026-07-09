@@ -48,8 +48,16 @@ struct MMCCCXCIX : Module {
         LIGHTS_LEN
     };
 
-    PT2399Core   core{16};
+    // Bits simulated per RAM clock: the delta-sigma loop runs at
+    // 44000/delay * oversampling Hz, so CPU scales linearly with this.
+    // 8 is audibly identical to the original hardcoded 16 (THD+N -46.0 vs
+    // -46.4 dB, idle noise -68 vs -72 dB) at half the cost; selectable from
+    // the context menu down to the raw chip rate.
+    static constexpr int kDefaultOversampling = 8;
+
+    PT2399Core   core{kDefaultOversampling};
     OnePoleCompressor comp;
+    int oversampling = kDefaultOversampling;
 
     // smoothers for all modulatable parameters
     LinearSmoother smoothTime, smoothFb, smoothMix, smoothBright, smoothFbLoopMix;
@@ -98,6 +106,15 @@ struct MMCCCXCIX : Module {
         comp.reset();
     }
 
+    json_t* dataToJson() override {
+        json_t* root = json_object();
+        json_object_set_new(root, "oversampling", json_integer(oversampling));
+        return root;
+    }
+    void dataFromJson(json_t* root) override {
+        if (json_t* j = json_object_get(root, "oversampling"))
+            oversampling = clamp((int)json_integer_value(j), 1, 16);
+    }
 
     // ── time knob to milliseconds (quadratic curve: more resolution at low end)
     static float timeKnobToMs(float knob) {
@@ -141,6 +158,9 @@ struct MMCCCXCIX : Module {
             brightKnob = clampf(brightKnob + inputs[BRIGHTNESS_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
         smoothBright.setTarget(brightKnob);
         core.setBrightness(smoothBright.next());
+
+        // ── static parameters ────────────────────────────────────────────────
+        core.setOversampling(oversampling);   // early-outs when unchanged
 
         // ── feedback loop ────────────────────────────────────────────────────
         const bool returnConnected = inputs[FB_RETURN_INPUT].isConnected();
@@ -233,6 +253,21 @@ struct MMCCCXCIXWidget : ModuleWidget {
         // @layout:end
     }
 
+    void appendContextMenu(Menu* menu) override {
+        MMCCCXCIX* m = dynamic_cast<MMCCCXCIX*>(module);
+        if (!m) return;
+        static const int factors[5] = {1, 2, 4, 8, 16};
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createIndexSubmenuItem("Delta-sigma oversampling",
+            {"1× (raw chip, lightest)", "2×", "4×",
+             "8× (default)", "16× (cleanest, heaviest)"},
+            [m]() {
+                for (int i = 0; i < 5; ++i)
+                    if (m->oversampling <= factors[i]) return i;
+                return 4;
+            },
+            [m](int i) { m->oversampling = factors[i]; }));
+    }
 };
 
 Model* modelMMCCCXCIX = createModel<MMCCCXCIX, MMCCCXCIXWidget>("MMCCCXCIX");

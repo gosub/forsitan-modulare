@@ -172,6 +172,19 @@ public:
         inputFilter2nd_.setLowpass(float(fs_), inputOutputFcHz_, 0.9f);
         inputPole1Alpha_ = 1.f - std::exp(-2.f * kPi * inputOutputFcHz_ / float(fs_));
     }
+    // Bits simulated per RAM clock. 16 matches the original port's default;
+    // lower is cheaper and closer to the raw chip (1 = one bit per RAM tick,
+    // CPU scales linearly). Changing it clears the delay line.
+    void setOversampling(int os) {
+        os = std::max(1, std::min(os, 16));
+        if (os == osFactor_) return;
+        osFactor_ = os;
+        bitRing_.resize(44000 * osFactor_);
+        updateVCO(); updateDemodAlpha();
+        i1_=i2_=0; ramPhase_=0; dacBit_=0;
+        ramHoldValue_=0; demodState_=0; ditherPrev_=0;
+    }
+    int oversampling() const { return osFactor_; }
 
     // ── main process ─────────────────────────────────────────────────────────
     // externalFeedback: signal coming back from the send/return loop
