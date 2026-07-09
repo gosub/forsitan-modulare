@@ -19,7 +19,7 @@ A collection of VCV Rack modules.
 | [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
 | [scando](doc/scando.md) | Scanned-synthesis oscillator (vibrating mass-spring string, scanned into a wavetable) | [doc/scando.md](doc/scando.md) |
 | [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level, poly-normalled | [doc/pellicula.md](doc/pellicula.md) |
-| [dræn](doc/draen.md) | Drone synthesizer: all 37 dronecaster drones played from hz + amp, with fading engine selection | [doc/draen.md](doc/draen.md) |
+| [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and the original hyf set) played from hz + amp, with fading engine selection | [doc/draen.md](doc/draen.md) |
 
 ## Tools
 

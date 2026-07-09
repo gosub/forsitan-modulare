@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.6.13] - 2026-07-09
+### Added
+  - dræn: a second engine bank — **hyf** (Old English for *hive*), 37 original
+    drone instruments built on the same UGEN layer, selectable from the
+    right-click "Engine bank" menu and saved with the patch; switching banks
+    fades like an engine change
+  - the hyf roster deliberately covers ground the dronecaster set doesn't:
+    binaural beating (beam), Shepard tones (shepard), CZ phase distortion
+    (phase), wavefolding (fold, corona), formant/vowel drones (choir, breath,
+    eclipse), octave-up shimmer feedback (halo), bowed and plucked strings
+    (wire, quill, rain), singing bowls and gongs (bowl, gong), and
+    environmental textures (tide, ember, veldt, frost, turbine)
+  - all 37 verified: level-matched to the first bank, no NaNs, feedback
+    engines stable over 60 s at 40/440 Hz; the whole bank is light on CPU
+    (every engine ≤ 1.4% of real time at 48 kHz)
+
 ## [2.6.12] - 2026-07-09
 ### Changed
   - dræn: DSP optimization pass, ~26% less CPU overall and the heaviest engine

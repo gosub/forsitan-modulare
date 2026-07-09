@@ -55,6 +55,9 @@ evolving ones start somewhere new each time you select them.
 
 ## Context menu
 
+- **Engine bank** — *dræn (dronecaster ports)* or *hyf (original instruments)*;
+  see [The hyf bank](#the-hyf-bank) below. Switching banks fades like an
+  engine change and is saved with the patch.
 - **Hz CV input** — *1V/oct* (musical, tracks pitch) or *Linear (100 Hz/V)*.
 - **Fade time** — duration of each fade-down / fade-up on an engine change.
 
@@ -108,6 +111,56 @@ of Jezar's public-domain Freeverb.
 Engines are loudness-normalized with a per-engine makeup gain so switching
 between them doesn't jump levels; the quieter originals (which relied on norns'
 master gain) are brought up to sit with the rest.
+
+## The hyf bank
+
+*hyf* is Old English for **hive** — where dræn's first bank ports the
+dronecaster SynthDefs, the hyf bank is 37 original instruments built on the
+same DSP layer, deliberately covering ground the dronecaster set doesn't:
+binaural beating, Shepard tones, phase distortion, wavefolding, formant and
+vocal drones, shimmer feedback, and environmental textures. Select it from the
+right-click **Engine bank** menu; the engine knob, CV and display work exactly
+as before.
+
+| engine | description |
+|--------|-------------|
+| **beam** | Binaural beating: two pure sines a few Hz apart across the channels, over a soft sub. Meditative, headphone magic. |
+| **root** | Sub-octave sines breathing slowly, a hint of a fifth. Deep and minimal. |
+| **wall** | Eleven detuned saws into a ladder filter. A monolithic wall of sound. |
+| **organelle** | Drawbar organ (1-2-3-4-6-8) with tremulant and a small chorus. |
+| **choir** | A saw pair sung through three morphing vowel formants (A→O→U), with vibrato. |
+| **breath** | Whispered vowels: pink noise through the formant space, barely pitched. |
+| **glass** | Nine stretched partials (hz·n^1.13), each slowly breathing. Inharmonic glass sheen. |
+| **bowl** | Singing bowl: four long inharmonic resonances continuously stroked, beating between channels. |
+| **gong** | An inharmonic resonator bank struck softly every few seconds, shimmering between strikes. |
+| **swarm** | Sixteen band-passed saws gliding between harmonics of the fundamental. Bees. |
+| **hive** | Twelve feedback-sines with drifting growl, combed at the fundamental. The queen. |
+| **fold** | West Coast: a sine pair through a slowly deepening wavefolder. |
+| **phase** | CZ-style phase distortion, the knee swept slowly; the two channels mirror each other. |
+| **aster** | Sustained two-operator FM with a wandering index, plus a quiet 3:2 sparkle pair. |
+| **naiad** | Water-modulated FM: a bubbling comb resonance drives the modulation index. Burbling. |
+| **lattice** | Golden-ratio sine pairs diode-ring-modulated, slowly rotating in the field. |
+| **corona** | Odd harmonics through a breathing wavefolder, high-passed to a bright halo. |
+| **shepard** | The ever-rising barberpole drone: eight windowed octaves, one octave per 50 s, forever. |
+| **drift** | A six-voice cluster forever re-tuning itself in slow glides around the root, fifth and octave. |
+| **saros** | An endless cadence: four gliding sine pairs cycling an eight-chord table, 16 s per chord. |
+| **mirror** | Noise sustained inside two long combs tuned to the root and fifth. Ethereal tuned wash. |
+| **wire** | A bowed string: a Karplus loop continuously excited by bow noise, occasionally flipping to harmonics. |
+| **quill** | A slow harp: long-sustain plucks arpeggiating a harmonic set into a light reverb. |
+| **rain** | Plucked droplets on a pentatonic set in a wet cave, over a soft triangle pad. |
+| **pulsework** | Meshing tick trains through combs tuned to the root and fifth. Clockwork over a pad. |
+| **halo** | A quiet sine regenerating through an octave-up pitch shifter and reverb. Shimmer. |
+| **cavern** | Sparse harmonic blips lost in a vast reverb over a deep sub. |
+| **loam** | Dark detuned triangle pad through a slow four-stage phaser. Soft and mossy. |
+| **anthem** | Swelling brass: detuned saws into a ladder that opens itself, with ensemble chorus. |
+| **pipe** | A hollow bore: negative-feedback comb sung by breath noise. Clarinet-adjacent. |
+| **tide** | Ocean: swelling band-swept brown noise over a deep sub. |
+| **ember** | Fire: crackle, flickering roar, sub rumble and occasional pops. |
+| **veldt** | Insects at dusk: sparse trilling chirps over a warm low drone. |
+| **frost** | High crystalline partial strikes over a near-silent root. Icy. |
+| **sputter** | Granular haze: dust-triggered filtered saw grains blurring into texture. |
+| **turbine** | Machine-room hum: sub square and a sweeping high whine through resonant peaks. |
+| **eclipse** | A dark vowel of brown noise over a deep sub, morphing very slowly. |
 
 ## Fidelity notes
 
