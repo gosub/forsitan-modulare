@@ -10,11 +10,11 @@
 //     → [softClip]                     VCO-dependent saturation
 //     → [ΔΣ 2nd order, leaky]          real delta-sigma at dsmClockHz
 //     → [BitRing 44000×OS bits]        the actual chip RAM
-//     → [ZOH → demodState 2-pole]      demodulation inside DSM loop
+//     → [ZOH → demodState 1-pole]      demodulation inside DSM loop
 //     → [outputFilter2nd]              post-DAC biquad LP
 //     → [dcBlock]                      HP ~10 Hz on wet signal
-//     → SEND OUTPUT ──→ (external fx) ──→ RETURN INPUT
 //     → [feedbackHpf]                  HP on feedback path (cap model)
+//     → SEND OUTPUT ──→ (external fx) ──→ RETURN INPUT
 //     → mix(internal_fb, return_fb, fbLoopMix)
 //     → back to input sum
 
@@ -131,8 +131,8 @@ public:
     void reset() {
         i1_=i2_=0; ramPhase_=0; dacBit_=0;
         bitRing_.reset();
-        zohBit_=0; ramHoldValue_=0;
-        demodState_=demodState2_=0;
+        ramHoldValue_=0;
+        demodState_=0; ditherPrev_=0;
         inputFilter2nd_.reset(); outputFilter2nd_.reset();
         inputPole1State_=0;
         dcBlockX1_=dcBlockY1_=0;
@@ -143,17 +143,28 @@ public:
     }
 
     // ── setters ──────────────────────────────────────────────────────────────
+    // All setters early-out on an unchanged value: the module pushes smoothed
+    // parameters every sample, and the coefficient math (sin/cos/exp/pow)
+    // must only run while a knob or CV is actually moving.
     void setDelayResistanceKOhm(float rK) {
-        rKOhm_ = clampf(rK, 0.5f, 100.f);
+        rK = clampf(rK, 0.5f, 100.f);
+        if (rK == rKOhm_) return;
+        rKOhm_ = rK;
         updateVCO(); updateDemodAlpha();
     }
     void setFeedback(float g)          { feedbackGain_ = clampf(g, 0.f, 2.f); }
-    void setFeedbackHighPassHz(float hz){ feedbackHpfHz_ = clampf(hz, 10.f, 440.f); updateFeedbackHpf(); }
+    void setFeedbackHighPassHz(float hz){
+        hz = clampf(hz, 10.f, 440.f);
+        if (hz == feedbackHpfHz_) return;
+        feedbackHpfHz_ = hz; updateFeedbackHpf();
+    }
     void setC3nF(float nF)             { c3nF_ = clampf(nF, 22.f, 150.f); integGain_ = 100.f / c3nF_; }
     void setC6nF(float nF)             { c6nF_ = clampf(nF, 22.f, 150.f); updateDemodAlpha(); }
     void setBoostActivated(bool b)     { boostActivated_ = b; updateVCO(); }
     void setBrightness(float amt) {
-        brightness_ = clampf(amt, 0.f, 1.f);
+        amt = clampf(amt, 0.f, 1.f);
+        if (amt == brightness_) return;
+        brightness_ = amt;
         inputOutputFcHz_ = interpLog(kBaseInFc, kMaxInFc, brightness_);
         demodFcScale_    = interpLog(kBaseDemodFc, kMaxDemodFc, brightness_);
         updateOutputFilter();
@@ -188,7 +199,7 @@ public:
         // --- run delta-sigma at dsmClockHz, decimate to fs ---
         float acc = 0.f;
         int   n   = 0;
-        const double phaseStep = dsmClockHz_ / fs_;
+        const double phaseStep = phaseStepPerSample_;
         ramPhase_ += phaseStep;
         while (ramPhase_ >= 1.0) {
             ramPhase_ -= 1.0;
@@ -221,8 +232,10 @@ public:
         return wetOut;
     }
 
-    // expose the pre-HPF feedback signal so the module can send it to the loop
-    float getFeedbackPreHpf() const { return feedbackSample_; }
+    // the signal the module puts on the send jack: the wet delay after the
+    // feedback high-pass (cap model) and compensation, i.e. exactly what
+    // recirculates internally when the loop is not patched
+    float getFeedbackSend() const { return feedbackSample_; }
 
 private:
     // ── BitRing: 44000*OS bits packed in uint32_t[] ───────────────────────
@@ -235,14 +248,13 @@ private:
             writePos=0;
         }
         void reset() { std::fill(data.begin(),data.end(),0u); writePos=0; }
-        int readOldest() const {
-            return int((data[size_t(writePos>>5)] >> (writePos&31)) & 1u);
-        }
-        void writeBit(int b) {
+        // read the oldest bit and overwrite it with the newest in one pass
+        int exchangeOldest(int b) {
             const int w=writePos>>5, bt=writePos&31;
-            if (b) data[size_t(w)] |=  (1u<<bt);
-            else   data[size_t(w)] &= ~(1u<<bt);
+            const uint32_t word = data[size_t(w)];
+            data[size_t(w)] = (word & ~(1u<<bt)) | (uint32_t(b)<<bt);
             if (++writePos >= numBits) writePos=0;
+            return int((word >> bt) & 1u);
         }
     };
 
@@ -261,13 +273,15 @@ private:
     }
 
     float nextDither() {
-        // xorshift32 TPDF dither
+        // one xorshift32 per tick; TPDF from the difference of consecutive
+        // uniforms (triangular pdf, first-difference high-passed - fine for
+        // dither and half the RNG cost of drawing two fresh uniforms)
         constexpr float kAmt = 0.02f;
         rngState_ ^= rngState_<<13; rngState_ ^= rngState_>>17; rngState_ ^= rngState_<<5;
-        const float u1 = float(int32_t(rngState_)) * (1.f/2147483648.f);
-        rngState_ ^= rngState_<<13; rngState_ ^= rngState_>>17; rngState_ ^= rngState_<<5;
-        const float u2 = float(int32_t(rngState_)) * (1.f/2147483648.f);
-        return (u1+u2)*0.5f*kAmt;
+        const float u = float(int32_t(rngState_)) * (1.f/2147483648.f);
+        const float d = (u - ditherPrev_)*0.5f*kAmt;
+        ditherPrev_ = u;
+        return d;
     }
 
     void runDeltaSigmaTick(float input) {
@@ -278,12 +292,9 @@ private:
         i1_ = (i1_ + error*k1*integGain_) * kLeak1;
         i2_ = (i2_ + i1_*k2) * kLeak2;
         dacBit_ = (i2_ >= 0.f) ? 1 : 0;
-        const int oldBit = bitRing_.readOldest();
-        bitRing_.writeBit(dacBit_);
-        zohBit_       = oldBit;
-        ramHoldValue_ = zohBit_ ? kDacLevel : -kDacLevel;
+        const int oldBit = bitRing_.exchangeOldest(dacBit_);
+        ramHoldValue_ = oldBit ? kDacLevel : -kDacLevel;
         demodState_  += demodAlphaTick_ * (ramHoldValue_ - demodState_);
-        demodState2_ += demodAlphaTick_ * (demodState_   - demodState2_);
     }
 
     void updateVCO() {
@@ -291,6 +302,7 @@ private:
         const double fVcoHz  = 683210.0 / double(delayMs) * 1e3;  // Hz
         const double fRamHz  = fVcoHz / 15.5;
         dsmClockHz_ = fRamHz * osFactor_;
+        phaseStepPerSample_ = dsmClockHz_ / fs_;
         const float delayNorm = (delayMs - 31.f) / (346.f - 31.f);
         inScale_ = 0.68f - 0.08f * delayNorm;
         feedbackCompensation_ = 1.f / std::max(0.06f, inScale_);
@@ -339,6 +351,7 @@ private:
 
     float  rKOhm_             = 10.f;
     double dsmClockHz_        = 305484.0 * 8;
+    double phaseStepPerSample_ = 0.0;
     double ramPhase_          = 0.0;
     float  i1_=0, i2_=0;
     float  integGain_         = 1.f;
@@ -346,9 +359,9 @@ private:
     float  c3nF_              = 100.f;
     float  c6nF_              = 100.f;
     BitRing bitRing_;
-    int    zohBit_            = 0;
     float  ramHoldValue_      = 0.f;
-    float  demodState_        = 0.f, demodState2_ = 0.f;
+    float  demodState_        = 0.f;
+    float  ditherPrev_        = 0.f;
     float  demodAlphaTick_    = 0.01f;
 
     Biquad inputFilter2nd_;

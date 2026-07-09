@@ -57,6 +57,8 @@ struct MMCCCXCIX : Module {
     MMCCCXCIX() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
+        core.setFeedbackHighPassHz(80.f);  // fixed: models the physical cap
+
         configParam(TIME_PARAM,       0.f,  1.f,  0.15f, "Delay Time",    " ms", 0.f, 1140.f, 35.f);
         configParam(FEEDBACK_PARAM,   0.f,  1.8f, 0.4f,  "Feedback",      "%",   0.f, 100.f * (1.f/1.8f));
         configParam(MIX_PARAM,        0.f,  1.f,  0.5f,  "Dry/Wet");
@@ -95,6 +97,7 @@ struct MMCCCXCIX : Module {
         core.reset();
         comp.reset();
     }
+
 
     // ── time knob to milliseconds (quadratic curve: more resolution at low end)
     static float timeKnobToMs(float knob) {
@@ -139,9 +142,6 @@ struct MMCCCXCIX : Module {
         smoothBright.setTarget(brightKnob);
         core.setBrightness(smoothBright.next());
 
-        // ── static parameters ────────────────────────────────────────────────
-        core.setFeedbackHighPassHz(80.f);  // fixed: models the physical cap
-
         // ── feedback loop ────────────────────────────────────────────────────
         const bool returnConnected = inputs[FB_RETURN_INPUT].isConnected();
 
@@ -155,8 +155,8 @@ struct MMCCCXCIX : Module {
         float wet = core.processSample(input, returnSignal, returnConnected, fbLoopMix);
         wet = comp.process(wet);
 
-        // SEND output: pre-HPF feedback signal in Eurorack volts
-        outputs[FB_SEND_OUTPUT].setVoltage(core.getFeedbackPreHpf() * 10.f);
+        // SEND output: the internal feedback signal in Eurorack volts
+        outputs[FB_SEND_OUTPUT].setVoltage(core.getFeedbackSend() * 10.f);
 
         // DRY/WET mix
         const float dry = inputs[AUDIO_INPUT].getVoltage();
@@ -232,6 +232,7 @@ struct MMCCCXCIXWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.34f, 111.85f)), module, MMCCCXCIX::AUDIO_OUTPUT));
         // @layout:end
     }
+
 };
 
 Model* modelMMCCCXCIX = createModel<MMCCCXCIX, MMCCCXCIXWidget>("MMCCCXCIX");
