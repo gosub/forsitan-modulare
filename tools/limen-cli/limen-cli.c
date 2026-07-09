@@ -1,8 +1,8 @@
 /*
- * limen — command-line client for the limen VCV Rack module
+ * limen-cli — command-line client for the limen VCV Rack module
  *
  * Usage:
- *   limen [--port N] [--host H] [--json] <command> [args]
+ *   limen-cli [--port N] [--host H] [--json] <command> [args]
  *
  * Commands:
  *   plugins                                      list all loaded plugins
@@ -46,12 +46,12 @@ static int connect_to(const char *host, int port) {
     addr.sin_family = AF_INET;
     addr.sin_port   = htons((unsigned short)port);
     if (inet_pton(AF_INET, host, &addr.sin_addr) != 1) {
-        fprintf(stderr, "limen: invalid host: %s\n", host);
+        fprintf(stderr, "limen-cli: invalid host: %s\n", host);
         close(fd);
         return -1;
     }
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        fprintf(stderr, "limen: cannot connect to %s:%d: %s\n",
+        fprintf(stderr, "limen-cli: cannot connect to %s:%d: %s\n",
                 host, port, strerror(errno));
         close(fd);
         return -1;
@@ -72,7 +72,7 @@ static char *transact(int fd, const char *req) {
     size_t pos = 0;
     for (;;) {
         if (pos >= BUF_SIZE - 1) {
-            fprintf(stderr, "limen: response too large\n");
+            fprintf(stderr, "limen-cli: response too large\n");
             free(buf);
             return NULL;
         }
@@ -111,11 +111,11 @@ static int print_error(const char *resp) {
     const char *msg = json_error_msg(resp);
     if (msg) {
         /* print until closing quote */
-        fprintf(stderr, "limen: error: ");
+        fprintf(stderr, "limen-cli: error: ");
         while (*msg && *msg != '"') fputc(*msg++, stderr);
         fputc('\n', stderr);
     } else {
-        fprintf(stderr, "limen: unknown error\n");
+        fprintf(stderr, "limen-cli: unknown error\n");
     }
     return 1;
 }
@@ -267,11 +267,11 @@ static long long resolve_prefix(int fd, const char *list_req,
     free(resp);
 
     if (match_count == 0) {
-        fprintf(stderr, "limen: no %s matches '%s'\n", kind, prefix);
+        fprintf(stderr, "limen-cli: no %s matches '%s'\n", kind, prefix);
         return -1;
     }
     if (match_count > 1) {
-        fprintf(stderr, "limen: ambiguous prefix '%s' matches %d %ss\n",
+        fprintf(stderr, "limen-cli: ambiguous prefix '%s' matches %d %ss\n",
                 prefix, match_count, kind);
         return -1;
     }
@@ -600,14 +600,14 @@ static int cmd_rm(int fd, const char *id_prefix) {
 static int parse_endpoint(int fd, const char *arg, long long *mod_id, int *port) {
     const char *colon = strrchr(arg, ':');
     if (!colon) {
-        fprintf(stderr, "limen: expected <module-id>:<port>, got: %s\n", arg);
+        fprintf(stderr, "limen-cli: expected <module-id>:<port>, got: %s\n", arg);
         return 0;
     }
     /* extract module prefix */
     size_t prefix_len = (size_t)(colon - arg);
     char prefix[64];
     if (prefix_len >= sizeof(prefix)) {
-        fprintf(stderr, "limen: module id too long\n");
+        fprintf(stderr, "limen-cli: module id too long\n");
         return 0;
     }
     memcpy(prefix, arg, prefix_len);
@@ -619,7 +619,7 @@ static int parse_endpoint(int fd, const char *arg, long long *mod_id, int *port)
     char *end;
     long p = strtol(colon + 1, &end, 10);
     if (end == colon + 1 || *end != '\0') {
-        fprintf(stderr, "limen: invalid port: %s\n", colon + 1);
+        fprintf(stderr, "limen-cli: invalid port: %s\n", colon + 1);
         return 0;
     }
     *port = (int)p;
@@ -762,7 +762,7 @@ static int cmd_simple(int fd, const char *cmd) {
 
 static void usage(void) {
     fprintf(stderr,
-        "usage: limen [--port N] [--host H] [--json] <command> [args]\n"
+        "usage: limen-cli [--port N] [--host H] [--json] <command> [args]\n"
         "\n"
         "commands:\n"
         "  hello                                        protocol version and supported commands\n"
@@ -821,26 +821,26 @@ int main(int argc, char *argv[]) {
         const char *slug = (i < argc) ? argv[i] : NULL;
         ret = cmd_modules(fd, slug);
     } else if (strcmp(cmd, "get") == 0) {
-        if (i >= argc) { fprintf(stderr, "limen: get requires module-id\n"); }
+        if (i >= argc) { fprintf(stderr, "limen-cli: get requires module-id\n"); }
         else {
             long long id = resolve_id(fd, argv[i]);
             if (id >= 0) ret = cmd_get(fd, id);
         }
     } else if (strcmp(cmd, "ports") == 0) {
-        if (i >= argc) { fprintf(stderr, "limen: ports requires module-id\n"); }
+        if (i >= argc) { fprintf(stderr, "limen-cli: ports requires module-id\n"); }
         else {
             long long id = resolve_id(fd, argv[i]);
             if (id >= 0) ret = cmd_ports(fd, id);
         }
     } else if (strcmp(cmd, "params") == 0) {
-        if (i >= argc) { fprintf(stderr, "limen: params requires module-id\n"); }
+        if (i >= argc) { fprintf(stderr, "limen-cli: params requires module-id\n"); }
         else {
             long long id = resolve_id(fd, argv[i]);
             if (id >= 0) ret = cmd_params(fd, id);
         }
     } else if (strcmp(cmd, "param") == 0) {
         if (i + 1 >= argc) {
-            fprintf(stderr, "limen: param requires module-id param-id\n");
+            fprintf(stderr, "limen-cli: param requires module-id param-id\n");
         } else {
             long long modid = resolve_id(fd, argv[i]);
             if (modid >= 0) {
@@ -850,7 +850,7 @@ int main(int argc, char *argv[]) {
         }
     } else if (strcmp(cmd, "set") == 0) {
         if (i + 2 >= argc) {
-            fprintf(stderr, "limen: set requires module-id param-id value\n");
+            fprintf(stderr, "limen-cli: set requires module-id param-id value\n");
         } else {
             long long modid = resolve_id(fd, argv[i]);
             if (modid >= 0) {
@@ -873,25 +873,25 @@ int main(int argc, char *argv[]) {
         ret = cmd_cables(fd, module_id, verbose);
     } else if (strcmp(cmd, "add") == 0) {
         if (i + 1 >= argc) {
-            fprintf(stderr, "limen: add requires plugin-slug model-slug\n");
+            fprintf(stderr, "limen-cli: add requires plugin-slug model-slug\n");
         } else {
             ret = cmd_add(fd, argv[i], argv[i+1]);
         }
     } else if (strcmp(cmd, "rm") == 0) {
-        if (i >= argc) { fprintf(stderr, "limen: rm requires module-id\n"); }
+        if (i >= argc) { fprintf(stderr, "limen-cli: rm requires module-id\n"); }
         else { ret = cmd_rm(fd, argv[i]); }
     } else if (strcmp(cmd, "connect") == 0) {
         if (i + 1 >= argc) {
-            fprintf(stderr, "limen: connect requires <out-mod>:<out-port> <in-mod>:<in-port>\n");
+            fprintf(stderr, "limen-cli: connect requires <out-mod>:<out-port> <in-mod>:<in-port>\n");
         } else {
             ret = cmd_connect(fd, argv[i], argv[i+1]);
         }
     } else if (strcmp(cmd, "disconnect") == 0) {
-        if (i >= argc) { fprintf(stderr, "limen: disconnect requires cable-id\n"); }
+        if (i >= argc) { fprintf(stderr, "limen-cli: disconnect requires cable-id\n"); }
         else { ret = cmd_disconnect(fd, argv[i]); }
     } else if (strcmp(cmd, "fullscreen") == 0) {
         if (i >= argc || (strcmp(argv[i], "on") && strcmp(argv[i], "off"))) {
-            fprintf(stderr, "limen: fullscreen requires on|off\n");
+            fprintf(stderr, "limen-cli: fullscreen requires on|off\n");
         } else {
             ret = cmd_fullscreen(fd, strcmp(argv[i], "on") == 0);
         }
@@ -900,7 +900,7 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(cmd, "quit") == 0) {
         ret = cmd_simple(fd, "quit");
     } else {
-        fprintf(stderr, "limen: unknown command: %s\n", cmd);
+        fprintf(stderr, "limen-cli: unknown command: %s\n", cmd);
         usage();
     }
 

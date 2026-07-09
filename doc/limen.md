@@ -135,12 +135,12 @@ print(json.loads(s.recv(65536)))
 
 ## CLI tool
 
-Two clients are available in `tools/cli/`:
+Two clients are available in `tools/limen-cli/`:
 
 ### C client (compiled, no runtime dependency)
 
 ```bash
-cd tools/cli && make
+cd tools/limen-cli && make
 # optionally install to ~/.local/bin
 make install
 ```
@@ -148,14 +148,14 @@ make install
 ### Python client (no compilation needed)
 
 ```bash
-python tools/cli/limen.py <command> [args]
+python tools/limen-cli/limen-cli.py <command> [args]
 ```
 
 Requires Python 3.6+, no third-party packages.
 
 **Usage:**
 ```
-limen [--port N] [--host H] [--json] <command> [args]
+limen-cli [--port N] [--host H] [--json] <command> [args]
 ```
 
 | command | description |

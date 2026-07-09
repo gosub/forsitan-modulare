@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""limen — command-line client for the limen VCV Rack module (Python version)
+"""limen-cli — command-line client for the limen VCV Rack module (Python version)
 
 Usage:
-    limen.py [--port N] [--host H] [--json] <command> [args]
+    limen-cli.py [--port N] [--host H] [--json] <command> [args]
 
 No third-party dependencies; requires Python 3.6+.
 """
@@ -36,12 +36,12 @@ def send(args, obj):
     try:
         resp = transact(args.host, args.port, obj)
     except ConnectionRefusedError:
-        sys.exit(f"limen: cannot connect to {args.host}:{args.port}")
+        sys.exit(f"limen-cli: cannot connect to {args.host}:{args.port}")
     if args.json:
         print(json.dumps(resp))
         sys.exit(0)
     if not resp.get("ok"):
-        sys.exit(f"limen: error: {resp.get('error', 'unknown error')}")
+        sys.exit(f"limen-cli: error: {resp.get('error', 'unknown error')}")
     return resp.get("result")
 
 
@@ -51,13 +51,13 @@ def resolve_id(args, prefix, kind="module"):
     cmd = "list_cables" if kind == "cable" else "list_modules"
     resp = transact(args.host, args.port, {"cmd": cmd})
     if not resp.get("ok"):
-        sys.exit(f"limen: error: {resp.get('error')}")
+        sys.exit(f"limen-cli: error: {resp.get('error')}")
     matches = [item for item in resp["result"]
                if str(item["id"]).startswith(prefix)]
     if not matches:
-        sys.exit(f"limen: no {kind} matches '{prefix}'")
+        sys.exit(f"limen-cli: no {kind} matches '{prefix}'")
     if len(matches) > 1:
-        sys.exit(f"limen: ambiguous prefix '{prefix}' matches {len(matches)} {kind}s")
+        sys.exit(f"limen-cli: ambiguous prefix '{prefix}' matches {len(matches)} {kind}s")
     return matches[0]["id"]
 
 
@@ -65,12 +65,12 @@ def parse_endpoint(args, spec):
     """Parse 'modprefix:port' → (module_id, port_index)."""
     colon = spec.rfind(":")
     if colon < 0:
-        sys.exit(f"limen: expected <module-id>:<port>, got: {spec}")
+        sys.exit(f"limen-cli: expected <module-id>:<port>, got: {spec}")
     mod_id = resolve_id(args, spec[:colon])
     try:
         port = int(spec[colon + 1:])
     except ValueError:
-        sys.exit(f"limen: invalid port: {spec[colon + 1:]}")
+        sys.exit(f"limen-cli: invalid port: {spec[colon + 1:]}")
     return mod_id, port
 
 
@@ -227,7 +227,7 @@ def cmd_quit(args):
 
 def main():
     p = argparse.ArgumentParser(
-        prog="limen.py",
+        prog="limen-cli.py",
         description="Command-line client for the limen VCV Rack module.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

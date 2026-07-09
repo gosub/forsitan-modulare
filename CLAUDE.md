@@ -72,7 +72,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 - Green LED at y=64mm indicates listening state.
 - Commands: `list_modules`, `get_module`, `list_params`, `set_param`,
   `list_cables`.
-- Client tools live in `tools/cli/` (C `limen.c` + Python `limen.py`).
+- Client tools live in `tools/limen-cli/` (C `limen-cli.c` + Python `limen-cli.py`).
 
 ## Panel structure
 
@@ -177,8 +177,8 @@ global pip install):
 
 ## Tools
 
-- `tools/cli/` — limen client: C (`limen.c`, builds `limen`) and Python
-  (`limen.py`).
+- `tools/limen-cli/` — limen client: C (`limen-cli.c`, builds `limen-cli`) and
+  Python (`limen-cli.py`).
 - `tools/panel-editor/` — browser-based drag-and-drop panel layout editor
   (`panel-editor.py`). On save it regenerates the panel SVG, auto-finding the
   OCR-A font and a fonttools venv from the same candidate paths above.
