@@ -60,7 +60,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | MMCCCXCIX | PT2399 delay chip emulation with feedback send/return | 50.8mm (10HP) |
 | scando | scanned-synthesis oscillator (mass-spring string scanned into a wavetable) | 81.28mm (16HP) |
 | pellicula | exploded 8-voice drum sampler (Pico DRUM engine; poly-normalled sample/pitch/decay/level matrix) | 111.76mm (22HP) |
-| draen | drone synthesizer (dronecaster port, all 37 engines; bank played from hz/amp, fading engine select) | 40.64mm (8HP) |
+| draen | drone synthesizer (two 37-engine banks: dronecaster ports + hyf originals; played from hz/amp, fading engine select, bank via context menu) | 40.64mm (8HP) |
 
 ## limen module
 
