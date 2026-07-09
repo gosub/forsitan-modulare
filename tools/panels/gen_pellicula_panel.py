@@ -10,16 +10,16 @@ NanoSVG-safe and matches the house typography.
 
 The geometry constants below MUST stay in sync with src/pellicula.cpp.
 
-Usage:  python3 tools/gen_pellicula_panel.py
+Usage:  python3 tools/panels/gen_pellicula_panel.py
 """
 import os, importlib.util
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
+REPO = os.path.dirname(os.path.dirname(HERE))
 
 # import the panel-editor module (hyphenated filename → load by path)
 spec = importlib.util.spec_from_file_location(
-    "panel_editor", os.path.join(HERE, "panel-editor", "panel-editor.py"))
+    "panel_editor", os.path.join(REPO, "tools", "panel-editor", "panel-editor.py"))
 pe = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pe)
 

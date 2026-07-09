@@ -6,7 +6,7 @@ A Rack 2 .vcv file is a zstd-compressed tar archive containing patch.json
 (and an empty modules/ directory). Run from the repo root after changing
 anything here:
 
-    python3 tools/gen_patches.py
+    python3 tools/patches/gen_patches.py
 
 Requires the `tar` and `zstd` command-line tools.
 """
@@ -58,7 +58,7 @@ def limen_patch():
 
 
 def main():
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     out = os.path.join(root, "patches")
     limen_patch().write(os.path.join(out, "limen.vcv"))
 

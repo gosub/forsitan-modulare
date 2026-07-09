@@ -118,7 +118,7 @@ When laying out a panel (by hand or generated), follow these rules:
   consistently (below jacks/knobs unless space forces otherwise), at ≥2.0mm
   cap height, never split across an element. Output badges must fully
   contain their text with ~1mm padding. Verify label widths with
-  `tools/measure_text.py` before placing.
+  `tools/typography/measure_text.py` before placing.
 - **Alignment & grouping**: snap centers to a coarse grid (whole or half
   mm); align related elements on shared rows/columns. Group by function
   (control + its CV jack + label as one cluster) and separate groups with
@@ -143,16 +143,17 @@ When laying out a panel (by hand or generated), follow these rules:
 The panel font is **OCR-A** (`~/dl/audio/ocr-a/OCR-A Regular/OCR-A Regular.otf`;
 source archive `~/dl/ocr-a-regular.zip`). It is not installed system-wide.
 
-Two helpers live in `tools/` (they need `fonttools` + `booleanOperations`;
-use the venv at `~/dl/audio/fonttools-venv`, never a global pip install):
+Two helpers live in `tools/typography/` (they need `fonttools` +
+`booleanOperations`; use the venv at `~/dl/audio/fonttools-venv`, never a
+global pip install):
 
-- **`tools/gen_title_paths.py`** — bakes text into NanoSVG-safe `<path>`
+- **`tools/typography/gen_title_paths.py`** — bakes text into NanoSVG-safe `<path>`
   elements. It runs a union boolean op per glyph so inner contours (holes)
   render correctly under NanoSVG's even-odd fill. Pass the OCR-A `.otf` as
   `--bold` and use `:bold` segments (forsitan is single-weight):
 
   ```
-  ~/dl/audio/fonttools-venv/bin/python tools/gen_title_paths.py \
+  ~/dl/audio/fonttools-venv/bin/python tools/typography/gen_title_paths.py \
       --bold "$HOME/dl/audio/ocr-a/OCR-A Regular/OCR-A Regular.otf" \
       --titles "alea:bold" \
       --panel-width 15.24 \
@@ -165,11 +166,11 @@ use the venv at `~/dl/audio/fonttools-venv`, never a global pip install):
   the badge width and wrap the result in a `<g transform="translate(badge_x,0)">`,
   with `--color "#1a1a1a"`.
 
-- **`tools/measure_text.py`** — reports advance width (mm) of strings at a given
+- **`tools/typography/measure_text.py`** — reports advance width (mm) of strings at a given
   cap height, for laying out labels and sizing badges:
 
   ```
-  ~/dl/audio/fonttools-venv/bin/python tools/measure_text.py \
+  ~/dl/audio/fonttools-venv/bin/python tools/typography/measure_text.py \
       --font "$HOME/dl/audio/ocr-a/OCR-A Regular/OCR-A Regular.otf" \
       --cap-height 2.5 alea limen
   ```
@@ -181,9 +182,12 @@ use the venv at `~/dl/audio/fonttools-venv`, never a global pip install):
 - `tools/panel-editor/` — browser-based drag-and-drop panel layout editor
   (`panel-editor.py`). On save it regenerates the panel SVG, auto-finding the
   OCR-A font and a fonttools venv from the same candidate paths above.
-- `tools/gen_title_paths.py`, `tools/measure_text.py` — see Typography above.
-- `tools/gen_patches.py` — generates `patches/*.vcv`. A `.vcv` is a
+- `tools/typography/` — `gen_title_paths.py`, `measure_text.py`; see
+  Typography above.
+- `tools/panels/` — `gen_pellicula_panel.py`, generates `res/pellicula.svg`
+  (background art for the matrix panel; widgets are placed in code).
+- `tools/patches/` — `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
   zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
   builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so
   `./Rack patches/limen.vcv` launches straight into a controllable state.
-  Regenerate after edits: `python3 tools/gen_patches.py` (needs `tar` + `zstd`).
+  Regenerate after edits: `python3 tools/patches/gen_patches.py` (needs `tar` + `zstd`).
