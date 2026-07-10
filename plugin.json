@@ -156,6 +156,17 @@
         "Effect",
         "Physical modeling"
       ]
+    },
+    {
+      "slug": "bulla",
+      "name": "bulla",
+      "description": "Rob Hordijk's Blippoo Box: two cross-modulating oscillators, two runglers and a twin-peak filter, between pattern and chaos.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/bulla.md",
+      "tags": [
+        "Oscillator",
+        "Synth Voice",
+        "Random"
+      ]
     }
   ]
 }

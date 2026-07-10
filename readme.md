@@ -24,6 +24,7 @@ A collection of VCV Rack modules.
 | [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp, howling loop tunable by poly V/oct | [doc/ululo.md](doc/ululo.md) |
 | [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
 | [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
+| [bulla](doc/bulla.md) | Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
 
 ## Tools
 
@@ -68,6 +69,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **ululo** | I howl (guitar feedback, the Larsen effect as an instrument) |
 | **tabes** | wasting away, decay, consumption (the tape loop dying pass by pass) |
 | **lustro** | I traverse, I survey (the string surveyed into a filterbank; scando's sibling) |
+| **bulla** | bubble, blip — also the amulet worn by Roman children (Hordijk's Blippoo Box) |
 
 ## Author
 
