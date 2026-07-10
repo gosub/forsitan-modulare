@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.6.16] - 2026-07-09
+## [2.6.16] - 2026-07-10
 ### Added
   - test: `draen_sweep`, an offline octave sweep (27.5 Hz → 3.52 kHz) of both
     dræn engine banks reporting per-channel DC, AC RMS, peak and NaN counts
