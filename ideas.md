@@ -4,7 +4,7 @@ Brainstorm from 2026-07-10/11, sorted best to worst. Novelty was checked
 against the VCV Library at the time of writing; re-check before starting
 anything.
 
-## 1. rete — feedback integrator network
+## 1. rete — feedback integrator network (IMPLEMENTED in v2.7.0)
 
 Port of Nathan Ho's "feedback integrator networks" (FIN): N leaky
 integrators into a fixed random N×N mixing matrix, then LeakDC highpass,
@@ -26,7 +26,7 @@ drifting between tonal and chaotic.
   oscillators (HetrickCV FBSineChaos, Nonlinear Circuits) and hand-patched
   no-input matrix mixing.
 
-## 2. ululo — feedback guitar instrument
+## 2. ululo — feedback guitar instrument (IMPLEMENTED in v2.7.0)
 
 From Nathaniel Virgo's "Guitar feedback emulation" (https://sccode.org/1-U):
 guitar held up to the amp. Delay (amp distance) + six comb filters (strings)
@@ -60,7 +60,7 @@ lace) become a preset library.
   library. Latin bonus: tela is both loom and web.
 - Would pair with campanae as a "pre-electronic pattern traditions" release.
 
-## 5. tabes — disintegration looper
+## 5. tabes — disintegration looper (IMPLEMENTED in v2.7.0)
 
 Tape loop that ages each pass: HF loss, wow, dropouts, grit, with a decay
 rate knob and a splice control. Basinski's Disintegration Loops as a module.
@@ -188,7 +188,7 @@ shapes with retrograde swerves; the panel visual explains itself.
 - Caveat: under the hood it is additive sine LFOs with phase coupling, so
   the least novel DSP here; concept, geometry, and 2D output carry it.
 
-## 18. lustro — scanned filter (scando sibling)
+## 18. lustro — scanned filter (scando sibling) (IMPLEMENTED in v2.7.0)
 
 Reuse the scando mass-spring engine as the control surface of a resonant
 filterbank: band frequencies/gains ride the moving string, external audio
@@ -197,7 +197,7 @@ gets "played" by the physics.
 - Novel and on-brand (scanned synthesis is already the house niche), but
   speculative: needs prototyping to know if it sounds as good as it reads.
 
-## 19. bulla — Blippoo Box
+## 19. bulla — Blippoo Box (IMPLEMENTED in v2.7.0)
 
 Port of Rob Hordijk's Blippoo Box (olaf's SC implementation:
 https://sccode.org/1-5bB): two oscillators, rungler shift register, peak
