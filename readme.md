@@ -21,6 +21,7 @@ A collection of VCV Rack modules.
 | [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level, poly-normalled | [doc/pellicula.md](doc/pellicula.md) |
 | [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and the original hyf set) played from hz + amp, with fading engine selection | [doc/draen.md](doc/draen.md) |
 | [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos with per-node gain CVs | [doc/rete.md](doc/rete.md) |
+| [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp, howling loop tunable by poly V/oct | [doc/ululo.md](doc/ululo.md) |
 
 ## Tools
 
@@ -62,6 +63,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **pellicula** | little skin, thin membrane (diminutive of *pellis*, skin/hide) — the drumhead, and an echo of "pico" (small) |
 | **dræn** | *not Latin* — Old English for *bee*, the etymological root of "drone" (a port of the dronecaster norns instrument) |
 | **rete** | net, network (the 8×8 feedback web at the module's heart) |
+| **ululo** | I howl (guitar feedback, the Larsen effect as an instrument) |
 
 ## Author
 

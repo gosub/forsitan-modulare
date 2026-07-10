@@ -19,3 +19,4 @@ extern Model* modelScando;
 extern Model* modelPellicula;
 extern Model* modelDraen;
 extern Model* modelRete;
+extern Model* modelUlulo;

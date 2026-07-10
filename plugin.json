@@ -123,6 +123,17 @@
         "Noise",
         "Random"
       ]
+    },
+    {
+      "slug": "ululo",
+      "name": "ululo",
+      "description": "Feedback guitar: six comb strings and a saturating amp in a howling loop, chord-tunable via poly V/oct.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/ululo.md",
+      "tags": [
+        "Effect",
+        "Distortion",
+        "Physical modeling"
+      ]
     }
   ]
 }
