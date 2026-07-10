@@ -71,7 +71,12 @@ struct Ululo : Module {
             float f = rp - i0;
             int i1 = i0 + 1; if (i1 >= n) i1 -= n;
             float y = buf[i0] + f * (buf[i1] - buf[i0]);
-            buf[pos] = in + decay * y;
+            // soft-bound the string's energy so a long howl doesn't charge the
+            // comb to huge amplitudes that take ages to ring down
+            float w = in + decay * y;
+            if (w >  2.f) w =  2.f + std::tanh(w - 2.f);
+            if (w < -2.f) w = -2.f + std::tanh(w + 2.f);
+            buf[pos] = w;
             if (++pos >= n) pos = 0;
             return y;
         }

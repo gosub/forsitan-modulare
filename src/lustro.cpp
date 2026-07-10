@@ -179,10 +179,10 @@ struct Lustro : Module {
                 svfLow[b] = svfBand[b] = 0.f;
             // band gain: string displacement at this point (bipolar!)
             int node = 1 + b * (kN - 3) / (kBands - 1);   // skip pinned ends
-            float g = clamp(string.x[node] * 0.8f, -1.5f, 1.5f);
+            float g = clamp(string.x[node] * 0.6f, -1.5f, 1.5f);
             wet += g * svfBand[b];
         }
-        wet = softLimit(wet * 0.5f);
+        wet = softLimit(wet * 0.4f);
 
         const float mix = params[MIX_PARAM].getValue();
         float out = in * (1.f - mix) + wet * mix;

@@ -189,7 +189,8 @@ struct Rete : Module {
         }
         outputs[POLY_OUTPUT].setChannels(kNodes);
 
-        float comp = 5.f / std::sqrt((float)kNodes);
+        // sum of panL^2 == kNodes/2; worst-case correlated sum stays near ±5V
+        float comp = 5.f / (kNodes / 2.f);
         outputs[LEFT_OUTPUT].setVoltage(outL * comp);
         outputs[RIGHT_OUTPUT].setVoltage(outR * comp);
 
