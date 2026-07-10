@@ -134,6 +134,17 @@
         "Distortion",
         "Physical modeling"
       ]
+    },
+    {
+      "slug": "tabes",
+      "name": "tabes",
+      "description": "Disintegration looper: the tape loop degrades a little more on every pass (HF loss, saturation, hiss, dropouts, wow).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/tabes.md",
+      "tags": [
+        "Sampler",
+        "Effect",
+        "Tape"
+      ]
     }
   ]
 }

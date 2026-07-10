@@ -22,6 +22,7 @@ A collection of VCV Rack modules.
 | [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and the original hyf set) played from hz + amp, with fading engine selection | [doc/draen.md](doc/draen.md) |
 | [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos with per-node gain CVs | [doc/rete.md](doc/rete.md) |
 | [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp, howling loop tunable by poly V/oct | [doc/ululo.md](doc/ululo.md) |
+| [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
 
 ## Tools
 
@@ -64,6 +65,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **dræn** | *not Latin* — Old English for *bee*, the etymological root of "drone" (a port of the dronecaster norns instrument) |
 | **rete** | net, network (the 8×8 feedback web at the module's heart) |
 | **ululo** | I howl (guitar feedback, the Larsen effect as an instrument) |
+| **tabes** | wasting away, decay, consumption (the tape loop dying pass by pass) |
 
 ## Author
 
