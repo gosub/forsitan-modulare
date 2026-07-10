@@ -23,6 +23,7 @@ A collection of VCV Rack modules.
 | [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos with per-node gain CVs | [doc/rete.md](doc/rete.md) |
 | [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp, howling loop tunable by poly V/oct | [doc/ululo.md](doc/ululo.md) |
 | [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
+| [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
 
 ## Tools
 
@@ -66,6 +67,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **rete** | net, network (the 8×8 feedback web at the module's heart) |
 | **ululo** | I howl (guitar feedback, the Larsen effect as an instrument) |
 | **tabes** | wasting away, decay, consumption (the tape loop dying pass by pass) |
+| **lustro** | I traverse, I survey (the string surveyed into a filterbank; scando's sibling) |
 
 ## Author
 

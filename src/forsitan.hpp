@@ -21,3 +21,4 @@ extern Model* modelDraen;
 extern Model* modelRete;
 extern Model* modelUlulo;
 extern Model* modelTabes;
+extern Model* modelLustro;
