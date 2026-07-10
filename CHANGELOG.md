@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.0] - 2026-07-11
+### Added
+  - **rete**, a new module: feedback integrator network (after Nathan Ho's
+    topology) — eight leaky integrators into a fixed random 8×8 mixing
+    matrix, DC-blocking highpasses and clippers in a one-sample feedback
+    loop; per-node gain knobs + CVs, leak and matrix-drive controls, excite
+    input, matrix re-roll button/trigger with the seed saved in the patch,
+    stereo spread and 8-channel poly outputs
+  - **ululo**, a new module: feedback guitar (after Nathaniel Virgo's
+    "Guitar feedback emulation") — an amp-distance delay feeds six
+    comb-filter strings, tone/highpass filters and a saturating amp stage
+    close the howling loop; strings retunable by polyphonic V/oct (chords
+    repeat an octave up on spare strings), whammy bend, external audio in
+  - **tabes**, a new module: disintegration looper — the write head
+    re-records a slightly worse copy on every pass (HF loss, saturation,
+    level sag, hiss, age-dependent dropouts, wow/flutter); splice restores
+    the kept pristine recording; AGE CV and EOC trigger outputs
+  - **lustro**, a new module: scanned filter — scando's mass-spring string
+    drives the band gains of a 16-band resonant filterbank processing
+    external audio; pluck or drive the string and the spectrum moves with
+    the physics
+  - **bulla**, a new module: Rob Hordijk's Blippoo Box — two
+    cross-modulating triangle oscillators, two runglers (shift registers
+    with 3-bit DACs) and a twin-peak filter on the oscillators' comparator;
+    rungler CV output, 1V/oct CVs for oscillators and filter peaks
+  - test: `new_modules_smoke`, an offline harness driving all five new
+    modules through process() and checking NaNs, levels, self-oscillation,
+    loop decay/splice and pluck response
+
 ## [2.6.16] - 2026-07-10
 ### Added
   - test: `draen_sweep`, an offline octave sweep (27.5 Hz → 3.52 kHz) of both
