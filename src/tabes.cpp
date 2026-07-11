@@ -60,7 +60,8 @@ struct Tabes : Module {
     float wowPhase = 0.f, flutterPhase = 0.f;
     float dropEnv = 1.f;          // smoothed dropout gain
     int dropTimer = 0;
-    bool monitor = true;          // pass input to output (context menu)
+    enum MonitorMode { MONITOR_WHILE_REC, MONITOR_ALWAYS, MONITOR_NEVER };
+    int monitorMode = MONITOR_WHILE_REC;   // context menu
 
     float curSampleRate = 0.f;
     uint32_t noiseState = 0x6c078965u;
@@ -166,10 +167,11 @@ struct Tabes : Module {
         float out = 0.f;
 
         if (recording) {
-            // write straight to tape; monitor the input
+            // write straight to tape; monitor the input unless muted
             tape[recPos] = in;
             if (++recPos >= (int)tape.size()) stopRecording(sr);
-            out = in;
+            if (monitorMode != MONITOR_NEVER)
+                out = in;
         } else if (loopLen > 0) {
             // ── wow/flutter on the play head ─────────────────────────────────
             wowPhase += 0.6f / sr;
@@ -219,7 +221,7 @@ struct Tabes : Module {
             }
         }
 
-        if (monitor && !recording)
+        if (monitorMode == MONITOR_ALWAYS && !recording)
             out += in;
 
         outputs[AUDIO_OUTPUT].setVoltage(5.f * clamp(out, -2.f, 2.f));
@@ -230,13 +232,15 @@ struct Tabes : Module {
 
     json_t* dataToJson() override {
         json_t* root = json_object();
-        json_object_set_new(root, "monitor", json_boolean(monitor));
+        json_object_set_new(root, "monitorMode", json_integer(monitorMode));
         return root;
     }
 
     void dataFromJson(json_t* root) override {
-        if (json_t* j = json_object_get(root, "monitor"))
-            monitor = json_boolean_value(j);
+        if (json_t* j = json_object_get(root, "monitorMode"))
+            monitorMode = clamp((int)json_integer_value(j), 0, 2);
+        else if (json_t* j = json_object_get(root, "monitor"))   // pre-2.7.0 patches
+            monitorMode = json_boolean_value(j) ? MONITOR_ALWAYS : MONITOR_WHILE_REC;
     }
 };
 
@@ -301,7 +305,8 @@ struct TabesWidget : ModuleWidget {
         Tabes* m = dynamic_cast<Tabes*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
-        menu->addChild(createBoolPtrMenuItem("Monitor input", "", &m->monitor));
+        menu->addChild(createIndexPtrSubmenuItem("Monitor input",
+            {"While recording", "Always", "Never"}, &m->monitorMode));
         menu->addChild(createMenuItem("Clear loop", "", [m]() { m->onReset(); }));
     }
 };

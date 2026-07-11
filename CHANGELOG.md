@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **tabes**, a new module: disintegration looper — the write head
     re-records a slightly worse copy on every pass (HF loss, saturation,
     level sag, hiss, age-dependent dropouts, wow/flutter); splice restores
-    the kept pristine recording; AGE CV and EOC trigger outputs
+    the kept pristine recording; AGE CV and EOC trigger outputs; input
+    monitoring follows recording by default (menu: While recording /
+    Always / Never)
   - **lustro**, a new module: scanned filter — scando's mass-spring string
     drives the band gains of a 16-band resonant filterbank processing
     external audio; pluck or drive the string and the spectrum moves with

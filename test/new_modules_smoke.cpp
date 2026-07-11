@@ -110,7 +110,7 @@ static void testTabes() {
     Tabes m;
     long frame = 0;
     m.params[Tabes::DECAY_PARAM].setValue(0.8f);
-    m.monitor = false;
+    m.monitorMode = Tabes::MONITOR_NEVER;
     m.inputs[Tabes::AUDIO_INPUT].channels = 1;
     m.inputs[Tabes::REC_GATE_INPUT].channels = 1;
     // record 2 s of a 220 Hz sine at +-5 V

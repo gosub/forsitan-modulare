@@ -21,7 +21,10 @@ pass zero.
   becomes the loop length (up to 30 seconds).
 - Or drive the **gate** input: recording follows the gate (high = recording).
 - Recording replaces the previous loop and resets the age.
-- While recording, the input is monitored at the output.
+- While recording, the input is monitored at the output; when recording
+  stops, monitoring stops with it and you hear only the loop. The
+  right-click "Monitor input" menu offers **While recording** (default),
+  **Always** (input passes through during playback too), and **Never**.
 
 ## Controls
 
@@ -36,7 +39,7 @@ pass zero.
 
 | jack | function |
 |------|----------|
-| **out** | the loop (plus the live input, unless "Monitor input" is off in the right-click menu) |
+| **out** | the loop (plus the live input, per the "Monitor input" menu mode) |
 | **age** | 0.1V per completed pass, clamps at 10V. Patch it somewhere: let the patch itself react to the tape dying |
 | **eoc** | 1 ms trigger every time the loop wraps |
 
