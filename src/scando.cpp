@@ -246,7 +246,7 @@ struct ScandoWidget : ModuleWidget {
 // @elem LABEL_DAMP label 0.0 label "damp" 0.0 40.64 66.20
 // @elem LABEL_RATE label 0.0 label "rate" 0.0 67.78 66.20
 // @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 13.50 86.20
-// @elem LABEL_EXCBTN label 0.0 label "excite" 0.0 34.00 86.20
+// @elem LABEL_EXCBTN label 0.0 label "excite" 0.0 40.64 86.20
 // @elem LABEL_EXC label 0.0 label "exc" 0.0 8.00 93.20
 // @elem LABEL_INJ label 0.0 label "inj" 0.0 21.00 93.20
 // @elem LABEL_STIFFCV label 0.0 label "stiff" 0.0 34.00 93.20
@@ -275,7 +275,7 @@ struct ScandoWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.64f, 58.00f)), module, Scando::DAMP_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(67.78f, 58.00f)), module, Scando::RATE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.50f, 78.00f)), module, Scando::IN_LEVEL_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(34.00f, 79.20f)), module, Scando::EXCITE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(40.64f, 78.00f)), module, Scando::EXCITE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.00f, 99.00f)), module, Scando::EXCITE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(21.00f, 99.00f)), module, Scando::INJECT_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(34.00f, 99.00f)), module, Scando::STIFF_CV_INPUT));
