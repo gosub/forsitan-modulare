@@ -262,15 +262,15 @@ struct TabesWidget : ModuleWidget {
 // @elem EOC_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem AGE_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem LABEL_DECAY label 0.0 label "decay" 0.0 20.32 27.50
-// @elem LABEL_WOW label 0.0 label "wow" 0.0 11.50 44.50
-// @elem LABEL_DECAYCV label 0.0 label "cv" 0.0 29.14 44.50
-// @elem LABEL_REC label 0.0 label "rec" 0.0 11.50 60.00
-// @elem LABEL_SPLICE label 0.0 label "splice" 0.0 29.14 60.00
-// @elem LABEL_GATE label 0.0 label "gate" 0.0 11.50 73.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 29.14 73.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 10.50 91.50
-// @elem LABEL_EOC label 0.0 label "eoc" 0.0 29.14 93.50
+// @elem LABEL_DECAY label 0.0 label "decay" 0.0 20.32 28.50
+// @elem LABEL_WOW label 0.0 label "wow" 0.0 11.50 46.50
+// @elem LABEL_DECAYCV label 0.0 label "cv" 0.0 29.14 46.50
+// @elem LABEL_REC label 0.0 label "rec" 0.0 11.50 61.00
+// @elem LABEL_SPLICE label 0.0 label "splice" 0.0 29.14 61.00
+// @elem LABEL_GATE label 0.0 label "gate" 0.0 11.50 74.50
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 29.14 74.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 10.50 92.50
+// @elem LABEL_EOC label 0.0 label "eoc" 0.0 29.14 95.50
 // @elem LABEL_OUT label 0.0 label "out" 0.0 11.50 114.00
 // @elem LABEL_AGE label 0.0 label "age" 0.0 29.14 114.00
 // @elem BOX_EOC panel_box 7.0 box "" 0.0 29.14 90.00

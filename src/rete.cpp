@@ -248,18 +248,18 @@ struct ReteWidget : ModuleWidget {
 // @elem POLY_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_GAINS label 0.0 label "node gains + cv" 0.0 25.40 12.50
-// @elem LABEL_LEAK label 0.0 label "leak" 0.0 13.40 79.50
-// @elem LABEL_SCALE label 0.0 label "scale" 0.0 25.40 79.50
-// @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 37.40 79.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 10.40 97.50
-// @elem LABEL_RND label 0.0 label "rnd" 0.0 25.40 97.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 37.40 97.50
-// @elem LABEL_OUTL label 0.0 label "L" 0.0 10.00 114.00
+// @elem LABEL_LEAK label 0.0 label "leak" 0.0 13.40 81.00
+// @elem LABEL_SCALE label 0.0 label "scale" 0.0 25.40 81.00
+// @elem LABEL_INLVL label 0.0 label "lvl" 0.0 37.40 81.00
+// @elem LABEL_IN label 0.0 label "in" 0.0 10.40 98.50
+// @elem LABEL_RND label 0.0 label "rnd" 0.0 25.40 98.50
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 37.40 98.50
+// @elem LABEL_OUTL label 0.0 label "L" 0.0 9.70 114.00
 // @elem LABEL_OUTR label 0.0 label "R" 0.0 25.40 114.00
-// @elem LABEL_POLY label 0.0 label "poly" 0.0 40.80 114.00
-// @elem BOX_OUTL panel_box 7.0 box "" 0.0 10.00 108.50
+// @elem LABEL_POLY label 0.0 label "poly" 0.0 41.10 114.00
+// @elem BOX_OUTL panel_box 7.0 box "" 0.0 9.70 108.50
 // @elem BOX_OUTR panel_box 7.0 box "" 0.0 25.40 108.50
-// @elem BOX_POLY panel_box 7.0 box "" 0.0 40.80 108.50
+// @elem BOX_POLY panel_box 7.0 box "" 0.0 41.10 108.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.40 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
@@ -288,9 +288,9 @@ struct ReteWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.40f, 91.00f)), module, Rete::EXCITE_INPUT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(25.40f, 91.00f)), module, Rete::RND_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.40f, 91.00f)), module, Rete::RND_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.00f, 106.50f)), module, Rete::LEFT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(9.70f, 106.50f)), module, Rete::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 106.50f)), module, Rete::RIGHT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.80f, 106.50f)), module, Rete::POLY_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(41.10f, 106.50f)), module, Rete::POLY_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.40f, 97.50f)), module, Rete::LEVEL_LIGHT));
         // @layout:end
     }

@@ -220,20 +220,20 @@ struct LustroWidget : ModuleWidget {
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_STIFF label 0.0 label "stiff" 0.0 10.40 27.50
-// @elem LABEL_DAMP label 0.0 label "damp" 0.0 25.40 27.50
-// @elem LABEL_RATE label 0.0 label "rate" 0.0 40.40 27.50
-// @elem LABEL_SHAPE label 0.0 label "shape" 0.0 10.40 44.50
-// @elem LABEL_STRENGTH label 0.0 label "strength" 0.0 25.40 44.50
-// @elem LABEL_RES label 0.0 label "res" 0.0 40.40 44.50
-// @elem LABEL_BASE label 0.0 label "base" 0.0 10.40 61.50
-// @elem LABEL_SPREAD label 0.0 label "spread" 0.0 25.40 61.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 40.40 61.50
-// @elem LABEL_DAMPCV label 0.0 label "damp" 0.0 7.40 79.50
-// @elem LABEL_RATECV label 0.0 label "rate" 0.0 19.40 79.50
-// @elem LABEL_BASECV label 0.0 label "base" 0.0 31.40 79.50
-// @elem LABEL_SPREADCV label 0.0 label "sprd" 0.0 43.40 79.50
-// @elem LABEL_EXCITE label 0.0 label "excite" 0.0 25.40 97.50
+// @elem LABEL_STIFF label 0.0 label "stiff" 0.0 10.40 28.50
+// @elem LABEL_DAMP label 0.0 label "damp" 0.0 25.40 28.50
+// @elem LABEL_RATE label 0.0 label "rate" 0.0 40.40 28.50
+// @elem LABEL_SHAPE label 0.0 label "shape" 0.0 10.40 45.50
+// @elem LABEL_STRENGTH label 0.0 label "force" 0.0 25.40 45.50
+// @elem LABEL_RES label 0.0 label "res" 0.0 40.40 45.50
+// @elem LABEL_BASE label 0.0 label "base" 0.0 10.40 62.50
+// @elem LABEL_SPREAD label 0.0 label "spread" 0.0 25.40 62.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 40.40 62.50
+// @elem LABEL_DAMPCV label 0.0 label "damp" 0.0 7.40 80.50
+// @elem LABEL_RATECV label 0.0 label "rate" 0.0 19.40 80.50
+// @elem LABEL_BASECV label 0.0 label "base" 0.0 31.40 80.50
+// @elem LABEL_SPREADCV label 0.0 label "sprd" 0.0 43.40 80.50
+// @elem LABEL_EXCITE label 0.0 label "excite" 0.0 25.40 98.50
 // @elem LABEL_IN label 0.0 label "in" 0.0 10.40 114.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 40.40 114.00
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 40.40 108.50

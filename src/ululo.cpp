@@ -246,16 +246,16 @@ struct UluloWidget : ModuleWidget {
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_GAIN label 0.0 label "gain" 0.0 20.32 27.50
-// @elem LABEL_DIST label 0.0 label "dist" 0.0 11.50 43.00
-// @elem LABEL_DECAY label 0.0 label "decay" 0.0 29.14 43.00
-// @elem LABEL_TONE label 0.0 label "tone" 0.0 11.50 60.00
-// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 29.14 60.00
-// @elem LABEL_WHAMMY label 0.0 label "whammy" 0.0 11.50 77.00
-// @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 29.14 77.00
-// @elem LABEL_GAINCV label 0.0 label "gain" 0.0 8.50 93.50
-// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 20.32 93.50
-// @elem LABEL_WHAMCV label 0.0 label "wham" 0.0 32.14 93.50
+// @elem LABEL_GAIN label 0.0 label "gain" 0.0 20.32 28.50
+// @elem LABEL_DIST label 0.0 label "dist" 0.0 11.50 44.50
+// @elem LABEL_DECAY label 0.0 label "decay" 0.0 29.14 44.50
+// @elem LABEL_TONE label 0.0 label "tone" 0.0 11.50 61.50
+// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 29.14 61.50
+// @elem LABEL_WHAMMY label 0.0 label "whammy" 0.0 11.50 78.50
+// @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 29.14 78.50
+// @elem LABEL_GAINCV label 0.0 label "gain" 0.0 8.50 94.50
+// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 20.32 94.50
+// @elem LABEL_WHAMCV label 0.0 label "wham" 0.0 32.14 94.50
 // @elem LABEL_IN label 0.0 label "in" 0.0 11.50 114.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 29.14 114.00
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 29.14 108.50
@@ -277,7 +277,7 @@ struct UluloWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.14f, 87.00f)), module, Ululo::WHAMMY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 106.50f)), module, Ululo::AUDIO_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 106.50f)), module, Ululo::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(20.32f, 106.50f)), module, Ululo::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(20.32f, 98.00f)), module, Ululo::LEVEL_LIGHT));
         // @layout:end
     }
 };

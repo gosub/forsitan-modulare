@@ -248,26 +248,26 @@ struct BullaWidget : ModuleWidget {
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem RUNGLER_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_FREQA label 0.0 label "freq a" 0.0 10.40 27.50
-// @elem LABEL_FREQB label 0.0 label "freq b" 0.0 25.40 27.50
-// @elem LABEL_RES label 0.0 label "res" 0.0 40.40 27.50
-// @elem LABEL_BA label 0.0 label "b>a" 0.0 10.40 44.50
-// @elem LABEL_AB label 0.0 label "a>b" 0.0 25.40 44.50
-// @elem LABEL_SHOSC label 0.0 label "sh>osc" 0.0 40.40 44.50
-// @elem LABEL_RA label 0.0 label "r>a" 0.0 10.40 61.50
-// @elem LABEL_RB label 0.0 label "r>b" 0.0 25.40 61.50
-// @elem LABEL_SHFLT label 0.0 label "sh>flt" 0.0 40.40 61.50
-// @elem LABEL_PEAK1 label 0.0 label "peak 1" 0.0 10.40 78.50
-// @elem LABEL_PEAK2 label 0.0 label "peak 2" 0.0 25.40 78.50
-// @elem LABEL_RFLT label 0.0 label "r>flt" 0.0 40.40 78.50
-// @elem LABEL_CVA label 0.0 label "a" 0.0 7.40 93.50
-// @elem LABEL_CVB label 0.0 label "b" 0.0 19.40 93.50
-// @elem LABEL_CVP1 label 0.0 label "p1" 0.0 31.40 93.50
-// @elem LABEL_CVP2 label 0.0 label "p2" 0.0 43.40 93.50
-// @elem LABEL_RUNG label 0.0 label "rung" 0.0 25.40 114.00
-// @elem LABEL_OUT label 0.0 label "out" 0.0 40.40 114.00
-// @elem BOX_RUNG panel_box 7.0 box "" 0.0 25.40 108.50
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 40.40 108.50
+// @elem LABEL_FREQA label 0.0 label "freq a" 0.0 10.40 28.50
+// @elem LABEL_FREQB label 0.0 label "freq b" 0.0 25.40 28.50
+// @elem LABEL_RES label 0.0 label "res" 0.0 40.40 28.50
+// @elem LABEL_BA label 0.0 label "b>a" 0.0 10.40 45.50
+// @elem LABEL_AB label 0.0 label "a>b" 0.0 25.40 45.50
+// @elem LABEL_SHOSC label 0.0 label "sh>osc" 0.0 40.40 45.50
+// @elem LABEL_RA label 0.0 label "r>a" 0.0 10.40 62.50
+// @elem LABEL_RB label 0.0 label "r>b" 0.0 25.40 62.50
+// @elem LABEL_SHFLT label 0.0 label "sh>flt" 0.0 40.40 62.50
+// @elem LABEL_PEAK1 label 0.0 label "peak 1" 0.0 10.40 79.50
+// @elem LABEL_PEAK2 label 0.0 label "peak 2" 0.0 25.40 79.50
+// @elem LABEL_RFLT label 0.0 label "r>flt" 0.0 40.40 79.50
+// @elem LABEL_CVA label 0.0 label "a" 0.0 7.40 94.50
+// @elem LABEL_CVB label 0.0 label "b" 0.0 19.40 94.50
+// @elem LABEL_CVP1 label 0.0 label "p1" 0.0 31.40 94.50
+// @elem LABEL_CVP2 label 0.0 label "p2" 0.0 43.40 94.50
+// @elem LABEL_RUNG label 0.0 label "rung" 0.0 25.10 114.00
+// @elem LABEL_OUT label 0.0 label "out" 0.0 40.90 114.00
+// @elem BOX_RUNG panel_box 7.0 box "" 0.0 25.10 108.50
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 40.90 108.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.40 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
@@ -290,8 +290,8 @@ struct BullaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 87.00f)), module, Bulla::FREQ_B_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.40f, 87.00f)), module, Bulla::PEAK1_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 87.00f)), module, Bulla::PEAK2_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 106.50f)), module, Bulla::RUNGLER_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.40f, 106.50f)), module, Bulla::AUDIO_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.10f, 106.50f)), module, Bulla::RUNGLER_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.90f, 106.50f)), module, Bulla::AUDIO_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(10.40f, 106.50f)), module, Bulla::LEVEL_LIGHT));
         // @layout:end
     }
