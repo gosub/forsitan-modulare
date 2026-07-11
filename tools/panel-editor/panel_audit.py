@@ -111,10 +111,14 @@ def audit(path):
     W, H = data['panel_w'], data['panel_h']
     issues = []
     # title bbox
-    title_w = text_w(data['module'], 2.8)
+    title_sz = 3.8
+    avail = W - 2 * 12.1
+    if text_w(data['module'], title_sz) > avail:
+        title_sz *= avail / text_w(data['module'], title_sz)
+    title_w = text_w(data['module'], title_sz)
     title = {'id': 'TITLE', 'kind': 'label', 'label': data['module'],
-             'x': W/2, 'y': 6.3}
-    title_bb = (W/2 - title_w/2, 3.5, W/2 + title_w/2, 6.3)
+             'x': W/2, 'y': 3.5 + title_sz}
+    title_bb = (W/2 - title_w/2, 3.5, W/2 + title_w/2, 3.5 + title_sz)
     all_els = [(e, bbox(e)) for e in els]
     all_els.append((title, title_bb))
     for i in range(len(all_els)):

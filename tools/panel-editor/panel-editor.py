@@ -289,8 +289,12 @@ def regen_svg(layout, svg_path):
         f'  <rect width="{W}" height="{H}" fill="#1a1a1a"/>',
     ]
 
-    # module name title at top
-    title_sz = 2.8
+    # module name title at top; long names shrink to clear the screw zones
+    title_sz = 3.8
+    avail = W - 2 * 12.1   # panel width minus screw zones + clearance
+    w = text_w(mod, title_sz)
+    if w > avail:
+        title_sz *= avail / w
     d = text_path(mod, W/2, 3.5 + title_sz, title_sz)
     if d:
         lines.append(f'  <path d="{d}" fill="#dcdcdc"/>')
