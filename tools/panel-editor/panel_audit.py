@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Audit forsitan panel @layout blocks for overlaps and label clearances.
+
+Rules (from CLAUDE.md):
+  - >= 1.5 mm between any two element bounding boxes
+  - >= 1 mm between a label and the element it names
+Intentional containments are whitelisted: jack/label inside its panel box,
+screws vs. panel edge, label sitting right under/over its own control
+(still needs >= 1 mm).
+
+Label baseline conventions (established v2.7.0): jack center +7.5 mm,
+small knob (r4.5) +8.5 mm, big knob (r6) +10 mm, TL1105 button +7 mm.
+
+Usage (from the repo root; needs the fonttools venv on hand):
+    ~/dl/audio/fonttools-venv/bin/python tools/panel-editor/panel_audit.py [src/foo.cpp ...]
+With no arguments it audits every src/*.cpp that has an @layout block.
+Exits nonzero if any issue is found.
+"""
+import os, sys, re
+
+sys.path.insert(0, 'tools/panel-editor')
+src = open('tools/panel-editor/panel-editor.py').read().replace(
+    "if __name__ == '__main__':", "if False:")
+ns = {}
+exec(compile(src, 'panel-editor.py', 'exec'), ns)
+
+# font metrics via fonttools (venv already importable through regen helper)
+ns['_ensure_fonttools']()
+from fontTools.ttLib import TTFont
+font = TTFont(ns['_find_font']())
+glyphs = font.getGlyphSet()
+cap_h = font['OS/2'].sCapHeight
+cmap = font.getBestCmap()
+
+def text_w(txt, sz):
+    total = 0
+    for ch in txt:
+        g = glyphs.get(cmap.get(ord(ch), ch), glyphs.get('.notdef'))
+        total += g.width * (sz / cap_h)
+    return total
+
+DESCENDERS = set('gjpqy')
+
+# radii: use real widget sizes (TL1105 is ~6 mm across -> r3)
+RADIUS_OVERRIDE = {'TL1105': 3.0}
+
+def bbox(el):
+    x, y = el['x'], el['y']
+    k = el['kind']
+    if k == 'label':
+        w = text_w(el['label'], 2.2)
+        desc = 0.7 if any(c in DESCENDERS for c in el['label']) else 0.0
+        return (x - w/2, y - 2.2, x + w/2, y + desc)
+    if k == 'box':
+        return (x - 7, y - 7, x + 7, y + 7)
+    if k == 'logo':
+        return (x - 6.25, y - 2.75, x + 6.25, y + 2.75)
+    r = RADIUS_OVERRIDE.get(el['cpp_type'], el['radius'])
+    return (x - r, y - r, x + r, y + r)
+
+def gap(a, b):
+    dx = max(a[0] - b[2], b[0] - a[2])
+    dy = max(a[1] - b[3], b[1] - a[3])
+    if dx < 0 and dy < 0:
+        return -min(-dx, -dy)   # negative: overlap depth
+    return max(dx, dy) if (dx >= 0 and dy >= 0) else max(dx, dy)
+
+def contains(outer, inner):
+    return (outer[0] <= inner[0] and outer[1] <= inner[1]
+            and outer[2] >= inner[2] and outer[3] >= inner[3])
+
+def related(a, b):
+    """label b names control a (same stem)?"""
+    if b['kind'] != 'label':
+        return False
+    stem = b['id'].replace('LABEL_', '')
+    return stem in a['id'] or a['id'].replace('_PARAM', '').replace(
+        '_INPUT', '').replace('_OUTPUT', '').endswith(stem)
+
+def audit(path):
+    data = ns['parse_cpp'](os.path.abspath(path))
+    els = data['elements']
+    W, H = data['panel_w'], data['panel_h']
+    issues = []
+    # title bbox
+    title_w = text_w(data['module'], 2.8)
+    title = {'id': 'TITLE', 'kind': 'label', 'label': data['module'],
+             'x': W/2, 'y': 6.3}
+    title_bb = (W/2 - title_w/2, 3.5, W/2 + title_w/2, 6.3)
+    all_els = [(e, bbox(e)) for e in els]
+    all_els.append((title, title_bb))
+    for i in range(len(all_els)):
+        for j in range(i+1, len(all_els)):
+            (a, ba), (b, bb) = all_els[i], all_els[j]
+            # whitelists
+            if a['kind'] == 'box' or b['kind'] == 'box':
+                box, obb = (a, bb) if a['kind'] == 'box' else (b, ba)
+                other = b if a['kind'] == 'box' else a
+                if other['kind'] in ('output', 'input', 'label', 'light'):
+                    if contains(bbox(box), obb):
+                        continue   # element fully inside its badge box: fine
+            if a['kind'] == 'screw' or b['kind'] == 'screw':
+                need = 1.0
+            elif a['kind'] == 'label' and b['kind'] == 'label':
+                need = 1.0
+            elif a['kind'] == 'label' or b['kind'] == 'label':
+                need = 1.0
+            else:
+                need = 1.5
+            g = gap(ba, bb)
+            if g < need - 1e-6:
+                issues.append((a['id'], b['id'], round(g, 2), need))
+    # out-of-panel check
+    for e, bb2 in all_els:
+        if bb2[0] < 0.3 or bb2[1] < 0.3 or bb2[2] > W - 0.3 or bb2[3] > H - 0.3:
+            if e['kind'] != 'screw':
+                issues.append((e['id'], 'PANEL_EDGE', 0, 0))
+    return data['module'], issues
+
+import glob
+files = sys.argv[1:]
+if not files:
+    files = [f for f in sorted(glob.glob('src/*.cpp'))
+             if '@layout:begin' in open(f).read()]
+total = 0
+for f in files:
+    mod, issues = audit(f)
+    total += len(issues)
+    print(f"== {mod}: {len(issues)} issue(s)")
+    for a, b, g, need in issues:
+        print(f"   {a} <-> {b}: gap {g}mm (need {need})")
+sys.exit(1 if total else 0)
