@@ -29,8 +29,8 @@ speaks when the physics moves.
 | **damp** (+CV) | high: motion dies quickly (plucks become short spectral gestures); low: rings long, slightly self-oscillating at the very bottom |
 | **rate** (+CV) | physics update rate, 500 Hz–8 kHz: how fast the spectrum evolves |
 | **shape** | hammer shape (sine → saw → noise → dual pulse): the spectral *pattern* a pluck imposes |
-| **strength** | continuous hammer drive: keeps the string (and so the filter) moving without triggers |
-| **excite** | trigger input: hammer the string to the current shape |
+| **force** | continuous hammer drive: keeps the string (and so the filter) moving without triggers |
+| **excite** (button) / **exc** (jack) | hammer the string to the current shape: press the button or send a trigger |
 
 ### Filterbank
 

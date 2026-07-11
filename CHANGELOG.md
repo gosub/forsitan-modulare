@@ -33,8 +33,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - test: `new_modules_smoke`, an offline harness driving all five new
     modules through process() and checking NaNs, levels, self-oscillation,
     loop decay/splice and pluck response
-  - scando: EXCITE button on the panel — a manual hammer hit, same as a
-    trigger on the exc jack
+  - scando, lustro: EXCITE buttons on the panel — a manual hammer hit,
+    same as a trigger on the exc jack
   - tools: `panel-editor/panel_audit.py`, a clearance/overlap checker for
     @layout panels (true widget sizes, circle geometry, real OCR-A widths)
 ### Changed

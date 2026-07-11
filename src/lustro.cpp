@@ -36,6 +36,7 @@ struct Lustro : Module {
         BASE_PARAM,
         SPREAD_PARAM,
         MIX_PARAM,
+        EXCITE_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -60,6 +61,7 @@ struct Lustro : Module {
     HammerTable   hammer;
     Rng           rng;
     dsp::SchmittTrigger exciteTrigger;
+    dsp::BooleanTrigger exciteButton;
 
     // Chamberlin state-variable bandpass bank
     float svfLow[kBands] = {};
@@ -82,6 +84,7 @@ struct Lustro : Module {
         configParam(BASE_PARAM,     0.f, 1.f, 0.4f,  "Base frequency");
         configParam(SPREAD_PARAM,   0.f, 1.f, 0.6f,  "Spread (octaves)");
         configParam(MIX_PARAM,      0.f, 1.f, 1.f,   "Dry/wet mix", "%", 0.f, 100.f);
+        configButton(EXCITE_PARAM, "Excite (hammer hit)");
         configInput(DAMP_CV_INPUT,   "Damping CV");
         configInput(RATE_CV_INPUT,   "Update rate CV");
         configInput(BASE_CV_INPUT,   "Base frequency CV");
@@ -141,7 +144,9 @@ struct Lustro : Module {
             lastShape = shapeK;
         }
 
-        if (exciteTrigger.process(inputs[EXCITE_INPUT].getVoltage(), 0.1f, 1.f))
+        bool exciteTrig = exciteTrigger.process(inputs[EXCITE_INPUT].getVoltage(), 0.1f, 1.f);
+        bool exciteBtn = exciteButton.process(params[EXCITE_PARAM].getValue() > 0.5f);
+        if (exciteTrig || exciteBtn)
             string.setShape(hammerBuf, kPluckAmp);
 
         const float drive = kStrength * strengthK;
@@ -216,6 +221,7 @@ struct LustroWidget : ModuleWidget {
 // @elem RATE_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem BASE_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SPREAD_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem EXCITE_PARAM TL1105 2.6 param "" 0.0
 // @elem EXCITE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
@@ -233,7 +239,8 @@ struct LustroWidget : ModuleWidget {
 // @elem LABEL_RATECV label 0.0 label "rate" 0.0 19.40 80.50
 // @elem LABEL_BASECV label 0.0 label "base" 0.0 31.40 80.50
 // @elem LABEL_SPREADCV label 0.0 label "sprd" 0.0 43.40 80.50
-// @elem LABEL_EXCITE label 0.0 label "excite" 0.0 25.40 98.50
+// @elem LABEL_EXCBTN label 0.0 label "excite" 0.0 10.40 98.50
+// @elem LABEL_EXCITE label 0.0 label "exc" 0.0 25.40 98.50
 // @elem LABEL_IN label 0.0 label "in" 0.0 10.40 114.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 40.40 114.00
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 40.40 108.50
@@ -256,6 +263,7 @@ struct LustroWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 73.00f)), module, Lustro::RATE_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.40f, 73.00f)), module, Lustro::BASE_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 73.00f)), module, Lustro::SPREAD_CV_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(10.40f, 91.00f)), module, Lustro::EXCITE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.40f, 91.00f)), module, Lustro::EXCITE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.40f, 106.50f)), module, Lustro::AUDIO_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.40f, 106.50f)), module, Lustro::AUDIO_OUTPUT));
