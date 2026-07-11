@@ -289,8 +289,9 @@ def regen_svg(layout, svg_path):
         f'  <rect width="{W}" height="{H}" fill="#1a1a1a"/>',
     ]
 
-    # module name title at top; long names shrink to clear the screw zones
-    title_sz = 3.8
+    # module name title at top; long names shrink to clear the screw zones,
+    # and wide panels keep the smaller title (3.8mm would dominate them)
+    title_sz = 3.8 if W <= 60 else 2.8
     avail = W - 2 * 12.1   # panel width minus screw zones + clearance
     w = text_w(mod, title_sz)
     if w > avail:
