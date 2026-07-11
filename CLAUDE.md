@@ -86,7 +86,7 @@ pre-baked `<path>` elements). Shared visual grammar:
 - **Background** rect filling the panel (`#1a1a1a`).
 - **Title**: module name in **OCR-A**, baked to SVG `<path>` (fill `#f9f9f9`),
   centered horizontally near the top. Generated panels (MMCCCXCIX onward)
-  use a 3.8mm cap height on panels up to 90mm wide and 2.8mm on wider
+  use a 3.2mm cap height on panels up to 90mm wide and 2.8mm on wider
   ones (only pellicula), auto-shrunk on long names to clear the screw zones (`regen_svg`
   handles this).
 - **forsitan logo** bottom corner: a rounded-rect "domino" with a divider line

@@ -290,8 +290,10 @@ def regen_svg(layout, svg_path):
     ]
 
     # module name title at top; long names shrink to clear the screw zones,
-    # and very wide panels keep the smaller title (3.8mm would dominate them)
-    title_sz = 3.8 if W <= 90 else 2.8
+    # and very wide panels keep the smaller title (a big title dominates them).
+    # 3.2mm clears the screw zones for 5-char names on 8HP panels, so all
+    # titles render the same size (only MMCCCXCIX still shrinks)
+    title_sz = 3.2 if W <= 90 else 2.8
     avail = W - 2 * 12.1   # panel width minus screw zones + clearance
     w = text_w(mod, title_sz)
     if w > avail:
