@@ -123,7 +123,9 @@ struct Rete : Module {
     }
 
     void onReset() override {
-        reseed(random::u32());
+        // initialize clears the network state but keeps the matrix: the seed
+        // is the instrument's identity, only RND rolls a new one
+        reseed(seed);
         levelEnvL = levelEnvR = 0.f;
     }
 
