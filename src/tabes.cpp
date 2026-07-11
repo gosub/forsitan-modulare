@@ -44,6 +44,8 @@ struct Tabes : Module {
     };
     enum LightId {
         REC_LIGHT,
+        EOC_LIGHT,
+        OUT_LIGHT,
         LIGHTS_LEN
     };
 
@@ -68,6 +70,8 @@ struct Tabes : Module {
     dsp::BooleanTrigger recButton, spliceButton;
     dsp::SchmittTrigger spliceTrigger;
     dsp::PulseGenerator eocPulse;
+    float eocFlash = 0.f;
+    float outEnv = 0.f;
 
     Tabes() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -83,6 +87,8 @@ struct Tabes : Module {
         configOutput(AGE_OUTPUT, "Age (0.1V per pass)");
         configOutput(EOC_OUTPUT, "End of loop trigger");
         configLight(REC_LIGHT, "Recording");
+        configLight(EOC_LIGHT, "End of loop");
+        configLight(OUT_LIGHT, "Output level");
     }
 
     void onReset() override {
@@ -94,6 +100,8 @@ struct Tabes : Module {
         wowPhase = flutterPhase = 0.f;
         dropEnv = 1.f;
         dropTimer = 0;
+        eocFlash = 0.f;
+        outEnv = 0.f;
         std::fill(tape.begin(), tape.end(), 0.f);
     }
 
@@ -218,6 +226,7 @@ struct Tabes : Module {
                 playPos = 0;
                 age++;
                 eocPulse.trigger(1e-3f);
+                eocFlash = 1.f;
             }
         }
 
@@ -228,6 +237,12 @@ struct Tabes : Module {
         outputs[AGE_OUTPUT].setVoltage(std::min(0.1f * age, 10.f));
         outputs[EOC_OUTPUT].setVoltage(eocPulse.process(args.sampleTime) ? 10.f : 0.f);
         lights[REC_LIGHT].setBrightness(recording ? 1.f : 0.f);
+        // ~100 ms flash per loop wrap; smoothed audio level on the out badge
+        eocFlash *= 1.f - 10.f * args.sampleTime;
+        if (eocFlash < 0.f) eocFlash = 0.f;
+        lights[EOC_LIGHT].setBrightness(eocFlash);
+        outEnv += (std::fabs(out) - outEnv) * 0.002f;
+        lights[OUT_LIGHT].setBrightness(clamp(outEnv, 0.f, 1.f));
     }
 
     json_t* dataToJson() override {
@@ -259,6 +274,8 @@ struct TabesWidget : ModuleWidget {
 // @elem DECAY_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem REC_PARAM TL1105 2.0 param "" 0.0
 // @elem REC_LIGHT SmallLight 1.5 light "" 0.0
+// @elem EOC_LIGHT SmallLight 1.5 light "" 0.0
+// @elem OUT_LIGHT SmallLight 1.5 light "" 0.0
 // @elem SPLICE_PARAM TL1105 2.0 param "" 0.0
 // @elem REC_GATE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SPLICE_TRIG_INPUT PJ301MPort 4.18 input "" 0.0
@@ -291,6 +308,8 @@ struct TabesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(29.14f, 38.00f)), module, Tabes::DECAY_CV_INPUT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(11.50f, 54.00f)), module, Tabes::REC_PARAM));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(14.40f, 51.10f)), module, Tabes::REC_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(34.14f, 85.00f)), module, Tabes::EOC_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 103.50f)), module, Tabes::OUT_LIGHT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(29.14f, 54.00f)), module, Tabes::SPLICE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 69.00f)), module, Tabes::REC_GATE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(29.14f, 69.00f)), module, Tabes::SPLICE_TRIG_INPUT));

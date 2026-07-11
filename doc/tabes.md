@@ -41,7 +41,7 @@ pass zero.
 |------|----------|
 | **out** | the loop (plus the live input, per the "Monitor input" menu mode) |
 | **age** | 0.1V per completed pass, clamps at 10V. Patch it somewhere: let the patch itself react to the tape dying |
-| **eoc** | 1 ms trigger every time the loop wraps |
+| **eoc** | 1 ms trigger every time the loop wraps (its LED flashes with each wrap) |
 
 ## Tips
 
