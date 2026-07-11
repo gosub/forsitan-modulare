@@ -292,7 +292,7 @@ struct BullaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 87.00f)), module, Bulla::PEAK2_CV_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.10f, 106.50f)), module, Bulla::RUNGLER_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.90f, 106.50f)), module, Bulla::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(10.40f, 106.50f)), module, Bulla::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(44.70f, 102.70f)), module, Bulla::LEVEL_LIGHT));
         // @layout:end
     }
 };

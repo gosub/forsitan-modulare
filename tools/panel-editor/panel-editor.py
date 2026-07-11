@@ -20,16 +20,16 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 # ── visual properties for each VCV Rack widget type (radius in mm) ────────────
 # vec_off: offset from stored visual-center to the createWidget Vec arg (screws only)
 WIDGET_VISUALS = {
-    'RoundHugeBlackKnob': {'r': 9.0,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.8},
-    'RoundBigBlackKnob':  {'r': 6.0,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.6},
-    'RoundBlackKnob':     {'r': 4.5,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.5},
+    'RoundHugeBlackKnob': {'r': 9.12, 'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.8},
+    'RoundBigBlackKnob':  {'r': 7.62, 'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.6},
+    'RoundBlackKnob':     {'r': 4.8,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.5},
     'Rogan1PWhite':       {'r': 4.5,  'fill': '#eeeeee', 'stroke': '#aaa', 'sw': 0.5},
     'Rogan2PWhite':       {'r': 5.5,  'fill': '#eeeeee', 'stroke': '#aaa', 'sw': 0.5},
     'Trimpot':            {'r': 2.5,  'fill': '#363636', 'stroke': '#888', 'sw': 0.4},
-    'PJ301MPort':         {'r': 4.18, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
-    'PJ3410Port':         {'r': 4.18, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
-    'TL1105':             {'r': 2.0,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
-    'SmallLight':         {'r': 1.5,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
+    'PJ301MPort':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
+    'PJ3410Port':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
+    'TL1105':             {'r': 2.6,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
+    'SmallLight':         {'r': 1.0,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
     'MediumLight':        {'r': 2.0,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
     # ScrewSilver/Black: vec_off = half the 15px widget size at 2.953 px/mm ≈ 2.54mm
     'ScrewSilver':        {'r': 3.5,  'vec_off': 2.54, 'fill': '#c0c0c0', 'stroke': '#888', 'sw': 0.4},

@@ -41,8 +41,10 @@ def text_w(txt, sz):
 
 DESCENDERS = set('gjpqy')
 
-# radii: use real widget sizes (TL1105 is ~6 mm across -> r3)
-RADIUS_OVERRIDE = {'TL1105': 3.0}
+# real widget sizes measured from the Rack ComponentLibrary SVG viewBoxes
+RADIUS_OVERRIDE = {'RoundHugeBlackKnob': 9.12, 'RoundBigBlackKnob': 7.62,
+                   'RoundBlackKnob': 4.8, 'PJ301MPort': 4.01,
+                   'TL1105': 2.6, 'SmallLight': 1.0, 'MediumLight': 1.5}
 
 def bbox(el):
     x, y = el['x'], el['y']
@@ -58,12 +60,38 @@ def bbox(el):
     r = RADIUS_OVERRIDE.get(el['cpp_type'], el['radius'])
     return (x - r, y - r, x + r, y + r)
 
-def gap(a, b):
+CIRCLE_KINDS = ('param', 'input', 'output', 'light', 'screw')
+
+def circle(el):
+    if el.get('kind') not in CIRCLE_KINDS:
+        return None
+    r = RADIUS_OVERRIDE.get(el.get('cpp_type'), el.get('radius', 1.0))
+    return (el['x'], el['y'], r)
+
+def rect_gap(a, b):
     dx = max(a[0] - b[2], b[0] - a[2])
     dy = max(a[1] - b[3], b[1] - a[3])
     if dx < 0 and dy < 0:
         return -min(-dx, -dy)   # negative: overlap depth
-    return max(dx, dy) if (dx >= 0 and dy >= 0) else max(dx, dy)
+    return max(dx, dy)
+
+def circle_rect_gap(c, r):
+    import math
+    cx, cy, cr = c
+    px = min(max(cx, r[0]), r[2])
+    py = min(max(cy, r[1]), r[3])
+    return math.hypot(cx - px, cy - py) - cr
+
+def pair_gap(ea, ba, eb, bb):
+    import math
+    ca, cb = circle(ea), circle(eb)
+    if ca and cb:
+        return math.hypot(ca[0] - cb[0], ca[1] - cb[1]) - ca[2] - cb[2]
+    if ca:
+        return circle_rect_gap(ca, bb)
+    if cb:
+        return circle_rect_gap(cb, ba)
+    return rect_gap(ba, bb)
 
 def contains(outer, inner):
     return (outer[0] <= inner[0] and outer[1] <= inner[1]
@@ -99,7 +127,9 @@ def audit(path):
                 if other['kind'] in ('output', 'input', 'label', 'light'):
                     if contains(bbox(box), obb):
                         continue   # element fully inside its badge box: fine
-            if a['kind'] == 'screw' or b['kind'] == 'screw':
+            if a['kind'] == 'light' or b['kind'] == 'light':
+                need = 0.2   # LEDs sit at the corner of their control
+            elif a['kind'] == 'screw' or b['kind'] == 'screw':
                 need = 1.0
             elif a['kind'] == 'label' and b['kind'] == 'label':
                 need = 1.0
@@ -107,7 +137,7 @@ def audit(path):
                 need = 1.0
             else:
                 need = 1.5
-            g = gap(ba, bb)
+            g = pair_gap(a, ba, b, bb)
             if g < need - 1e-6:
                 issues.append((a['id'], b['id'], round(g, 2), need))
     # out-of-panel check

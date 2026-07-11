@@ -246,7 +246,7 @@ struct UluloWidget : ModuleWidget {
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_GAIN label 0.0 label "gain" 0.0 20.32 28.50
+// @elem LABEL_GAIN label 0.0 label "gain" 0.0 20.32 30.00
 // @elem LABEL_DIST label 0.0 label "dist" 0.0 11.50 44.50
 // @elem LABEL_DECAY label 0.0 label "decay" 0.0 29.14 44.50
 // @elem LABEL_TONE label 0.0 label "tone" 0.0 11.50 61.50
@@ -277,7 +277,7 @@ struct UluloWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.14f, 87.00f)), module, Ululo::WHAMMY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 106.50f)), module, Ululo::AUDIO_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 106.50f)), module, Ululo::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(20.32f, 98.00f)), module, Ululo::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(32.94f, 102.70f)), module, Ululo::LEVEL_LIGHT));
         // @layout:end
     }
 };
