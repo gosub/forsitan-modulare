@@ -224,8 +224,8 @@ struct MMCCCXCIXWidget : ModuleWidget {
 // @elem LABEL_FBCV label 0.0 label "fb" 0.0 10.19 84.40
 // @elem LABEL_MIXCV label 0.0 label "wet" 0.0 40.57 84.48
 // @elem LABEL_FLPCV label 0.0 label "fb mix" 0.0 25.44 84.53
-// @elem LABEL_SEND label 0.0 label "send" 0.0 14.99 101.38
-// @elem LABEL_RETURN label 0.0 label "return" 0.0 35.23 101.77
+// @elem LABEL_SEND label 0.0 label "send" 0.0 14.99 102.00
+// @elem LABEL_RETURN label 0.0 label "return" 0.0 35.23 102.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 40.34 119.10
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.46 123.37
 // @elem BOX_SEND panel_box 7.0 box "" 0.0 14.86 95.80

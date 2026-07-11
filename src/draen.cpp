@@ -277,7 +277,7 @@ struct DraenWidget : ModuleWidget {
 // @elem LEFT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem RIGHT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_ENGINE label 0.0 label "engine" 0.0 20.32 25.00
+// @elem LABEL_ENGINE label 0.0 label "engine" 0.0 20.32 24.30
 // @elem LABEL_ENGCV label 0.0 label "eng cv" 0.0 20.32 46.00
 // @elem LABEL_HZ label 0.0 label "hz" 0.0 11.50 66.00
 // @elem LABEL_AMP label 0.0 label "amp" 0.0 29.14 66.00

@@ -231,7 +231,7 @@ struct ScandoWidget : ModuleWidget {
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_FINE label 0.0 label "fine" 0.0 13.50 27.70
-// @elem LABEL_FREQ label 0.0 label "freq" 0.0 40.64 27.70
+// @elem LABEL_FREQ label 0.0 label "freq" 0.0 40.64 29.50
 // @elem LABEL_SHAPE label 0.0 label "shape" 0.0 67.78 27.70
 // @elem LABEL_MASS label 0.0 label "mass" 0.0 13.50 46.20
 // @elem LABEL_STIFF label 0.0 label "stiff" 0.0 40.64 46.20
@@ -250,7 +250,7 @@ struct ScandoWidget : ModuleWidget {
 // @elem LABEL_MASSCV label 0.0 label "mass" 0.0 21.00 107.20
 // @elem LABEL_DAMPCV label 0.0 label "damp" 0.0 34.00 107.20
 // @elem LABEL_SHAPECV label 0.0 label "shape" 0.0 47.00 107.20
-// @elem LABEL_OUT label 0.0 label "out" 0.0 73.00 120.00
+// @elem LABEL_OUT label 0.0 label "out" 0.0 73.00 120.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 40.64 122.50
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 73.00 114.50
 
