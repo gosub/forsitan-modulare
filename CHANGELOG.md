@@ -33,6 +33,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - test: `new_modules_smoke`, an offline harness driving all five new
     modules through process() and checking NaNs, levels, self-oscillation,
     loop decay/splice and pluck response
+  - scando: EXCITE button on the panel — a manual hammer hit, same as a
+    trigger on the exc jack
+  - tools: `panel-editor/panel_audit.py`, a clearance/overlap checker for
+    @layout panels (true widget sizes, circle geometry, real OCR-A widths)
+### Changed
+  - panel polish across the collection: consistent label offsets (jack
+    +7.5mm, knob +8.5mm, big knob +11.5mm, button +7mm), output-level LEDs
+    at the top-right corner of their output badge (one per badge on stereo
+    pairs), corrected widget sizes in the panel editor, label nudges on
+    scando/MMCCCXCIX/dræn, and pellicula's left-gutter text placement plus
+    a badge-grey output bar
 
 ## [2.6.16] - 2026-07-10
 ### Added

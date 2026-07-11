@@ -36,6 +36,7 @@ struct Scando : Module {
         STRENGTH_PARAM,
         RATE_PARAM,
         IN_LEVEL_PARAM,
+        EXCITE_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -64,6 +65,7 @@ struct Scando : Module {
     HammerTable   hammer;
     Rng           rng;
     dsp::SchmittTrigger exciteTrigger;
+    dsp::BooleanTrigger exciteButton;
     DCBlocker     dc;        // centres the scanned signal before the limiter
     DCBlocker     dcOut;     // removes any soft-clip-induced DC at the output
     OutStage      out;
@@ -88,6 +90,7 @@ struct Scando : Module {
         configParam(STRENGTH_PARAM, 0.f, 1.f, 0.f,   "Strength");
         configParam(RATE_PARAM,     0.f, 1.f, 0.75f, "Update rate");
         configParam(IN_LEVEL_PARAM, 0.f, 1.f, 0.f,   "Inject level");
+        configButton(EXCITE_PARAM, "Excite (hammer hit)");
 
         configInput(VOCT_INPUT,     "1V/oct pitch");
         configInput(EXCITE_INPUT,   "Excite (hammer hit) trigger");
@@ -158,7 +161,9 @@ struct Scando : Module {
         }
 
         // ── EXCITE: hammer the string to the current shape (a pluck) ────────
-        if (exciteTrigger.process(inputs[EXCITE_INPUT].getVoltage(), 0.1f, 1.f))
+        bool exciteTrig = exciteTrigger.process(inputs[EXCITE_INPUT].getVoltage(), 0.1f, 1.f);
+        bool exciteBtn = exciteButton.process(params[EXCITE_PARAM].getValue() > 0.5f);
+        if (exciteTrig || exciteBtn)
             string.setShape(hammerBuf, kPluckAmp);
 
         // ── continuous excitation forces ────────────────────────────────────
@@ -218,6 +223,7 @@ struct ScandoWidget : ModuleWidget {
 // @elem DAMP_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem RATE_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem IN_LEVEL_PARAM RoundBlackKnob 4.5 param "" 0.0
+// @elem EXCITE_PARAM TL1105 2.6 param "" 0.0
 // @elem EXCITE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem INJECT_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem STIFF_CV_INPUT PJ301MPort 4.18 input "" 0.0
@@ -240,6 +246,7 @@ struct ScandoWidget : ModuleWidget {
 // @elem LABEL_DAMP label 0.0 label "damp" 0.0 40.64 66.20
 // @elem LABEL_RATE label 0.0 label "rate" 0.0 67.78 66.20
 // @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 13.50 86.20
+// @elem LABEL_EXCBTN label 0.0 label "excite" 0.0 34.00 86.20
 // @elem LABEL_EXC label 0.0 label "exc" 0.0 8.00 93.20
 // @elem LABEL_INJ label 0.0 label "inj" 0.0 21.00 93.20
 // @elem LABEL_STIFFCV label 0.0 label "stiff" 0.0 34.00 93.20
@@ -268,6 +275,7 @@ struct ScandoWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.64f, 58.00f)), module, Scando::DAMP_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(67.78f, 58.00f)), module, Scando::RATE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.50f, 78.00f)), module, Scando::IN_LEVEL_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(34.00f, 79.20f)), module, Scando::EXCITE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.00f, 99.00f)), module, Scando::EXCITE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(21.00f, 99.00f)), module, Scando::INJECT_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(34.00f, 99.00f)), module, Scando::STIFF_CV_INPUT));

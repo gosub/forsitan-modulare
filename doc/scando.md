@@ -46,13 +46,14 @@ sympathy. Excite, inject and strength are the three ways to wake it.
 | **strength** | Continuously drives the string with the current hammer **shape**. At zero the voice only rings from the hammer/inject; raise it for a self-sustaining, hammer-shaped tone. |
 | **rate** | Update rate of the string physics, ~500 Hz–8 kHz. Strongly affects every other control: higher rates evolve faster and shift the apparent stiffness/damping. |
 | **in lvl** | Attenuator for the **inject** input. |
+| **excite** (button) | Hammers every mass to the current **shape** — a pluck, same as a trigger on **exc**. |
 
 ## Inputs and output
 
 | jack | description |
 |------|-------------|
 | **v/oct** | 1V/octave pitch, added to the **freq** and **fine** knobs. |
-| **exc** | Excite trigger. A rising edge hammers every mass to the current **shape** — a pluck. |
+| **exc** | Excite trigger. A rising edge hammers every mass to the current **shape** — a pluck (same as the **excite** button). |
 | **inj** | Audio inject. The signal excites the string through the current hammer shape (scaled by **in lvl**), behaving a little like an envelope follower. |
 | **out** | Audio output (±5V). A self-levelling limiter holds a musical level across the whole range of the controls. |
 
