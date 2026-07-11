@@ -47,7 +47,8 @@ struct Rete : Module {
         OUTPUTS_LEN
     };
     enum LightId {
-        LEVEL_LIGHT,
+        L_LIGHT,
+        R_LIGHT,
         LIGHTS_LEN
     };
 
@@ -65,7 +66,7 @@ struct Rete : Module {
     uint32_t noiseState = 0x9d2c5680u;
     float curSampleRate = 0.f;
     float srRatio = 1.f;         // 48000 / sampleRate, for leak coefficients
-    float levelEnv = 0.f;
+    float levelEnvL = 0.f, levelEnvR = 0.f;
     dsp::SchmittTrigger rndTrigger;
     dsp::BooleanTrigger rndButton;
 
@@ -85,7 +86,8 @@ struct Rete : Module {
         configOutput(LEFT_OUTPUT, "Left");
         configOutput(RIGHT_OUTPUT, "Right");
         configOutput(POLY_OUTPUT, "Nodes (8-channel polyphonic)");
-        configLight(LEVEL_LIGHT, "Output level");
+        configLight(L_LIGHT, "Left output level");
+        configLight(R_LIGHT, "Right output level");
 
         for (int i = 0; i < kNodes; i++) {
             float p = (float)i / (kNodes - 1);
@@ -122,7 +124,7 @@ struct Rete : Module {
 
     void onReset() override {
         reseed(random::u32());
-        levelEnv = 0.f;
+        levelEnvL = levelEnvR = 0.f;
     }
 
     void process(const ProcessArgs& args) override {
@@ -194,9 +196,10 @@ struct Rete : Module {
         outputs[LEFT_OUTPUT].setVoltage(outL * comp);
         outputs[RIGHT_OUTPUT].setVoltage(outR * comp);
 
-        float mag = std::max(std::fabs(outL), std::fabs(outR)) / std::sqrt((float)kNodes);
-        levelEnv += (mag - levelEnv) * 0.002f;
-        lights[LEVEL_LIGHT].setBrightness(clamp(levelEnv, 0.f, 1.f));
+        levelEnvL += (std::fabs(outL) / (kNodes / 2.f) - levelEnvL) * 0.002f;
+        levelEnvR += (std::fabs(outR) / (kNodes / 2.f) - levelEnvR) * 0.002f;
+        lights[L_LIGHT].setBrightness(clamp(levelEnvL, 0.f, 1.f));
+        lights[R_LIGHT].setBrightness(clamp(levelEnvR, 0.f, 1.f));
     }
 
     json_t* dataToJson() override {
@@ -246,8 +249,9 @@ struct ReteWidget : ModuleWidget {
 // @elem LEFT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem RIGHT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem POLY_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_GAINS label 0.0 label "node gains" 0.0 25.40 12.50
+// @elem L_LIGHT SmallLight 1.5 light "" 0.0
+// @elem R_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LABEL_GAINS label 0.0 label "node gains" 0.0 25.40 59.00
 // @elem LABEL_LEAK label 0.0 label "leak" 0.0 11.00 82.50
 // @elem LABEL_SCALE label 0.0 label "scale" 0.0 25.40 82.50
 // @elem LABEL_INLVL label 0.0 label "lvl" 0.0 39.80 82.50
@@ -266,22 +270,22 @@ struct ReteWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(7.40f, 20.00f)), module, Rete::G1_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(19.40f, 20.00f)), module, Rete::G2_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(31.40f, 20.00f)), module, Rete::G3_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(43.40f, 20.00f)), module, Rete::G4_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(7.40f, 43.50f)), module, Rete::G5_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(19.40f, 43.50f)), module, Rete::G6_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(31.40f, 43.50f)), module, Rete::G7_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(43.40f, 43.50f)), module, Rete::G8_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.40f, 30.50f)), module, Rete::G1_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 30.50f)), module, Rete::G2_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.40f, 30.50f)), module, Rete::G3_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 30.50f)), module, Rete::G4_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.40f, 54.00f)), module, Rete::G5_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 54.00f)), module, Rete::G6_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.40f, 54.00f)), module, Rete::G7_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 54.00f)), module, Rete::G8_CV_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(7.40f, 17.00f)), module, Rete::G1_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(19.40f, 17.00f)), module, Rete::G2_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(31.40f, 17.00f)), module, Rete::G3_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(43.40f, 17.00f)), module, Rete::G4_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(7.40f, 40.50f)), module, Rete::G5_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(19.40f, 40.50f)), module, Rete::G6_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(31.40f, 40.50f)), module, Rete::G7_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(43.40f, 40.50f)), module, Rete::G8_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.40f, 27.50f)), module, Rete::G1_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 27.50f)), module, Rete::G2_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.40f, 27.50f)), module, Rete::G3_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 27.50f)), module, Rete::G4_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.40f, 51.00f)), module, Rete::G5_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 51.00f)), module, Rete::G6_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.40f, 51.00f)), module, Rete::G7_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.40f, 51.00f)), module, Rete::G8_CV_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 71.00f)), module, Rete::LEAK_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(25.40f, 71.00f)), module, Rete::SCALE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(39.80f, 71.00f)), module, Rete::IN_LEVEL_PARAM));
@@ -291,7 +295,8 @@ struct ReteWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(9.70f, 106.50f)), module, Rete::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 106.50f)), module, Rete::RIGHT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(41.10f, 106.50f)), module, Rete::POLY_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(29.20f, 102.70f)), module, Rete::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(14.70f, 103.50f)), module, Rete::L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.40f, 103.50f)), module, Rete::R_LIGHT));
         // @layout:end
     }
 };

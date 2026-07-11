@@ -277,7 +277,7 @@ struct UluloWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.14f, 87.00f)), module, Ululo::WHAMMY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 106.50f)), module, Ululo::AUDIO_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 106.50f)), module, Ululo::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(32.94f, 102.70f)), module, Ululo::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(34.14f, 103.50f)), module, Ululo::LEVEL_LIGHT));
         // @layout:end
     }
 };

@@ -259,7 +259,7 @@ struct LustroWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.40f, 91.00f)), module, Lustro::EXCITE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.40f, 106.50f)), module, Lustro::AUDIO_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.40f, 106.50f)), module, Lustro::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(36.60f, 102.70f)), module, Lustro::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.40f, 103.50f)), module, Lustro::LEVEL_LIGHT));
         // @layout:end
     }
 };
