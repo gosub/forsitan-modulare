@@ -313,12 +313,12 @@ def regen_svg(layout, svg_path):
                    for bx, by in box_centers)
 
     # independent labels (SVG-only, freely positioned)
-    sz = 2.2
     for el in elems:
         if el['kind'] == 'label':
             lbl = el.get('label', '')
             if not lbl:
                 continue
+            sz = el.get('size', 2.2)
             d = text_path(lbl, el['x'], el['y'], sz)
             if d:
                 fill = '#1a1a1a' if in_any_box(el['x'], el['y']) else '#f9f9f9'

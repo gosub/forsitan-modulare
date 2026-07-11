@@ -41,9 +41,9 @@ OUT_JACK_Y  = 112.0
 DIVIDER_X = (COLX[0] + COLX[1]) / 2.0
 
 
-def label(text, x, y):
+def label(text, x, y, size=2.2):
     return {"id": text, "cpp_type": "label", "radius": 1.0, "kind": "label",
-            "label": text, "label_dy": 0.0, "x": x, "y": y}
+            "label": text, "label_dy": 0.0, "x": x, "y": y, "size": size}
 
 
 def logo(x, y):
@@ -57,13 +57,16 @@ elements = []
 for name, x in zip(["poly", "1", "2", "3", "4", "5", "6", "7", "8"], COLX):
     elements.append(label(name, x, HEADER_Y))
 
-# row labels (left gutter, aligned with each input row)
-elements.append(label("trig",   MIX_X, TRIG_JACK_Y))
-elements.append(label("sample", MIX_X, SAMP_JACK_Y))
-elements.append(label("pitch",  MIX_X, PIT_JACK_Y))
-elements.append(label("decay",  MIX_X, DEC_JACK_Y))
-elements.append(label("level",  MIX_X, LVL_JACK_Y))
-elements.append(label("mix",    MIX_X, OUT_JACK_Y - 6.0))   # above the mix jack
+# row labels (left gutter): baseline +1.1 truly centers the text on the jack
+# row; 2.0mm cap so "sample" clears both the panel edge and the poly column
+GUTTER_SZ = 2.0
+elements.append(label("trig",   MIX_X, TRIG_JACK_Y + 1.1, GUTTER_SZ))
+elements.append(label("sample", MIX_X, SAMP_JACK_Y + 1.1, GUTTER_SZ))
+elements.append(label("pitch",  MIX_X, PIT_JACK_Y + 1.1, GUTTER_SZ))
+elements.append(label("decay",  MIX_X, DEC_JACK_Y + 1.1, GUTTER_SZ))
+elements.append(label("level",  MIX_X, LVL_JACK_Y + 1.1, GUTTER_SZ))
+# mix is a jack label, not a row label: house convention, below the jack
+elements.append(label("mix",    MIX_X, OUT_JACK_Y + 7.5))
 
 # logo, bottom centre
 elements.append(logo(PANEL_W / 2, 121.0))
@@ -79,14 +82,15 @@ svg_path = os.path.join(REPO, "res", "pellicula.svg")
 ok = pe.regen_svg(layout, svg_path)
 
 # Post-process: the output jacks (poly + 8 voices + mix) all render as plain grey
-# Rack ports, so add a subtle accent-yellow bar behind the output row to mark it
-# as outputs — the house grammar uses yellow for output affordances.
+# Rack ports, so add a full-width bar in the house badge grey behind the output
+# row — the same affordance as the 14x14 output boxes on the other panels.
 if ok:
     bar = (f'  <rect x="2.4" y="{OUT_JACK_Y - 5.0:.2f}" width="{PANEL_W - 5.6:.2f}" '
-           f'height="10.0" rx="2" fill="#ffd500" opacity="0.22"/>')
+           f'height="10.0" rx="1.5" fill="#e4e4e4"/>')
     # thin divider separating the poly column from the eight voice columns
+    # (stops above the output bar; the bar spans all columns)
     divider = (f'  <line x1="{DIVIDER_X:.2f}" y1="{HEADER_Y + 3.0:.2f}" '
-               f'x2="{DIVIDER_X:.2f}" y2="{OUT_JACK_Y + 6.0:.2f}" '
+               f'x2="{DIVIDER_X:.2f}" y2="{OUT_JACK_Y - 6.0:.2f}" '
                f'stroke="#4d4d4d" stroke-width="0.3"/>')
     with open(svg_path) as f:
         svg = f.read()
