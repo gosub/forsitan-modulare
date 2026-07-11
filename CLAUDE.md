@@ -113,15 +113,31 @@ When laying out a panel (by hand or generated), follow these rules:
   or logo.
 - **No overlap**: no two element bounding boxes may intersect — knobs, jacks,
   buttons, LEDs, labels, badges, title, logo, and the 4 screw zones
-  (~8×8mm at each corner). Use real widget sizes (Rogan2P ≈ 12.7mm ⌀,
-  RoundBlackKnob ≈ 9mm ⌀, RoundBigBlackKnob ≈ 12mm ⌀, PJ301M jack ≈ 8.4mm ⌀,
-  TL1105 ≈ 6mm, CKSS switch ≈ 4×10mm) and keep ≥1.5mm clearance between
+  (~8×8mm at each corner). Use real widget sizes, measured from the
+  ComponentLibrary SVG viewBoxes (Rogan2P ≈ 12.7mm ⌀,
+  RoundBlackKnob 9.6mm ⌀, RoundBigBlackKnob 15.24mm ⌀,
+  RoundHugeBlackKnob 18.24mm ⌀, PJ301M jack 8.0mm ⌀, TL1105 5.2mm ⌀,
+  SmallLight 2mm ⌀, CKSS switch ≈ 4×10mm) and keep ≥1.5mm clearance between
   edges, ≥1mm between a label and the element it names.
+- **Label offsets**: place a label's baseline at a fixed offset below its
+  control's center — jack +7.5mm, RoundBlackKnob +8.5mm,
+  RoundBigBlackKnob +11.5mm, TL1105 button +7mm. A section label naming a
+  group of controls sits *below* the group. OCR-A is wide: ~2.1mm advance
+  per character at 2.2mm cap height.
+- **LEDs**: never free-floating. An output-level LED sits 2mm inset from
+  the top-right corner of its output badge (box center +5,−5 — see
+  scando); stereo pairs get one LED per badge. An LED for a non-jack
+  control sits at that control's top-right corner.
 - **Readability**: every jack and control gets a label; labels sit
   consistently (below jacks/knobs unless space forces otherwise), at ≥2.0mm
   cap height, never split across an element. Output badges must fully
   contain their text with ~1mm padding. Verify label widths with
   `tools/typography/measure_text.py` before placing.
+- **Verification**: after any layout work run
+  `~/dl/audio/fonttools-venv/bin/python tools/panel-editor/panel_audit.py src/<mod>.cpp`
+  — it checks all of the above with true circle geometry and real OCR-A
+  text widths, and exits nonzero on violations (no args = all @layout
+  modules).
 - **Alignment & grouping**: snap centers to a coarse grid (whole or half
   mm); align related elements on shared rows/columns. Group by function
   (control + its CV jack + label as one cluster) and separate groups with
