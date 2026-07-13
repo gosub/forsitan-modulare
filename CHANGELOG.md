@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.8.0] - unreleased
+### Added
+  - **continua**, a new module: stereo dynamic sampler and multi-effect,
+    a from-scratch homage to the AC noises / BunkerNoise CONTINUA pedal —
+    threshold-gated capture with sensibility, attack and release shaping
+    the dynamics-driven repeats; tempo knob or external clock (with
+    multiplier menu); random per-repeat octave/fifth pitch shifts; sustain
+    with a freeze zone (plus freeze button/gate); bipolar glitch/dimension
+    (tempo accelerations vs. up to three layered samples), lofi/crush,
+    reverb/smear (with decay) and LP/HP tilt filter; stereo spread;
+    standard/reverse/tail repeats modes; alternative routing sending the
+    dry signal into the FX section (in-fx amount); momentary tilt chaos
+    button/gate
+
 ## [2.7.6] - 2026-07-15
 ### Fixed
   - tabes: **eoc** and **ramp** now follow the audible head chain instead of
