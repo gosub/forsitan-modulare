@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.8.0] - unreleased
 ### Added
-  - **continua**, a new module: stereo dynamic sampler and multi-effect,
+  - **perge**, a new module: stereo dynamic sampler and multi-effect,
     a from-scratch homage to the AC noises / BunkerNoise CONTINUA pedal —
     threshold-gated capture with sensibility, attack and release shaping
     the dynamics-driven repeats; tempo knob or external clock (with

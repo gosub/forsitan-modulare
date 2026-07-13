@@ -25,7 +25,7 @@ A collection of VCV Rack modules.
 | [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
 | [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
 | [bulla](doc/bulla.md) | Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
-| [continua](doc/continua.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats with random octave/fifth pitch, freeze, glitch and layered dimension | [doc/continua.md](doc/continua.md) |
+| [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats with random octave/fifth pitch, freeze, glitch and layered dimension | [doc/perge.md](doc/perge.md) |
 
 ## Tools
 
@@ -71,7 +71,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **tabes** | wasting away, decay, consumption (the tape loop dying pass by pass) |
 | **lustro** | I traverse, I survey (the string surveyed into a filterbank; scando's sibling) |
 | **bulla** | bubble, blip — also the amulet worn by Roman children (Hordijk's Blippoo Box) |
-| **continua** | continuous, unbroken — and the Italian "keep going!" (an homage to the AC noises CONTINUA pedal) |
+| **perge** | carry on!, keep going! (imperative of *pergere*) — a nod to the AC noises CONTINUA pedal it pays homage to, whose name is the Italian for the same exhortation |
 
 ## Author
 

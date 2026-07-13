@@ -17,7 +17,7 @@ rack::plugin::Plugin* pluginInstance = nullptr;
 #include "../src/tabes.cpp"
 #include "../src/lustro.cpp"
 #include "../src/bulla.cpp"
-#include "../src/continua.cpp"
+#include "../src/perge.cpp"
 
 #include <cstdio>
 #include <cmath>
@@ -654,66 +654,66 @@ static void testTabesMk2() {
     }
 }
 
-static void testContinua() {
-    Continua m;
+static void testPerge() {
+    Perge m;
     long frame = 0;
-    m.inputs[Continua::IN_L_INPUT].channels = 1;
-    m.params[Continua::MIX_PARAM].setValue(1.f);      // wet only
-    m.params[Continua::TEMPO_PARAM].setValue(0.7f);   // fast-ish repeats
-    m.params[Continua::SUSTAIN_PARAM].setValue(0.6f);
+    m.inputs[Perge::IN_L_INPUT].channels = 1;
+    m.params[Perge::MIX_PARAM].setValue(1.f);      // wet only
+    m.params[Perge::TEMPO_PARAM].setValue(0.7f);   // fast-ish repeats
+    m.params[Perge::SUSTAIN_PARAM].setValue(0.6f);
     // feed 0.4 s of a 330 Hz burst at +-5 V, then silence
     float phase = 0.f;
     for (int i = 0; i < (int)(0.4f * SR); i++) {
         phase += 330.f / SR; if (phase >= 1.f) phase -= 1.f;
-        m.inputs[Continua::IN_L_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * phase));
+        m.inputs[Perge::IN_L_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * phase));
         m.process(makeArgs(frame++));
     }
-    m.inputs[Continua::IN_L_INPUT].setVoltage(0.f);
+    m.inputs[Perge::IN_L_INPUT].setVoltage(0.f);
     // repeats must appear after the input stops
     Stats rep;
     for (int i = 0; i < (int)(3 * SR); i++) {
         m.process(makeArgs(frame++));
-        rep.add(m.outputs[Continua::OUT_L_OUTPUT].getVoltage());
-        rep.add(m.outputs[Continua::OUT_R_OUTPUT].getVoltage());
+        rep.add(m.outputs[Perge::OUT_L_OUTPUT].getVoltage());
+        rep.add(m.outputs[Perge::OUT_R_OUTPUT].getVoltage());
     }
-    report("continua", "nans", rep.nans, rep.nans == 0);
-    report("continua", "repeats_rms", rep.rms(), rep.rms() > 0.02);
-    report("continua", "peak", rep.peak, rep.peak < 12.f);
+    report("perge", "nans", rep.nans, rep.nans == 0);
+    report("perge", "repeats_rms", rep.rms(), rep.rms() > 0.02);
+    report("perge", "peak", rep.peak, rep.peak < 12.f);
     // low sustain: repeats must die out
-    m.params[Continua::SUSTAIN_PARAM].setValue(0.05f);
+    m.params[Perge::SUSTAIN_PARAM].setValue(0.05f);
     for (int i = 0; i < (int)(6 * SR); i++) m.process(makeArgs(frame++));
     Stats dead;
     for (int i = 0; i < (int)(1 * SR); i++) {
         m.process(makeArgs(frame++));
-        dead.add(m.outputs[Continua::OUT_L_OUTPUT].getVoltage());
+        dead.add(m.outputs[Perge::OUT_L_OUTPUT].getVoltage());
     }
-    report("continua", "repeats_decay", dead.rms(), dead.rms() < 0.01);
+    report("perge", "repeats_decay", dead.rms(), dead.rms() < 0.01);
     // freeze: repeats persist over 8 s with everything cranked
     m.onReset();
-    m.params[Continua::SUSTAIN_PARAM].setValue(0.6f);
-    m.params[Continua::GLITCH_PARAM].setValue(1.f);    // full dimension
-    m.params[Continua::LOFI_PARAM].setValue(-1.f);
-    m.params[Continua::RVRB_PARAM].setValue(-1.f);
-    m.params[Continua::PITCH_PARAM].setValue(0.7f);
+    m.params[Perge::SUSTAIN_PARAM].setValue(0.6f);
+    m.params[Perge::GLITCH_PARAM].setValue(1.f);    // full dimension
+    m.params[Perge::LOFI_PARAM].setValue(-1.f);
+    m.params[Perge::RVRB_PARAM].setValue(-1.f);
+    m.params[Perge::PITCH_PARAM].setValue(0.7f);
     phase = 0.f;
     for (int i = 0; i < (int)(0.4f * SR); i++) {
         phase += 330.f / SR; if (phase >= 1.f) phase -= 1.f;
-        m.inputs[Continua::IN_L_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * phase));
+        m.inputs[Perge::IN_L_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * phase));
         m.process(makeArgs(frame++));
     }
-    m.inputs[Continua::IN_L_INPUT].setVoltage(0.f);
+    m.inputs[Perge::IN_L_INPUT].setVoltage(0.f);
     // let the repeats get going, then freeze and hold for 7 s
     for (int i = 0; i < (int)(0.5f * SR); i++) m.process(makeArgs(frame++));
-    m.params[Continua::SUSTAIN_PARAM].setValue(1.f);   // freeze zone
+    m.params[Perge::SUSTAIN_PARAM].setValue(1.f);   // freeze zone
     for (int i = 0; i < (int)(7 * SR); i++) m.process(makeArgs(frame++));
     Stats froz;
     for (int i = 0; i < (int)(1 * SR); i++) {
         m.process(makeArgs(frame++));
-        froz.add(m.outputs[Continua::OUT_L_OUTPUT].getVoltage());
+        froz.add(m.outputs[Perge::OUT_L_OUTPUT].getVoltage());
     }
-    report("continua", "freeze_nans", froz.nans, froz.nans == 0);
-    report("continua", "freeze_persists", froz.rms(), froz.rms() > 0.02);
-    report("continua", "freeze_peak", froz.peak, froz.peak < 12.f);
+    report("perge", "freeze_nans", froz.nans, froz.nans == 0);
+    report("perge", "freeze_persists", froz.rms(), froz.rms() > 0.02);
+    report("perge", "freeze_peak", froz.peak, froz.peak < 12.f);
 }
 
 int main() {
@@ -725,6 +725,6 @@ int main() {
     testTabesMk2();
     testLustro();
     testBulla();
-    testContinua();
+    testPerge();
     return failures ? 1 : 0;
 }

@@ -1,8 +1,8 @@
-// continua.cpp — VCV Rack 2 module
-// continua (Latin: "continuous, unbroken"; also an Italian exhortation to
-// keep going) is a stereo dynamic sampler and multi-effect modeled on the
-// AC noises / BunkerNoise CONTINUA pedal, reimplemented from scratch from
-// its public documentation. It listens to how you play: input crossing the
+// perge.cpp — VCV Rack 2 module
+// perge (Latin imperative: "carry on!, keep going!") is a stereo dynamic
+// sampler and multi-effect modeled on the AC noises / BunkerNoise CONTINUA
+// pedal (whose name is the Italian for the same exhortation), reimplemented
+// from scratch from its public documentation. It listens to how you play: input crossing the
 // threshold is captured as a sample, and repeats of that sample are spawned
 // on a tempo grid, each with its own envelope, random quantized pitch shift
 // (octave, then fifth), and per-repeat decay. The wet bus then runs through
@@ -40,7 +40,7 @@ static constexpr float kMaxCapSeconds = 2.f;
 static constexpr int kNumVoices = 16;
 static constexpr int kNumSlots = 3;
 
-struct Continua : Module {
+struct Perge : Module {
     enum ParamId {
         MIX_PARAM,
         TEMPO_PARAM,
@@ -183,7 +183,7 @@ struct Continua : Module {
 
     static constexpr float kMults[5] = {0.25f, 0.5f, 1.f, 2.f, 4.f};
 
-    Continua() {
+    Perge() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam(MIX_PARAM, 0.f, 1.f, 0.5f, "Mix", "%", 0.f, 100.f);
         configParam(TEMPO_PARAM, 0.f, 1.f, 0.5f, "Tempo");
@@ -725,14 +725,14 @@ struct Continua : Module {
     }
 };
 
-constexpr float Continua::kMults[5];
+constexpr float Perge::kMults[5];
 
-struct ContinuaWidget : ModuleWidget {
-    ContinuaWidget(Continua* module) {
+struct PergeWidget : ModuleWidget {
+    PergeWidget(Perge* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/continua.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/perge.svg")));
 
-// @layout:begin continua 101.6 128.5
+// @layout:begin perge 101.6 128.5
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
@@ -808,45 +808,45 @@ struct ContinuaWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(93.98f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(93.98f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(21.40f, 22.00f)), module, Continua::MIX_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(41.00f, 22.00f)), module, Continua::TEMPO_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(60.60f, 22.00f)), module, Continua::PITCH_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(80.20f, 22.00f)), module, Continua::SUSTAIN_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.40f, 45.00f)), module, Continua::GLITCH_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(41.00f, 45.00f)), module, Continua::LOFI_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(60.60f, 45.00f)), module, Continua::RVRB_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(80.20f, 45.00f)), module, Continua::FILTER_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(10.90f, 62.00f)), module, Continua::SENS_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(22.30f, 62.00f)), module, Continua::THRESH_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.70f, 62.00f)), module, Continua::ATTACK_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(45.10f, 62.00f)), module, Continua::RELEASE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.50f, 62.00f)), module, Continua::MOD_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(67.90f, 62.00f)), module, Continua::DECAY_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(79.30f, 62.00f)), module, Continua::SPREAD_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(90.70f, 62.00f)), module, Continua::INFX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(21.40f, 80.00f)), module, Continua::PITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.00f, 80.00f)), module, Continua::SUSTAIN_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.60f, 80.00f)), module, Continua::GLITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(80.20f, 80.00f)), module, Continua::FILTER_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.80f, 96.00f)), module, Continua::IN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.80f, 96.00f)), module, Continua::IN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.80f, 96.00f)), module, Continua::CLOCK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(69.80f, 96.00f)), module, Continua::FREEZE_GATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(88.80f, 96.00f)), module, Continua::TILT_GATE_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(12.80f, 112.00f)), module, Continua::OUT_L_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(31.80f, 112.00f)), module, Continua::OUT_R_OUTPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(69.80f, 112.00f)), module, Continua::FREEZE_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(88.80f, 112.00f)), module, Continua::TILT_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 92.30f)), module, Continua::CAPT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(72.70f, 109.10f)), module, Continua::FREEZE_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Continua::TILT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(17.80f, 109.00f)), module, Continua::OUT_L_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(36.80f, 109.00f)), module, Continua::OUT_R_LIGHT));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(21.40f, 22.00f)), module, Perge::MIX_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(41.00f, 22.00f)), module, Perge::TEMPO_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(60.60f, 22.00f)), module, Perge::PITCH_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(80.20f, 22.00f)), module, Perge::SUSTAIN_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.40f, 45.00f)), module, Perge::GLITCH_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(41.00f, 45.00f)), module, Perge::LOFI_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(60.60f, 45.00f)), module, Perge::RVRB_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(80.20f, 45.00f)), module, Perge::FILTER_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(10.90f, 62.00f)), module, Perge::SENS_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(22.30f, 62.00f)), module, Perge::THRESH_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.70f, 62.00f)), module, Perge::ATTACK_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(45.10f, 62.00f)), module, Perge::RELEASE_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.50f, 62.00f)), module, Perge::MOD_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(67.90f, 62.00f)), module, Perge::DECAY_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(79.30f, 62.00f)), module, Perge::SPREAD_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(90.70f, 62.00f)), module, Perge::INFX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(21.40f, 80.00f)), module, Perge::PITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.00f, 80.00f)), module, Perge::SUSTAIN_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.60f, 80.00f)), module, Perge::GLITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(80.20f, 80.00f)), module, Perge::FILTER_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.80f, 96.00f)), module, Perge::IN_L_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.80f, 96.00f)), module, Perge::IN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.80f, 96.00f)), module, Perge::CLOCK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(69.80f, 96.00f)), module, Perge::FREEZE_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(88.80f, 96.00f)), module, Perge::TILT_GATE_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(12.80f, 112.00f)), module, Perge::OUT_L_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(31.80f, 112.00f)), module, Perge::OUT_R_OUTPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(69.80f, 112.00f)), module, Perge::FREEZE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(88.80f, 112.00f)), module, Perge::TILT_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 92.30f)), module, Perge::CAPT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(72.70f, 109.10f)), module, Perge::FREEZE_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Perge::TILT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(17.80f, 109.00f)), module, Perge::OUT_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(36.80f, 109.00f)), module, Perge::OUT_R_LIGHT));
         // @layout:end
     }
 
     void appendContextMenu(Menu* menu) override {
-        Continua* m = dynamic_cast<Continua*>(module);
+        Perge* m = dynamic_cast<Perge*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexPtrSubmenuItem("Repeats mode",
@@ -859,4 +859,4 @@ struct ContinuaWidget : ModuleWidget {
     }
 };
 
-Model* modelContinua = createModel<Continua, ContinuaWidget>("continua");
+Model* modelPerge = createModel<Perge, PergeWidget>("perge");

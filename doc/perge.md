@@ -1,11 +1,12 @@
-# continua
+# perge
 
 **Stereo dynamic sampler and multi-effect: repeats that listen to how you
 play.**
 
-*continua* is Latin for "continuous, unbroken" — and an Italian exhortation
-to keep going. The module is a from-scratch homage to the AC noises /
-BunkerNoise **CONTINUA** pedal, rebuilt from its public documentation: a
+*perge* is Latin for "carry on!, keep going!" (imperative of *pergere*).
+The module is a from-scratch homage to the AC noises / BunkerNoise
+**CONTINUA** pedal — whose name is the Italian for the same exhortation —
+rebuilt from its public documentation: a
 sampler that doesn't just play your sound back, but reacts to how hard and
 how fast you play while you're still playing, then transforms the repeats
 through a multi-effect section.

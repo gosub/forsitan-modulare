@@ -170,10 +170,10 @@
       ]
     },
     {
-      "slug": "continua",
-      "name": "continua",
+      "slug": "perge",
+      "name": "perge",
       "description": "Stereo dynamic sampler and multi-effect: dynamics-gated repeats with random octave/fifth pitch, freeze, glitch, layers, lofi/crush, reverb/smear and tilt filter (AC noises CONTINUA homage).",
-      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/continua.md",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/perge.md",
       "tags": [
         "Sampler",
         "Effect",
