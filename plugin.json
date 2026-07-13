@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "2.7.6",
+  "version": "2.8.0",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -29,7 +29,7 @@
       "description": "Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/interea.md",
       "tags": [
-	"Quad",
+        "Quad",
         "Utility"
       ]
     },
@@ -104,7 +104,7 @@
     },
     {
       "slug": "draen",
-      "name": "dræn",
+      "name": "dr\u00e6n",
       "description": "Drone synthesizer: two banks of 37 drone engines (dronecaster ports + hyf originals) played from fundamental (hz) and level (amp), with fading engine selection.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/draen.md",
       "tags": [
@@ -167,6 +167,18 @@
         "Oscillator",
         "Synth Voice",
         "Random"
+      ]
+    },
+    {
+      "slug": "continua",
+      "name": "continua",
+      "description": "Stereo dynamic sampler and multi-effect: dynamics-gated repeats with random octave/fifth pitch, freeze, glitch, layers, lofi/crush, reverb/smear and tilt filter (AC noises CONTINUA homage).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/continua.md",
+      "tags": [
+        "Sampler",
+        "Effect",
+        "Delay",
+        "Granular"
       ]
     }
   ]
