@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.3] - 2026-07-14
+### Added
+  - tabes is now polyphonic: the audio in/out carry a poly cable, so a
+    2-channel signal records and plays back as a coherent stereo tape (up to
+    16 tracks). One shared transport drives every track — same wow/flutter,
+    dropouts, seam and rec crossfade — so stereo stays phase-locked in a way
+    two mono tabes never could. The tape width is fixed when you record it
+    (from the input's channel count) and the output follows it; hiss is
+    independent per track. AGE and EOC stay monophonic.
+
 ## [2.7.2] - 2026-07-14
 ### Changed
   - tabes: the default monitor mode also passes the input through while the
