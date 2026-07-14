@@ -15,9 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     with a freeze zone (plus freeze button/gate); bipolar glitch/dimension
     (tempo accelerations vs. up to three layered samples), lofi/crush,
     reverb/smear (with decay) and LP/HP tilt filter; stereo spread;
-    standard/reverse/tail repeats modes; alternative routing sending the
-    dry signal into the FX section (in-fx amount); momentary tilt chaos
-    button/gate
+    standard/reverse/tail repeats modes; a grain-cap menu (on by default)
+    that keeps each repeat to one tempo interval, or off to replay whole
+    captured notes; alternative routing sending the dry signal into the FX
+    section (in-fx amount); momentary tilt warble (button/gate)
 
 ## [2.7.6] - 2026-07-15
 ### Fixed

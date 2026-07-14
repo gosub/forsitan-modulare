@@ -30,8 +30,9 @@
 //   Btns  : FREEZE (latch), TILT (momentary)
 //   In    : IN L/R, PITCH/SUST/GLIT/FILT CV, CLOCK, FREEZE gate, TILT gate
 //   Out   : OUT L/R
-//   Menu  : repeats mode (std/rev/tail), alternative routing (dry into FX),
-//           clock multiplier (1/4 .. x4)
+//   Menu  : repeats mode (std/rev/tail), grain cap (repeats capped to one
+//           tempo interval, on by default), alternative routing (dry into
+//           FX), clock multiplier (1/4 .. x4)
 
 #include "forsitan.hpp"
 
@@ -173,6 +174,7 @@ struct Perge : Module {
     // ── housekeeping ─────────────────────────────────────────────────────
     int repeatsMode = MODE_STD;      // context menu
     bool altRouting = false;         // context menu
+    bool grainCap = true;            // cap grain playback to one tempo interval
     int clockMult = 2;               // index into kMults, default x1
     bool freezeLatch = false;
     float curSampleRate = 0.f;
@@ -301,7 +303,7 @@ struct Perge : Module {
 
     void spawnVoice(const Slot& slot, float layerGain, float sens, float atkK,
                     float relK, float spread, float pitchK, float decayPerRepeat,
-                    float sr) {
+                    float sr, float grainCapSamples) {
         // steal the quietest inactive-or-oldest voice
         Voice* v = nullptr;
         double best = 1e18;
@@ -324,6 +326,13 @@ struct Perge : Module {
         v->active = true;
         v->start = slot.start;
         v->len = slot.len;
+        // optionally cap the played grain to one tempo interval so repeats
+        // stay short and discrete instead of replaying the whole note
+        if (grainCapSamples > 0.f) {
+            int maxLen = (int)(grainCapSamples * rate);
+            if (maxLen >= (int)(0.02f * sr) && v->len > maxLen)
+                v->len = maxLen;
+        }
         v->pos = 0.0;
         v->rate = rate;
         v->amp = amp;
@@ -331,7 +340,7 @@ struct Perge : Module {
         v->panR = std::min(1.f, 1.f + pan);
         v->reverse = (repeatsMode == MODE_REV);
         v->tail = (repeatsMode == MODE_TAIL);
-        v->dur = slot.len / (double)rate;
+        v->dur = v->len / (double)rate;
         if (v->tail) {
             v->atk = 0.75 * v->dur;
             v->rel = 0.25 * v->dur;
@@ -506,18 +515,19 @@ struct Perge : Module {
                 live = makeSlot(capStart, capLen, capPeak,
                                 slots[0].len ? slots[0].age : 0);
 
+            float grainCapSamples = grainCap ? interval : 0.f;
             if (live.len)
                 spawnVoice(live, 1.f, sens, atkK, relK, spread, pitchK,
-                           decayPerRepeat, sr);
+                           decayPerRepeat, sr, grainCapSamples);
             // extra layers, each on its own grid
             float dim1 = clamp(2.f * dimens, 0.f, 1.f);
             float dim2 = clamp(2.f * dimens - 1.f, 0.f, 1.f);
             if (dim1 > 0.f && slots[1].len && (tickCount % 2 == 0))
                 spawnVoice(slots[1], dim1, sens, atkK, relK, spread, pitchK,
-                           decayPerRepeat, sr);
+                           decayPerRepeat, sr, grainCapSamples);
             if (dim2 > 0.f && slots[2].len && (tickCount % 3 == 0))
                 spawnVoice(slots[2], dim2, sens, atkK, relK, spread, pitchK,
-                           decayPerRepeat, sr);
+                           decayPerRepeat, sr, grainCapSamples);
             for (auto& s : slots)
                 if (s.len) s.age++;
         }
@@ -708,6 +718,7 @@ struct Perge : Module {
         json_t* root = json_object();
         json_object_set_new(root, "repeatsMode", json_integer(repeatsMode));
         json_object_set_new(root, "altRouting", json_boolean(altRouting));
+        json_object_set_new(root, "grainCap", json_boolean(grainCap));
         json_object_set_new(root, "clockMult", json_integer(clockMult));
         json_object_set_new(root, "freezeLatch", json_boolean(freezeLatch));
         return root;
@@ -718,6 +729,8 @@ struct Perge : Module {
             repeatsMode = clamp((int)json_integer_value(j), 0, 2);
         if (json_t* j = json_object_get(root, "altRouting"))
             altRouting = json_boolean_value(j);
+        if (json_t* j = json_object_get(root, "grainCap"))
+            grainCap = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "clockMult"))
             clockMult = clamp((int)json_integer_value(j), 0, 4);
         if (json_t* j = json_object_get(root, "freezeLatch"))
@@ -853,6 +866,8 @@ struct PergeWidget : ModuleWidget {
             {"Standard", "Reverse", "Tail"}, &m->repeatsMode));
         menu->addChild(createIndexPtrSubmenuItem("Clock multiplier",
             {"1/4", "1/2", "x1", "x2", "x4"}, &m->clockMult));
+        menu->addChild(createBoolPtrMenuItem("Cap grain to tempo interval",
+            "", &m->grainCap));
         menu->addChild(createBoolPtrMenuItem("Alternative routing (dry into FX)",
             "", &m->altRouting));
         menu->addChild(createMenuItem("Clear buffer", "", [m]() { m->onReset(); }));
