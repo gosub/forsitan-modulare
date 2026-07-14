@@ -200,6 +200,84 @@ static void testTabes() {
             thruMin = std::min(thruMin, m3.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
     }
     report("tabes", "empty_monitor_thru", thruMin, std::fabs(thruMin - 4.f) < 1e-3f);
+
+    // clickless rec START: press rec while a loop plays (wow displaces the
+    // play head, so the loop-cut point is arbitrary) and the output must not
+    // step as monitoring crossfades in over the loop
+    Tabes m4;
+    long f4 = 0;
+    m4.params[Tabes::WOW_PARAM].setValue(0.5f);   // head well off the grid
+    m4.inputs[Tabes::AUDIO_INPUT].channels = 1;
+    m4.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+    float ph4 = 0.f;
+    auto sine4 = [&]() {
+        ph4 += 330.f / SR; if (ph4 >= 1.f) ph4 -= 1.f;
+        return 5.f * std::sin(2.f * M_PI * ph4);
+    };
+    // record ~0.7 s, then play ~0.4 s so wow has swung the head off zero
+    m4.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    for (int i = 0; i < (int)(0.7f * SR); i++) {
+        m4.inputs[Tabes::AUDIO_INPUT].setVoltage(sine4());
+        m4.process(makeArgs(f4++));
+    }
+    m4.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+    for (int i = 0; i < (int)(0.4f * SR); i++) {
+        m4.inputs[Tabes::AUDIO_INPUT].setVoltage(sine4());
+        m4.process(makeArgs(f4++));
+    }
+    // now press rec again; measure the output step over the transition
+    float prev4 = m4.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+    float startStep = 0.f;
+    m4.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    for (int i = 0; i < (int)(0.05f * SR); i++) {
+        m4.inputs[Tabes::AUDIO_INPUT].setVoltage(sine4());
+        m4.process(makeArgs(f4++));
+        float v = m4.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+        startStep = std::max(startStep, std::fabs(v - prev4));
+        prev4 = v;
+    }
+    report("tabes", "rec_start_max_step", startStep, startStep < 1.f);
+
+    // no thump at rec STOP: the transition must not inject a DC pulse. A click
+    // is a step (caught above); a thump is a net displacement of the local
+    // mean, which a sine averages away but a DC bridge does not. The thump is
+    // worst when the loop start and the input at stop are in antiphase, so
+    // sweep the recording length across a full period and take the worst 5 ms
+    // window-mean over the stop. (The old additive bridge hit ~2.3 V here
+    // against a ~0.5 V sine baseline; the crossfade stays near baseline.)
+    const int WIN = (int)(0.005f * SR);
+    const int period = (int)(SR / 220.f);
+    float worstStopDC = 0.f;
+    for (int pad = 0; pad < period; pad += period / 12) {
+        Tabes ms;
+        long fs = 0;
+        ms.params[Tabes::WOW_PARAM].setValue(0.3f);
+        ms.inputs[Tabes::AUDIO_INPUT].channels = 1;
+        ms.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+        float php = 0.f;
+        auto sn = [&]() { php += 220.f / SR; if (php >= 1.f) php -= 1.f;
+                          return 5.f * std::sin(2.f * M_PI * php); };
+        int rec = (int)(0.2f * SR) + pad;              // varied stop phase
+        for (int i = 0; i < rec; i++) {
+            ms.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+            ms.inputs[Tabes::AUDIO_INPUT].setVoltage(sn());
+            ms.process(makeArgs(fs++));
+        }
+        // measure the worst window-mean over the 20 ms after stop
+        double sum = 0; std::vector<float> ring(WIN, 0.f); int head = 0, filled = 0;
+        for (int i = 0; i < (int)(0.02f * SR); i++) {
+            ms.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+            ms.inputs[Tabes::AUDIO_INPUT].setVoltage(sn());
+            ms.process(makeArgs(fs++));
+            float v = ms.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+            sum += v - ring[head]; ring[head] = v; head = (head + 1) % WIN;
+            if (filled < WIN) filled++;
+            else worstStopDC = std::max(worstStopDC, (float)std::fabs(sum / WIN));
+        }
+    }
+    // a 220 Hz sine over a 5 ms window leaves ~0.5 V residual mean; a real
+    // thump is several volts. 1.2 V sits well between the two.
+    report("tabes", "rec_stop_dc", worstStopDC, worstStopDC < 1.2f);
 }
 
 static void testLustro() {

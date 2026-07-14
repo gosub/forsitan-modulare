@@ -61,10 +61,22 @@ struct Tabes : Module {
     float lpState = 0.f;          // per-pass write-head lowpass
     int xfadeTotal = 0;           // seam declick: head/input blend length
     int xfadeRemain = 0;          // samples of blend left (first pass only)
-    float declick = 0.f;          // additive bridge over source switches
+    // rec-transition crossfade: loopGain ramps 0<->1 over ~10 ms so the
+    // monitor/playback handoff has no envelope step. (The old additive bridge
+    // cancelled the instantaneous step but turned each rec press into a short
+    // low-frequency thump.) The rec-start direction reads the loop's
+    // continuation from a snapshot, because recording is overwriting the tape
+    // underneath the fade.
+    std::vector<float> xfBuf;     // loop-tail snapshot for the rec-start fade
+    int xfBufLen = 0;             // capacity of xfBuf (samples)
+    int xfReadPos = 0;            // read cursor into xfBuf
+    int recStartFade = 0;         // snapshot samples left to read
+    float loopGain = 0.f;         // 0 = recording/empty, 1 = playing
+    float loopGainStep = 0.f;     // per-sample ramp (1 / window)
+    float lastOffset = 0.f;       // last wow read offset, to continue the head
+    float declick = 0.f;          // additive bridge, splice only
     float prevOut = 0.f;
     float declickCoef = 0.f;
-    bool lastRecording = false;
     float wowPhase = 0.f, flutterPhase = 0.f;
     float dropEnv = 1.f;          // smoothed dropout gain
     int dropTimer = 0;
@@ -104,9 +116,12 @@ struct Tabes : Module {
         age = 0;
         lpState = 0.f;
         xfadeRemain = 0;
+        recStartFade = 0;
+        xfReadPos = 0;
+        loopGain = 0.f;
+        lastOffset = 0.f;
         declick = 0.f;
         prevOut = 0.f;
-        lastRecording = false;
         wowPhase = flutterPhase = 0.f;
         dropEnv = 1.f;
         dropTimer = 0;
@@ -129,6 +144,28 @@ struct Tabes : Module {
         recPos = 0;
         age = 0;
         xfadeRemain = 0;
+        // snapshot the loop's continuation so the output can crossfade from
+        // playback to the input monitor while the tape gets overwritten. Read
+        // along the play head's current wow trajectory (offset frozen; wow is
+        // sub-Hz, so it barely moves across the ~10 ms fade) so the snapshot
+        // continues from the last played sample with no step.
+        if (loopLen > 0) {
+            int n = std::min(xfBufLen, loopLen);
+            float base = playPos + lastOffset;
+            for (int k = 0; k < n; k++) {
+                float rp = base + k;
+                rp -= loopLen * std::floor(rp / loopLen);
+                int i0 = (int)rp;
+                float f = rp - i0;
+                int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
+                xfBuf[k] = tape[i0] + f * (tape[i1] - tape[i0]);
+            }
+            xfReadPos = 0;
+            recStartFade = n;
+        } else {
+            recStartFade = 0;
+            loopGain = 0.f;
+        }
     }
 
     void stopRecording(float sr) {
@@ -169,6 +206,9 @@ struct Tabes : Module {
             tape.assign((size_t)(kMaxSeconds * sr), 0.f);
             pristine.clear();
             declickCoef = std::exp(-1.f / (0.002f * sr));   // ~2 ms bridge
+            xfBufLen = (int)(0.01f * sr);                    // ~10 ms crossfade
+            xfBuf.assign(xfBufLen, 0.f);
+            loopGainStep = 1.f / std::max(1, xfBufLen);
             onReset();
         }
 
@@ -194,14 +234,18 @@ struct Tabes : Module {
         decay = clamp(decay, 0.f, 1.f);
         float wowK = params[WOW_PARAM].getValue();
 
-        float out = 0.f;
+        float loopSig = 0.f;
 
         if (recording) {
-            // write straight to tape; monitor the input unless muted
+            // write straight to tape
             tape[recPos] = in;
             if (++recPos >= (int)tape.size()) stopRecording(sr);
-            if (monitorMode != MONITOR_NEVER)
-                out = in;
+            // feed the rec-start crossfade from the pre-record snapshot,
+            // since the tape under the play head is being overwritten
+            if (recStartFade > 0) {
+                loopSig = xfBuf[xfReadPos++];
+                recStartFade--;
+            }
         } else if (loopLen > 0) {
             // ── seam declick: first pass after stop blends the loop head
             //    with the live input, in tape and pristine alike ───────────────
@@ -227,7 +271,8 @@ struct Tabes : Module {
             int i0 = (int)rp;
             float f = rp - i0;
             int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
-            out = tape[i0] + f * (tape[i1] - tape[i0]);
+            loopSig = tape[i0] + f * (tape[i1] - tape[i0]);
+            lastOffset = offset;   // so a rec press can continue the head
 
             // ── the write head re-records a slightly worse copy ─────────────
             float w = tape[playPos];
@@ -259,20 +304,27 @@ struct Tabes : Module {
                 eocPulse.trigger(1e-3f);
                 eocFlash = 1.f;
             }
-        } else if (monitorMode == MONITOR_WHILE_REC) {
-            // empty tape: pass the input through until there is a loop
-            out = in;
         }
 
-        if (monitorMode == MONITOR_ALWAYS && !recording)
-            out += in;
+        // ── ramp the loop in/out across rec presses so the monitor/playback
+        //    handoff is a crossfade, not a step ──────────────────────────────
+        float loopTarget = (!recording && loopLen > 0) ? 1.f : 0.f;
+        if (loopGain < loopTarget)
+            loopGain = std::min(loopTarget, loopGain + loopGainStep);
+        else if (loopGain > loopTarget)
+            loopGain = std::max(loopTarget, loopGain - loopGainStep);
 
-        // ── declick: when the output source switches abruptly (rec start,
-        //    rec stop with muted monitor, splice), carry the step over as a
-        //    decaying offset instead of a click ────────────────────────────
-        if (recording != lastRecording || spliced)
+        // input monitoring: ALWAYS passes through at all times; the default
+        // mode monitors whatever the loop isn't covering (recording, empty,
+        // and the fade between). Both ride opposite the loop's gain, so the
+        // sum stays continuous through a rec press.
+        float passGain = (monitorMode == MONITOR_ALWAYS)    ? 1.f            : 0.f;
+        float monGain  = (monitorMode == MONITOR_WHILE_REC) ? (1.f - loopGain) : 0.f;
+        float out = (passGain + monGain) * in + loopGain * loopSig;
+
+        // ── declick the splice source switch with a short decaying bridge ──
+        if (spliced)
             declick = prevOut - out;
-        lastRecording = recording;
         out += declick;
         declick *= declickCoef;
         prevOut = out;

@@ -21,11 +21,15 @@ pass zero.
   becomes the loop length (up to 30 seconds).
 - Or drive the **gate** input: recording follows the gate (high = recording).
 - Recording replaces the previous loop and resets the age.
-- Stopping is clickless even when the end of the recording doesn't line up
-  with the beginning: for the first few milliseconds after the stop, the
-  loop's head is crossfaded with the live input, so the seam carries real
-  audio instead of a jump. Let the source keep playing for a moment after
-  you stop recording and the seam will be seamless in the literal sense.
+- Recording is clickless in both directions. Pressing rec crossfades between
+  the input monitor and the loop over about 10 ms, so neither the start nor
+  the stop clicks or thumps regardless of where in the waveform you press.
+- Stopping is clickless at the loop point too, even when the end of the
+  recording doesn't line up with the beginning: for the first few
+  milliseconds after the stop, the loop's head is crossfaded with the live
+  input, so the seam carries real audio instead of a jump. Let the source
+  keep playing for a moment after you stop recording and the seam will be
+  seamless in the literal sense.
 - While recording, the input is monitored at the output; when recording
   stops, monitoring stops with it and you hear only the loop. While the
   tape is empty (before the first recording, after "Clear loop", or after
