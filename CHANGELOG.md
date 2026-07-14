@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.1] - 2026-07-14
+### Fixed
+  - **tabes** is now clickless: stopping a recording crossfades the loop's
+    head with the live input over the first ~10 ms of playback, so the seam
+    no longer clicks when the end of the recording doesn't align with the
+    beginning (the pristine copy gets the same treatment, so splice stays
+    clean too); abrupt output source switches (record start, record stop
+    with muted monitoring, splice on aged tape) are bridged with a short
+    declick ramp
+
 ## [2.7.0] - 2026-07-11
 ### Added
   - **rete**, a new module: feedback integrator network (after Nathan Ho's
