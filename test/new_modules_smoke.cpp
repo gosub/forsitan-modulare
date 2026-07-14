@@ -187,6 +187,19 @@ static void testTabes() {
         prev = v;
     }
     report("tabes", "seam_max_step", maxStep, maxStep < 1.f);
+
+    // empty tape in the default monitor mode passes the input through
+    Tabes m3;
+    long f3 = 0;
+    m3.inputs[Tabes::AUDIO_INPUT].channels = 1;
+    float thruMin = 10.f;
+    for (int i = 0; i < 100; i++) {
+        m3.inputs[Tabes::AUDIO_INPUT].setVoltage(4.f);
+        m3.process(makeArgs(f3++));
+        if (i > 0)   // first sample initializes sr / buffers
+            thruMin = std::min(thruMin, m3.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+    }
+    report("tabes", "empty_monitor_thru", thruMin, std::fabs(thruMin - 4.f) < 1e-3f);
 }
 
 static void testLustro() {

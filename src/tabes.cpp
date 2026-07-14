@@ -259,6 +259,9 @@ struct Tabes : Module {
                 eocPulse.trigger(1e-3f);
                 eocFlash = 1.f;
             }
+        } else if (monitorMode == MONITOR_WHILE_REC) {
+            // empty tape: pass the input through until there is a loop
+            out = in;
         }
 
         if (monitorMode == MONITOR_ALWAYS && !recording)
@@ -366,7 +369,7 @@ struct TabesWidget : ModuleWidget {
         if (!m) return;
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexPtrSubmenuItem("Monitor input",
-            {"While recording", "Always", "Never"}, &m->monitorMode));
+            {"While recording or empty", "Always", "Never"}, &m->monitorMode));
         menu->addChild(createMenuItem("Clear loop", "", [m]() { m->onReset(); }));
     }
 };

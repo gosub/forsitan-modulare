@@ -27,9 +27,12 @@ pass zero.
   audio instead of a jump. Let the source keep playing for a moment after
   you stop recording and the seam will be seamless in the literal sense.
 - While recording, the input is monitored at the output; when recording
-  stops, monitoring stops with it and you hear only the loop. The
-  right-click "Monitor input" menu offers **While recording** (default),
-  **Always** (input passes through during playback too), and **Never**.
+  stops, monitoring stops with it and you hear only the loop. While the
+  tape is empty (before the first recording, after "Clear loop", or after
+  a too-short recording), the input also passes through, so the module is
+  never a dead end in a chain. The right-click "Monitor input" menu offers
+  **While recording or empty** (default), **Always** (input passes through
+  during playback too), and **Never**.
 
 ## Controls
 
