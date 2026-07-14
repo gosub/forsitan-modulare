@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.2] - 2026-07-14
+### Changed
+  - tabes: the default monitor mode also passes the input through while the
+    tape is empty (before the first recording, after "Clear loop", after a
+    too-short recording), so the module is never a dead end in a chain; the
+    menu entry is now called "While recording or empty"
+### Fixed
+  - tabes: pressing rec no longer thumps. The monitor/playback handoff is now
+    a ~10 ms crossfade rather than a step: rec-start reads the loop's
+    continuation from a snapshot (recording is overwriting the tape) and fades
+    it under the input monitor; rec-stop fades the monitor into the loop. The
+    old additive bridge cancelled the click but left a low-frequency pulse at
+    each press (worst near a couple of volts against a half-volt signal); the
+    crossfade stays near the signal's own baseline. Splice keeps the bridge.
+
 ## [2.7.1] - 2026-07-14
 ### Fixed
   - **tabes** is now clickless: stopping a recording crossfades the loop's
