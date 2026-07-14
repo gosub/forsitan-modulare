@@ -156,6 +156,37 @@ static void testTabes() {
         ps.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
     }
     report("tabes", "splice_rms", ps.rms(), ps.rms() > 0.8 * p1.rms());
+
+    // clickless: record a sine whose end doesn't align with its beginning
+    // (a quarter period off), keep the input running, and check the output
+    // never steps across the stop handoff or the loop seam
+    Tabes m2;
+    long f2 = 0;
+    m2.params[Tabes::WOW_PARAM].setValue(0.f);
+    m2.inputs[Tabes::AUDIO_INPUT].channels = 1;
+    m2.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+    float ph = 0.f;
+    auto sine = [&]() {
+        ph += 220.f / SR; if (ph >= 1.f) ph -= 1.f;
+        return 5.f * std::sin(2.f * M_PI * ph);
+    };
+    m2.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    int n = (int)SR + 55;
+    for (int i = 0; i < n; i++) {
+        m2.inputs[Tabes::AUDIO_INPUT].setVoltage(sine());
+        m2.process(makeArgs(f2++));
+    }
+    m2.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+    float prev = m2.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+    float maxStep = 0.f;
+    for (int i = 0; i < 3 * n; i++) {
+        m2.inputs[Tabes::AUDIO_INPUT].setVoltage(sine());
+        m2.process(makeArgs(f2++));
+        float v = m2.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+        maxStep = std::max(maxStep, std::fabs(v - prev));
+        prev = v;
+    }
+    report("tabes", "seam_max_step", maxStep, maxStep < 1.f);
 }
 
 static void testLustro() {

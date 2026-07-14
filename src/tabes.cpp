@@ -59,6 +59,12 @@ struct Tabes : Module {
     int age = 0;                  // completed passes since last splice
 
     float lpState = 0.f;          // per-pass write-head lowpass
+    int xfadeTotal = 0;           // seam declick: head/input blend length
+    int xfadeRemain = 0;          // samples of blend left (first pass only)
+    float declick = 0.f;          // additive bridge over source switches
+    float prevOut = 0.f;
+    float declickCoef = 0.f;
+    bool lastRecording = false;
     float wowPhase = 0.f, flutterPhase = 0.f;
     float dropEnv = 1.f;          // smoothed dropout gain
     int dropTimer = 0;
@@ -97,6 +103,10 @@ struct Tabes : Module {
         recording = false;
         age = 0;
         lpState = 0.f;
+        xfadeRemain = 0;
+        declick = 0.f;
+        prevOut = 0.f;
+        lastRecording = false;
         wowPhase = flutterPhase = 0.f;
         dropEnv = 1.f;
         dropTimer = 0;
@@ -118,6 +128,7 @@ struct Tabes : Module {
         recording = true;
         recPos = 0;
         age = 0;
+        xfadeRemain = 0;
     }
 
     void stopRecording(float sr) {
@@ -129,17 +140,26 @@ struct Tabes : Module {
         loopLen = recPos;
         pristine.assign(tape.begin(), tape.begin() + loopLen);
         playPos = 0;
-        lpState = 0.f;
+        // start the write-head filter where the seam ends, not from zero,
+        // so pass 2 doesn't get a level dip baked into the loop head
+        lpState = tape[loopLen - 1];
         dropEnv = 1.f;
         dropTimer = 0;
+        // seam declick: over the next ~10 ms, crossfade the loop head with
+        // the live input (see process), so tape[0] follows tape[loopLen-1]
+        // as smoothly as the input itself did
+        xfadeTotal = std::min((int)(0.01f * sr), loopLen);
+        xfadeRemain = xfadeTotal;
     }
 
-    void splice() {
+    bool splice() {
         if ((int)pristine.size() > 0 && loopLen > 0) {
             std::copy(pristine.begin(), pristine.end(), tape.begin());
             age = 0;
             dropTimer = 0;
+            return true;
         }
+        return false;
     }
 
     void process(const ProcessArgs& args) override {
@@ -148,6 +168,7 @@ struct Tabes : Module {
             curSampleRate = sr;
             tape.assign((size_t)(kMaxSeconds * sr), 0.f);
             pristine.clear();
+            declickCoef = std::exp(-1.f / (0.002f * sr));   // ~2 ms bridge
             onReset();
         }
 
@@ -162,9 +183,10 @@ struct Tabes : Module {
         if (!gateHigh && gateWasHigh && recording) stopRecording(sr);
         gateWasHigh = gateHigh;
 
+        bool spliced = false;
         if (spliceButton.process(params[SPLICE_PARAM].getValue() > 0.5f)
             || spliceTrigger.process(inputs[SPLICE_TRIG_INPUT].getVoltage(), 0.1f, 1.f))
-            splice();
+            spliced = splice();
 
         float decay = params[DECAY_PARAM].getValue();
         if (inputs[DECAY_CV_INPUT].isConnected())
@@ -181,6 +203,15 @@ struct Tabes : Module {
             if (monitorMode != MONITOR_NEVER)
                 out = in;
         } else if (loopLen > 0) {
+            // ── seam declick: first pass after stop blends the loop head
+            //    with the live input, in tape and pristine alike ───────────────
+            if (xfadeRemain > 0) {
+                float t = 1.f - (float)xfadeRemain / xfadeTotal;
+                tape[playPos] = pristine[playPos]
+                              = t * tape[playPos] + (1.f - t) * in;
+                xfadeRemain--;
+            }
+
             // ── wow/flutter on the play head ─────────────────────────────────
             wowPhase += 0.6f / sr;
             if (wowPhase >= 1.f) wowPhase -= 1.f;
@@ -232,6 +263,16 @@ struct Tabes : Module {
 
         if (monitorMode == MONITOR_ALWAYS && !recording)
             out += in;
+
+        // ── declick: when the output source switches abruptly (rec start,
+        //    rec stop with muted monitor, splice), carry the step over as a
+        //    decaying offset instead of a click ────────────────────────────
+        if (recording != lastRecording || spliced)
+            declick = prevOut - out;
+        lastRecording = recording;
+        out += declick;
+        declick *= declickCoef;
+        prevOut = out;
 
         outputs[AUDIO_OUTPUT].setVoltage(5.f * clamp(out, -2.f, 2.f));
         outputs[AGE_OUTPUT].setVoltage(std::min(0.1f * age, 10.f));
