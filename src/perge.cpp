@@ -406,12 +406,12 @@ struct Perge : Module {
         if (tiltOn) {
             tiltTimer -= 1.f;
             if (tiltTimer <= 0.f) {
-                tiltTimer = (0.06f + 0.09f * urand()) * sr;
-                tiltPitch = 14.f * noise();
-                tiltLofi = urand();
-                tiltCrush = urand() * 0.8f;
-                tiltRvrb = urand();
-                tiltSmear = urand();
+                tiltTimer = (0.12f + 0.18f * urand()) * sr;
+                tiltPitch = 4.f * noise();
+                tiltLofi = urand() * 0.35f;
+                tiltCrush = urand() * 0.25f;
+                tiltRvrb = urand() * 0.4f;
+                tiltSmear = urand() * 0.4f;
             }
         }
         if (tiltEnv > 1e-3f) {
