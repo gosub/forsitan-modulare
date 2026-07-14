@@ -49,8 +49,17 @@ struct Tabes : Module {
         LIGHTS_LEN
     };
 
-    std::vector<float> tape;      // the aging loop
-    std::vector<float> pristine;  // the recording as it was made
+    // Polyphonic: the tape has a "width" of `channels` tracks, fixed when a
+    // recording starts (from the AUDIO input's channel count). One shared
+    // transport drives them all — same wow, dropouts, seam and rec crossfade —
+    // so a 2-channel poly cable records and plays back as a coherent stereo
+    // tape. Per-channel buffers grow lazily to the widest recording so far and
+    // never shrink (a mono patch stays at ~11 MB; 16 tracks would reach ~184).
+    static constexpr int kMaxChannels = 16;
+    std::vector<std::vector<float>> tape;      // [channel][sample], aging loop
+    std::vector<std::vector<float>> pristine;  // [channel][sample], as recorded
+    int channels = 1;             // tape width (tracks), set at record start
+    size_t tapeCap = 0;           // per-channel capacity (samples)
     int loopLen = 0;              // samples in the loop (0 = empty)
     int playPos = 0;
     int recPos = 0;
@@ -58,7 +67,7 @@ struct Tabes : Module {
     bool gateWasHigh = false;
     int age = 0;                  // completed passes since last splice
 
-    float lpState = 0.f;          // per-pass write-head lowpass
+    float lpState[kMaxChannels] = {};   // per-channel write-head lowpass
     int xfadeTotal = 0;           // seam declick: head/input blend length
     int xfadeRemain = 0;          // samples of blend left (first pass only)
     // rec-transition crossfade: loopGain ramps 0<->1 over ~10 ms so the
@@ -67,15 +76,15 @@ struct Tabes : Module {
     // low-frequency thump.) The rec-start direction reads the loop's
     // continuation from a snapshot, because recording is overwriting the tape
     // underneath the fade.
-    std::vector<float> xfBuf;     // loop-tail snapshot for the rec-start fade
+    std::vector<std::vector<float>> xfBuf;   // [channel][k] rec-start snapshot
     int xfBufLen = 0;             // capacity of xfBuf (samples)
     int xfReadPos = 0;            // read cursor into xfBuf
     int recStartFade = 0;         // snapshot samples left to read
     float loopGain = 0.f;         // 0 = recording/empty, 1 = playing
     float loopGainStep = 0.f;     // per-sample ramp (1 / window)
     float lastOffset = 0.f;       // last wow read offset, to continue the head
-    float declick = 0.f;          // additive bridge, splice only
-    float prevOut = 0.f;
+    float declick[kMaxChannels] = {};   // per-channel additive bridge, splice only
+    float prevOut[kMaxChannels] = {};
     float declickCoef = 0.f;
     float wowPhase = 0.f, flutterPhase = 0.f;
     float dropEnv = 1.f;          // smoothed dropout gain
@@ -97,11 +106,11 @@ struct Tabes : Module {
         configParam(WOW_PARAM, 0.f, 1.f, 0.3f, "Wow/flutter");
         configButton(REC_PARAM, "Record");
         configButton(SPLICE_PARAM, "Splice (restore pristine tape)");
-        configInput(AUDIO_INPUT, "Audio");
+        configInput(AUDIO_INPUT, "Audio (polyphonic: records all channels)");
         configInput(REC_GATE_INPUT, "Record gate");
         configInput(SPLICE_TRIG_INPUT, "Splice trigger");
         configInput(DECAY_CV_INPUT, "Decay CV");
-        configOutput(AUDIO_OUTPUT, "Audio");
+        configOutput(AUDIO_OUTPUT, "Audio (matches the recorded channel count)");
         configOutput(AGE_OUTPUT, "Age (0.1V per pass)");
         configOutput(EOC_OUTPUT, "End of loop trigger");
         configLight(REC_LIGHT, "Recording");
@@ -114,20 +123,30 @@ struct Tabes : Module {
         playPos = recPos = 0;
         recording = false;
         age = 0;
-        lpState = 0.f;
+        std::fill(std::begin(lpState), std::end(lpState), 0.f);
+        std::fill(std::begin(declick), std::end(declick), 0.f);
+        std::fill(std::begin(prevOut), std::end(prevOut), 0.f);
         xfadeRemain = 0;
         recStartFade = 0;
         xfReadPos = 0;
         loopGain = 0.f;
         lastOffset = 0.f;
-        declick = 0.f;
-        prevOut = 0.f;
         wowPhase = flutterPhase = 0.f;
         dropEnv = 1.f;
         dropTimer = 0;
         eocFlash = 0.f;
         outEnv = 0.f;
-        std::fill(tape.begin(), tape.end(), 0.f);
+        for (auto& ch : tape) std::fill(ch.begin(), ch.end(), 0.f);
+    }
+
+    // grow the per-channel buffers to at least n tracks (never shrinks)
+    void ensureChannels(int n) {
+        n = clamp(n, 1, kMaxChannels);
+        while ((int)tape.size() < n) {
+            tape.emplace_back(tapeCap, 0.f);
+            pristine.emplace_back();
+            xfBuf.emplace_back(xfBufLen, 0.f);
+        }
     }
 
     float noise() {
@@ -139,11 +158,13 @@ struct Tabes : Module {
     // uniform [0,1)
     float urand() { return noise() * 0.5f + 0.5f; }
 
-    void startRecording() {
+    void startRecording(int inCh) {
         recording = true;
         recPos = 0;
         age = 0;
         xfadeRemain = 0;
+        channels = clamp(inCh, 1, kMaxChannels);   // tape width for this take
+        ensureChannels(channels);
         // snapshot the loop's continuation so the output can crossfade from
         // playback to the input monitor while the tape gets overwritten. Read
         // along the play head's current wow trajectory (offset frozen; wow is
@@ -158,7 +179,8 @@ struct Tabes : Module {
                 int i0 = (int)rp;
                 float f = rp - i0;
                 int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
-                xfBuf[k] = tape[i0] + f * (tape[i1] - tape[i0]);
+                for (int c = 0; c < channels; c++)
+                    xfBuf[c][k] = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
             }
             xfReadPos = 0;
             recStartFade = n;
@@ -175,11 +197,13 @@ struct Tabes : Module {
             return;
         }
         loopLen = recPos;
-        pristine.assign(tape.begin(), tape.begin() + loopLen);
+        for (int c = 0; c < channels; c++) {
+            pristine[c].assign(tape[c].begin(), tape[c].begin() + loopLen);
+            // start the write-head filter where the seam ends, not from zero,
+            // so pass 2 doesn't get a level dip baked into the loop head
+            lpState[c] = tape[c][loopLen - 1];
+        }
         playPos = 0;
-        // start the write-head filter where the seam ends, not from zero,
-        // so pass 2 doesn't get a level dip baked into the loop head
-        lpState = tape[loopLen - 1];
         dropEnv = 1.f;
         dropTimer = 0;
         // seam declick: over the next ~10 ms, crossfade the loop head with
@@ -190,8 +214,10 @@ struct Tabes : Module {
     }
 
     bool splice() {
-        if ((int)pristine.size() > 0 && loopLen > 0) {
-            std::copy(pristine.begin(), pristine.end(), tape.begin());
+        if (loopLen > 0 && (int)pristine.size() >= channels
+            && !pristine[0].empty()) {
+            for (int c = 0; c < channels; c++)
+                std::copy(pristine[c].begin(), pristine[c].end(), tape[c].begin());
             age = 0;
             dropTimer = 0;
             return true;
@@ -203,23 +229,25 @@ struct Tabes : Module {
         const float sr = args.sampleRate;
         if (sr != curSampleRate) {
             curSampleRate = sr;
-            tape.assign((size_t)(kMaxSeconds * sr), 0.f);
-            pristine.clear();
+            tapeCap = (size_t)(kMaxSeconds * sr);
             declickCoef = std::exp(-1.f / (0.002f * sr));   // ~2 ms bridge
             xfBufLen = (int)(0.01f * sr);                    // ~10 ms crossfade
-            xfBuf.assign(xfBufLen, 0.f);
             loopGainStep = 1.f / std::max(1, xfBufLen);
+            tape.clear();
+            pristine.clear();
+            xfBuf.clear();
+            channels = 1;
+            ensureChannels(1);
             onReset();
         }
 
-        float in = inputs[AUDIO_INPUT].getVoltage() * 0.2f;   // ±5V -> ±1
-
         // ── record control: button toggles, gate follows its edges ──────────
+        int inCh = std::max(1, inputs[AUDIO_INPUT].getChannels());
         if (recButton.process(params[REC_PARAM].getValue() > 0.5f)) {
-            if (recording) stopRecording(sr); else startRecording();
+            if (recording) stopRecording(sr); else startRecording(inCh);
         }
         bool gateHigh = inputs[REC_GATE_INPUT].getVoltage() >= 1.f;
-        if (gateHigh && !gateWasHigh && !recording) startRecording();
+        if (gateHigh && !gateWasHigh && !recording) startRecording(inCh);
         if (!gateHigh && gateWasHigh && recording) stopRecording(sr);
         gateWasHigh = gateHigh;
 
@@ -234,16 +262,26 @@ struct Tabes : Module {
         decay = clamp(decay, 0.f, 1.f);
         float wowK = params[WOW_PARAM].getValue();
 
-        float loopSig = 0.f;
+        // output width: the recorded tape width while a loop or recording
+        // exists, otherwise follow the input so monitoring is poly too
+        int nc = (loopLen > 0 || recording) ? channels : inCh;
+        float in[kMaxChannels];
+        for (int c = 0; c < nc; c++)
+            in[c] = inputs[AUDIO_INPUT].getPolyVoltage(c) * 0.2f;   // ±5V -> ±1
+
+        float loopSig[kMaxChannels] = {};
 
         if (recording) {
             // write straight to tape
-            tape[recPos] = in;
-            if (++recPos >= (int)tape.size()) stopRecording(sr);
+            for (int c = 0; c < channels; c++)
+                tape[c][recPos] = in[c];
+            if (++recPos >= (int)tapeCap) stopRecording(sr);
             // feed the rec-start crossfade from the pre-record snapshot,
             // since the tape under the play head is being overwritten
             if (recStartFade > 0) {
-                loopSig = xfBuf[xfReadPos++];
+                for (int c = 0; c < channels; c++)
+                    loopSig[c] = xfBuf[c][xfReadPos];
+                xfReadPos++;
                 recStartFade--;
             }
         } else if (loopLen > 0) {
@@ -251,12 +289,13 @@ struct Tabes : Module {
             //    with the live input, in tape and pristine alike ───────────────
             if (xfadeRemain > 0) {
                 float t = 1.f - (float)xfadeRemain / xfadeTotal;
-                tape[playPos] = pristine[playPos]
-                              = t * tape[playPos] + (1.f - t) * in;
+                for (int c = 0; c < channels; c++)
+                    tape[c][playPos] = pristine[c][playPos]
+                                     = t * tape[c][playPos] + (1.f - t) * in[c];
                 xfadeRemain--;
             }
 
-            // ── wow/flutter on the play head ─────────────────────────────────
+            // ── wow/flutter on the play head (shared across tracks) ──────────
             wowPhase += 0.6f / sr;
             if (wowPhase >= 1.f) wowPhase -= 1.f;
             flutterPhase += 5.3f / sr;
@@ -271,32 +310,35 @@ struct Tabes : Module {
             int i0 = (int)rp;
             float f = rp - i0;
             int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
-            loopSig = tape[i0] + f * (tape[i1] - tape[i0]);
             lastOffset = offset;   // so a rec press can continue the head
 
-            // ── the write head re-records a slightly worse copy ─────────────
-            float w = tape[playPos];
-            // per-pass high-frequency loss: one-pole at 22 kHz .. 2.2 kHz
-            float fc = 22000.f * std::pow(10.f, -decay);
+            // write-head coefficients, shared across tracks
+            float fc = 22000.f * std::pow(10.f, -decay);   // 22 kHz .. 2.2 kHz
             float a = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
-            lpState += a * (w - lpState);
-            w = lpState;
-            // mild saturation and level sag
             float satMix = 0.5f * decay;
-            w = (1.f - satMix) * w + satMix * std::tanh(w);
-            w *= 1.f - 0.002f * decay;
-            // tape hiss
-            w += decay * 2e-4f * noise();
-            // dropouts: more likely as the tape ages
+            // dropouts hit the whole tape width, so decide once per sample
             if (dropTimer > 0) {
                 dropTimer--;
             } else if (urand() < decay * age * 8e-7f) {
                 dropTimer = (int)(sr * (0.005f + 0.02f * urand()));
             }
             dropEnv += (((dropTimer > 0) ? 0.15f : 1.f) - dropEnv) * 0.005f;
-            w *= dropEnv;
-            if (!std::isfinite(w)) w = 0.f;
-            tape[playPos] = w;
+
+            // ── the write head re-records a slightly worse copy, per track ──
+            for (int c = 0; c < channels; c++) {
+                loopSig[c] = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                float w = tape[c][playPos];
+                lpState[c] += a * (w - lpState[c]);
+                w = lpState[c];
+                // mild saturation and level sag
+                w = (1.f - satMix) * w + satMix * std::tanh(w);
+                w *= 1.f - 0.002f * decay;
+                // tape hiss (independent per track)
+                w += decay * 2e-4f * noise();
+                w *= dropEnv;
+                if (!std::isfinite(w)) w = 0.f;
+                tape[c][playPos] = w;
+            }
 
             if (++playPos >= loopLen) {
                 playPos = 0;
@@ -320,16 +362,20 @@ struct Tabes : Module {
         // sum stays continuous through a rec press.
         float passGain = (monitorMode == MONITOR_ALWAYS)    ? 1.f            : 0.f;
         float monGain  = (monitorMode == MONITOR_WHILE_REC) ? (1.f - loopGain) : 0.f;
-        float out = (passGain + monGain) * in + loopGain * loopSig;
 
-        // ── declick the splice source switch with a short decaying bridge ──
-        if (spliced)
-            declick = prevOut - out;
-        out += declick;
-        declick *= declickCoef;
-        prevOut = out;
-
-        outputs[AUDIO_OUTPUT].setVoltage(5.f * clamp(out, -2.f, 2.f));
+        outputs[AUDIO_OUTPUT].setChannels(nc);
+        float level = 0.f;
+        for (int c = 0; c < nc; c++) {
+            float out = (passGain + monGain) * in[c] + loopGain * loopSig[c];
+            // declick the splice source switch with a short decaying bridge
+            if (spliced)
+                declick[c] = prevOut[c] - out;
+            out += declick[c];
+            declick[c] *= declickCoef;
+            prevOut[c] = out;
+            outputs[AUDIO_OUTPUT].setVoltage(5.f * clamp(out, -2.f, 2.f), c);
+            level = std::max(level, std::fabs(out));
+        }
         outputs[AGE_OUTPUT].setVoltage(std::min(0.1f * age, 10.f));
         outputs[EOC_OUTPUT].setVoltage(eocPulse.process(args.sampleTime) ? 10.f : 0.f);
         lights[REC_LIGHT].setBrightness(recording ? 1.f : 0.f);
@@ -337,7 +383,7 @@ struct Tabes : Module {
         eocFlash *= 1.f - 10.f * args.sampleTime;
         if (eocFlash < 0.f) eocFlash = 0.f;
         lights[EOC_LIGHT].setBrightness(eocFlash);
-        outEnv += (std::fabs(out) - outEnv) * 0.002f;
+        outEnv += (level - outEnv) * 0.002f;
         lights[OUT_LIGHT].setBrightness(clamp(outEnv, 0.f, 1.f));
     }
 

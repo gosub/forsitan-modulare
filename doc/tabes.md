@@ -55,6 +55,28 @@ pass zero.
 | **age** | 0.1V per completed pass, clamps at 10V. Patch it somewhere: let the patch itself react to the tape dying |
 | **eoc** | 1 ms trigger every time the loop wraps (its LED flashes with each wrap) |
 
+## Polyphony (stereo and beyond)
+
+**in** and **out** are polyphonic. Patch a poly cable with two channels and
+tabes records a **stereo** tape; the output carries the same two channels.
+Any channel count up to 16 works, so a multi-track source becomes a
+multi-track tape.
+
+The tape has one **transport** and several **tracks**. Everything about the
+tape's motion is shared across the tracks — the same wow/flutter warble, the
+same dropouts, the same loop seam, the same crossfade when you press rec — so
+a stereo image stays phase-locked and moves as one, which two separate mono
+tabes could never do. Only the audio itself and the per-track tape hiss are
+independent.
+
+- The tape's width is set **when you record**, from the input's channel
+  count at that moment. Playback outputs that many channels no matter what
+  you patch in later, so repatching the input can't split a stereo loop.
+- **age** and **eoc** are always monophonic (they describe the transport,
+  not the audio). **decay cv**, **gate** and **splice trig** read channel 1.
+- A mono input into a stereo-recorded loop (with monitoring on) is heard on
+  both channels.
+
 ## Tips
 
 - Record 5–20 seconds of something tonal, set **decay** around 10 o'clock,
@@ -69,4 +91,6 @@ pass zero.
 ## Notes
 
 The loop buffer lives at the engine sample rate; changing the sample rate
-clears the tape.
+clears the tape. Per-track buffers grow the first time you record that many
+channels and are not released afterward, so a session that has recorded a
+16-channel loop holds those buffers until the module is removed.

@@ -278,6 +278,41 @@ static void testTabes() {
     // a 220 Hz sine over a 5 ms window leaves ~0.5 V residual mean; a real
     // thump is several volts. 1.2 V sits well between the two.
     report("tabes", "rec_stop_dc", worstStopDC, worstStopDC < 1.2f);
+
+    // polyphonic: a 2-channel input records as a stereo tape and plays back
+    // two distinct channels (one shared transport, two tracks)
+    Tabes mp;
+    long fp = 0;
+    mp.params[Tabes::WOW_PARAM].setValue(0.f);
+    mp.inputs[Tabes::AUDIO_INPUT].channels = 2;
+    mp.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+    mp.outputs[Tabes::AUDIO_OUTPUT].channels = 1;   // simulate a patched cable
+    float pa = 0.f, pb = 0.f;
+    mp.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    for (int i = 0; i < (int)(0.5f * SR); i++) {
+        pa += 220.f / SR; if (pa >= 1.f) pa -= 1.f;
+        pb += 330.f / SR; if (pb >= 1.f) pb -= 1.f;
+        mp.inputs[Tabes::AUDIO_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * pa), 0);
+        mp.inputs[Tabes::AUDIO_INPUT].setVoltage(3.f * std::sin(2.f * M_PI * pb), 1);
+        mp.process(makeArgs(fp++));
+    }
+    mp.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+    mp.inputs[Tabes::AUDIO_INPUT].setVoltage(0.f, 0);
+    mp.inputs[Tabes::AUDIO_INPUT].setVoltage(0.f, 1);
+    Stats pl, pr;
+    int outChans = 0;
+    for (int i = 0; i < (int)(0.5f * SR); i++) {
+        mp.process(makeArgs(fp++));
+        outChans = mp.outputs[Tabes::AUDIO_OUTPUT].getChannels();
+        pl.add(mp.outputs[Tabes::AUDIO_OUTPUT].getVoltage(0));
+        pr.add(mp.outputs[Tabes::AUDIO_OUTPUT].getVoltage(1));
+    }
+    report("tabes", "poly_channels", outChans, outChans == 2);
+    report("tabes", "poly_left_rms", pl.rms(), pl.rms() > 1.0);
+    report("tabes", "poly_right_rms", pr.rms(), pr.rms() > 0.5);
+    // the two tracks must be distinct, not a mono copy of one channel
+    report("tabes", "poly_distinct", std::fabs(pl.rms() - pr.rms()),
+           std::fabs(pl.rms() - pr.rms()) > 0.3);
 }
 
 static void testLustro() {
