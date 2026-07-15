@@ -20,7 +20,8 @@ of three sample slots, and repeats of it are spawned on a tempo grid:
 
 - **tempo** sets the repeat rate (100 ms – 2 s), or patch a clock into
   **clock** and the repeats follow it (the right-click *Clock multiplier*
-  menu offers 1/4 – x4).
+  menu scales the incoming clock by 1/4 – x4; it has no effect on the
+  tempo knob).
 - **sens** sets how strongly your dynamics matter: low = even, consistent
   repeats regardless of touch; high = loud hits produce loud repeats, soft
   playing nearly disappears.

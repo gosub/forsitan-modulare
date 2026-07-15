@@ -491,9 +491,10 @@ struct Perge : Module {
         }
         bool clocked = inputs[CLOCK_INPUT].isConnected() && clockPeriod > 0.f;
         float tempoK = params[TEMPO_PARAM].getValue();
-        float baseT = clocked ? clockPeriod
+        // the multiplier scales the external clock only; the tempo knob
+        // always means what it says
+        float baseT = clocked ? clockPeriod / kMults[clockMult]
                               : (2.0f * std::pow(0.05f, tempoK)) * sr;  // 2s..100ms
-        baseT /= kMults[clockMult];
 
         // sustain -> per-repeat gain (freeze pins it to 1)
         float decayPerRepeat = frozen ? 1.f
