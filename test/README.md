@@ -28,3 +28,20 @@ bank,engine,hz,dcL,dcR,rms_ac,peak,nans
   means its perceived level depends on hz and its makeup gain needs work.
 - `peak` — max absolute sample; watch for values well above 1.
 - `nans` — count of non-finite samples (must be 0).
+
+## perge_render
+
+A utility (not a self-running check) that feeds an audio stream through
+`Perge::process()` and writes the result, for A/B-ing the module against real
+audio outside Rack. It reads/writes **raw 32-bit float** (do WAV conversion in
+the caller, e.g. `ffmpeg`/`soundfile`), so it carries no bundled test asset.
+
+```
+perge_render <in.f32mono> <out.f32stereo> [KEY=value ...]
+```
+
+`KEY`s are param names (MIX, TEMPO, PITCH, SUSTAIN, GLITCH, LOFI, RVRB,
+FILTER, SENS, THRESH, ATTACK, RELEASE, MOD, DECAY, SPREAD, INFX) or the
+switches/menu members `repeatsMode` / `clockMult` / `altRouting` / `grainCap`,
+plus `seed`, `tiltStart` / `tiltEnd`, `freezeAt` (seconds). Input is ±1 (driven
+at ±5 V internally); it appends a 6 s tail so repeats and reverb ring out.
