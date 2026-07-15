@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "2.7.3",
+  "version": "2.7.4",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -11,7 +11,7 @@
   "manualUrl": "https://github.com/gosub/forsitan-modulare#forsitan-modulare",
   "sourceUrl": "https://github.com/gosub/forsitan-modulare",
   "donateUrl": "",
-  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.7.3/CHANGELOG.md",
+  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.7.4/CHANGELOG.md",
   "modules": [
     {
       "slug": "alea",
@@ -138,7 +138,7 @@
     {
       "slug": "tabes",
       "name": "tabes",
-      "description": "Disintegration looper: the tape loop degrades a little more on every pass (HF loss, saturation, hiss, dropouts, wow). Polyphonic: a poly cable records as a multi-track tape (2 channels = stereo).",
+      "description": "Disintegration looper: the tape loop degrades a little more on every pass (HF loss, saturation, hiss, dropouts, wow). Loop overlap for ambient blur, an FX send/return that compounds pass over pass, and a loop-locked ramp output. Polyphonic: a poly cable records as a multi-track tape (2 channels = stereo).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/tabes.md",
       "tags": [
         "Sampler",

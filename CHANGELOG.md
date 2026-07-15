@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.4] - 2026-07-15
+### Added
+  - tabes grows to 12HP and gains four things: a **loop overlap** control —
+    two play heads take turns playing the loop straight through, each new one
+    starting *overlap* before the last ends and crossfading (equal power) where
+    they meet, so at zero they play back to back and at the max the next repeat
+    begins when the current head is halfway (the tape still ages underneath);
+    an **FX send/return** whose returned signal is re-recorded onto the tape
+    and so compounds pass over pass (a reverb blooms, a shifter spirals),
+    bounded so a hot effect saturates into a drone instead of exploding, with a
+    **send** mix knob (default 50%) + CV; a **ramp** output giving the play head
+    as a loop-locked 0–10V saw (a phasor synced to eoc, clean of wow); and a
+    **wow CV** input to match the existing decay CV. New I/O is appended, so
+    existing tabes patches keep their mapping. The FX loop only engages when
+    both **send** and **return** are patched, so a stray return can't overwrite
+    the tape.
+### Fixed
+  - tabes: splicing no longer clicks. Restoring the pristine tape is a source
+    switch (the aged read jumps to the fresh one in level and timbre), and the
+    old ~2 ms additive bridge only cancelled the amplitude step, leaving a
+    slope/timbre transient that could also be clipped by the output clamp. It
+    now crossfades over ~10 ms between a snapshot of the aged output and the
+    restored pristine tape, the same technique used for the record seam.
+
 ## [2.7.3] - 2026-07-14
 ### Added
   - tabes is now polyphonic: the audio in/out carry a poly cable, so a
