@@ -202,6 +202,7 @@ struct Perge : Module {
     bool filtLP = true;
     // constants per sample rate
     float envAtkC = 0.5f, envRelC = 0.01f, revDamp = 0.3f;
+    float ledC = 0.002f;
 
     // stolen-voice declick: the cut voice's last output decays here
     float declickL = 0.f, declickR = 0.f;
@@ -343,6 +344,7 @@ struct Perge : Module {
         envRelC = 1.f - std::exp(-1.f / (0.120f * sr));
         revDamp = 1.f - std::exp(-2.f * (float)M_PI * 3000.f / sr);
         declickC = std::exp(-1.f / (0.0015f * sr));   // ~1.5 ms fade
+        ledC = 1.f - std::exp(-1.f / (0.010f * sr));  // ~10 ms level LEDs
         paramsDirty = true;
         onReset();
     }
@@ -813,8 +815,8 @@ struct Perge : Module {
         lights[CAPT_LIGHT].setBrightness(capturing ? 1.f : 0.f);
         lights[FREEZE_LIGHT].setBrightness(frozen ? 1.f : 0.f);
         lights[TILT_LIGHT].setBrightness(tiltEnv);
-        outEnvL += (std::fabs(outL) - outEnvL) * 0.002f;
-        outEnvR += (std::fabs(outR) - outEnvR) * 0.002f;
+        outEnvL += (std::fabs(outL) - outEnvL) * ledC;
+        outEnvR += (std::fabs(outR) - outEnvR) * ledC;
         lights[OUT_L_LIGHT].setBrightness(clamp(outEnvL, 0.f, 1.f));
         lights[OUT_R_LIGHT].setBrightness(clamp(outEnvR, 0.f, 1.f));
     }
