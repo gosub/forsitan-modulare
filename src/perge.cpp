@@ -279,6 +279,13 @@ struct Perge : Module {
         }
     }
 
+    // bipolar knobs are "inactive at noon": a small deadzone keeps an
+    // imperfectly centered knob truly inactive (pitch and filter have
+    // their own equivalent thresholds)
+    static float centerDead(float x) {
+        return (std::fabs(x) < 0.04f) ? 0.f : x;
+    }
+
     float noise() {
         uint32_t& s = noiseState;
         s ^= s << 13; s ^= s >> 17; s ^= s << 5;
@@ -415,12 +422,13 @@ struct Perge : Module {
         float infx = params[INFX_PARAM].getValue();
         repeatsMode = (int)std::round(params[REPEATSMODE_PARAM].getValue());
 
+        glitchK = centerDead(glitchK);
         float glitch = std::max(0.f, -glitchK);
         float dimens = std::max(0.f, glitchK);
-        float lofiK = params[LOFI_PARAM].getValue();
+        float lofiK = centerDead(params[LOFI_PARAM].getValue());
         float lofi = std::max(0.f, -lofiK);
         float crush = std::max(0.f, lofiK);
-        float rvrbK = params[RVRB_PARAM].getValue();
+        float rvrbK = centerDead(params[RVRB_PARAM].getValue());
         float rvrb = std::max(0.f, -rvrbK);
         float smear = std::max(0.f, rvrbK);
 
