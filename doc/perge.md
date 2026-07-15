@@ -15,7 +15,8 @@ through a multi-effect section.
 
 The module listens to the input with an envelope follower. When the level
 crosses **thrs** (threshold), a capture starts, and it runs until the input
-falls quiet again (up to 2 seconds). The captured sample becomes the newest
+falls quiet again (up to 2 seconds). A gate into **capt** forces a capture
+by hand instead, whatever the level. The captured sample becomes the newest
 of three sample slots, and repeats of it are spawned on a tempo grid:
 
 - **tempo** sets the repeat rate (100 ms – 2 s, CV addable), or patch a clock into
@@ -77,7 +78,8 @@ released.
 
 | jack | function |
 |------|----------|
-| **in l / in r** | stereo input; right is normalled to left (the LED by *in l* flashes while capturing) |
+| **in l / in r** | stereo input; right is normalled to left |
+| **capt** | capture gate: the rising edge forces a capture regardless of level, the gate holds it open, the falling edge commits it (the LED by the jack flashes while capturing) — sequenced, deterministic sampling |
 | **tempo / pitch / sust / glit / filt** | CV for tempo, pitch, sustain, glitch/dimension and filter (added to the knobs) |
 | **clock** | external tempo; measured between rising edges, released ~10 s after the clock stops |
 | **frz** | freeze gate |

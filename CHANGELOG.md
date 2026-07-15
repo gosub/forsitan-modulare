@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **perge**, a new module: stereo dynamic sampler and multi-effect,
     a from-scratch homage to the AC noises / BunkerNoise CONTINUA pedal —
     threshold-gated capture with sensibility, attack and release shaping
-    the dynamics-driven repeats; tempo knob (CV addable) or external clock
+    the dynamics-driven repeats (plus a capture gate forcing captures by
+    hand); tempo knob (CV addable) or external clock
     (with multiplier menu); random per-repeat octave/fifth pitch shifts; sustain
     with a freeze zone (plus freeze button/gate); bipolar glitch/dimension
     (tempo accelerations vs. up to three layered samples), lofi/crush,

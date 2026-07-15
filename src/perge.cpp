@@ -29,8 +29,8 @@
 //   Trims : SENS, THRS, ATK, REL, MOD, DCAY, SPRD, INFX
 //   Btns  : FREEZE (latch), TILT (momentary)
 //   Switch: MODE (std/rev/tail repeats)
-//   In    : IN L/R, TEMPO/PITCH/SUST/GLIT/FILT CV, CLOCK, FREEZE gate,
-//           TILT gate
+//   In    : IN L/R, TEMPO/PITCH/SUST/GLIT/FILT CV, CLOCK, CAPT gate
+//           (forced capture), FREEZE gate, TILT gate
 //   Out   : OUT L/R
 //   Menu  : grain cap (repeats capped to one tempo interval, on by default),
 //           alternative routing (dry into FX), clock multiplier (1/4 .. x4)
@@ -76,6 +76,7 @@ struct Perge : Module {
         FREEZE_GATE_INPUT,
         TILT_GATE_INPUT,
         TEMPO_CV_INPUT,
+        CAPTURE_GATE_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -132,9 +133,11 @@ struct Perge : Module {
     // envelope follower / capture
     float env = 0.f;
     bool capturing = false;
+    bool capForced = false;     // capture held open by the capture gate
     int capStart = 0;
     int capLen = 0;
     float capPeak = 0.f;
+    dsp::SchmittTrigger capGateTrigger;
 
     // scheduler
     float tickTimer = 0.f;      // samples until next tick
@@ -260,6 +263,7 @@ struct Perge : Module {
         configInput(GLITCH_CV_INPUT, "Glitch/dimension CV");
         configInput(FILTER_CV_INPUT, "Filter CV");
         configInput(CLOCK_INPUT, "Tempo clock");
+        configInput(CAPTURE_GATE_INPUT, "Capture gate (forces a capture while high)");
         configInput(FREEZE_GATE_INPUT, "Freeze gate");
         configInput(TILT_GATE_INPUT, "Tilt gate");
         configOutput(OUT_L_OUTPUT, "Left audio");
@@ -279,6 +283,7 @@ struct Perge : Module {
         for (auto& v : voices) v.active = false;
         env = 0.f;
         capturing = false;
+        capForced = false;
         capLen = 0;
         tickTimer = 0.f;
         tickCount = 0;
@@ -363,6 +368,14 @@ struct Perge : Module {
         else
             semis = 12.f + ((urand() < (ap - 0.5f) * 2.f) ? 7.f : 0.f);
         return (p < 0.f) ? -semis : semis;
+    }
+
+    // a finished capture becomes the newest slot (too-short ones dropped)
+    void commitCapture(float sr) {
+        if (capLen < (int)(0.03f * sr)) return;
+        for (int i = kNumSlots - 1; i > 0; i--)
+            slots[i] = slots[i - 1];
+        slots[0] = makeSlot(capStart, capLen, capPeak, 0);
     }
 
     // instantaneous stereo contribution of a voice (no state advance)
@@ -566,8 +579,22 @@ struct Perge : Module {
             bufL[writePos] = inL;
             bufR[writePos] = inR;
 
+            // capture gate: rising edge forces a capture, the gate holds it
+            // open regardless of level, the falling edge commits it
+            bool capGateRose = capGateTrigger.process(
+                inputs[CAPTURE_GATE_INPUT].getVoltage(), 0.1f, 1.f);
+            bool capGateHigh = capGateTrigger.isHigh();
+            if (capGateRose) {
+                if (capturing) commitCapture(sr);
+                capturing = true;
+                capForced = true;
+                capStart = writePos;
+                capLen = 0;
+                capPeak = env;
+            }
             if (!capturing && env > thresh) {
                 capturing = true;
+                capForced = false;
                 capStart = writePos;
                 capLen = 0;
                 capPeak = env;
@@ -576,18 +603,17 @@ struct Perge : Module {
                 capLen++;
                 capPeak = std::max(capPeak, env);
                 bool tooLong = capLen >= (int)(kMaxCapSeconds * sr);
-                if (env < thresh * 0.5f || tooLong) {
+                bool done = capForced ? !capGateHigh : env < thresh * 0.5f;
+                if (done || tooLong) {
                     capturing = false;
-                    if (capLen >= (int)(0.03f * sr)) {
-                        for (int i = kNumSlots - 1; i > 0; i--)
-                            slots[i] = slots[i - 1];
-                        slots[0] = makeSlot(capStart, capLen, capPeak, 0);
-                    }
-                    if (tooLong && env >= thresh) {   // keep listening
-                        capturing = true;
+                    commitCapture(sr);
+                    if (tooLong && (capForced ? capGateHigh : env >= thresh)) {
+                        capturing = true;   // keep listening
                         capStart = writePos;
                         capLen = 0;
                         capPeak = env;
+                    } else {
+                        capForced = false;
                     }
                 }
             }
@@ -884,6 +910,7 @@ struct PergeWidget : ModuleWidget {
 // @elem FILTER_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem IN_L_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem IN_R_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem CAPTURE_GATE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem CLOCK_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem FREEZE_GATE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem TILT_GATE_INPUT PJ301MPort 4.18 input "" 0.0
@@ -919,11 +946,12 @@ struct PergeWidget : ModuleWidget {
 // @elem LABEL_GLITCV label 0.0 label "glit" 0.0 67.80 87.50
 // @elem LABEL_FILTCV label 0.0 label "filt" 0.0 84.80 87.50
 // @elem LABEL_INL label 0.0 label "in l" 0.0 12.80 103.50
-// @elem LABEL_INR label 0.0 label "in r" 0.0 28.30 103.50
-// @elem LABEL_CLOCK label 0.0 label "clock" 0.0 43.80 103.50
-// @elem LABEL_FRZGATE label 0.0 label "frz" 0.0 59.30 103.50
-// @elem LABEL_TILTGATE label 0.0 label "tilt" 0.0 74.80 103.50
-// @elem LABEL_MODE label 0.0 label "mode" 0.0 90.30 103.50
+// @elem LABEL_INR label 0.0 label "in r" 0.0 25.70 103.50
+// @elem LABEL_CAPT label 0.0 label "capt" 0.0 38.60 103.50
+// @elem LABEL_CLOCK label 0.0 label "clock" 0.0 51.50 103.50
+// @elem LABEL_FRZGATE label 0.0 label "frz" 0.0 64.40 103.50
+// @elem LABEL_TILTGATE label 0.0 label "tilt" 0.0 77.30 103.50
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 90.20 103.50
 // @elem LABEL_OUTL label 0.0 label "out l" 0.0 12.80 119.50
 // @elem LABEL_OUTR label 0.0 label "out r" 0.0 31.80 119.50
 // @elem LABEL_FREEZE label 0.0 label "freeze" 0.0 69.80 119.00
@@ -958,16 +986,17 @@ struct PergeWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(67.80f, 80.00f)), module, Perge::GLITCH_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(84.80f, 80.00f)), module, Perge::FILTER_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.80f, 96.00f)), module, Perge::IN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(28.30f, 96.00f)), module, Perge::IN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.80f, 96.00f)), module, Perge::CLOCK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(59.30f, 96.00f)), module, Perge::FREEZE_GATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(74.80f, 96.00f)), module, Perge::TILT_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.70f, 96.00f)), module, Perge::IN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.60f, 96.00f)), module, Perge::CAPTURE_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.50f, 96.00f)), module, Perge::CLOCK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(64.40f, 96.00f)), module, Perge::FREEZE_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(77.30f, 96.00f)), module, Perge::TILT_GATE_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(12.80f, 112.00f)), module, Perge::OUT_L_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(31.80f, 112.00f)), module, Perge::OUT_R_OUTPUT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(69.80f, 112.00f)), module, Perge::FREEZE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(88.80f, 112.00f)), module, Perge::TILT_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(90.30f, 96.00f)), module, Perge::REPEATSMODE_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 92.30f)), module, Perge::CAPT_LIGHT));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(90.20f, 96.00f)), module, Perge::REPEATSMODE_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.30f, 92.30f)), module, Perge::CAPT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(72.70f, 109.10f)), module, Perge::FREEZE_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Perge::TILT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(17.80f, 109.00f)), module, Perge::OUT_L_LIGHT));

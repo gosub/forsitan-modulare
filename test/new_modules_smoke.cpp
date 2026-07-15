@@ -726,6 +726,30 @@ static void testPerge() {
         unfr.add(m.outputs[Perge::OUT_L_OUTPUT].getVoltage());
     }
     report("perge", "unfreeze_repeats", unfr.rms(), unfr.rms() > 0.05);
+    // capture gate: forces a capture of material below the threshold
+    Perge m2;
+    long f2 = 0;
+    m2.inputs[Perge::IN_L_INPUT].channels = 1;
+    m2.inputs[Perge::CAPTURE_GATE_INPUT].channels = 1;
+    m2.params[Perge::MIX_PARAM].setValue(1.f);
+    m2.params[Perge::TEMPO_PARAM].setValue(0.7f);
+    m2.params[Perge::SUSTAIN_PARAM].setValue(0.6f);
+    m2.params[Perge::THRESH_PARAM].setValue(1.f);   // way above the input
+    phase = 0.f;
+    for (int i = 0; i < (int)(0.6f * SR); i++) {
+        phase += 330.f / SR; if (phase >= 1.f) phase -= 1.f;
+        m2.inputs[Perge::IN_L_INPUT].setVoltage(0.5f * std::sin(2.f * M_PI * phase));
+        bool gate = i >= (int)(0.1f * SR) && i < (int)(0.4f * SR);
+        m2.inputs[Perge::CAPTURE_GATE_INPUT].setVoltage(gate ? 10.f : 0.f);
+        m2.process(makeArgs(f2++));
+    }
+    m2.inputs[Perge::IN_L_INPUT].setVoltage(0.f);
+    Stats forced;
+    for (int i = 0; i < (int)(2 * SR); i++) {
+        m2.process(makeArgs(f2++));
+        forced.add(m2.outputs[Perge::OUT_L_OUTPUT].getVoltage());
+    }
+    report("perge", "capture_gate", forced.rms(), forced.rms() > 0.005);
 }
 
 int main() {
