@@ -106,4 +106,5 @@ released.
   rate (or the right-click "Clear buffer") empties it. Buffer contents are
   not saved with the patch.
 - The repeats engine is a voice pool (16 voices); extremely fast clocks
-  with long releases steal the oldest voices first.
+  with long releases steal the voice nearest the end of its envelope,
+  with a short declick fade.
