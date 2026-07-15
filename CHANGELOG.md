@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.5] - 2026-07-15
+### Added
+  - ululo gains CV inputs for **dist**, **decay** and **tone** (0.1/V, full
+    knob sweep over 10V, added to the knob and clamped). dist CV moves the
+    player in front of the amp with a doppler-like smear, decay CV palm-mutes
+    or frees the strings, tone CV is a wah. The three jacks form a second CV
+    row on the same 8HP panel (knob rows tightened to fit); the new inputs
+    are appended after the existing ones, so saved patches keep their cables.
+    drive stays knob-only: inside the self-limiting loop it mostly changes
+    loudness, and in the metaphor it's an amp knob you set once.
+
 ## [2.7.4] - 2026-07-15
 ### Added
   - tabes grows to 12HP and gains four things: a **loop overlap** control —
