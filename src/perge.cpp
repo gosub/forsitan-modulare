@@ -726,7 +726,8 @@ struct Perge : Module {
         json_object_set_new(root, "altRouting", json_boolean(altRouting));
         json_object_set_new(root, "grainCap", json_boolean(grainCap));
         json_object_set_new(root, "clockMult", json_integer(clockMult));
-        json_object_set_new(root, "freezeLatch", json_boolean(freezeLatch));
+        // freezeLatch is deliberately not saved: the buffer isn't either, so
+        // a patch reloaded frozen would sit silent over empty tape
         return root;
     }
 
@@ -740,8 +741,6 @@ struct Perge : Module {
             grainCap = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "clockMult"))
             clockMult = clamp((int)json_integer_value(j), 0, 4);
-        if (json_t* j = json_object_get(root, "freezeLatch"))
-            freezeLatch = json_boolean_value(j);
     }
 };
 
