@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.7.6] - 2026-07-15
+### Fixed
+  - tabes: **eoc** and **ramp** now follow the audible head chain instead of
+    the write head. With **overlap** up, a new head starts every
+    loop − overlap samples, so the heard repeat is shorter than the tape
+    rotation; eoc fires at each heard restart and ramp cycles once per
+    repeat, instead of drifting against the audio. At overlap 0 nothing
+    changes. **age** still steps once per full tape rotation (the aging
+    pass), so that clock is not lost.
+  - tabes: pressing **rec** with **overlap** up no longer clicks. The
+    playback→monitor crossfade snapshot now retraces the overlap head chain
+    (both heads, equal-power blend) the same way splice does, instead of
+    reading from the write head's position.
+
 ## [2.7.5] - 2026-07-15
 ### Added
   - ululo gains CV inputs for **dist**, **decay** and **tone** (0.1/V, full
