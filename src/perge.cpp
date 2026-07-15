@@ -173,7 +173,7 @@ struct Perge : Module {
     float filtSmooth = 0.f;
 
     // ── housekeeping ─────────────────────────────────────────────────────
-    int repeatsMode = MODE_STD;      // cached from REPEATSMODE_PARAM each block
+    int repeatsMode = MODE_STD;      // cached from REPEATSMODE_PARAM
     bool altRouting = false;         // context menu
     bool grainCap = true;            // cap grain playback to one tempo interval
     int clockMult = 2;               // index into kMults, default x1
@@ -183,6 +183,24 @@ struct Perge : Module {
     dsp::SchmittTrigger clockTrigger;
     dsp::BooleanTrigger freezeButton;
     float outEnvL = 0.f, outEnvR = 0.f;
+
+    // ── cached params (transcendentals run every kParamDiv samples) ──────
+    static constexpr int kParamDiv = 64;
+    dsp::ClockDivider paramDivider;
+    bool paramsDirty = true;
+    float mix = 0.5f, pitchK = 0.f, sustain = 0.5f, filterK = 0.f;
+    float sens = 0.5f, thresh = 0.01f, atkK = 0.1f, relK = 0.5f;
+    float modK = 0.3f, decayK = 0.5f, spread = 0.3f, infx = 0.5f;
+    float glitch = 0.f, dimens = 0.f;
+    float lofiBase = 0.f, crushBase = 0.f, rvrbBase = 0.f, smearBase = 0.f;
+    float knobT = 0.f;             // tempo knob mapped to samples
+    float decayUnfrozen = 0.9f;    // per-repeat gain when not frozen
+    float tiltRate = 1.f;          // pitch drift of playing voices under tilt
+    float lofiA = 0.01f;           // lofi darkening one-pole coefficient
+    float filtG = 0.f, filtA1 = 1.f;
+    bool filtLP = true;
+    // constants per sample rate
+    float envAtkC = 0.5f, envRelC = 0.01f, revDamp = 0.3f;
 
     static constexpr float kMults[5] = {0.25f, 0.5f, 1.f, 2.f, 4.f};
 
@@ -244,6 +262,7 @@ struct Perge : Module {
         configLight(OUT_R_LIGHT, "Right level");
         configBypass(IN_L_INPUT, OUT_L_OUTPUT);
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
+        paramDivider.setDivision(kParamDiv);
     }
 
     void onReset() override {
@@ -313,6 +332,10 @@ struct Perge : Module {
         }
         revApBuf[0].assign((int)(5.0f * 1e-3f * sr) + 1, 0.f);
         revApBuf[1].assign((int)(5.3f * 1e-3f * sr) + 1, 0.f);
+        envAtkC = 1.f - std::exp(-1.f / (0.001f * sr));
+        envRelC = 1.f - std::exp(-1.f / (0.120f * sr));
+        revDamp = 1.f - std::exp(-2.f * (float)M_PI * 3000.f / sr);
+        paramsDirty = true;
         onReset();
     }
 
@@ -384,6 +407,55 @@ struct Perge : Module {
         v->envPos = 0.0;
     }
 
+    // knob/CV mapping and the transcendentals derived from it; runs every
+    // kParamDiv samples (1.3 ms at 48 kHz), plenty for hand and CV rates
+    void updateParams(float sr) {
+        mix = params[MIX_PARAM].getValue();
+        pitchK = clamp(params[PITCH_PARAM].getValue()
+                        + inputs[PITCH_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+        sustain = clamp(params[SUSTAIN_PARAM].getValue()
+                        + inputs[SUSTAIN_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
+        float glitchK = centerDead(clamp(params[GLITCH_PARAM].getValue()
+                        + inputs[GLITCH_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f));
+        filterK = clamp(params[FILTER_PARAM].getValue()
+                        + inputs[FILTER_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+        sens = params[SENS_PARAM].getValue();
+        thresh = 0.004f * std::pow(75.f, params[THRESH_PARAM].getValue());
+        atkK = params[ATTACK_PARAM].getValue();
+        relK = params[RELEASE_PARAM].getValue();
+        modK = params[MOD_PARAM].getValue();
+        decayK = params[DECAY_PARAM].getValue();
+        spread = params[SPREAD_PARAM].getValue();
+        infx = params[INFX_PARAM].getValue();
+        repeatsMode = (int)std::round(params[REPEATSMODE_PARAM].getValue());
+
+        glitch = std::max(0.f, -glitchK);
+        dimens = std::max(0.f, glitchK);
+        float lofiK = centerDead(params[LOFI_PARAM].getValue());
+        lofiBase = std::max(0.f, -lofiK);
+        crushBase = std::max(0.f, lofiK);
+        float rvrbK = centerDead(params[RVRB_PARAM].getValue());
+        rvrbBase = std::max(0.f, -rvrbK);
+        smearBase = std::max(0.f, rvrbK);
+
+        knobT = (2.0f * std::pow(0.05f, params[TEMPO_PARAM].getValue())) * sr;  // 2s..100ms
+        // sustain -> per-repeat gain (freeze pins it to 1)
+        decayUnfrozen = 0.25f + 0.745f * std::pow(clamp(sustain / 0.9f, 0.f, 1.f), 0.4f);
+
+        tiltRate = (tiltEnv > 1e-3f)
+            ? std::pow(2.f, tiltEnv * tiltPitch * 0.15f / 12.f) : 1.f;
+        float lofiEff = (tiltEnv > 1e-3f)
+            ? crossfade(lofiBase, tiltLofi, tiltEnv) : lofiBase;
+        float fc = 16000.f * std::pow(1000.f / 16000.f, lofiEff);
+        lofiA = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
+        float ffc = (filtSmooth < 0.f)
+            ? 16000.f * std::pow(160.f / 16000.f, -filtSmooth)
+            : 25.f * std::pow(2500.f / 25.f, filtSmooth);
+        filtG = std::tan((float)M_PI * clamp(ffc / sr, 1e-4f, 0.45f));
+        filtA1 = 1.f / (1.f + filtG * (filtG + 1.2f));
+        filtLP = filtSmooth < 0.f;
+    }
+
     float readBuf(const std::vector<float>& b, double idx) {
         int i0 = (int)idx;
         float f = (float)(idx - i0);
@@ -402,35 +474,15 @@ struct Perge : Module {
         float inR = inputs[IN_R_INPUT].isConnected()
                         ? inputs[IN_R_INPUT].getVoltage() * 0.2f : inL;
 
-        // ── params ───────────────────────────────────────────────────────
-        float mix = params[MIX_PARAM].getValue();
-        float pitchK = clamp(params[PITCH_PARAM].getValue()
-                        + inputs[PITCH_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
-        float sustain = clamp(params[SUSTAIN_PARAM].getValue()
-                        + inputs[SUSTAIN_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
-        float glitchK = clamp(params[GLITCH_PARAM].getValue()
-                        + inputs[GLITCH_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
-        float filterK = clamp(params[FILTER_PARAM].getValue()
-                        + inputs[FILTER_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
-        float sens = params[SENS_PARAM].getValue();
-        float thresh = 0.004f * std::pow(75.f, params[THRESH_PARAM].getValue());
-        float atkK = params[ATTACK_PARAM].getValue();
-        float relK = params[RELEASE_PARAM].getValue();
-        float modK = params[MOD_PARAM].getValue();
-        float decayK = params[DECAY_PARAM].getValue();
-        float spread = params[SPREAD_PARAM].getValue();
-        float infx = params[INFX_PARAM].getValue();
-        repeatsMode = (int)std::round(params[REPEATSMODE_PARAM].getValue());
-
-        glitchK = centerDead(glitchK);
-        float glitch = std::max(0.f, -glitchK);
-        float dimens = std::max(0.f, glitchK);
-        float lofiK = centerDead(params[LOFI_PARAM].getValue());
-        float lofi = std::max(0.f, -lofiK);
-        float crush = std::max(0.f, lofiK);
-        float rvrbK = centerDead(params[RVRB_PARAM].getValue());
-        float rvrb = std::max(0.f, -rvrbK);
-        float smear = std::max(0.f, rvrbK);
+        // ── params (block rate) ──────────────────────────────────────────
+        if (paramDivider.process() || paramsDirty) {
+            updateParams(sr);
+            paramsDirty = false;
+        }
+        float lofi = lofiBase;
+        float crush = crushBase;
+        float rvrb = rvrbBase;
+        float smear = smearBase;
 
         // ── freeze ───────────────────────────────────────────────────────
         if (freezeButton.process(params[FREEZE_PARAM].getValue() > 0.5f))
@@ -462,9 +514,7 @@ struct Perge : Module {
 
         // ── envelope follower & capture ──────────────────────────────────
         float lvl = std::max(std::fabs(inL), std::fabs(inR));
-        float k = (lvl > env) ? 1.f - std::exp(-1.f / (0.001f * sr))
-                              : 1.f - std::exp(-1.f / (0.120f * sr));
-        env += (lvl - env) * k;
+        env += (lvl - env) * ((lvl > env) ? envAtkC : envRelC);
 
         if (!frozen) {
             bufL[writePos] = inL;
@@ -516,15 +566,11 @@ struct Perge : Module {
             if (clockTimeout > 10.f * sr) clockPeriod = 0.f;   // clock gone
         }
         bool clocked = inputs[CLOCK_INPUT].isConnected() && clockPeriod > 0.f;
-        float tempoK = params[TEMPO_PARAM].getValue();
         // the multiplier scales the external clock only; the tempo knob
         // always means what it says
-        float baseT = clocked ? clockPeriod / kMults[clockMult]
-                              : (2.0f * std::pow(0.05f, tempoK)) * sr;  // 2s..100ms
+        float baseT = clocked ? clockPeriod / kMults[clockMult] : knobT;
 
-        // sustain -> per-repeat gain (freeze pins it to 1)
-        float decayPerRepeat = frozen ? 1.f
-            : 0.25f + 0.745f * std::pow(clamp(sustain / 0.9f, 0.f, 1.f), 0.4f);
+        float decayPerRepeat = frozen ? 1.f : decayUnfrozen;
 
         tickTimer -= 1.f;
         if (tickTimer <= 0.f) {
@@ -568,8 +614,6 @@ struct Perge : Module {
 
         // ── render voices ────────────────────────────────────────────────
         float wetL = 0.f, wetR = 0.f;
-        float tiltRate = (tiltEnv > 1e-3f)
-            ? std::pow(2.f, tiltEnv * tiltPitch * 0.15f / 12.f) : 1.f;
         for (auto& v : voices) {
             if (!v.active) continue;
             double p = v.reverse ? (v.len - 1 - v.pos) : v.pos;
@@ -617,9 +661,7 @@ struct Perge : Module {
                 int i1 = (i0 + 1) % vn;
                 float wob = vibBuf[c][i0] + f * (vibBuf[c][i1] - vibBuf[c][i0]);
                 float& lp = lofiLp[c];
-                float fc = 16000.f * std::pow(1000.f / 16000.f, lofi);
-                float a = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
-                lp += a * (wob - lp);
+                lp += lofiA * (wob - lp);
                 float& x = (c == 0) ? fxL : fxR;
                 x = crossfade(x, lp, std::min(1.f, lofi * 2.f));
             }
@@ -665,7 +707,7 @@ struct Perge : Module {
         // reverb: dark schroeder, decay sets the tail
         if (rvrb > 1e-3f) {
             float fb = 0.72f + 0.255f * decayK;
-            float damp = 1.f - std::exp(-2.f * (float)M_PI * 3000.f / sr);
+            float damp = revDamp;
             float rL = 0.f, rR = 0.f;
             for (int c = 0; c < 2; c++) {
                 float x = (c == 0) ? fxL : fxR;
@@ -695,23 +737,20 @@ struct Perge : Module {
         }
 
         // tilt filter: lowpass left of noon, highpass right
+        // (coefficients follow filtSmooth at block rate in updateParams)
         filtSmooth += (filterK - filtSmooth) * (50.f / sr);
         float fk = filtSmooth;
         if (std::fabs(fk) > 0.03f) {
-            float fc = (fk < 0.f)
-                ? 16000.f * std::pow(160.f / 16000.f, -fk)
-                : 25.f * std::pow(2500.f / 25.f, fk);
-            float gg = std::tan((float)M_PI * clamp(fc / sr, 1e-4f, 0.45f));
-            float kq = 1.2f;
-            float a1 = 1.f / (1.f + gg * (gg + kq));
+            float gg = filtG;
+            float a1 = filtA1;
             for (int c = 0; c < 2; c++) {
                 float x = (c == 0) ? fxL : fxR;
-                float hi = (x - (gg + kq) * svfBand[c] - svfLow[c]) * a1;
+                float hi = (x - (gg + 1.2f) * svfBand[c] - svfLow[c]) * a1;
                 float bp = gg * hi + svfBand[c];
                 float lo = gg * bp + svfLow[c];
                 svfBand[c] = gg * hi + bp;
                 svfLow[c] = gg * bp + lo;
-                float y = (fk < 0.f) ? lo : hi;
+                float y = filtLP ? lo : hi;
                 float m = std::min(1.f, std::fabs(fk) * 4.f);
                 if (c == 0) fxL = crossfade(x, y, m);
                 else fxR = crossfade(x, y, m);
