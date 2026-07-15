@@ -178,6 +178,7 @@ struct Perge : Module {
     bool grainCap = true;            // cap grain playback to one tempo interval
     int clockMult = 2;               // index into kMults, default x1
     bool freezeLatch = false;
+    bool sustainFrozen = false;      // freeze-zone state, with hysteresis
     float curSampleRate = 0.f;
     uint32_t noiseState = 0x9e3779b9u;
     dsp::SchmittTrigger clockTrigger;
@@ -282,6 +283,7 @@ struct Perge : Module {
         clockTimeout = 0.f;
         tiltEnv = 0.f;
         freezeLatch = false;
+        sustainFrozen = false;
         declickL = declickR = 0.f;
         std::fill(bufL.begin(), bufL.end(), 0.f);
         std::fill(bufR.begin(), bufR.end(), 0.f);
@@ -522,7 +524,10 @@ struct Perge : Module {
         if (freezeButton.process(params[FREEZE_PARAM].getValue() > 0.5f))
             freezeLatch = !freezeLatch;
         bool freezeGate = inputs[FREEZE_GATE_INPUT].getVoltage() >= 1.f;
-        bool frozen = freezeLatch || freezeGate || sustain > 0.9f;
+        // hysteresis so CV riding the freeze edge doesn't chatter
+        if (sustain > 0.9f) sustainFrozen = true;
+        else if (sustain < 0.87f) sustainFrozen = false;
+        bool frozen = freezeLatch || freezeGate || sustainFrozen;
 
         // ── tilt: momentary random modulation ────────────────────────────
         bool tiltOn = params[TILT_PARAM].getValue() > 0.5f
