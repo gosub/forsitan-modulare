@@ -203,21 +203,48 @@ struct Tabes : Module {
         channels = clamp(inCh, 1, kMaxChannels);   // tape width for this take
         ensureChannels(channels);
         // snapshot the loop's continuation so the output can crossfade from
-        // playback to the input monitor while the tape gets overwritten. Read
-        // along the play head's current wow trajectory (offset frozen; wow is
-        // sub-Hz, so it barely moves across the ~10 ms fade) so the snapshot
-        // continues from the last played sample with no step.
+        // playback to the input monitor while the tape gets overwritten.
+        // Walk the same trajectory the read side would have (as splice does):
+        // headAge advancing under the hop wrap, both heads blended while they
+        // cross. Overlap geometry and wow offset are frozen at their last
+        // values — fine over the ~10 ms fade.
         if (loopLen > 0) {
             int n = std::min(xfBufLen, loopLen);
-            float base = playPos + lastOffset;
+            float ovl = std::min(lastOvl, 0.5f * loopLen);
+            float hopLen = loopLen - ovl;
+            float ha = headAge;
             for (int k = 0; k < n; k++) {
-                float rp = base + k;
+                ha += 1.f;
+                if (ha >= hopLen) ha -= hopLen;
+                bool crossing = ovl > 0.5f && ha < ovl;
+                float wCur = 1.f, wPrev = 0.f;
+                if (crossing) {
+                    float th = 0.5f * (float)M_PI * ha / ovl;
+                    wCur = std::sin(th);
+                    wPrev = std::cos(th);
+                }
+                float rp = ha + lastOffset;
                 rp -= loopLen * std::floor(rp / loopLen);
                 int i0 = (int)rp;
                 float f = rp - i0;
                 int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
-                for (int c = 0; c < channels; c++)
-                    xfBuf[c][k] = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                int k0 = 0, k1 = 0; float fk = 0.f;
+                if (crossing) {
+                    float rq = ha + hopLen + lastOffset;
+                    rq -= loopLen * std::floor(rq / loopLen);
+                    k0 = (int)rq;
+                    fk = rq - k0;
+                    k1 = k0 + 1; if (k1 >= loopLen) k1 = 0;
+                }
+                for (int c = 0; c < channels; c++) {
+                    float readA = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                    if (crossing) {
+                        float readB = tape[c][k0] + fk * (tape[c][k1] - tape[c][k0]);
+                        xfBuf[c][k] = wCur * readA + wPrev * readB;
+                    } else {
+                        xfBuf[c][k] = readA;
+                    }
+                }
             }
             xfReadPos = 0;
             recStartFade = n;

@@ -256,6 +256,44 @@ static void testTabes() {
     }
     report("tabes", "rec_start_max_step", startStep, startStep < 1.f);
 
+    // same rec press, but with overlap up and the head chain out of phase
+    // with the write head: the playback->monitor snapshot must continue the
+    // heard two-head blend, not the write head's position
+    Tabes m4o; long f4o = 0;
+    m4o.params[Tabes::WOW_PARAM].setValue(0.f);
+    m4o.params[Tabes::OVERLAP_PARAM].setValue(1.f);
+    m4o.inputs[Tabes::AUDIO_INPUT].channels = 1;
+    m4o.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+    float ph4o = 0.f;
+    auto sine4o = [&]() {
+        ph4o += 330.f / SR; if (ph4o >= 1.f) ph4o -= 1.f;
+        return 5.f * std::sin(2.f * M_PI * ph4o);
+    };
+    // record 0.7 s, then play 0.55 s: playPos is at 0.55 s but the head
+    // chain (hop = 0.35 s) is at 0.2 s, mid-crossfade
+    m4o.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    for (int i = 0; i < (int)(0.7f * SR); i++) {
+        m4o.inputs[Tabes::AUDIO_INPUT].setVoltage(sine4o());
+        m4o.process(makeArgs(f4o++));
+    }
+    m4o.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+    // silent input from here on: the loop is all we hear, so a snapshot
+    // taken from the wrong head shows up as a raw step instead of being
+    // masked by the monitored input
+    m4o.inputs[Tabes::AUDIO_INPUT].setVoltage(0.f);
+    for (int i = 0; i < (int)(0.55f * SR); i++)
+        m4o.process(makeArgs(f4o++));
+    float prev4o = m4o.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+    float startStepOvl = 0.f;
+    m4o.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    for (int i = 0; i < (int)(0.05f * SR); i++) {
+        m4o.process(makeArgs(f4o++));
+        float v = m4o.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+        startStepOvl = std::max(startStepOvl, std::fabs(v - prev4o));
+        prev4o = v;
+    }
+    report("tabes", "rec_start_ovl_step", startStepOvl, startStepOvl < 1.f);
+
     // no thump at rec STOP: the transition must not inject a DC pulse. A click
     // is a step (caught above); a thump is a net displacement of the local
     // mean, which a sine averages away but a DC bridge does not. The thump is
