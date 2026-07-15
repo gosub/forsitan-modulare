@@ -81,7 +81,7 @@ released.
 | **in l / in r** | stereo input; right is normalled to left |
 | **capt** | capture gate: the rising edge forces a capture regardless of level, the gate holds it open, the falling edge commits it (the LED by the jack flashes while capturing) — sequenced, deterministic sampling |
 | **tempo / pitch / sust / glit / filt** | CV for tempo, pitch, sustain, glitch/dimension and filter (added to the knobs) |
-| **clock** | external tempo; measured between rising edges, released ~10 s after the clock stops |
+| **clock** | external tempo; measured between rising edges, released ~10 s after the clock stops (the LED by the jack flashes on every grid tick) |
 | **frz** | freeze gate |
 | **tilt** | tilt gate (momentary) |
 | **out l / out r** | stereo output; with only *out l* patched the two channels are summed |

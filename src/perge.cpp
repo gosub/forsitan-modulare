@@ -90,6 +90,7 @@ struct Perge : Module {
         TILT_LIGHT,
         OUT_L_LIGHT,
         OUT_R_LIGHT,
+        TICK_LIGHT,
         LIGHTS_LEN
     };
 
@@ -207,6 +208,8 @@ struct Perge : Module {
     // constants per sample rate
     float envAtkC = 0.5f, envRelC = 0.01f, revDamp = 0.3f;
     float ledC = 0.002f;
+    float tickFlash = 0.f;      // tempo tick LED pulse
+    float tickC = 0.999f;
 
     // stolen-voice declick: the cut voice's last output decays here
     float declickL = 0.f, declickR = 0.f;
@@ -272,6 +275,7 @@ struct Perge : Module {
         configLight(TILT_LIGHT, "Tilt");
         configLight(OUT_L_LIGHT, "Left level");
         configLight(OUT_R_LIGHT, "Right level");
+        configLight(TICK_LIGHT, "Tempo tick");
         configBypass(IN_L_INPUT, OUT_L_OUTPUT);
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
         paramDivider.setDivision(kParamDiv);
@@ -286,6 +290,7 @@ struct Perge : Module {
         capLen = 0;
         tickTimer = 0.f;
         tickCount = 0;
+        tickFlash = 0.f;
         burstLeft = 0;
         clockPeriod = 0.f;
         clockTimeout = 0.f;
@@ -352,6 +357,7 @@ struct Perge : Module {
         revDamp = 1.f - std::exp(-2.f * (float)M_PI * 3000.f / sr);
         declickC = std::exp(-1.f / (0.0015f * sr));   // ~1.5 ms fade
         ledC = 1.f - std::exp(-1.f / (0.010f * sr));  // ~10 ms level LEDs
+        tickC = std::exp(-1.f / (0.040f * sr));       // ~40 ms tick flash
         paramsDirty = true;
         onReset();
     }
@@ -656,6 +662,7 @@ struct Perge : Module {
             }
             tickTimer += interval;
             tickCount++;
+            tickFlash = 1.f;
 
             // live capture counts as the newest material
             Slot live = slots[0];
@@ -838,6 +845,8 @@ struct Perge : Module {
         outputs[OUT_R_OUTPUT].setVoltage(5.f * outR);
 
         lights[CAPT_LIGHT].setBrightness(capturing ? 1.f : 0.f);
+        tickFlash *= tickC;
+        lights[TICK_LIGHT].setBrightness(tickFlash);
         lights[FREEZE_LIGHT].setBrightness(frozen ? 1.f : 0.f);
         lights[TILT_LIGHT].setBrightness(tiltEnv);
         outEnvL += (std::fabs(outL) - outEnvL) * ledC;
@@ -921,6 +930,7 @@ struct PergeWidget : ModuleWidget {
 // @elem TILT_LIGHT SmallLight 1.5 light "" 0.0
 // @elem OUT_L_LIGHT SmallLight 1.5 light "" 0.0
 // @elem OUT_R_LIGHT SmallLight 1.5 light "" 0.0
+// @elem TICK_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_MIX label 0.0 label "mix" 0.0 21.40 33.50
 // @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 41.00 33.50
 // @elem LABEL_PITCH label 0.0 label "pitch" 0.0 60.60 33.50
@@ -998,6 +1008,7 @@ struct PergeWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Perge::TILT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(17.80f, 109.00f)), module, Perge::OUT_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(36.80f, 109.00f)), module, Perge::OUT_R_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(55.20f, 92.30f)), module, Perge::TICK_LIGHT));
         // @layout:end
     }
 
