@@ -532,8 +532,11 @@ struct Perge : Module {
             if (dim2 > 0.f && slots[2].len && (tickCount % 3 == 0))
                 spawnVoice(slots[2], dim2, sens, atkK, relK, spread, pitchK,
                            decayPerRepeat, sr, grainCapSamples);
-            for (auto& s : slots)
-                if (s.len) s.age++;
+            // frozen slots don't age: unfreezing resumes the decay train
+            // from where it was instead of finding decay^age collapsed
+            if (!frozen)
+                for (auto& s : slots)
+                    if (s.len) s.age++;
         }
 
         // ── render voices ────────────────────────────────────────────────

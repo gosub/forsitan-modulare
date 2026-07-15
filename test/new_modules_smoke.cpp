@@ -702,8 +702,10 @@ static void testPerge() {
         m.process(makeArgs(frame++));
     }
     m.inputs[Perge::IN_L_INPUT].setVoltage(0.f);
-    // let the repeats get going, then freeze and hold for 7 s
-    for (int i = 0; i < (int)(0.5f * SR); i++) m.process(makeArgs(frame++));
+    // let the capture commit and the repeats get going, then freeze for 7 s
+    // (the wait must outlast the envelope release, or the still-open capture
+    // is what freezes and slot ages never come into play)
+    for (int i = 0; i < (int)(2.0f * SR); i++) m.process(makeArgs(frame++));
     m.params[Perge::SUSTAIN_PARAM].setValue(1.f);   // freeze zone
     for (int i = 0; i < (int)(7 * SR); i++) m.process(makeArgs(frame++));
     Stats froz;
@@ -714,6 +716,16 @@ static void testPerge() {
     report("perge", "freeze_nans", froz.nans, froz.nans == 0);
     report("perge", "freeze_persists", froz.rms(), froz.rms() > 0.02);
     report("perge", "freeze_peak", froz.peak, froz.peak < 12.f);
+    // unfreeze: the repeat train must resume decaying, not vanish
+    // (skip 1.5 s so the freeze-era reverb tail doesn't mask the repeats)
+    m.params[Perge::SUSTAIN_PARAM].setValue(0.6f);
+    for (int i = 0; i < (int)(1.5f * SR); i++) m.process(makeArgs(frame++));
+    Stats unfr;
+    for (int i = 0; i < (int)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        unfr.add(m.outputs[Perge::OUT_L_OUTPUT].getVoltage());
+    }
+    report("perge", "unfreeze_repeats", unfr.rms(), unfr.rms() > 0.05);
 }
 
 int main() {
