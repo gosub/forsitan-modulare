@@ -77,7 +77,10 @@ struct Tabes : Module {
     int channels = 1;             // tape width (tracks), set at record start
     size_t tapeCap = 0;           // per-channel capacity (samples)
     int loopLen = 0;              // samples in the loop (0 = empty)
-    int playPos = 0;
+    int playPos = 0;              // write/transport head (ages the tape, EOC, ramp)
+    float headAge = 0.f;          // read head: samples since the current head
+                                  // started (0..hop); overlap plays a chain of
+                                  // heads, a new one every hop = loopLen-overlap
     int recPos = 0;
     bool recording = false;
     bool gateWasHigh = false;
@@ -151,6 +154,7 @@ struct Tabes : Module {
     void onReset() override {
         loopLen = 0;
         playPos = recPos = 0;
+        headAge = 0.f;
         recording = false;
         age = 0;
         std::fill(std::begin(lpState), std::end(lpState), 0.f);
@@ -236,6 +240,7 @@ struct Tabes : Module {
             lpState[c] = tape[c][loopLen - 1];
         }
         playPos = 0;
+        headAge = 0.f;
         dropEnv = 1.f;
         dropTimer = 0;
         // seam declick: over the next ~10 ms, crossfade the loop head with
@@ -367,31 +372,46 @@ struct Tabes : Module {
             float offset = wowAmp * (std::sin(2.f * M_PI * wowPhase)
                           + 0.25f * std::sin(2.f * M_PI * flutterPhase));
 
-            float rp = playPos + offset;
+            lastOffset = offset;   // so a rec press can continue the head
+
+            // ── loop overlap: two heads take turns playing the buffer straight
+            //    through. A new head starts every HOP = loopLen - overlap
+            //    samples; where it starts, the old head is still finishing, so
+            //    they cross over an OVERLAP-long window (new fades in, old fades
+            //    out, equal power). overlap=0 => HOP = loopLen, heads play
+            //    strictly back to back (the old single-head loop). At the max
+            //    the next head starts when the current is halfway (HOP =
+            //    loopLen/2). Read-side only: the write head still ages the whole
+            //    buffer once per loopLen, so the tape keeps rotting. ──────────
+            float ovl = overlap * 0.5f * loopLen;      // overlap samples, 0..L/2
+            float hopLen = loopLen - ovl;              // head spacing, L..L/2
+            headAge += 1.f;
+            if (headAge >= hopLen) headAge -= hopLen;  // a new head takes over
+
+            bool crossing = ovl > 0.5f && headAge < ovl;
+            float wCur = 1.f, wPrev = 0.f;
+            if (crossing) {
+                float th = 0.5f * (float)M_PI * headAge / ovl;
+                wCur = std::sin(th);       // new head fading in
+                wPrev = std::cos(th);      // old head fading out
+            }
+            // current head reads the buffer at its age (+ wow), wrapped
+            float rp = headAge + offset;
             while (rp < 0.f) rp += loopLen;
             while (rp >= loopLen) rp -= loopLen;
             int i0 = (int)rp;
             float f = rp - i0;
             int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
-            lastOffset = offset;   // so a rec press can continue the head
-
-            // ── loop overlap: a second read head half a loop ahead of the
-            //    first, windowed so each head is silent exactly when it crosses
-            //    the loop seam (wA=sin, wB=|cos| over the loop phase). The two
-            //    windows sum to unit power, so the pair is a seamless, constant-
-            //    power wash: at OVERLAP=1 the loop's second half plays over its
-            //    first half; below that it is blended back toward the dry read.
-            //    Read-side only — the write head still ages one copy, so the
-            //    loop keeps rotting while it smears. At 0 it is a true no-op
-            //    (the recording seam already declicks the wrap). ─────────────
-            float rp2 = rp + 0.5f * loopLen;
-            while (rp2 >= loopLen) rp2 -= loopLen;
-            int k0 = (int)rp2;
-            float fk = rp2 - k0;
-            int k1 = k0 + 1; if (k1 >= loopLen) k1 = 0;
-            float phase = (float)playPos / loopLen;
-            float wA = std::sin((float)M_PI * phase);
-            float wB = std::fabs(std::cos((float)M_PI * phase));
+            // previous head, one hop behind, read only while the two cross
+            int k0 = 0, k1 = 0; float fk = 0.f;
+            if (crossing) {
+                float rq = headAge + hopLen + offset;
+                while (rq < 0.f) rq += loopLen;
+                while (rq >= loopLen) rq -= loopLen;
+                k0 = (int)rq;
+                fk = rq - k0;
+                k1 = k0 + 1; if (k1 >= loopLen) k1 = 0;
+            }
 
             // write-head coefficients, shared across tracks
             float fc = 22000.f * std::pow(10.f, -decay);   // 22 kHz .. 2.2 kHz
@@ -408,12 +428,11 @@ struct Tabes : Module {
             // ── the write head re-records a slightly worse copy, per track ──
             for (int c = 0; c < channels; c++) {
                 float readA = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
-                if (overlap > 0.f) {
+                if (crossing) {
                     float readB = tape[c][k0] + fk * (tape[c][k1] - tape[c][k0]);
-                    float wash = wA * readA + wB * readB;
-                    loopSig[c] = (1.f - overlap) * readA + overlap * wash;
+                    loopSig[c] = wCur * readA + wPrev * readB;
                 } else {
-                    loopSig[c] = readA;
+                    loopSig[c] = readA;   // wCur == 1
                 }
                 float w = tape[c][playPos];
                 lpState[c] += a * (w - lpState[c]);
