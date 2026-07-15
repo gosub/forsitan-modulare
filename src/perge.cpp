@@ -202,6 +202,10 @@ struct Perge : Module {
     // constants per sample rate
     float envAtkC = 0.5f, envRelC = 0.01f, revDamp = 0.3f;
 
+    // stolen-voice declick: the cut voice's last output decays here
+    float declickL = 0.f, declickR = 0.f;
+    float declickC = 0.99f;
+
     static constexpr float kMults[5] = {0.25f, 0.5f, 1.f, 2.f, 4.f};
 
     // displays lo + span * v^2 (the atk/rel millisecond curves)
@@ -278,6 +282,7 @@ struct Perge : Module {
         clockTimeout = 0.f;
         tiltEnv = 0.f;
         freezeLatch = false;
+        declickL = declickR = 0.f;
         std::fill(bufL.begin(), bufL.end(), 0.f);
         std::fill(bufR.begin(), bufR.end(), 0.f);
         clearFx();
@@ -335,6 +340,7 @@ struct Perge : Module {
         envAtkC = 1.f - std::exp(-1.f / (0.001f * sr));
         envRelC = 1.f - std::exp(-1.f / (0.120f * sr));
         revDamp = 1.f - std::exp(-2.f * (float)M_PI * 3000.f / sr);
+        declickC = std::exp(-1.f / (0.0015f * sr));   // ~1.5 ms fade
         paramsDirty = true;
         onReset();
     }
@@ -352,10 +358,30 @@ struct Perge : Module {
         return (p < 0.f) ? -semis : semis;
     }
 
+    // instantaneous stereo contribution of a voice (no state advance)
+    void voiceSample(const Voice& v, float& outL, float& outR) {
+        double p = v.reverse ? (v.len - 1 - v.pos) : v.pos;
+        double idx = v.start + p;
+        if (idx >= bufLen) idx -= bufLen;
+        if (idx < 0) idx += bufLen;
+        float e;
+        if (v.envPos < v.atk)
+            e = (float)(v.envPos / std::max(v.atk, 1.0));
+        else if (v.envPos > v.dur - v.rel)
+            e = (float)((v.dur - v.envPos) / std::max(v.rel, 1.0));
+        else
+            e = 1.f;
+        e = clamp(e, 0.f, 1.f);
+        float g = v.amp * e * e;   // squared: soft corners
+        outL = readBuf(bufL, idx) * g * v.panL;
+        outR = readBuf(bufR, idx) * g * v.panR;
+    }
+
     void spawnVoice(const Slot& slot, float layerGain, float sens, float atkK,
                     float relK, float spread, float pitchK, float decayPerRepeat,
                     float sr, float grainCapSamples) {
-        // steal the quietest inactive-or-oldest voice
+        // steal the voice closest to the end of its envelope: the least
+        // audible candidate, and the declick accumulator hides the cut
         Voice* v = nullptr;
         double best = 1e18;
         for (auto& c : voices) {
@@ -374,6 +400,14 @@ struct Perge : Module {
         if (amp < 0.003f) return;
 
         float pan = spread * (2.f * urand() - 1.f);
+        if (v->active) {
+            // stolen mid-note: hand its instantaneous output to the declick
+            // accumulator so the cut fades instead of stepping to zero
+            float sL, sR;
+            voiceSample(*v, sL, sR);
+            declickL += sL;
+            declickR += sR;
+        }
         v->active = true;
         v->start = slot.start;
         v->len = slot.len;
@@ -616,26 +650,19 @@ struct Perge : Module {
         float wetL = 0.f, wetR = 0.f;
         for (auto& v : voices) {
             if (!v.active) continue;
-            double p = v.reverse ? (v.len - 1 - v.pos) : v.pos;
-            double idx = v.start + p;
-            if (idx >= bufLen) idx -= bufLen;
-            if (idx < 0) idx += bufLen;
-            float e;
-            if (v.envPos < v.atk)
-                e = (float)(v.envPos / std::max(v.atk, 1.0));
-            else if (v.envPos > v.dur - v.rel)
-                e = (float)((v.dur - v.envPos) / std::max(v.rel, 1.0));
-            else
-                e = 1.f;
-            e = clamp(e, 0.f, 1.f);
-            float g = v.amp * e * e;   // squared: soft corners
-            wetL += readBuf(bufL, idx) * g * v.panL;
-            wetR += readBuf(bufR, idx) * g * v.panR;
+            float sL, sR;
+            voiceSample(v, sL, sR);
+            wetL += sL;
+            wetR += sR;
             v.pos += v.rate * tiltRate;
             v.envPos += 1.0;
             if (v.pos >= v.len - 1 || v.envPos >= v.dur)
                 v.active = false;
         }
+        wetL += declickL;
+        wetR += declickR;
+        declickL *= declickC;
+        declickR *= declickC;
 
         // ── multi-effect section ─────────────────────────────────────────
         float fxL = wetL, fxR = wetR;
