@@ -33,7 +33,7 @@
 //           (forced capture), FREEZE gate, TILT gate
 //   Out   : OUT L/R
 //   Menu  : grain cap (repeats capped to one tempo interval, on by default),
-//           alternative routing (dry into FX), clock multiplier (1/4 .. x4)
+//           clock multiplier (1/4 .. x4)
 
 #include "forsitan.hpp"
 
@@ -179,7 +179,6 @@ struct Perge : Module {
 
     // ── housekeeping ─────────────────────────────────────────────────────
     int repeatsMode = MODE_STD;      // cached from REPEATSMODE_PARAM
-    bool altRouting = false;         // context menu
     bool grainCap = true;            // cap grain playback to one tempo interval
     int clockMult = 2;               // index into kMults, default x1
     bool freezeLatch = false;
@@ -250,7 +249,7 @@ struct Perge : Module {
         configParam(MOD_PARAM, 0.f, 1.f, 0.3f, "Lofi/crush modulation", "%", 0.f, 100.f);
         configParam(DECAY_PARAM, 0.f, 1.f, 0.5f, "Reverb/smear decay", "%", 0.f, 100.f);
         configParam(SPREAD_PARAM, 0.f, 1.f, 0.3f, "Stereo spread", "%", 0.f, 100.f);
-        configParam(INFX_PARAM, 0.f, 1.f, 0.5f, "Dry into FX (alt routing)", "%", 0.f, 100.f);
+        configParam(INFX_PARAM, 0.f, 1.f, 0.f, "Dry into FX", "%", 0.f, 100.f);
         configButton(FREEZE_PARAM, "Freeze");
         configButton(TILT_PARAM, "Tilt (momentary warble)");
         configSwitch(REPEATSMODE_PARAM, 0.f, 2.f, 0.f, "Repeats mode",
@@ -703,11 +702,9 @@ struct Perge : Module {
         declickR *= declickC;
 
         // ── multi-effect section ─────────────────────────────────────────
-        float fxL = wetL, fxR = wetR;
-        if (altRouting) {
-            fxL += inL * infx;
-            fxR += inR * infx;
-        }
+        // infx diverts dry signal into the FX bus (0 = classic routing)
+        float fxL = wetL + inL * infx;
+        float fxR = wetR + inR * infx;
 
         // lofi: pitch-LFO vibrato through a short delay, then darkening
         if (lofi > 1e-3f) {
@@ -823,11 +820,8 @@ struct Perge : Module {
         }
 
         // ── mix ──────────────────────────────────────────────────────────
-        float dryL = inL, dryR = inR;
-        if (altRouting) {
-            dryL *= 1.f - infx;
-            dryR *= 1.f - infx;
-        }
+        float dryL = inL * (1.f - infx);
+        float dryR = inR * (1.f - infx);
         float dg = (mix <= 0.5f) ? 1.f : 2.f * (1.f - mix);
         float wg = (mix >= 0.5f) ? 1.f : 2.f * mix;
         float outL = dryL * dg + fxL * wg;
@@ -854,7 +848,6 @@ struct Perge : Module {
 
     json_t* dataToJson() override {
         json_t* root = json_object();
-        json_object_set_new(root, "altRouting", json_boolean(altRouting));
         json_object_set_new(root, "grainCap", json_boolean(grainCap));
         json_object_set_new(root, "clockMult", json_integer(clockMult));
         // freezeLatch is deliberately not saved: the buffer isn't either, so
@@ -866,8 +859,12 @@ struct Perge : Module {
         // migrate the pre-panel-switch context-menu setting onto the param
         if (json_t* j = json_object_get(root, "repeatsMode"))
             params[REPEATSMODE_PARAM].setValue(clamp((int)json_integer_value(j), 0, 2));
-        if (json_t* j = json_object_get(root, "altRouting"))
-            altRouting = json_boolean_value(j);
+        // migrate the removed "alternative routing" menu switch: infx now
+        // acts directly, so patches saved with the switch off get infx 0
+        if (json_t* j = json_object_get(root, "altRouting")) {
+            if (!json_boolean_value(j))
+                params[INFX_PARAM].setValue(0.f);
+        }
         if (json_t* j = json_object_get(root, "grainCap"))
             grainCap = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "clockMult"))
@@ -1012,8 +1009,6 @@ struct PergeWidget : ModuleWidget {
             {"1/4", "1/2", "x1", "x2", "x4"}, &m->clockMult));
         menu->addChild(createBoolPtrMenuItem("Cap grain to tempo interval",
             "", &m->grainCap));
-        menu->addChild(createBoolPtrMenuItem("Alternative routing (dry into FX)",
-            "", &m->altRouting));
         menu->addChild(createMenuItem("Clear buffer", "", [m]() { m->onReset(); }));
     }
 };

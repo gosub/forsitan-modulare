@@ -6,7 +6,7 @@
 //
 // KEYs are param names (MIX, TEMPO, PITCH, SUSTAIN, GLITCH, LOFI, RVRB,
 // FILTER, SENS, THRESH, ATTACK, RELEASE, MOD, DECAY, SPREAD, INFX) or
-// the menu members repeatsMode / clockMult / altRouting / seed / tail /
+// the menu members repeatsMode / clockMult / grainCap / seed /
 // tiltStart / tiltEnd / freezeAt (seconds). Input is +-1; we drive
 // IN_L at +-5 V and read OUT_L/R back to +-1.
 
@@ -72,7 +72,6 @@ int main(int argc, char** argv) {
     if (P.count("repeatsMode"))
         m.params[Perge::REPEATSMODE_PARAM].setValue((float)(int)P["repeatsMode"]);
     if (P.count("clockMult"))   m.clockMult   = (int)P["clockMult"];
-    if (P.count("altRouting"))  m.altRouting  = P["altRouting"] > 0.5f;
     if (P.count("grainCap"))    m.grainCap    = P["grainCap"] > 0.5f;
 
     long freezeFrame = freezeAt >= 0 ? (long)(freezeAt * SR) : -1;

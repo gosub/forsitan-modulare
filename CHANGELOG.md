@@ -18,8 +18,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     reverb/smear (with decay) and LP/HP tilt filter; stereo spread;
     standard/reverse/tail repeats modes (panel switch); a grain-cap menu (on by default)
     that keeps each repeat to one tempo interval, or off to replay whole
-    captured notes; alternative routing sending the dry signal into the FX
-    section (in-fx amount); momentary tilt warble (button/gate)
+    captured notes; an in-fx knob routing dry signal into the FX
+    section; momentary tilt warble (button/gate)
 
 ## [2.7.6] - 2026-07-15
 ### Fixed

@@ -62,9 +62,9 @@ The wet bus runs through four bipolar effects, all inactive at noon:
 - **dcay** sets the reverb/smear tail length.
 - **sprd** sets the stereo width of the repeats (each repeat gets its own
   random pan position).
-- **infx** only matters with *Alternative routing* (right-click menu): it
-  sets how much dry signal is routed through the multi-effect section, the
-  rest staying clean.
+- **infx** routes dry signal through the multi-effect section: at zero
+  (the default) only the repeats are processed, turned up the dry signal
+  progressively goes through the FX too, the rest staying clean.
 - **mix** balances dry and repeats, dry-full to wet-full.
 
 ## tilt
