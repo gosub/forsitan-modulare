@@ -93,8 +93,10 @@ released.
 - **glitch** at 3 o'clock equivalent (CCW!) with **tail** mode turns
   percussive input into stuttering reversed ghosts.
 - Patch a random gate into **tilt** for periodic bursts of chaos.
-- With synth pads that never fall below the threshold, raise **thrs** or
-  the capture never re-arms.
+- With synth pads that never fall below the threshold, the capture rolls
+  over every 2 s and the repeats degenerate into arbitrary chunks of the
+  pad. Raise **thrs** until only deliberate swells cross it and captures
+  become discrete phrases again.
 
 ## Notes
 
