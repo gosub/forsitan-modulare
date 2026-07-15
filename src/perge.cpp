@@ -186,24 +186,42 @@ struct Perge : Module {
 
     static constexpr float kMults[5] = {0.25f, 0.5f, 1.f, 2.f, 4.f};
 
+    // displays lo + span * v^2 (the atk/rel millisecond curves)
+    struct MsSquaredQuantity : ParamQuantity {
+        float lo = 0.f, span = 1.f;
+        float getDisplayValue() override {
+            float v = getValue();
+            return lo + span * v * v;
+        }
+        void setDisplayValue(float dv) override {
+            setValue(std::sqrt(clamp((dv - lo) / span, 0.f, 1.f)));
+        }
+    };
+
     Perge() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam(MIX_PARAM, 0.f, 1.f, 0.5f, "Mix", "%", 0.f, 100.f);
-        configParam(TEMPO_PARAM, 0.f, 1.f, 0.5f, "Tempo");
-        configParam(PITCH_PARAM, -1.f, 1.f, 0.f, "Pitch (random octave/fifth)");
-        configParam(SUSTAIN_PARAM, 0.f, 1.f, 0.5f, "Sustain (top = freeze)");
-        configParam(GLITCH_PARAM, -1.f, 1.f, 0.f, "Glitch / Dimension");
-        configParam(LOFI_PARAM, -1.f, 1.f, 0.f, "Lofi / Crush");
-        configParam(RVRB_PARAM, -1.f, 1.f, 0.f, "Reverb / Smear");
-        configParam(FILTER_PARAM, -1.f, 1.f, 0.f, "Lowpass / Highpass");
-        configParam(SENS_PARAM, 0.f, 1.f, 0.5f, "Sensibility (dynamics response)");
-        configParam(THRESH_PARAM, 0.f, 1.f, 0.15f, "Threshold");
-        configParam(ATTACK_PARAM, 0.f, 1.f, 0.1f, "Repeat attack");
-        configParam(RELEASE_PARAM, 0.f, 1.f, 0.5f, "Repeat release");
-        configParam(MOD_PARAM, 0.f, 1.f, 0.3f, "Lofi/crush modulation");
-        configParam(DECAY_PARAM, 0.f, 1.f, 0.5f, "Reverb/smear decay");
-        configParam(SPREAD_PARAM, 0.f, 1.f, 0.3f, "Stereo spread");
-        configParam(INFX_PARAM, 0.f, 1.f, 0.5f, "Dry into FX (alt routing)");
+        configParam(TEMPO_PARAM, 0.f, 1.f, 0.5f, "Tempo", " ms", 0.05f, 2000.f);
+        configParam(PITCH_PARAM, -1.f, 1.f, 0.f, "Pitch (random octave/fifth)", "%", 0.f, 100.f);
+        configParam(SUSTAIN_PARAM, 0.f, 1.f, 0.5f, "Sustain (top = freeze)", "%", 0.f, 100.f);
+        configParam(GLITCH_PARAM, -1.f, 1.f, 0.f, "Glitch / Dimension", "%", 0.f, 100.f);
+        configParam(LOFI_PARAM, -1.f, 1.f, 0.f, "Lofi / Crush", "%", 0.f, 100.f);
+        configParam(RVRB_PARAM, -1.f, 1.f, 0.f, "Reverb / Smear", "%", 0.f, 100.f);
+        configParam(FILTER_PARAM, -1.f, 1.f, 0.f, "Lowpass / Highpass", "%", 0.f, 100.f);
+        configParam(SENS_PARAM, 0.f, 1.f, 0.5f, "Sensitivity (dynamics response)", "%", 0.f, 100.f);
+        configParam(THRESH_PARAM, 0.f, 1.f, 0.15f, "Threshold", " V", 75.f, 0.02f);
+        {
+            auto* q = configParam<MsSquaredQuantity>(ATTACK_PARAM, 0.f, 1.f, 0.1f, "Repeat attack", " ms");
+            q->lo = 1.f; q->span = 799.f;
+        }
+        {
+            auto* q = configParam<MsSquaredQuantity>(RELEASE_PARAM, 0.f, 1.f, 0.5f, "Repeat release", " ms");
+            q->lo = 5.f; q->span = 1495.f;
+        }
+        configParam(MOD_PARAM, 0.f, 1.f, 0.3f, "Lofi/crush modulation", "%", 0.f, 100.f);
+        configParam(DECAY_PARAM, 0.f, 1.f, 0.5f, "Reverb/smear decay", "%", 0.f, 100.f);
+        configParam(SPREAD_PARAM, 0.f, 1.f, 0.3f, "Stereo spread", "%", 0.f, 100.f);
+        configParam(INFX_PARAM, 0.f, 1.f, 0.5f, "Dry into FX (alt routing)", "%", 0.f, 100.f);
         configButton(FREEZE_PARAM, "Freeze");
         configButton(TILT_PARAM, "Tilt (momentary warble)");
         configSwitch(REPEATSMODE_PARAM, 0.f, 2.f, 0.f, "Repeats mode",
