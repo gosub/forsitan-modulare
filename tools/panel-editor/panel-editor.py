@@ -29,6 +29,8 @@ WIDGET_VISUALS = {
     'PJ301MPort':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'PJ3410Port':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'TL1105':             {'r': 2.6,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
+    'CKSSThree':          {'r': 2.3,  'fill': '#d0d0d0', 'stroke': '#888', 'sw': 0.4},
+    'CKSS':               {'r': 2.3,  'fill': '#d0d0d0', 'stroke': '#888', 'sw': 0.4},
     'SmallLight':         {'r': 1.0,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
     'MediumLight':        {'r': 2.0,  'fill': '#00cc44', 'stroke': 'none', 'sw': 0},
     # ScrewSilver/Black: vec_off = half the 15px widget size at 2.953 px/mm ≈ 2.54mm

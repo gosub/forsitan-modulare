@@ -20,7 +20,7 @@
 //   - GLITCH inserts sudden tempo accelerations (burst subdivisions).
 //   - PITCH (inactive at noon): CW random octave-up then fifth-above,
 //     CCW the mirror downward, randomized per repeat.
-//   - Repeats mode (menu): standard, reverse, or tail (swell) playback.
+//   - Repeats mode (panel switch): standard, reverse, or tail (swell).
 //   - TILT (momentary): random modulation of pitch and the FX amounts.
 //
 // Controls:
@@ -28,11 +28,11 @@
 //           RVRB/SMR, LP/HP (bipolar, inactive at noon)
 //   Trims : SENS, THRS, ATK, REL, MOD, DCAY, SPRD, INFX
 //   Btns  : FREEZE (latch), TILT (momentary)
+//   Switch: MODE (std/rev/tail repeats)
 //   In    : IN L/R, PITCH/SUST/GLIT/FILT CV, CLOCK, FREEZE gate, TILT gate
 //   Out   : OUT L/R
-//   Menu  : repeats mode (std/rev/tail), grain cap (repeats capped to one
-//           tempo interval, on by default), alternative routing (dry into
-//           FX), clock multiplier (1/4 .. x4)
+//   Menu  : grain cap (repeats capped to one tempo interval, on by default),
+//           alternative routing (dry into FX), clock multiplier (1/4 .. x4)
 
 #include "forsitan.hpp"
 
@@ -61,6 +61,7 @@ struct Perge : Module {
         INFX_PARAM,
         FREEZE_PARAM,
         TILT_PARAM,
+        REPEATSMODE_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -172,7 +173,7 @@ struct Perge : Module {
     float filtSmooth = 0.f;
 
     // ── housekeeping ─────────────────────────────────────────────────────
-    int repeatsMode = MODE_STD;      // context menu
+    int repeatsMode = MODE_STD;      // cached from REPEATSMODE_PARAM each block
     bool altRouting = false;         // context menu
     bool grainCap = true;            // cap grain playback to one tempo interval
     int clockMult = 2;               // index into kMults, default x1
@@ -204,7 +205,9 @@ struct Perge : Module {
         configParam(SPREAD_PARAM, 0.f, 1.f, 0.3f, "Stereo spread");
         configParam(INFX_PARAM, 0.f, 1.f, 0.5f, "Dry into FX (alt routing)");
         configButton(FREEZE_PARAM, "Freeze");
-        configButton(TILT_PARAM, "Tilt (momentary chaos)");
+        configButton(TILT_PARAM, "Tilt (momentary warble)");
+        configSwitch(REPEATSMODE_PARAM, 0.f, 2.f, 0.f, "Repeats mode",
+                     {"Standard", "Reverse", "Tail"});
         configInput(IN_L_INPUT, "Left audio");
         configInput(IN_R_INPUT, "Right audio (normalled to left)");
         configInput(PITCH_CV_INPUT, "Pitch CV");
@@ -392,6 +395,7 @@ struct Perge : Module {
         float decayK = params[DECAY_PARAM].getValue();
         float spread = params[SPREAD_PARAM].getValue();
         float infx = params[INFX_PARAM].getValue();
+        repeatsMode = (int)std::round(params[REPEATSMODE_PARAM].getValue());
 
         float glitch = std::max(0.f, -glitchK);
         float dimens = std::max(0.f, glitchK);
@@ -716,7 +720,6 @@ struct Perge : Module {
 
     json_t* dataToJson() override {
         json_t* root = json_object();
-        json_object_set_new(root, "repeatsMode", json_integer(repeatsMode));
         json_object_set_new(root, "altRouting", json_boolean(altRouting));
         json_object_set_new(root, "grainCap", json_boolean(grainCap));
         json_object_set_new(root, "clockMult", json_integer(clockMult));
@@ -725,8 +728,9 @@ struct Perge : Module {
     }
 
     void dataFromJson(json_t* root) override {
+        // migrate the pre-panel-switch context-menu setting onto the param
         if (json_t* j = json_object_get(root, "repeatsMode"))
-            repeatsMode = clamp((int)json_integer_value(j), 0, 2);
+            params[REPEATSMODE_PARAM].setValue(clamp((int)json_integer_value(j), 0, 2));
         if (json_t* j = json_object_get(root, "altRouting"))
             altRouting = json_boolean_value(j);
         if (json_t* j = json_object_get(root, "grainCap"))
@@ -779,6 +783,7 @@ struct PergeWidget : ModuleWidget {
 // @elem OUT_R_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem FREEZE_PARAM TL1105 2.0 param "" 0.0
 // @elem TILT_PARAM TL1105 2.0 param "" 0.0
+// @elem REPEATSMODE_PARAM CKSSThree 2.3 param "" 0.0
 // @elem CAPT_LIGHT SmallLight 1.5 light "" 0.0
 // @elem FREEZE_LIGHT SmallLight 1.5 light "" 0.0
 // @elem TILT_LIGHT SmallLight 1.5 light "" 0.0
@@ -809,6 +814,7 @@ struct PergeWidget : ModuleWidget {
 // @elem LABEL_CLOCK label 0.0 label "clock" 0.0 50.80 103.50
 // @elem LABEL_FRZGATE label 0.0 label "frz" 0.0 69.80 103.50
 // @elem LABEL_TILTGATE label 0.0 label "tilt" 0.0 88.80 103.50
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 78.70 103.50
 // @elem LABEL_OUTL label 0.0 label "out l" 0.0 12.80 119.50
 // @elem LABEL_OUTR label 0.0 label "out r" 0.0 31.80 119.50
 // @elem LABEL_FREEZE label 0.0 label "freeze" 0.0 69.80 119.00
@@ -850,6 +856,7 @@ struct PergeWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(31.80f, 112.00f)), module, Perge::OUT_R_OUTPUT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(69.80f, 112.00f)), module, Perge::FREEZE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(88.80f, 112.00f)), module, Perge::TILT_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(78.70f, 96.00f)), module, Perge::REPEATSMODE_PARAM));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 92.30f)), module, Perge::CAPT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(72.70f, 109.10f)), module, Perge::FREEZE_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Perge::TILT_LIGHT));
@@ -862,8 +869,6 @@ struct PergeWidget : ModuleWidget {
         Perge* m = dynamic_cast<Perge*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
-        menu->addChild(createIndexPtrSubmenuItem("Repeats mode",
-            {"Standard", "Reverse", "Tail"}, &m->repeatsMode));
         menu->addChild(createIndexPtrSubmenuItem("Clock multiplier",
             {"1/4", "1/2", "x1", "x2", "x4"}, &m->clockMult));
         menu->addChild(createBoolPtrMenuItem("Cap grain to tempo interval",

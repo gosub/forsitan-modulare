@@ -38,8 +38,9 @@ of three sample slots, and repeats of it are spawned on a tempo grid:
   (**dimension**): the two previous captures come back as extra layers,
   each locked to the grid but on its own rhythmic pattern (every 2nd and
   every 3rd tick) — up to three samples coexist.
-- The right-click *Repeats mode* menu plays repeats **standard**,
-  **reverse**, or **tail** (only the swelling tail of each repeat).
+- The **mode** switch (bottom row, between the freeze and tilt jacks) plays
+  repeats **standard**, **reverse**, or **tail** (only the swelling tail of
+  each repeat).
 - *Cap grain to tempo interval* (right-click, on by default) limits each
   repeat to one tempo period, keeping repeats short and discrete. Turn it
   off to let each repeat replay the whole captured note, which overlap into
