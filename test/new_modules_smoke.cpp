@@ -93,6 +93,24 @@ static void testUlulo() {
     report("ululo", "nans", s.nans, s.nans == 0);
     report("ululo", "howl_rms", s.rms(), s.rms() > 0.05);
     report("ululo", "peak", s.peak, s.peak < 6.f);   // tanh-bounded * 5V
+    // sweep the dist/decay/tone CVs over their full range while howling
+    m.inputs[Ululo::DIST_CV_INPUT].channels = 1;
+    m.inputs[Ululo::DECAY_CV_INPUT].channels = 1;
+    m.inputs[Ululo::TONE_CV_INPUT].channels = 1;
+    Stats sc;
+    for (int i = 0; i < (int)(4 * SR); i++) {
+        float ph = (float)i / SR;
+        m.inputs[Ululo::DIST_CV_INPUT].setVoltage(5.f + 5.f * std::sin(2.f * M_PI * 0.5f * ph));
+        m.inputs[Ululo::DECAY_CV_INPUT].setVoltage(5.f + 5.f * std::sin(2.f * M_PI * 0.7f * ph));
+        m.inputs[Ululo::TONE_CV_INPUT].setVoltage(5.f + 5.f * std::sin(2.f * M_PI * 1.3f * ph));
+        m.process(makeArgs(frame++));
+        sc.add(m.outputs[Ululo::AUDIO_OUTPUT].getVoltage());
+    }
+    report("ululo", "cv_sweep_nans", sc.nans, sc.nans == 0);
+    report("ululo", "cv_sweep_peak", sc.peak, sc.peak < 6.f);
+    m.inputs[Ululo::DIST_CV_INPUT].channels = 0;
+    m.inputs[Ululo::DECAY_CV_INPUT].channels = 0;
+    m.inputs[Ululo::TONE_CV_INPUT].channels = 0;
     // gain at zero must ring down to silence (decay knob still allows several
     // seconds of legitimate string ring-out)
     m.params[Ululo::GAIN_PARAM].setValue(0.f);

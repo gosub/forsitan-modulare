@@ -15,7 +15,8 @@
 //   Knobs : GAIN (feedback), DIST (amp distance), DECAY (string sustain),
 //           TONE (amp lowpass), DRIVE (saturation), WHAMMY (bend down),
 //           IN LVL (external input level)
-//   In    : GAIN CV, V/OCT (poly, retunes strings), WHAMMY CV, IN (audio)
+//   In    : GAIN CV, V/OCT (poly, retunes strings), WHAMMY CV,
+//           DIST CV, DECAY CV, TONE CV, IN (audio)
 //   Out   : OUT
 //   Light : LEVEL (output amplitude)
 
@@ -42,6 +43,10 @@ struct Ululo : Module {
         VOCT_INPUT,
         WHAMMY_CV_INPUT,
         AUDIO_INPUT,
+        // appended in 2.7.5 (after AUDIO_INPUT so saved patches keep their ports)
+        DIST_CV_INPUT,
+        DECAY_CV_INPUT,
+        TONE_CV_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -105,6 +110,9 @@ struct Ululo : Module {
         configInput(VOCT_INPUT, "String tuning (polyphonic 1V/oct)");
         configInput(WHAMMY_CV_INPUT, "Whammy CV");
         configInput(AUDIO_INPUT, "Audio");
+        configInput(DIST_CV_INPUT, "Amp distance CV");
+        configInput(DECAY_CV_INPUT, "String decay CV");
+        configInput(TONE_CV_INPUT, "Tone CV");
         configOutput(AUDIO_OUTPUT, "Audio");
         configLight(LEVEL_LIGHT, "Output level");
     }
@@ -144,15 +152,26 @@ struct Ululo : Module {
         gain = clamp(gain, 0.f, 2.f);
 
         // amp distance: 5 .. 100 ms, exponential
-        float distT = 0.005f * std::pow(20.f, params[DIST_PARAM].getValue());
+        float distK = params[DIST_PARAM].getValue();
+        if (inputs[DIST_CV_INPUT].isConnected())
+            distK += inputs[DIST_CV_INPUT].getVoltage() * 0.1f;
+        distK = clamp(distK, 0.f, 1.f);
+        float distT = 0.005f * std::pow(20.f, distK);
         float distSamples = clamp(distT * sr, 1.f, (float)fbBuf.size() - 2.f);
 
         // string sustain: comb feedback 0.80 .. 0.998
         float decayK = params[DECAY_PARAM].getValue();
+        if (inputs[DECAY_CV_INPUT].isConnected())
+            decayK += inputs[DECAY_CV_INPUT].getVoltage() * 0.1f;
+        decayK = clamp(decayK, 0.f, 1.f);
         float decay = 1.f - std::pow(10.f, -0.7f - 2.f * decayK);
 
         // amp tone: one-pole lowpass 400 Hz .. 10 kHz
-        float toneHz = 400.f * std::pow(25.f, params[TONE_PARAM].getValue());
+        float toneK = params[TONE_PARAM].getValue();
+        if (inputs[TONE_CV_INPUT].isConnected())
+            toneK += inputs[TONE_CV_INPUT].getVoltage() * 0.1f;
+        toneK = clamp(toneK, 0.f, 1.f);
+        float toneHz = 400.f * std::pow(25.f, toneK);
         float lpA = 1.f - std::exp(-2.f * M_PI * toneHz / sr);
         // fixed 80 Hz highpass pole
         float hpR = 1.f - 2.f * M_PI * 80.f / sr;
@@ -243,23 +262,29 @@ struct UluloWidget : ModuleWidget {
 // @elem GAIN_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem VOCT_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem WHAMMY_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem DIST_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem DECAY_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem TONE_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_GAIN label 0.0 label "gain" 0.0 20.32 30.00
 // @elem LABEL_DIST label 0.0 label "dist" 0.0 11.50 44.50
 // @elem LABEL_DECAY label 0.0 label "decay" 0.0 29.14 44.50
-// @elem LABEL_TONE label 0.0 label "tone" 0.0 11.50 61.50
-// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 29.14 61.50
-// @elem LABEL_WHAMMY label 0.0 label "whammy" 0.0 11.50 78.50
-// @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 29.14 78.50
-// @elem LABEL_GAINCV label 0.0 label "gain" 0.0 8.50 94.50
-// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 20.32 94.50
-// @elem LABEL_WHAMCV label 0.0 label "wham" 0.0 32.14 94.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 11.50 114.00
-// @elem LABEL_OUT label 0.0 label "out" 0.0 29.14 114.00
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 29.14 108.50
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 20.32 122.50
+// @elem LABEL_TONE label 0.0 label "tone" 0.0 11.50 60.00
+// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 29.14 60.00
+// @elem LABEL_WHAMMY label 0.0 label "whammy" 0.0 11.50 75.50
+// @elem LABEL_INLVL label 0.0 label "in lvl" 0.0 29.14 75.50
+// @elem LABEL_GAINCV label 0.0 label "gain" 0.0 8.50 89.00
+// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 20.32 89.00
+// @elem LABEL_WHAMCV label 0.0 label "wham" 0.0 32.14 89.00
+// @elem LABEL_DISTCV label 0.0 label "dist" 0.0 8.50 102.50
+// @elem LABEL_DECAYCV label 0.0 label "decay" 0.0 20.32 102.50
+// @elem LABEL_TONECV label 0.0 label "tone" 0.0 32.14 102.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 11.50 117.00
+// @elem LABEL_OUT label 0.0 label "out" 0.0 29.14 117.00
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 29.14 111.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 20.32 123.00
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(33.02f, 0.00f)))); // SCREW_TR
@@ -268,16 +293,19 @@ struct UluloWidget : ModuleWidget {
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(20.32f, 18.50f)), module, Ululo::GAIN_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 36.00f)), module, Ululo::DIST_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 36.00f)), module, Ululo::DECAY_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 53.00f)), module, Ululo::TONE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 53.00f)), module, Ululo::DRIVE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 70.00f)), module, Ululo::WHAMMY_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 70.00f)), module, Ululo::IN_LEVEL_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.50f, 87.00f)), module, Ululo::GAIN_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32f, 87.00f)), module, Ululo::VOCT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.14f, 87.00f)), module, Ululo::WHAMMY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 106.50f)), module, Ululo::AUDIO_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 106.50f)), module, Ululo::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(34.14f, 103.50f)), module, Ululo::LEVEL_LIGHT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 51.50f)), module, Ululo::TONE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 51.50f)), module, Ululo::DRIVE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 67.00f)), module, Ululo::WHAMMY_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 67.00f)), module, Ululo::IN_LEVEL_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.50f, 81.50f)), module, Ululo::GAIN_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32f, 81.50f)), module, Ululo::VOCT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.14f, 81.50f)), module, Ululo::WHAMMY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.50f, 95.00f)), module, Ululo::DIST_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32f, 95.00f)), module, Ululo::DECAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.14f, 95.00f)), module, Ululo::TONE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 109.50f)), module, Ululo::AUDIO_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 109.50f)), module, Ululo::AUDIO_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(34.14f, 106.50f)), module, Ululo::LEVEL_LIGHT));
         // @layout:end
     }
 };

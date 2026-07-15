@@ -34,6 +34,9 @@ sculpting.
 | **gain** (CV) | ±5V added to the gain knob (0.2/V) |
 | **v/oct** (poly) | retunes the six strings. Unpatched: standard tuning E2 A2 D3 G3 B3 E4. With a polyphonic chord (e.g. from interea), strings take the chord's notes; if the chord has fewer than six notes the remaining strings repeat it an octave up |
 | **wham** (CV) | 0–10V added to the whammy knob |
+| **dist** (CV) | 0–10V added to the dist knob (0.1/V, full sweep over 10V). Slow modulation reads as the player swaying in front of the cab, with a doppler-like pitch smear |
+| **decay** (CV) | 0–10V added to the decay knob. Gate it low to palm-mute the feedback, high to let it ring |
+| **tone** (CV) | 0–10V added to the tone knob. An LFO here is a wah pedal |
 | **in** | external audio into the strings (guitar, drums, anything). Set **in lvl** up and **gain** low for a resonator; both up for chaos |
 | **out** | mono output. The signal is bounded by the amp stage, roughly ±5V |
 
