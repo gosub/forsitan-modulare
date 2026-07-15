@@ -129,7 +129,7 @@ struct Tabes : Module {
         configButton(REC_PARAM, "Record");
         configButton(SPLICE_PARAM, "Splice (restore pristine tape)");
         configParam(OVERLAP_PARAM, 0.f, 1.f, 0.f, "Loop overlap");
-        configParam(SEND_MIX_PARAM, 0.f, 1.f, 0.f, "FX return mix");
+        configParam(SEND_MIX_PARAM, 0.f, 1.f, 0.5f, "FX return mix");
         configInput(AUDIO_INPUT, "Audio (polyphonic: records all channels)");
         configInput(REC_GATE_INPUT, "Record gate");
         configInput(SPLICE_TRIG_INPUT, "Splice trigger");
@@ -515,80 +515,74 @@ struct TabesWidget : ModuleWidget {
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
-// @elem WOW_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem DECAY_PARAM RoundBigBlackKnob 6.0 param "" 0.0
+// @elem WOW_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem OVERLAP_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem SEND_MIX_PARAM RoundBlackKnob 4.5 param "" 0.0
-// @elem WOW_CV_INPUT PJ301MPort 4.18 input "" 0.0
-// @elem DECAY_CV_INPUT PJ301MPort 4.18 input "" 0.0
-// @elem OVERLAP_CV_INPUT PJ301MPort 4.18 input "" 0.0
-// @elem SEND_MIX_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem REC_PARAM TL1105 2.0 param "" 0.0
 // @elem REC_LIGHT SmallLight 1.5 light "" 0.0
 // @elem SPLICE_PARAM TL1105 2.0 param "" 0.0
+// @elem DECAY_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem WOW_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem OVERLAP_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem SEND_MIX_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem RETURN_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem REC_GATE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SPLICE_TRIG_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SEND_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem OUT_LIGHT SmallLight 1.5 light "" 0.0
-// @elem RAMP_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem AGE_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem EOC_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem EOC_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_WOW label 0.0 label "wow" 0.0 7.62 28.50
-// @elem LABEL_DECAY label 0.0 label "decay" 0.0 22.86 31.50
-// @elem LABEL_OVERLAP label 0.0 label "overlap" 0.0 38.10 28.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 53.34 28.50
-// @elem LABEL_WOWCV label 0.0 label "cv" 0.0 7.62 51.50
-// @elem LABEL_DECAYCV label 0.0 label "cv" 0.0 22.86 51.50
-// @elem LABEL_OVERLAPCV label 0.0 label "cv" 0.0 38.10 51.50
-// @elem LABEL_SENDCV label 0.0 label "cv" 0.0 53.34 51.50
-// @elem LABEL_REC label 0.0 label "rec" 0.0 7.62 69.00
-// @elem LABEL_SPLICE label 0.0 label "splice" 0.0 22.86 69.00
-// @elem LABEL_IN label 0.0 label "in" 0.0 38.10 69.50
-// @elem LABEL_RTN label 0.0 label "rtn" 0.0 53.34 69.50
-// @elem LABEL_GATE label 0.0 label "gate" 0.0 7.62 87.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 22.86 87.50
-// @elem LABEL_SEND label 0.0 label "send" 0.0 10.16 102.50
-// @elem LABEL_OUT label 0.0 label "out" 0.0 30.48 102.50
-// @elem LABEL_RAMP label 0.0 label "ramp" 0.0 50.80 102.50
-// @elem LABEL_AGE label 0.0 label "age" 0.0 10.16 118.00
-// @elem LABEL_EOC label 0.0 label "eoc" 0.0 30.48 118.00
-// @elem BOX_SEND panel_box 7.0 box "" 0.0 10.16 97.00
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 30.48 97.00
-// @elem BOX_RAMP panel_box 7.0 box "" 0.0 50.80 97.00
-// @elem BOX_AGE panel_box 7.0 box "" 0.0 10.16 112.50
-// @elem BOX_EOC panel_box 7.0 box "" 0.0 30.48 112.50
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 30.48 124.00
+// @elem RAMP_OUTPUT PJ301MPort 4.18 output "" 0.0
+// @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
+// @elem OUT_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LABEL_DECAY label 0.0 label "decay" 0.0 11.00 32.50
+// @elem LABEL_WOW label 0.0 label "wow" 0.0 26.00 32.50
+// @elem LABEL_OVERLAP label 0.0 label "overlap" 0.0 40.00 32.50
+// @elem LABEL_SENDMIX label 0.0 label "send" 0.0 53.50 32.50
+// @elem LABEL_REC label 0.0 label "rec" 0.0 40.00 62.50
+// @elem LABEL_SPLICE label 0.0 label "splice" 0.0 53.50 62.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 10.16 78.50
+// @elem LABEL_SEND label 0.0 label "send" 0.0 10.16 95.50
+// @elem LABEL_RTN label 0.0 label "rtn" 0.0 30.48 95.50
+// @elem LABEL_AGE label 0.0 label "age" 0.0 50.80 95.50
+// @elem LABEL_RAMP label 0.0 label "ramp" 0.0 10.16 111.50
+// @elem LABEL_EOC label 0.0 label "eoc" 0.0 30.48 111.50
+// @elem LABEL_OUT label 0.0 label "out" 0.0 50.80 111.50
+// @elem BOX_SEND panel_box 7.0 box "" 0.0 10.16 90.00
+// @elem BOX_AGE panel_box 7.0 box "" 0.0 50.80 90.00
+// @elem BOX_RAMP panel_box 7.0 box "" 0.0 10.16 106.00
+// @elem BOX_EOC panel_box 7.0 box "" 0.0 30.48 106.00
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 50.80 106.00
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 30.48 121.00
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(7.62f, 20.00f)), module, Tabes::WOW_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(22.86f, 20.00f)), module, Tabes::DECAY_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.10f, 20.00f)), module, Tabes::OVERLAP_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.34f, 20.00f)), module, Tabes::SEND_MIX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.62f, 44.00f)), module, Tabes::WOW_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.86f, 44.00f)), module, Tabes::DECAY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.10f, 44.00f)), module, Tabes::OVERLAP_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.34f, 44.00f)), module, Tabes::SEND_MIX_CV_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(7.62f, 62.00f)), module, Tabes::REC_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(10.52f, 59.10f)), module, Tabes::REC_LIGHT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(22.86f, 62.00f)), module, Tabes::SPLICE_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.10f, 62.00f)), module, Tabes::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.34f, 62.00f)), module, Tabes::RETURN_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.62f, 80.00f)), module, Tabes::REC_GATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.86f, 80.00f)), module, Tabes::SPLICE_TRIG_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 95.00f)), module, Tabes::SEND_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 95.00f)), module, Tabes::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(35.48f, 92.00f)), module, Tabes::OUT_LIGHT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.80f, 95.00f)), module, Tabes::RAMP_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 110.50f)), module, Tabes::AGE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 110.50f)), module, Tabes::EOC_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(35.48f, 107.50f)), module, Tabes::EOC_LIGHT));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(11.00f, 19.00f)), module, Tabes::DECAY_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(26.00f, 21.82f)), module, Tabes::WOW_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.00f, 21.82f)), module, Tabes::OVERLAP_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.50f, 21.82f)), module, Tabes::SEND_MIX_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(40.00f, 55.00f)), module, Tabes::REC_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.90f, 52.10f)), module, Tabes::REC_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(53.50f, 55.00f)), module, Tabes::SPLICE_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.00f, 40.00f)), module, Tabes::DECAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.00f, 40.00f)), module, Tabes::WOW_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 40.00f)), module, Tabes::OVERLAP_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 40.00f)), module, Tabes::SEND_MIX_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.16f, 71.00f)), module, Tabes::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.48f, 88.00f)), module, Tabes::RETURN_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 71.00f)), module, Tabes::REC_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 71.00f)), module, Tabes::SPLICE_TRIG_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 88.00f)), module, Tabes::SEND_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.80f, 88.00f)), module, Tabes::AGE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 104.00f)), module, Tabes::EOC_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(35.48f, 101.00f)), module, Tabes::EOC_LIGHT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 104.00f)), module, Tabes::RAMP_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.80f, 104.00f)), module, Tabes::AUDIO_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(55.80f, 101.00f)), module, Tabes::OUT_LIGHT));
         // @layout:end
     }
 
