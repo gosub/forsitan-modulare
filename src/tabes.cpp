@@ -102,6 +102,7 @@ struct Tabes : Module {
     float loopGain = 0.f;         // 0 = recording/empty, 1 = playing
     float loopGainStep = 0.f;     // per-sample ramp (1 / window)
     float lastOffset = 0.f;       // last wow read offset, to continue the head
+    float lastOvl = 0.f;          // last overlap length (samples), for splice()
     // splice declick: a ~10 ms linear crossfade from the aged tape to the
     // pristine one, fed by a snapshot of the aged output continuation taken
     // just before the swap (mirrors the rec-start crossfade above). The old
@@ -241,6 +242,7 @@ struct Tabes : Module {
         }
         playPos = 0;
         headAge = 0.f;
+        lastOvl = 0.f;   // recomputed on the first played sample
         dropEnv = 1.f;
         dropTimer = 0;
         // seam declick: over the next ~10 ms, crossfade the loop head with
@@ -253,19 +255,48 @@ struct Tabes : Module {
     bool splice() {
         if (loopLen > 0 && (int)pristine.size() >= channels
             && !pristine[0].empty()) {
-            // snapshot the aged output continuation along the play head's wow
-            // trajectory *before* overwriting the tape, so the swap can be a
-            // crossfade rather than a step (see the splice blend in process).
+            // snapshot the aged output continuation *before* overwriting the
+            // tape, so the swap can be a crossfade rather than a step (see the
+            // splice blend in process). Walk the same trajectory the read side
+            // will: headAge advancing under the hop wrap, both heads blended
+            // while they cross. Overlap geometry and wow offset are frozen at
+            // their last values — fine over a 10 ms window.
             int n = std::min(xfBufLen, loopLen);
-            float base = playPos + lastOffset;
+            float ovl = std::min(lastOvl, 0.5f * loopLen);
+            float hopLen = loopLen - ovl;
+            float ha = headAge;
             for (int k = 0; k < n; k++) {
-                float rp = base + k;
+                ha += 1.f;
+                if (ha >= hopLen) ha -= hopLen;
+                bool crossing = ovl > 0.5f && ha < ovl;
+                float wCur = 1.f, wPrev = 0.f;
+                if (crossing) {
+                    float th = 0.5f * (float)M_PI * ha / ovl;
+                    wCur = std::sin(th);
+                    wPrev = std::cos(th);
+                }
+                float rp = ha + lastOffset;
                 rp -= loopLen * std::floor(rp / loopLen);
                 int i0 = (int)rp;
                 float f = rp - i0;
                 int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
-                for (int c = 0; c < channels; c++)
-                    spliceBuf[c][k] = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                int k0 = 0, k1 = 0; float fk = 0.f;
+                if (crossing) {
+                    float rq = ha + hopLen + lastOffset;
+                    rq -= loopLen * std::floor(rq / loopLen);
+                    k0 = (int)rq;
+                    fk = rq - k0;
+                    k1 = k0 + 1; if (k1 >= loopLen) k1 = 0;
+                }
+                for (int c = 0; c < channels; c++) {
+                    float readA = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                    if (crossing) {
+                        float readB = tape[c][k0] + fk * (tape[c][k1] - tape[c][k0]);
+                        spliceBuf[c][k] = wCur * readA + wPrev * readB;
+                    } else {
+                        spliceBuf[c][k] = readA;
+                    }
+                }
             }
             for (int c = 0; c < channels; c++)
                 std::copy(pristine[c].begin(), pristine[c].end(), tape[c].begin());
@@ -385,6 +416,7 @@ struct Tabes : Module {
             //    buffer once per loopLen, so the tape keeps rotting. ──────────
             float ovl = overlap * 0.5f * loopLen;      // overlap samples, 0..L/2
             float hopLen = loopLen - ovl;              // head spacing, L..L/2
+            lastOvl = ovl;   // so a splice can retrace the head chain
             headAge += 1.f;
             if (headAge >= hopLen) headAge -= hopLen;  // a new head takes over
 

@@ -286,18 +286,30 @@ static void testTabes() {
     // and 5 ms window-mean. The old 2 ms additive bridge only cancelled the
     // amplitude step (leaving a slope/timbre transient, and clippable by the
     // output clamp); the ~10 ms crossfade keeps step and local mean small.
-    float worstSpliceStep = 0.f, worstSpliceDC = 0.f;
+    // Swept at overlap 0 and overlap max: the snapshot fed to the splice
+    // crossfade must retrace the two-head chain (headAge + hop wrap), not the
+    // write head, or a splice with overlap up blends against material from the
+    // wrong position and still steps. The signal mixes two incommensurate
+    // sines so a position offset can't hide as a whole number of periods (a
+    // half loop offset is ~22.0 periods of a plain 220 Hz sine at 44.1 kHz);
+    // the overlap variant ages gently so the aged read is still loud enough
+    // that a wrong-position snapshot would step visibly.
+    auto spliceSweep = [&](float ovlSet, float decaySet, int passes,
+                           float& worstSpliceStep, float& worstSpliceDC) {
     for (int pad = 0; pad < period; pad += period / 6) {
         Tabes msp;
         long fsp = 0;
-        msp.params[Tabes::DECAY_PARAM].setValue(0.9f);   // age hard
+        msp.params[Tabes::DECAY_PARAM].setValue(decaySet);
         msp.params[Tabes::WOW_PARAM].setValue(0.3f);
+        msp.params[Tabes::OVERLAP_PARAM].setValue(ovlSet);
         msp.monitorMode = Tabes::MONITOR_NEVER;          // isolate the loop
         msp.inputs[Tabes::AUDIO_INPUT].channels = 1;
         msp.inputs[Tabes::REC_GATE_INPUT].channels = 1;
-        float phs = 0.f;
+        float phs = 0.f, phs2 = 0.f;
         auto sns = [&]() { phs += 220.f / SR; if (phs >= 1.f) phs -= 1.f;
-                           return 5.f * std::sin(2.f * M_PI * phs); };
+                           phs2 += 173.3f / SR; if (phs2 >= 1.f) phs2 -= 1.f;
+                           return 5.f * (0.7f * std::sin(2.f * M_PI * phs)
+                                       + 0.3f * std::sin(2.f * M_PI * phs2)); };
         int rec = (int)(0.2f * SR) + pad;                // varied splice phase
         for (int i = 0; i < rec; i++) {
             msp.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
@@ -305,8 +317,7 @@ static void testTabes() {
             msp.process(makeArgs(fsp++));
         }
         msp.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
-        // age ~40 passes so the aged read is well below the pristine level
-        for (int i = 0; i < (int)(40 * 0.2f * SR); i++) {
+        for (int i = 0; i < (int)(passes * 0.2f * SR); i++) {
             msp.inputs[Tabes::AUDIO_INPUT].setVoltage(sns());
             msp.process(makeArgs(fsp++));
         }
@@ -333,10 +344,20 @@ static void testTabes() {
             else worstSpliceDC = std::max(worstSpliceDC, (float)std::fabs(sum / WIN));
         }
     }
+    };
     // a 220 Hz 5 V sine steps ~0.14 V/sample and leaves ~0.5 V over 5 ms; a
     // real splice click/thump is several volts. Thresholds sit between.
+    float worstSpliceStep = 0.f, worstSpliceDC = 0.f;
+    spliceSweep(0.f, 0.9f, 40, worstSpliceStep, worstSpliceDC);   // age hard
     report("tabes", "splice_max_step", worstSpliceStep, worstSpliceStep < 1.f);
     report("tabes", "splice_dc", worstSpliceDC, worstSpliceDC < 1.2f);
+    // intermediate overlap, not max: at max the heads sit exactly half a loop
+    // apart, so even a snapshot based at the write head lands back on the head
+    // chain after one hop wrap and the bug would be invisible
+    float worstOvlStep = 0.f, worstOvlDC = 0.f;
+    spliceSweep(0.6f, 0.5f, 8, worstOvlStep, worstOvlDC);         // age gently
+    report("tabes", "splice_ovl_step", worstOvlStep, worstOvlStep < 1.f);
+    report("tabes", "splice_ovl_dc", worstOvlDC, worstOvlDC < 1.2f);
 
     // polyphonic: a 2-channel input records as a stereo tape and plays back
     // two distinct channels (one shared transport, two tracks)
