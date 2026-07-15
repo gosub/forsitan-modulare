@@ -10,11 +10,19 @@
 // pass over pass. A pristine copy of the original recording is kept; SPLICE
 // swaps in fresh tape (back to pass zero).
 //
+// OVERLAP crossfades the loop point: at zero it is just a short anti-click
+// fade, opened up it overlaps the loop's tail with its head (equal power) for
+// an ambient blur. SEND/RETURN insert an external effect into the write path,
+// so whatever the pedal does is re-recorded and compounds pass over pass.
+//
 // Controls:
-//   Knobs : DECAY (loss per pass), WOW (wow/flutter depth)
+//   Knobs : DECAY (loss per pass), WOW (wow/flutter depth), OVERLAP (loop
+//           crossfade), SEND (fx return mix)
 //   Btns  : REC (toggle recording), SPLICE (restore pristine recording)
-//   In    : IN (audio), REC gate, SPLICE trigger, DECAY CV
-//   Out   : OUT (audio), AGE (0.1V per pass, clamps at 10V), EOC (trigger)
+//   In    : IN (audio), REC gate, SPLICE trigger, DECAY/WOW/OVERLAP/SEND CV,
+//           RETURN (fx return)
+//   Out   : OUT (audio), AGE (0.1V per pass, clamps at 10V), EOC (trigger),
+//           RAMP (play head 0..10V), SEND (fx send)
 //   Light : REC (on while recording)
 
 #include "forsitan.hpp"
@@ -27,6 +35,8 @@ struct Tabes : Module {
         WOW_PARAM,
         REC_PARAM,
         SPLICE_PARAM,
+        OVERLAP_PARAM,     // loop-point crossfade length (0 = anti-click only)
+        SEND_MIX_PARAM,    // how much of the fx return is re-recorded
         PARAMS_LEN
     };
     enum InputId {
@@ -34,12 +44,18 @@ struct Tabes : Module {
         REC_GATE_INPUT,
         SPLICE_TRIG_INPUT,
         DECAY_CV_INPUT,
+        WOW_CV_INPUT,
+        OVERLAP_CV_INPUT,
+        SEND_MIX_CV_INPUT,
+        RETURN_INPUT,      // fx return, folded back onto the tape
         INPUTS_LEN
     };
     enum OutputId {
         AUDIO_OUTPUT,
         AGE_OUTPUT,
         EOC_OUTPUT,
+        RAMP_OUTPUT,       // play head position, 0..10V, resets at the loop point
+        SEND_OUTPUT,       // the loop read, out to an external effect
         OUTPUTS_LEN
     };
     enum LightId {
@@ -83,9 +99,15 @@ struct Tabes : Module {
     float loopGain = 0.f;         // 0 = recording/empty, 1 = playing
     float loopGainStep = 0.f;     // per-sample ramp (1 / window)
     float lastOffset = 0.f;       // last wow read offset, to continue the head
-    float declick[kMaxChannels] = {};   // per-channel additive bridge, splice only
-    float prevOut[kMaxChannels] = {};
-    float declickCoef = 0.f;
+    // splice declick: a ~10 ms linear crossfade from the aged tape to the
+    // pristine one, fed by a snapshot of the aged output continuation taken
+    // just before the swap (mirrors the rec-start crossfade above). The old
+    // additive one-pole bridge only cancelled the amplitude step (C0), leaving
+    // a slope discontinuity plus the abrupt aged->fresh timbre change audible
+    // as a soft click, and could be truncated by the output clamp.
+    std::vector<std::vector<float>> spliceBuf;   // [channel][k] aged snapshot
+    int spliceFade = 0;           // samples of splice crossfade left
+    int spliceFadeTotal = 0;      // full crossfade length
     float wowPhase = 0.f, flutterPhase = 0.f;
     float dropEnv = 1.f;          // smoothed dropout gain
     int dropTimer = 0;
@@ -106,13 +128,21 @@ struct Tabes : Module {
         configParam(WOW_PARAM, 0.f, 1.f, 0.3f, "Wow/flutter");
         configButton(REC_PARAM, "Record");
         configButton(SPLICE_PARAM, "Splice (restore pristine tape)");
+        configParam(OVERLAP_PARAM, 0.f, 1.f, 0.f, "Loop overlap");
+        configParam(SEND_MIX_PARAM, 0.f, 1.f, 0.f, "FX return mix");
         configInput(AUDIO_INPUT, "Audio (polyphonic: records all channels)");
         configInput(REC_GATE_INPUT, "Record gate");
         configInput(SPLICE_TRIG_INPUT, "Splice trigger");
         configInput(DECAY_CV_INPUT, "Decay CV");
+        configInput(WOW_CV_INPUT, "Wow/flutter CV");
+        configInput(OVERLAP_CV_INPUT, "Loop overlap CV");
+        configInput(SEND_MIX_CV_INPUT, "FX return mix CV");
+        configInput(RETURN_INPUT, "FX return (re-recorded onto the tape)");
         configOutput(AUDIO_OUTPUT, "Audio (matches the recorded channel count)");
         configOutput(AGE_OUTPUT, "Age (0.1V per pass)");
         configOutput(EOC_OUTPUT, "End of loop trigger");
+        configOutput(RAMP_OUTPUT, "Play head position (0..10V ramp)");
+        configOutput(SEND_OUTPUT, "FX send (the loop read)");
         configLight(REC_LIGHT, "Recording");
         configLight(EOC_LIGHT, "End of loop");
         configLight(OUT_LIGHT, "Output level");
@@ -124,8 +154,7 @@ struct Tabes : Module {
         recording = false;
         age = 0;
         std::fill(std::begin(lpState), std::end(lpState), 0.f);
-        std::fill(std::begin(declick), std::end(declick), 0.f);
-        std::fill(std::begin(prevOut), std::end(prevOut), 0.f);
+        spliceFade = 0;
         xfadeRemain = 0;
         recStartFade = 0;
         xfReadPos = 0;
@@ -146,6 +175,7 @@ struct Tabes : Module {
             tape.emplace_back(tapeCap, 0.f);
             pristine.emplace_back();
             xfBuf.emplace_back(xfBufLen, 0.f);
+            spliceBuf.emplace_back(xfBufLen, 0.f);
         }
     }
 
@@ -163,6 +193,7 @@ struct Tabes : Module {
         recPos = 0;
         age = 0;
         xfadeRemain = 0;
+        spliceFade = 0;   // drop any in-flight splice fade
         channels = clamp(inCh, 1, kMaxChannels);   // tape width for this take
         ensureChannels(channels);
         // snapshot the loop's continuation so the output can crossfade from
@@ -192,6 +223,7 @@ struct Tabes : Module {
 
     void stopRecording(float sr) {
         recording = false;
+        spliceFade = 0;   // no stale splice fade into the new loop
         if (recPos < (int)(0.05f * sr)) {   // too short: keep nothing
             loopLen = 0;
             return;
@@ -216,8 +248,24 @@ struct Tabes : Module {
     bool splice() {
         if (loopLen > 0 && (int)pristine.size() >= channels
             && !pristine[0].empty()) {
+            // snapshot the aged output continuation along the play head's wow
+            // trajectory *before* overwriting the tape, so the swap can be a
+            // crossfade rather than a step (see the splice blend in process).
+            int n = std::min(xfBufLen, loopLen);
+            float base = playPos + lastOffset;
+            for (int k = 0; k < n; k++) {
+                float rp = base + k;
+                rp -= loopLen * std::floor(rp / loopLen);
+                int i0 = (int)rp;
+                float f = rp - i0;
+                int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
+                for (int c = 0; c < channels; c++)
+                    spliceBuf[c][k] = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+            }
             for (int c = 0; c < channels; c++)
                 std::copy(pristine[c].begin(), pristine[c].end(), tape[c].begin());
+            spliceFadeTotal = n;
+            spliceFade = n;
             age = 0;
             dropTimer = 0;
             return true;
@@ -230,12 +278,12 @@ struct Tabes : Module {
         if (sr != curSampleRate) {
             curSampleRate = sr;
             tapeCap = (size_t)(kMaxSeconds * sr);
-            declickCoef = std::exp(-1.f / (0.002f * sr));   // ~2 ms bridge
             xfBufLen = (int)(0.01f * sr);                    // ~10 ms crossfade
             loopGainStep = 1.f / std::max(1, xfBufLen);
             tape.clear();
             pristine.clear();
             xfBuf.clear();
+            spliceBuf.clear();
             channels = 1;
             ensureChannels(1);
             onReset();
@@ -251,16 +299,31 @@ struct Tabes : Module {
         if (!gateHigh && gateWasHigh && recording) stopRecording(sr);
         gateWasHigh = gateHigh;
 
-        bool spliced = false;
         if (spliceButton.process(params[SPLICE_PARAM].getValue() > 0.5f)
             || spliceTrigger.process(inputs[SPLICE_TRIG_INPUT].getVoltage(), 0.1f, 1.f))
-            spliced = splice();
+            splice();
 
         float decay = params[DECAY_PARAM].getValue();
         if (inputs[DECAY_CV_INPUT].isConnected())
             decay += inputs[DECAY_CV_INPUT].getVoltage() * 0.2f;
         decay = clamp(decay, 0.f, 1.f);
         float wowK = params[WOW_PARAM].getValue();
+        if (inputs[WOW_CV_INPUT].isConnected())
+            wowK += inputs[WOW_CV_INPUT].getVoltage() * 0.2f;
+        wowK = clamp(wowK, 0.f, 1.f);
+        float overlap = params[OVERLAP_PARAM].getValue();
+        if (inputs[OVERLAP_CV_INPUT].isConnected())
+            overlap += inputs[OVERLAP_CV_INPUT].getVoltage() * 0.2f;
+        overlap = clamp(overlap, 0.f, 1.f);
+        float sendMix = params[SEND_MIX_PARAM].getValue();
+        if (inputs[SEND_MIX_CV_INPUT].isConnected())
+            sendMix += inputs[SEND_MIX_CV_INPUT].getVoltage() * 0.2f;
+        sendMix = clamp(sendMix, 0.f, 1.f);
+        // the fx loop only folds in the return when it is a complete loop —
+        // both send patched out and return patched back — so a stray return
+        // signal is never baked into the tape on its own
+        bool fxActive = inputs[RETURN_INPUT].isConnected()
+                     && outputs[SEND_OUTPUT].isConnected();
 
         // output width: the recorded tape width while a loop or recording
         // exists, otherwise follow the input so monitoring is poly too
@@ -312,6 +375,24 @@ struct Tabes : Module {
             int i1 = i0 + 1; if (i1 >= loopLen) i1 = 0;
             lastOffset = offset;   // so a rec press can continue the head
 
+            // ── loop overlap: a second read head half a loop ahead of the
+            //    first, windowed so each head is silent exactly when it crosses
+            //    the loop seam (wA=sin, wB=|cos| over the loop phase). The two
+            //    windows sum to unit power, so the pair is a seamless, constant-
+            //    power wash: at OVERLAP=1 the loop's second half plays over its
+            //    first half; below that it is blended back toward the dry read.
+            //    Read-side only — the write head still ages one copy, so the
+            //    loop keeps rotting while it smears. At 0 it is a true no-op
+            //    (the recording seam already declicks the wrap). ─────────────
+            float rp2 = rp + 0.5f * loopLen;
+            while (rp2 >= loopLen) rp2 -= loopLen;
+            int k0 = (int)rp2;
+            float fk = rp2 - k0;
+            int k1 = k0 + 1; if (k1 >= loopLen) k1 = 0;
+            float phase = (float)playPos / loopLen;
+            float wA = std::sin((float)M_PI * phase);
+            float wB = std::fabs(std::cos((float)M_PI * phase));
+
             // write-head coefficients, shared across tracks
             float fc = 22000.f * std::pow(10.f, -decay);   // 22 kHz .. 2.2 kHz
             float a = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
@@ -326,7 +407,14 @@ struct Tabes : Module {
 
             // ── the write head re-records a slightly worse copy, per track ──
             for (int c = 0; c < channels; c++) {
-                loopSig[c] = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                float readA = tape[c][i0] + f * (tape[c][i1] - tape[c][i0]);
+                if (overlap > 0.f) {
+                    float readB = tape[c][k0] + fk * (tape[c][k1] - tape[c][k0]);
+                    float wash = wA * readA + wB * readB;
+                    loopSig[c] = (1.f - overlap) * readA + overlap * wash;
+                } else {
+                    loopSig[c] = readA;
+                }
                 float w = tape[c][playPos];
                 lpState[c] += a * (w - lpState[c]);
                 w = lpState[c];
@@ -336,8 +424,25 @@ struct Tabes : Module {
                 // tape hiss (independent per track)
                 w += decay * 2e-4f * noise();
                 w *= dropEnv;
+                // fold the fx return onto the tape; it compounds pass over pass
+                if (fxActive)
+                    w = (1.f - sendMix) * w
+                      + sendMix * inputs[RETURN_INPUT].getPolyVoltage(c) * 0.2f;
                 if (!std::isfinite(w)) w = 0.f;
-                tape[c][playPos] = w;
+                // bound the tape so a hot fx-return loop saturates instead of
+                // exploding (and then getting zeroed by the finite check)
+                tape[c][playPos] = clamp(w, -2.f, 2.f);
+            }
+
+            // ── splice declick: crossfade the freshly restored pristine read
+            //    against the snapshot of the aged output (linear, since the two
+            //    are highly correlated). t: 0 (all aged) -> 1 (all pristine) ──
+            if (spliceFade > 0) {
+                int k = spliceFadeTotal - spliceFade;
+                float t = (float)k / spliceFadeTotal;
+                for (int c = 0; c < channels; c++)
+                    loopSig[c] = t * loopSig[c] + (1.f - t) * spliceBuf[c][k];
+                spliceFade--;
             }
 
             if (++playPos >= loopLen) {
@@ -364,20 +469,19 @@ struct Tabes : Module {
         float monGain  = (monitorMode == MONITOR_WHILE_REC) ? (1.f - loopGain) : 0.f;
 
         outputs[AUDIO_OUTPUT].setChannels(nc);
+        outputs[SEND_OUTPUT].setChannels(nc);
         float level = 0.f;
         for (int c = 0; c < nc; c++) {
             float out = (passGain + monGain) * in[c] + loopGain * loopSig[c];
-            // declick the splice source switch with a short decaying bridge
-            if (spliced)
-                declick[c] = prevOut[c] - out;
-            out += declick[c];
-            declick[c] *= declickCoef;
-            prevOut[c] = out;
             outputs[AUDIO_OUTPUT].setVoltage(5.f * clamp(out, -2.f, 2.f), c);
+            // fx send: the loop read, before it is mixed with the monitor
+            outputs[SEND_OUTPUT].setVoltage(5.f * clamp(loopSig[c], -2.f, 2.f), c);
             level = std::max(level, std::fabs(out));
         }
         outputs[AGE_OUTPUT].setVoltage(std::min(0.1f * age, 10.f));
         outputs[EOC_OUTPUT].setVoltage(eocPulse.process(args.sampleTime) ? 10.f : 0.f);
+        // play head as a loop-locked ramp, clean of wow so it stays a stable sync
+        outputs[RAMP_OUTPUT].setVoltage(loopLen > 0 ? 10.f * playPos / loopLen : 0.f);
         lights[REC_LIGHT].setBrightness(recording ? 1.f : 0.f);
         // ~100 ms flash per loop wrap; smoothed audio level on the out badge
         eocFlash *= 1.f - 10.f * args.sampleTime;
@@ -406,59 +510,85 @@ struct TabesWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/tabes.svg")));
 
-// @layout:begin tabes 40.64 128.5
+// @layout:begin tabes 60.96 128.5
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
-// @elem DECAY_PARAM RoundBigBlackKnob 6.0 param "" 0.0
 // @elem WOW_PARAM RoundBlackKnob 4.5 param "" 0.0
+// @elem DECAY_PARAM RoundBigBlackKnob 6.0 param "" 0.0
+// @elem OVERLAP_PARAM RoundBlackKnob 4.5 param "" 0.0
+// @elem SEND_MIX_PARAM RoundBlackKnob 4.5 param "" 0.0
+// @elem WOW_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem DECAY_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem OVERLAP_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem SEND_MIX_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem REC_PARAM TL1105 2.0 param "" 0.0
 // @elem REC_LIGHT SmallLight 1.5 light "" 0.0
-// @elem EOC_LIGHT SmallLight 1.5 light "" 0.0
-// @elem OUT_LIGHT SmallLight 1.5 light "" 0.0
 // @elem SPLICE_PARAM TL1105 2.0 param "" 0.0
+// @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem RETURN_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem REC_GATE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SPLICE_TRIG_INPUT PJ301MPort 4.18 input "" 0.0
-// @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
-// @elem EOC_OUTPUT PJ301MPort 4.18 output "" 0.0
+// @elem SEND_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.18 output "" 0.0
+// @elem OUT_LIGHT SmallLight 1.5 light "" 0.0
+// @elem RAMP_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem AGE_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem LABEL_DECAY label 0.0 label "decay" 0.0 20.32 30.00
-// @elem LABEL_WOW label 0.0 label "wow" 0.0 11.50 46.50
-// @elem LABEL_DECAYCV label 0.0 label "cv" 0.0 29.14 46.50
-// @elem LABEL_REC label 0.0 label "rec" 0.0 11.50 61.00
-// @elem LABEL_SPLICE label 0.0 label "splice" 0.0 29.14 61.00
-// @elem LABEL_GATE label 0.0 label "gate" 0.0 11.50 76.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 29.14 76.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 11.50 95.50
-// @elem LABEL_EOC label 0.0 label "eoc" 0.0 29.14 95.50
-// @elem LABEL_OUT label 0.0 label "out" 0.0 11.50 114.00
-// @elem LABEL_AGE label 0.0 label "age" 0.0 29.14 114.00
-// @elem BOX_EOC panel_box 7.0 box "" 0.0 29.14 90.00
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 11.50 108.50
-// @elem BOX_AGE panel_box 7.0 box "" 0.0 29.14 108.50
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 20.32 122.50
+// @elem EOC_OUTPUT PJ301MPort 4.18 output "" 0.0
+// @elem EOC_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LABEL_WOW label 0.0 label "wow" 0.0 7.62 28.50
+// @elem LABEL_DECAY label 0.0 label "decay" 0.0 22.86 31.50
+// @elem LABEL_OVERLAP label 0.0 label "overlap" 0.0 38.10 28.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 53.34 28.50
+// @elem LABEL_WOWCV label 0.0 label "cv" 0.0 7.62 51.50
+// @elem LABEL_DECAYCV label 0.0 label "cv" 0.0 22.86 51.50
+// @elem LABEL_OVERLAPCV label 0.0 label "cv" 0.0 38.10 51.50
+// @elem LABEL_SENDCV label 0.0 label "cv" 0.0 53.34 51.50
+// @elem LABEL_REC label 0.0 label "rec" 0.0 7.62 69.00
+// @elem LABEL_SPLICE label 0.0 label "splice" 0.0 22.86 69.00
+// @elem LABEL_IN label 0.0 label "in" 0.0 38.10 69.50
+// @elem LABEL_RTN label 0.0 label "rtn" 0.0 53.34 69.50
+// @elem LABEL_GATE label 0.0 label "gate" 0.0 7.62 87.50
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 22.86 87.50
+// @elem LABEL_SEND label 0.0 label "send" 0.0 10.16 102.50
+// @elem LABEL_OUT label 0.0 label "out" 0.0 30.48 102.50
+// @elem LABEL_RAMP label 0.0 label "ramp" 0.0 50.80 102.50
+// @elem LABEL_AGE label 0.0 label "age" 0.0 10.16 118.00
+// @elem LABEL_EOC label 0.0 label "eoc" 0.0 30.48 118.00
+// @elem BOX_SEND panel_box 7.0 box "" 0.0 10.16 97.00
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 30.48 97.00
+// @elem BOX_RAMP panel_box 7.0 box "" 0.0 50.80 97.00
+// @elem BOX_AGE panel_box 7.0 box "" 0.0 10.16 112.50
+// @elem BOX_EOC panel_box 7.0 box "" 0.0 30.48 112.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 30.48 124.00
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
-        addChild(createWidget<ScrewSilver>(mm2px(Vec(33.02f, 0.00f)))); // SCREW_TR
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
-        addChild(createWidget<ScrewSilver>(mm2px(Vec(33.02f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(20.32f, 18.50f)), module, Tabes::DECAY_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 38.00f)), module, Tabes::WOW_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(29.14f, 38.00f)), module, Tabes::DECAY_CV_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(11.50f, 54.00f)), module, Tabes::REC_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(14.40f, 51.10f)), module, Tabes::REC_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(34.14f, 85.00f)), module, Tabes::EOC_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 103.50f)), module, Tabes::OUT_LIGHT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(29.14f, 54.00f)), module, Tabes::SPLICE_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 69.00f)), module, Tabes::REC_GATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(29.14f, 69.00f)), module, Tabes::SPLICE_TRIG_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 88.00f)), module, Tabes::AUDIO_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 88.00f)), module, Tabes::EOC_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(11.50f, 106.50f)), module, Tabes::AUDIO_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 106.50f)), module, Tabes::AGE_OUTPUT));
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 123.42f)))); // SCREW_BR
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(7.62f, 20.00f)), module, Tabes::WOW_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(22.86f, 20.00f)), module, Tabes::DECAY_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.10f, 20.00f)), module, Tabes::OVERLAP_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.34f, 20.00f)), module, Tabes::SEND_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.62f, 44.00f)), module, Tabes::WOW_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.86f, 44.00f)), module, Tabes::DECAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.10f, 44.00f)), module, Tabes::OVERLAP_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.34f, 44.00f)), module, Tabes::SEND_MIX_CV_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(7.62f, 62.00f)), module, Tabes::REC_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(10.52f, 59.10f)), module, Tabes::REC_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(22.86f, 62.00f)), module, Tabes::SPLICE_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.10f, 62.00f)), module, Tabes::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.34f, 62.00f)), module, Tabes::RETURN_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.62f, 80.00f)), module, Tabes::REC_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.86f, 80.00f)), module, Tabes::SPLICE_TRIG_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 95.00f)), module, Tabes::SEND_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 95.00f)), module, Tabes::AUDIO_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(35.48f, 92.00f)), module, Tabes::OUT_LIGHT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.80f, 95.00f)), module, Tabes::RAMP_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 110.50f)), module, Tabes::AGE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 110.50f)), module, Tabes::EOC_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(35.48f, 107.50f)), module, Tabes::EOC_LIGHT));
         // @layout:end
     }
 

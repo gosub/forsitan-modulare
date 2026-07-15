@@ -279,6 +279,65 @@ static void testTabes() {
     // thump is several volts. 1.2 V sits well between the two.
     report("tabes", "rec_stop_dc", worstStopDC, worstStopDC < 1.2f);
 
+    // no click at SPLICE: once the tape has aged, the aged read differs from
+    // the pristine one in level and timbre, so restoring the pristine tape is
+    // a source switch that must be crossfaded, not stepped. Sweep the splice
+    // phase and, over the 20 ms after the splice, take the worst sample step
+    // and 5 ms window-mean. The old 2 ms additive bridge only cancelled the
+    // amplitude step (leaving a slope/timbre transient, and clippable by the
+    // output clamp); the ~10 ms crossfade keeps step and local mean small.
+    float worstSpliceStep = 0.f, worstSpliceDC = 0.f;
+    for (int pad = 0; pad < period; pad += period / 6) {
+        Tabes msp;
+        long fsp = 0;
+        msp.params[Tabes::DECAY_PARAM].setValue(0.9f);   // age hard
+        msp.params[Tabes::WOW_PARAM].setValue(0.3f);
+        msp.monitorMode = Tabes::MONITOR_NEVER;          // isolate the loop
+        msp.inputs[Tabes::AUDIO_INPUT].channels = 1;
+        msp.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+        float phs = 0.f;
+        auto sns = [&]() { phs += 220.f / SR; if (phs >= 1.f) phs -= 1.f;
+                           return 5.f * std::sin(2.f * M_PI * phs); };
+        int rec = (int)(0.2f * SR) + pad;                // varied splice phase
+        for (int i = 0; i < rec; i++) {
+            msp.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+            msp.inputs[Tabes::AUDIO_INPUT].setVoltage(sns());
+            msp.process(makeArgs(fsp++));
+        }
+        msp.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+        // age ~40 passes so the aged read is well below the pristine level
+        for (int i = 0; i < (int)(40 * 0.2f * SR); i++) {
+            msp.inputs[Tabes::AUDIO_INPUT].setVoltage(sns());
+            msp.process(makeArgs(fsp++));
+        }
+        float prevS = msp.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+        msp.params[Tabes::SPLICE_PARAM].setValue(1.f);   // splice on this sample
+        msp.inputs[Tabes::AUDIO_INPUT].setVoltage(sns());
+        msp.process(makeArgs(fsp++));
+        msp.params[Tabes::SPLICE_PARAM].setValue(0.f);
+        double sum = 0; std::vector<float> ring(WIN, 0.f); int head = 0, filled = 0;
+        {
+            float v = msp.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+            worstSpliceStep = std::max(worstSpliceStep, std::fabs(v - prevS));
+            prevS = v; sum += v - ring[head]; ring[head] = v; head = (head + 1) % WIN;
+            filled++;
+        }
+        for (int i = 0; i < (int)(0.02f * SR); i++) {
+            msp.inputs[Tabes::AUDIO_INPUT].setVoltage(sns());
+            msp.process(makeArgs(fsp++));
+            float v = msp.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+            worstSpliceStep = std::max(worstSpliceStep, std::fabs(v - prevS));
+            prevS = v;
+            sum += v - ring[head]; ring[head] = v; head = (head + 1) % WIN;
+            if (filled < WIN) filled++;
+            else worstSpliceDC = std::max(worstSpliceDC, (float)std::fabs(sum / WIN));
+        }
+    }
+    // a 220 Hz 5 V sine steps ~0.14 V/sample and leaves ~0.5 V over 5 ms; a
+    // real splice click/thump is several volts. Thresholds sit between.
+    report("tabes", "splice_max_step", worstSpliceStep, worstSpliceStep < 1.f);
+    report("tabes", "splice_dc", worstSpliceDC, worstSpliceDC < 1.2f);
+
     // polyphonic: a 2-channel input records as a stereo tape and plays back
     // two distinct channels (one shared transport, two tracks)
     Tabes mp;
@@ -363,12 +422,152 @@ static void testBulla() {
     report("bulla", "rungler_moves", r.rms(), r.rms() > 0.01);
 }
 
+// record `secs` of a 220 Hz sine into a fresh Tabes, leaving it playing
+static void tabesRecord(Tabes& m, long& frame, float secs) {
+    m.inputs[Tabes::AUDIO_INPUT].channels = 1;
+    m.inputs[Tabes::REC_GATE_INPUT].channels = 1;
+    float ph = 0.f;
+    m.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+    for (int i = 0; i < (int)(secs * SR); i++) {
+        ph += 220.f / SR; if (ph >= 1.f) ph -= 1.f;
+        m.inputs[Tabes::AUDIO_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * ph));
+        m.process(makeArgs(frame++));
+    }
+    m.inputs[Tabes::REC_GATE_INPUT].setVoltage(0.f);
+    m.inputs[Tabes::AUDIO_INPUT].setVoltage(0.f);
+}
+
+// mk2 features: wow CV, ramp out, loop overlap, fx send/return
+static void testTabesMk2() {
+    // wow CV: with the knob at 0, feeding the CV must introduce read-head
+    // wander (so the loop is no longer bit-identical pass to pass) yet stay
+    // finite and level-sane
+    {
+        Tabes m; long frame = 0;
+        m.params[Tabes::WOW_PARAM].setValue(0.f);
+        m.inputs[Tabes::WOW_CV_INPUT].channels = 1;
+        m.inputs[Tabes::WOW_CV_INPUT].setVoltage(5.f);   // full wow via CV
+        tabesRecord(m, frame, 1.0f);
+        Stats s;
+        for (int i = 0; i < (int)(2 * SR); i++) {
+            m.process(makeArgs(frame++));
+            s.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+        }
+        report("tabes", "wowcv_nans", s.nans, s.nans == 0);
+        report("tabes", "wowcv_rms", s.rms(), s.rms() > 1.0 && s.peak < 12.f);
+    }
+
+    // ramp out: a loop-locked 0..10V saw that resets at the loop point
+    {
+        Tabes m; long frame = 0;
+        m.params[Tabes::WOW_PARAM].setValue(0.f);
+        tabesRecord(m, frame, 1.0f);
+        float mn = 1e9f, mx = -1e9f, worstDrop = 0.f, prev = -1.f;
+        int resets = 0;
+        for (int i = 0; i < (int)(2.2f * SR); i++) {   // ~2 loops
+            m.process(makeArgs(frame++));
+            float r = m.outputs[Tabes::RAMP_OUTPUT].getVoltage();
+            mn = std::min(mn, r); mx = std::max(mx, r);
+            if (prev >= 0.f && r - prev < -5.f) { resets++; worstDrop = std::min(worstDrop, r - prev); }
+            prev = r;
+        }
+        report("tabes", "ramp_min", mn, mn < 0.2f);
+        report("tabes", "ramp_max", mx, mx > 9.5f && mx <= 10.f);
+        report("tabes", "ramp_resets", resets, resets == 2);   // one per loop
+    }
+
+    // loop overlap: fully open (knob=1) it blurs the loop but must stay finite,
+    // bounded, non-silent, and clickless across the wrap
+    {
+        Tabes m; long frame = 0;
+        m.params[Tabes::WOW_PARAM].setValue(0.f);
+        m.params[Tabes::OVERLAP_PARAM].setValue(1.f);
+        tabesRecord(m, frame, 1.0f);
+        Stats s; float prev = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage(), maxStep = 0.f;
+        for (int i = 0; i < (int)(4 * SR); i++) {
+            m.process(makeArgs(frame++));
+            float v = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+            maxStep = std::max(maxStep, std::fabs(v - prev)); prev = v;
+            s.add(v);
+        }
+        report("tabes", "overlap_nans", s.nans, s.nans == 0);
+        report("tabes", "overlap_rms", s.rms(), s.rms() > 0.5 && s.peak < 12.f);
+        report("tabes", "overlap_max_step", maxStep, maxStep < 1.f);
+    }
+
+    // fx send/return: patch RETURN = gain * SEND (a 1-sample-delayed external
+    // effect). A hot gain (>1) with full mix compounds every pass; the tape
+    // clamp must keep it bounded and non-silent rather than exploding.
+    // channels=1 on both ports simulates the patched send/return cables.
+    {
+        Tabes m; long frame = 0;
+        m.params[Tabes::WOW_PARAM].setValue(0.f);
+        m.params[Tabes::DECAY_PARAM].setValue(0.2f);
+        m.params[Tabes::SEND_MIX_PARAM].setValue(1.f);
+        m.inputs[Tabes::RETURN_INPUT].channels = 1;
+        m.outputs[Tabes::SEND_OUTPUT].channels = 1;
+        tabesRecord(m, frame, 0.5f);
+        const float gain = 1.05f;
+        float sendPrev = 0.f;
+        Stats s;
+        for (int i = 0; i < (int)(20 * SR); i++) {   // ~40 passes of buildup
+            m.inputs[Tabes::RETURN_INPUT].setVoltage(gain * sendPrev);
+            m.process(makeArgs(frame++));
+            sendPrev = m.outputs[Tabes::SEND_OUTPUT].getVoltage();
+            if (i >= (int)(19 * SR)) s.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+        }
+        report("tabes", "fx_nans", s.nans, s.nans == 0);
+        report("tabes", "fx_bounded", s.peak, s.peak <= 10.01f);
+        report("tabes", "fx_alive", s.rms(), s.rms() > 0.2);   // not collapsed to silence
+
+        // sendMix = 0 ignores the return entirely (identical to no send), even
+        // with the loop fully patched
+        Tabes a, b; long fa = 0, fb = 0;
+        a.params[Tabes::WOW_PARAM].setValue(0.f); b.params[Tabes::WOW_PARAM].setValue(0.f);
+        a.params[Tabes::SEND_MIX_PARAM].setValue(0.f);
+        b.params[Tabes::SEND_MIX_PARAM].setValue(0.f);
+        a.inputs[Tabes::RETURN_INPUT].channels = 1;
+        a.outputs[Tabes::SEND_OUTPUT].channels = 1;
+        tabesRecord(a, fa, 0.5f); tabesRecord(b, fb, 0.5f);
+        float maxDiff = 0.f, sp = 0.f;
+        for (int i = 0; i < (int)(2 * SR); i++) {
+            a.inputs[Tabes::RETURN_INPUT].setVoltage(3.f * sp);   // hot junk into a
+            a.process(makeArgs(fa++)); b.process(makeArgs(fb++));
+            sp = a.outputs[Tabes::SEND_OUTPUT].getVoltage();
+            maxDiff = std::max(maxDiff, std::fabs(
+                a.outputs[Tabes::AUDIO_OUTPUT].getVoltage()
+                - b.outputs[Tabes::AUDIO_OUTPUT].getVoltage()));
+        }
+        report("tabes", "fx_mix0_bypass", maxDiff, maxDiff < 1e-4f);
+
+        // return with NO send patched is ignored: the fx loop needs both ends.
+        // c has a hot return but SEND left disconnected (channels stays 0);
+        // even at mix = 1 it must be identical to the untouched reference d.
+        Tabes c, d; long fc = 0, fd = 0;
+        c.params[Tabes::WOW_PARAM].setValue(0.f); d.params[Tabes::WOW_PARAM].setValue(0.f);
+        c.params[Tabes::SEND_MIX_PARAM].setValue(1.f);
+        d.params[Tabes::SEND_MIX_PARAM].setValue(1.f);
+        c.inputs[Tabes::RETURN_INPUT].channels = 1;   // return patched, send is not
+        tabesRecord(c, fc, 0.5f); tabesRecord(d, fd, 0.5f);
+        float maxDiff2 = 0.f;
+        for (int i = 0; i < (int)(2 * SR); i++) {
+            c.inputs[Tabes::RETURN_INPUT].setVoltage(4.f);   // hot DC into return
+            c.process(makeArgs(fc++)); d.process(makeArgs(fd++));
+            maxDiff2 = std::max(maxDiff2, std::fabs(
+                c.outputs[Tabes::AUDIO_OUTPUT].getVoltage()
+                - d.outputs[Tabes::AUDIO_OUTPUT].getVoltage()));
+        }
+        report("tabes", "fx_needs_send", maxDiff2, maxDiff2 < 1e-4f);
+    }
+}
+
 int main() {
     rack::random::init();
     printf("module,check,value,pass\n");
     testRete();
     testUlulo();
     testTabes();
+    testTabesMk2();
     testLustro();
     testBulla();
     return failures ? 1 : 0;
