@@ -29,7 +29,8 @@
 //   Trims : SENS, THRS, ATK, REL, MOD, DCAY, SPRD, INFX
 //   Btns  : FREEZE (latch), TILT (momentary)
 //   Switch: MODE (std/rev/tail repeats)
-//   In    : IN L/R, PITCH/SUST/GLIT/FILT CV, CLOCK, FREEZE gate, TILT gate
+//   In    : IN L/R, TEMPO/PITCH/SUST/GLIT/FILT CV, CLOCK, FREEZE gate,
+//           TILT gate
 //   Out   : OUT L/R
 //   Menu  : grain cap (repeats capped to one tempo interval, on by default),
 //           alternative routing (dry into FX), clock multiplier (1/4 .. x4)
@@ -74,6 +75,7 @@ struct Perge : Module {
         CLOCK_INPUT,
         FREEZE_GATE_INPUT,
         TILT_GATE_INPUT,
+        TEMPO_CV_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -252,6 +254,7 @@ struct Perge : Module {
                      {"Standard", "Reverse", "Tail"});
         configInput(IN_L_INPUT, "Left audio");
         configInput(IN_R_INPUT, "Right audio (normalled to left)");
+        configInput(TEMPO_CV_INPUT, "Tempo CV");
         configInput(PITCH_CV_INPUT, "Pitch CV");
         configInput(SUSTAIN_CV_INPUT, "Sustain CV");
         configInput(GLITCH_CV_INPUT, "Glitch/dimension CV");
@@ -476,7 +479,9 @@ struct Perge : Module {
         rvrbBase = std::max(0.f, -rvrbK);
         smearBase = std::max(0.f, rvrbK);
 
-        knobT = (2.0f * std::pow(0.05f, params[TEMPO_PARAM].getValue())) * sr;  // 2s..100ms
+        float tempoK = clamp(params[TEMPO_PARAM].getValue()
+                        + inputs[TEMPO_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
+        knobT = (2.0f * std::pow(0.05f, tempoK)) * sr;  // 2s..100ms
         // sustain -> per-repeat gain (freeze pins it to 1)
         decayUnfrozen = 0.25f + 0.745f * std::pow(clamp(sustain / 0.9f, 0.f, 1.f), 0.4f);
 
@@ -872,6 +877,7 @@ struct PergeWidget : ModuleWidget {
 // @elem DECAY_PARAM Trimpot 2.5 param "" 0.0
 // @elem SPREAD_PARAM Trimpot 2.5 param "" 0.0
 // @elem INFX_PARAM Trimpot 2.5 param "" 0.0
+// @elem TEMPO_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem PITCH_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SUSTAIN_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem GLITCH_CV_INPUT PJ301MPort 4.18 input "" 0.0
@@ -907,10 +913,11 @@ struct PergeWidget : ModuleWidget {
 // @elem LABEL_DECAY label 0.0 label "dcay" 0.0 67.90 68.00
 // @elem LABEL_SPREAD label 0.0 label "sprd" 0.0 79.30 68.00
 // @elem LABEL_INFX label 0.0 label "infx" 0.0 90.70 68.00
-// @elem LABEL_PITCHCV label 0.0 label "pitch" 0.0 21.40 87.50
-// @elem LABEL_SUSTCV label 0.0 label "sust" 0.0 41.00 87.50
-// @elem LABEL_GLITCV label 0.0 label "glit" 0.0 60.60 87.50
-// @elem LABEL_FILTCV label 0.0 label "filt" 0.0 80.20 87.50
+// @elem LABEL_TEMPOCV label 0.0 label "tempo" 0.0 16.80 87.50
+// @elem LABEL_PITCHCV label 0.0 label "pitch" 0.0 33.80 87.50
+// @elem LABEL_SUSTCV label 0.0 label "sust" 0.0 50.80 87.50
+// @elem LABEL_GLITCV label 0.0 label "glit" 0.0 67.80 87.50
+// @elem LABEL_FILTCV label 0.0 label "filt" 0.0 84.80 87.50
 // @elem LABEL_INL label 0.0 label "in l" 0.0 12.80 103.50
 // @elem LABEL_INR label 0.0 label "in r" 0.0 28.30 103.50
 // @elem LABEL_CLOCK label 0.0 label "clock" 0.0 43.80 103.50
@@ -945,10 +952,11 @@ struct PergeWidget : ModuleWidget {
         addParam(createParamCentered<Trimpot>(mm2px(Vec(67.90f, 62.00f)), module, Perge::DECAY_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(79.30f, 62.00f)), module, Perge::SPREAD_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(90.70f, 62.00f)), module, Perge::INFX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(21.40f, 80.00f)), module, Perge::PITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.00f, 80.00f)), module, Perge::SUSTAIN_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.60f, 80.00f)), module, Perge::GLITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(80.20f, 80.00f)), module, Perge::FILTER_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.80f, 80.00f)), module, Perge::TEMPO_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.80f, 80.00f)), module, Perge::PITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.80f, 80.00f)), module, Perge::SUSTAIN_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(67.80f, 80.00f)), module, Perge::GLITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(84.80f, 80.00f)), module, Perge::FILTER_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.80f, 96.00f)), module, Perge::IN_L_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(28.30f, 96.00f)), module, Perge::IN_R_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.80f, 96.00f)), module, Perge::CLOCK_INPUT));

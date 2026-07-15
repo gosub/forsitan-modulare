@@ -18,7 +18,7 @@ crosses **thrs** (threshold), a capture starts, and it runs until the input
 falls quiet again (up to 2 seconds). The captured sample becomes the newest
 of three sample slots, and repeats of it are spawned on a tempo grid:
 
-- **tempo** sets the repeat rate (100 ms – 2 s), or patch a clock into
+- **tempo** sets the repeat rate (100 ms – 2 s, CV addable), or patch a clock into
   **clock** and the repeats follow it (the right-click *Clock multiplier*
   menu scales the incoming clock by 1/4 – x4; it has no effect on the
   tempo knob).
@@ -78,7 +78,7 @@ released.
 | jack | function |
 |------|----------|
 | **in l / in r** | stereo input; right is normalled to left (the LED by *in l* flashes while capturing) |
-| **pitch / sust / glit / filt** | CV for pitch, sustain, glitch/dimension and filter (added to the knobs) |
+| **tempo / pitch / sust / glit / filt** | CV for tempo, pitch, sustain, glitch/dimension and filter (added to the knobs) |
 | **clock** | external tempo; measured between rising edges, released ~10 s after the clock stops |
 | **frz** | freeze gate |
 | **tilt** | tilt gate (momentary) |
