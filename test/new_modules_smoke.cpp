@@ -523,15 +523,30 @@ static void testTabesMk2() {
         m.params[Tabes::OVERLAP_PARAM].setValue(1.f);
         tabesRecord(m, frame, 1.0f);
         Stats s; float prev = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage(), maxStep = 0.f;
+        float rampPrev = -1.f, eocPrev = 0.f;
+        int rampResets = 0, eocPulses = 0;
         for (int i = 0; i < (int)(4 * SR); i++) {
             m.process(makeArgs(frame++));
             float v = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
             maxStep = std::max(maxStep, std::fabs(v - prev)); prev = v;
             s.add(v);
+            float r = m.outputs[Tabes::RAMP_OUTPUT].getVoltage();
+            if (rampPrev >= 0.f && r - rampPrev < -5.f) rampResets++;
+            rampPrev = r;
+            float e = m.outputs[Tabes::EOC_OUTPUT].getVoltage();
+            if (e > 5.f && eocPrev <= 5.f) eocPulses++;
+            eocPrev = e;
         }
         report("tabes", "overlap_nans", s.nans, s.nans == 0);
         report("tabes", "overlap_rms", s.rms(), s.rms() > 0.5 && s.peak < 12.f);
         report("tabes", "overlap_max_step", maxStep, maxStep < 1.f);
+        // at max overlap the heard repeat is hop = loopLen/2, so a 1 s loop
+        // repeats every 0.5 s: eoc and ramp must follow the heads, two per
+        // tape rotation, not the write head's one
+        report("tabes", "overlap_eoc_per_hop", eocPulses,
+               eocPulses >= 7 && eocPulses <= 9);
+        report("tabes", "overlap_ramp_per_hop", rampResets,
+               rampResets >= 7 && rampResets <= 9);
     }
 
     // fx send/return: patch RETURN = gain * SEND (a 1-sample-delayed external

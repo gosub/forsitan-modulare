@@ -72,9 +72,9 @@ The loop only acts when **both** ends are patched — the **send** jack out and
 |------|----------|
 | **out** | the loop (plus the live input, per the "Monitor input" menu mode) |
 | **send** | the loop read, out to an external effect (returns via **return**) |
-| **ramp** | the play head as a 0–10V saw, one ramp per loop (resets at the loop point, in step with **eoc**). A loop-locked phasor for sweeps, wavetable scans, or syncing other modules; it is clean of wow so it stays a stable clock |
-| **age** | 0.1V per completed pass, clamps at 10V. Patch it somewhere: let the patch itself react to the tape dying |
-| **eoc** | 1 ms trigger every time the loop wraps (its LED flashes with each wrap) |
+| **ramp** | the audible play head as a 0–10V saw, one ramp per heard repeat (in step with **eoc**). A loop-locked phasor for sweeps, wavetable scans, or syncing other modules; it is clean of wow so it stays a stable clock. With **overlap** up the heard repeat is shorter than the tape (a new head starts every loop − overlap), and ramp follows that |
+| **age** | 0.1V per completed pass, clamps at 10V. This is the tape odometer: it steps once per full rotation of the tape (the aging pass), regardless of **overlap**. Patch it somewhere: let the patch itself react to the tape dying |
+| **eoc** | 1 ms trigger at every heard loop restart (its LED flashes with each one). With **overlap** at max that is twice per tape rotation; for a once-per-aging-pass signal, use the steps of **age** instead |
 
 ## Polyphony (stereo and beyond)
 

@@ -21,8 +21,8 @@
 //   Btns  : REC (toggle recording), SPLICE (restore pristine recording)
 //   In    : IN (audio), REC gate, SPLICE trigger, DECAY/WOW/OVERLAP/SEND CV,
 //           RETURN (fx return)
-//   Out   : OUT (audio), AGE (0.1V per pass, clamps at 10V), EOC (trigger),
-//           RAMP (play head 0..10V), SEND (fx send)
+//   Out   : OUT (audio), AGE (0.1V per pass, clamps at 10V), EOC (trigger,
+//           one per heard repeat), RAMP (audible head 0..10V), SEND (fx send)
 //   Light : REC (on while recording)
 
 #include "forsitan.hpp"
@@ -54,7 +54,7 @@ struct Tabes : Module {
         AUDIO_OUTPUT,
         AGE_OUTPUT,
         EOC_OUTPUT,
-        RAMP_OUTPUT,       // play head position, 0..10V, resets at the loop point
+        RAMP_OUTPUT,       // audible head position, 0..10V, resets per repeat
         SEND_OUTPUT,       // the loop read, out to an external effect
         OUTPUTS_LEN
     };
@@ -77,10 +77,11 @@ struct Tabes : Module {
     int channels = 1;             // tape width (tracks), set at record start
     size_t tapeCap = 0;           // per-channel capacity (samples)
     int loopLen = 0;              // samples in the loop (0 = empty)
-    int playPos = 0;              // write/transport head (ages the tape, EOC, ramp)
+    int playPos = 0;              // write/transport head (ages the tape, AGE)
     float headAge = 0.f;          // read head: samples since the current head
                                   // started (0..hop); overlap plays a chain of
-                                  // heads, a new one every hop = loopLen-overlap
+                                  // heads, a new one every hop = loopLen-overlap.
+                                  // EOC and RAMP follow this, the heard loop
     int recPos = 0;
     bool recording = false;
     bool gateWasHigh = false;
@@ -144,8 +145,8 @@ struct Tabes : Module {
         configInput(RETURN_INPUT, "FX return (re-recorded onto the tape)");
         configOutput(AUDIO_OUTPUT, "Audio (matches the recorded channel count)");
         configOutput(AGE_OUTPUT, "Age (0.1V per pass)");
-        configOutput(EOC_OUTPUT, "End of loop trigger");
-        configOutput(RAMP_OUTPUT, "Play head position (0..10V ramp)");
+        configOutput(EOC_OUTPUT, "End of loop trigger (one per heard repeat)");
+        configOutput(RAMP_OUTPUT, "Audible head position (0..10V ramp)");
         configOutput(SEND_OUTPUT, "FX send (the loop read)");
         configLight(REC_LIGHT, "Recording");
         configLight(EOC_LIGHT, "End of loop");
@@ -418,7 +419,11 @@ struct Tabes : Module {
             float hopLen = loopLen - ovl;              // head spacing, L..L/2
             lastOvl = ovl;   // so a splice can retrace the head chain
             headAge += 1.f;
-            if (headAge >= hopLen) headAge -= hopLen;  // a new head takes over
+            if (headAge >= hopLen) {                   // a new head takes over:
+                headAge -= hopLen;                     // eoc marks the heard
+                eocPulse.trigger(1e-3f);               // repeat, not the tape
+                eocFlash = 1.f;                        // rotation (that's AGE)
+            }
 
             bool crossing = ovl > 0.5f && headAge < ovl;
             float wCur = 1.f, wPrev = 0.f;
@@ -502,11 +507,9 @@ struct Tabes : Module {
                 spliceFade--;
             }
 
-            if (++playPos >= loopLen) {
+            if (++playPos >= loopLen) {   // one full aging pass; AGE steps here
                 playPos = 0;
                 age++;
-                eocPulse.trigger(1e-3f);
-                eocFlash = 1.f;
             }
         }
 
@@ -537,8 +540,10 @@ struct Tabes : Module {
         }
         outputs[AGE_OUTPUT].setVoltage(std::min(0.1f * age, 10.f));
         outputs[EOC_OUTPUT].setVoltage(eocPulse.process(args.sampleTime) ? 10.f : 0.f);
-        // play head as a loop-locked ramp, clean of wow so it stays a stable sync
-        outputs[RAMP_OUTPUT].setVoltage(loopLen > 0 ? 10.f * playPos / loopLen : 0.f);
+        // audible head as a loop-locked ramp, clean of wow so it stays a stable
+        // sync; its cycle is hop = loopLen - overlap, the heard repeat rate
+        outputs[RAMP_OUTPUT].setVoltage(
+            loopLen > 0 ? 10.f * headAge / (loopLen - lastOvl) : 0.f);
         lights[REC_LIGHT].setBrightness(recording ? 1.f : 0.f);
         // ~100 ms flash per loop wrap; smoothed audio level on the out badge
         eocFlash *= 1.f - 10.f * args.sampleTime;
