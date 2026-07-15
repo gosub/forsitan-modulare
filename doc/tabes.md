@@ -112,8 +112,8 @@ independent.
   ambient wash; automate it from an LFO into **overlap cv** to breathe.
 - **send → a reverb → return**, the **send** knob around 9 o'clock: the loop
   slowly dissolves into its own reverb tail as it ages. Push the **send** knob
-  and the reverb feeds itself into a self-sustaining drone (the tape clamp
-  keeps it in check).
+  and the reverb feeds itself into a self-sustaining drone (the tape saturates
+  softly above nominal level, so the loop settles instead of clipping).
 - **ramp → a filter cutoff** locks a sweep to the loop; **ramp** into a
   wavetable index scans the table once per pass.
 - The loop's contents are not saved with the patch; the tape is blank on
