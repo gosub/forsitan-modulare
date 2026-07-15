@@ -810,11 +810,11 @@ struct PergeWidget : ModuleWidget {
 // @elem LABEL_GLITCV label 0.0 label "glit" 0.0 60.60 87.50
 // @elem LABEL_FILTCV label 0.0 label "filt" 0.0 80.20 87.50
 // @elem LABEL_INL label 0.0 label "in l" 0.0 12.80 103.50
-// @elem LABEL_INR label 0.0 label "in r" 0.0 31.80 103.50
-// @elem LABEL_CLOCK label 0.0 label "clock" 0.0 50.80 103.50
-// @elem LABEL_FRZGATE label 0.0 label "frz" 0.0 69.80 103.50
-// @elem LABEL_TILTGATE label 0.0 label "tilt" 0.0 88.80 103.50
-// @elem LABEL_MODE label 0.0 label "mode" 0.0 78.70 103.50
+// @elem LABEL_INR label 0.0 label "in r" 0.0 28.30 103.50
+// @elem LABEL_CLOCK label 0.0 label "clock" 0.0 43.80 103.50
+// @elem LABEL_FRZGATE label 0.0 label "frz" 0.0 59.30 103.50
+// @elem LABEL_TILTGATE label 0.0 label "tilt" 0.0 74.80 103.50
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 90.30 103.50
 // @elem LABEL_OUTL label 0.0 label "out l" 0.0 12.80 119.50
 // @elem LABEL_OUTR label 0.0 label "out r" 0.0 31.80 119.50
 // @elem LABEL_FREEZE label 0.0 label "freeze" 0.0 69.80 119.00
@@ -848,15 +848,15 @@ struct PergeWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.60f, 80.00f)), module, Perge::GLITCH_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(80.20f, 80.00f)), module, Perge::FILTER_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.80f, 96.00f)), module, Perge::IN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.80f, 96.00f)), module, Perge::IN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.80f, 96.00f)), module, Perge::CLOCK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(69.80f, 96.00f)), module, Perge::FREEZE_GATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(88.80f, 96.00f)), module, Perge::TILT_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(28.30f, 96.00f)), module, Perge::IN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.80f, 96.00f)), module, Perge::CLOCK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(59.30f, 96.00f)), module, Perge::FREEZE_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(74.80f, 96.00f)), module, Perge::TILT_GATE_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(12.80f, 112.00f)), module, Perge::OUT_L_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(31.80f, 112.00f)), module, Perge::OUT_R_OUTPUT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(69.80f, 112.00f)), module, Perge::FREEZE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(88.80f, 112.00f)), module, Perge::TILT_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(78.70f, 96.00f)), module, Perge::REPEATSMODE_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(90.30f, 96.00f)), module, Perge::REPEATSMODE_PARAM));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(16.50f, 92.30f)), module, Perge::CAPT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(72.70f, 109.10f)), module, Perge::FREEZE_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Perge::TILT_LIGHT));
