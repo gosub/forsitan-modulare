@@ -481,8 +481,14 @@ struct Tabes : Module {
                       + sendMix * inputs[RETURN_INPUT].getPolyVoltage(c) * 0.2f;
                 if (!std::isfinite(w)) w = 0.f;
                 // bound the tape so a hot fx-return loop saturates instead of
-                // exploding (and then getting zeroed by the finite check)
-                tape[c][playPos] = clamp(w, -2.f, 2.f);
+                // exploding: transparent below ±1 (±5V nominal), tanh-fold the
+                // excess above (C1 at the knee), asymptote ±2 (±10V). Applied
+                // once per pass, a runaway loop compresses a little more each
+                // time and settles into a drone instead of squaring off at the
+                // rails like the old hard clamp
+                float mag = std::fabs(w);
+                if (mag > 1.f) w = std::copysign(1.f + std::tanh(mag - 1.f), w);
+                tape[c][playPos] = w;
             }
 
             // ── splice declick: crossfade the freshly restored pristine read
