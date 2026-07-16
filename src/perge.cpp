@@ -434,7 +434,7 @@ struct Perge : Module {
         }
         if (!v) return;
 
-        float shift = randomShift(pitchK) + tiltEnv * tiltPitch;
+        float shift = randomShift(pitchK);
         float rate = std::pow(2.f, shift / 12.f);
         // dynamics: sens 0 = uniform repeats, sens 1 = level tracks the hit
         float dynAmp = clamp(slot.peak / 0.4f, 0.05f, 1.f);
@@ -523,8 +523,10 @@ struct Perge : Module {
         // sustain -> per-repeat gain (freeze pins it to 1)
         decayUnfrozen = 0.25f + 0.745f * std::pow(clamp(sustain / 0.9f, 0.f, 1.f), 0.4f);
 
+        // one coherent tape-like wobble on everything that is playing,
+        // rather than big jumps on new repeats and a residue on old ones
         tiltRate = (tiltEnv > 1e-3f)
-            ? std::pow(2.f, tiltEnv * tiltPitch * 0.15f / 12.f) : 1.f;
+            ? std::pow(2.f, tiltEnv * tiltPitch / 12.f) : 1.f;
         float lofiEff = (tiltEnv > 1e-3f)
             ? clamp(lofiBase + tiltEnv * tiltLofi, 0.f, 1.f) : lofiBase;
         float fc = 16000.f * std::pow(1000.f / 16000.f, lofiEff);
@@ -582,7 +584,7 @@ struct Perge : Module {
             tiltTimer -= 1.f;
             if (tiltTimer <= 0.f) {
                 tiltTimer = (0.12f + 0.18f * urand()) * sr;
-                tiltPitchT = 4.f * noise();
+                tiltPitchT = 1.5f * noise();
                 tiltLofiT = 0.35f * noise();
                 tiltCrushT = 0.25f * noise();
                 tiltRvrbT = 0.4f * noise();
