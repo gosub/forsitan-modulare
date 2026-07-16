@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.8.0] - unreleased
+## [2.8.0] - 2026-07-16
 ### Added
   - **perge**, a new module: stereo dynamic sampler and multi-effect,
     a from-scratch homage to the AC noises / BunkerNoise CONTINUA pedal —
