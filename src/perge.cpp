@@ -153,6 +153,7 @@ struct Perge : Module {
     float tiltEnv = 0.f;
     float tiltTimer = 0.f;
     float tiltPitch = 0.f;      // semitones
+    // bipolar offsets added to the knob-set FX amounts (clamped 0..1)
     float tiltLofi = 0.f, tiltCrush = 0.f, tiltRvrb = 0.f, tiltSmear = 0.f;
 
     // ── fx state ─────────────────────────────────────────────────────────
@@ -512,7 +513,7 @@ struct Perge : Module {
         tiltRate = (tiltEnv > 1e-3f)
             ? std::pow(2.f, tiltEnv * tiltPitch * 0.15f / 12.f) : 1.f;
         float lofiEff = (tiltEnv > 1e-3f)
-            ? crossfade(lofiBase, tiltLofi, tiltEnv) : lofiBase;
+            ? clamp(lofiBase + tiltEnv * tiltLofi, 0.f, 1.f) : lofiBase;
         float fc = 16000.f * std::pow(1000.f / 16000.f, lofiEff);
         lofiA = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
         float ffc = (filtSmooth < 0.f)
@@ -569,17 +570,19 @@ struct Perge : Module {
             if (tiltTimer <= 0.f) {
                 tiltTimer = (0.12f + 0.18f * urand()) * sr;
                 tiltPitch = 4.f * noise();
-                tiltLofi = urand() * 0.35f;
-                tiltCrush = urand() * 0.25f;
-                tiltRvrb = urand() * 0.4f;
-                tiltSmear = urand() * 0.4f;
+                tiltLofi = 0.35f * noise();
+                tiltCrush = 0.25f * noise();
+                tiltRvrb = 0.4f * noise();
+                tiltSmear = 0.4f * noise();
             }
         }
         if (tiltEnv > 1e-3f) {
-            lofi = crossfade(lofi, tiltLofi, tiltEnv);
-            crush = crossfade(crush, tiltCrush, tiltEnv);
-            rvrb = crossfade(rvrb, tiltRvrb, tiltEnv);
-            smear = crossfade(smear, tiltSmear, tiltEnv);
+            // perturb the knob settings instead of replacing them: tilt
+            // is "your sound, randomly bent", never a drier/other patch
+            lofi = clamp(lofi + tiltEnv * tiltLofi, 0.f, 1.f);
+            crush = clamp(crush + tiltEnv * tiltCrush, 0.f, 1.f);
+            rvrb = clamp(rvrb + tiltEnv * tiltRvrb, 0.f, 1.f);
+            smear = clamp(smear + tiltEnv * tiltSmear, 0.f, 1.f);
         }
 
         // ── envelope follower & capture ──────────────────────────────────
