@@ -449,6 +449,9 @@ struct ReverbSc {
     }
 };
 
+// C++11: ODR-used static constexpr member needs an out-of-line definition
+constexpr float ReverbSc::kParams[8][4];
+
 // ----------------------------------------------------------------- Engine
 // Direct port of infrasonic::FeedbackSynth::Engine
 
@@ -630,11 +633,12 @@ struct Vorax : Module {
         configOutput(RIGHT_OUTPUT, "Right");
         configBypass(AUDIO_INPUT, LEFT_OUTPUT);
         configBypass(AUDIO_INPUT, RIGHT_OUTPUT);
-        onSampleRateChange();
     }
 
-    void onSampleRateChange() override {
-        float sr = APP->engine->getSampleRate();
+    float sr = 0.f;   // engine (re)inits lazily when this diverges
+
+    void initEngine(float sampleRate) {
+        sr = sampleRate;
         engine.init(sr);
         float controlRate = sr / kControlDiv;
         // initial values and smoothing times match the firmware registry
@@ -653,7 +657,7 @@ struct Vorax : Module {
     }
 
     void onReset() override {
-        onSampleRateChange();
+        sr = 0.f;   // force re-init on the next process()
     }
 
     void updateControls() {
@@ -721,6 +725,8 @@ struct Vorax : Module {
     }
 
     void process(const ProcessArgs& args) override {
+        if (sr != args.sampleRate)
+            initEngine(args.sampleRate);
         if (controlPhase == 0)
             updateControls();
         if (++controlPhase >= kControlDiv)
