@@ -24,3 +24,5 @@ extern Model* modelTabes;
 extern Model* modelLustro;
 extern Model* modelBulla;
 extern Model* modelPerge;
+extern Model* modelVorax;
+extern Model* modelTextor;
