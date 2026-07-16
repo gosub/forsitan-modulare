@@ -785,6 +785,24 @@ static void testPerge() {
     double dimOn = dimRun(1.f);
     report("perge", "dimension_layers", dimOn / std::max(dimOff, 1e-9),
            dimOn > 1.08 * dimOff);
+    // captures own their audio: a slot must survive the 8 s ring
+    // lapping the tape it was cut from
+    Perge m4;
+    long f4 = 0;
+    m4.inputs[Perge::IN_L_INPUT].channels = 1;
+    phase = 0.f;
+    for (long i = 0; i < (long)(11.f * SR); i++) {
+        float t = i / SR;
+        // one phrase at 0.5 s, a second at 9.5 s (first tape lapped ~8.5 s)
+        float v = 0.f;
+        if ((t >= 0.5f && t < 0.9f) || (t >= 9.5f && t < 9.9f)) {
+            phase += 330.f / SR; if (phase >= 1.f) phase -= 1.f;
+            v = std::sin(2.f * (float)M_PI * phase);
+        }
+        m4.inputs[Perge::IN_L_INPUT].setVoltage(5.f * v);
+        m4.process(makeArgs(f4++));
+    }
+    report("perge", "slot_survives_lap", m4.slots[1].len, m4.slots[1].len > 0);
 }
 
 int main() {

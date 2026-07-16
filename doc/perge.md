@@ -123,6 +123,9 @@ suddenly dry, and the next press is another surprise.
 - The sample buffer lives at the engine sample rate; changing the sample
   rate (or the right-click "Clear buffer") empties it. Buffer contents are
   not saved with the patch.
+- Committed captures are copied out of the rolling input buffer: the three
+  sample slots (and anything frozen) never expire, however long ago they
+  were played.
 - The repeats engine is a voice pool (16 voices); extremely fast clocks
   with long releases steal the voice nearest the end of its envelope,
   with a short declick fade.

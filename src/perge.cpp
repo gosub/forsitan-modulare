@@ -36,6 +36,8 @@
 //           clock multiplier (1/4 .. x4)
 
 #include "forsitan.hpp"
+#include <memory>
+#include <algorithm>
 
 static constexpr float kBufSeconds = 8.f;
 static constexpr float kMaxCapSeconds = 2.f;
@@ -101,23 +103,32 @@ struct Perge : Module {
     int bufLen = 0;
     int writePos = 0;
 
+    // committed captures own a copy of their audio, so they survive the
+    // ring buffer lapping their tape (dimension layers and freeze can
+    // reach back arbitrarily far). Only the live, still-open capture is
+    // played straight from the ring (audio == null, ringStart valid)
+    struct SlotAudio {
+        std::vector<float> l, r;
+    };
     struct Slot {
-        int start = 0;
+        std::shared_ptr<SlotAudio> audio;
+        int ringStart = 0;
         int len = 0;        // 0 = empty
         float peak = 0.f;
         int age = 0;        // repeats played since capture
     };
     Slot slots[kNumSlots];
 
-    static Slot makeSlot(int start, int len, float peak, int age) {
+    static Slot makeSlot(int ringStart, int len, float peak, int age) {
         Slot s;
-        s.start = start; s.len = len; s.peak = peak; s.age = age;
+        s.ringStart = ringStart; s.len = len; s.peak = peak; s.age = age;
         return s;
     }
 
     struct Voice {
         bool active = false;
-        int start = 0;
+        std::shared_ptr<SlotAudio> audio;  // keeps a dropped slot alive
+        int start = 0;      // ring offset when audio == null
         int len = 0;
         double pos = 0.0;   // 0..len in buffer samples
         float rate = 1.f;
@@ -292,7 +303,7 @@ struct Perge : Module {
 
     void onReset() override {
         for (auto& s : slots) s = Slot{};
-        for (auto& v : voices) v.active = false;
+        for (auto& v : voices) { v.active = false; v.audio.reset(); }
         env = 0.f;
         capturing = false;
         capForced = false;
@@ -389,18 +400,37 @@ struct Perge : Module {
     // a finished capture becomes the newest slot (too-short ones dropped)
     void commitCapture(float sr) {
         if (capLen < (int)(0.03f * sr)) return;
+        auto audio = std::make_shared<SlotAudio>();
+        audio->l.resize(capLen);
+        audio->r.resize(capLen);
+        int first = std::min(capLen, bufLen - capStart);
+        std::copy_n(bufL.begin() + capStart, first, audio->l.begin());
+        std::copy_n(bufR.begin() + capStart, first, audio->r.begin());
+        if (first < capLen) {
+            std::copy_n(bufL.begin(), capLen - first, audio->l.begin() + first);
+            std::copy_n(bufR.begin(), capLen - first, audio->r.begin() + first);
+        }
         for (int i = kNumSlots - 1; i > 0; i--)
             slots[i] = slots[i - 1];
         slots[0] = makeSlot(capStart, capLen, capPeak, 0);
+        slots[0].audio = audio;
         if (resyncMode == RESYNC_END) resyncPending = true;
     }
 
     // instantaneous stereo contribution of a voice (no state advance)
+    // interpolated read from an owned slot buffer (no wrap)
+    static float readSlot(const std::vector<float>& b, double idx) {
+        int n = (int)b.size();
+        int i0 = (int)idx;
+        if (i0 < 0) i0 = 0;
+        if (i0 > n - 1) i0 = n - 1;
+        int i1 = std::min(i0 + 1, n - 1);
+        float f = (float)(idx - i0);
+        return b[i0] + f * (b[i1] - b[i0]);
+    }
+
     void voiceSample(const Voice& v, float& outL, float& outR) {
         double p = v.reverse ? (v.len - 1 - v.pos) : v.pos;
-        double idx = v.start + p;
-        if (idx >= bufLen) idx -= bufLen;
-        if (idx < 0) idx += bufLen;
         float e;
         if (v.envPos < v.atk)
             e = (float)(v.envPos / std::max(v.atk, 1.0));
@@ -410,8 +440,16 @@ struct Perge : Module {
             e = 1.f;
         e = clamp(e, 0.f, 1.f);
         float g = v.amp * e * e;   // squared: soft corners
-        outL = readBuf(bufL, idx) * g * v.panL;
-        outR = readBuf(bufR, idx) * g * v.panR;
+        if (v.audio) {
+            outL = readSlot(v.audio->l, p) * g * v.panL;
+            outR = readSlot(v.audio->r, p) * g * v.panR;
+        } else {
+            double idx = v.start + p;
+            if (idx >= bufLen) idx -= bufLen;
+            if (idx < 0) idx += bufLen;
+            outL = readBuf(bufL, idx) * g * v.panL;
+            outR = readBuf(bufR, idx) * g * v.panR;
+        }
     }
 
     void spawnVoice(const Slot& slot, float layerGain, float sens, float atkK,
@@ -446,7 +484,8 @@ struct Perge : Module {
             declickR += sR;
         }
         v->active = true;
-        v->start = slot.start;
+        v->audio = slot.audio;
+        v->start = slot.ringStart;
         v->len = slot.len;
         // optionally cap the played grain to one tempo interval so repeats
         // stay short and discrete instead of replaying the whole note
@@ -648,14 +687,9 @@ struct Perge : Module {
                 }
             }
             if (++writePos >= bufLen) writePos = 0;
-
-            // drop slots whose tape is about to be overwritten
-            for (auto& s : slots) {
-                if (!s.len) continue;
-                int dist = writePos - s.start;
-                if (dist < 0) dist += bufLen;
-                if (dist > bufLen - (int)(0.1f * sr) - s.len) s.len = 0;
-            }
+            // committed slots own their audio, so nothing to drop when
+            // the ring laps; only the live capture reads the ring, and
+            // it is at most 2 s behind the write head
         }
 
         // ── tempo / scheduler ────────────────────────────────────────────
@@ -745,8 +779,10 @@ struct Perge : Module {
             wetR += sR;
             v.pos += v.rate;
             v.envPos += 1.0;
-            if (v.pos >= v.len - 1 || v.envPos >= v.dur)
+            if (v.pos >= v.len - 1 || v.envPos >= v.dur) {
                 v.active = false;
+                v.audio.reset();   // let a replaced slot's audio go
+            }
         }
         wetL += declickL;
         wetR += declickR;
