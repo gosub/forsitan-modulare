@@ -152,9 +152,14 @@ struct Perge : Module {
     // tilt random modulation
     float tiltEnv = 0.f;
     float tiltTimer = 0.f;
-    float tiltPitch = 0.f;      // semitones
-    // bipolar offsets added to the knob-set FX amounts (clamped 0..1)
-    float tiltLofi = 0.f, tiltCrush = 0.f, tiltRvrb = 0.f, tiltSmear = 0.f;
+    // slewed values and their rolled targets: the warble drifts between
+    // rolls instead of stepping. tiltPitch in semitones; the FX values
+    // are bipolar offsets added to the knob-set amounts (clamped 0..1)
+    float tiltPitch = 0.f, tiltPitchT = 0.f;
+    float tiltLofi = 0.f, tiltLofiT = 0.f;
+    float tiltCrush = 0.f, tiltCrushT = 0.f;
+    float tiltRvrb = 0.f, tiltRvrbT = 0.f;
+    float tiltSmear = 0.f, tiltSmearT = 0.f;
 
     // ── fx state ─────────────────────────────────────────────────────────
     // lofi vibrato delay (per channel)
@@ -214,6 +219,7 @@ struct Perge : Module {
     float ledC = 0.002f;
     float tickFlash = 0.f;      // tempo tick LED pulse
     float tickC = 0.999f;
+    float tiltSlewC = 0.001f;
 
     // stolen-voice declick: the cut voice's last output decays here
     float declickL = 0.f, declickR = 0.f;
@@ -299,6 +305,12 @@ struct Perge : Module {
         clockPeriod = 0.f;
         clockTimeout = 0.f;
         tiltEnv = 0.f;
+        tiltTimer = 0.f;
+        tiltPitch = tiltPitchT = 0.f;
+        tiltLofi = tiltLofiT = 0.f;
+        tiltCrush = tiltCrushT = 0.f;
+        tiltRvrb = tiltRvrbT = 0.f;
+        tiltSmear = tiltSmearT = 0.f;
         freezeLatch = false;
         sustainFrozen = false;
         declickL = declickR = 0.f;
@@ -362,6 +374,7 @@ struct Perge : Module {
         declickC = std::exp(-1.f / (0.0015f * sr));   // ~1.5 ms fade
         ledC = 1.f - std::exp(-1.f / (0.010f * sr));  // ~10 ms level LEDs
         tickC = std::exp(-1.f / (0.040f * sr));       // ~40 ms tick flash
+        tiltSlewC = 1.f - std::exp(-1.f / (0.100f * sr)); // ~100 ms tilt glide
         paramsDirty = true;
         onReset();
     }
@@ -569,13 +582,18 @@ struct Perge : Module {
             tiltTimer -= 1.f;
             if (tiltTimer <= 0.f) {
                 tiltTimer = (0.12f + 0.18f * urand()) * sr;
-                tiltPitch = 4.f * noise();
-                tiltLofi = 0.35f * noise();
-                tiltCrush = 0.25f * noise();
-                tiltRvrb = 0.4f * noise();
-                tiltSmear = 0.4f * noise();
+                tiltPitchT = 4.f * noise();
+                tiltLofiT = 0.35f * noise();
+                tiltCrushT = 0.25f * noise();
+                tiltRvrbT = 0.4f * noise();
+                tiltSmearT = 0.4f * noise();
             }
         }
+        tiltPitch += (tiltPitchT - tiltPitch) * tiltSlewC;
+        tiltLofi += (tiltLofiT - tiltLofi) * tiltSlewC;
+        tiltCrush += (tiltCrushT - tiltCrush) * tiltSlewC;
+        tiltRvrb += (tiltRvrbT - tiltRvrb) * tiltSlewC;
+        tiltSmear += (tiltSmearT - tiltSmear) * tiltSlewC;
         if (tiltEnv > 1e-3f) {
             // perturb the knob settings instead of replacing them: tilt
             // is "your sound, randomly bent", never a drier/other patch
