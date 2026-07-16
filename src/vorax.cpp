@@ -779,17 +779,17 @@ struct VoraxWidget : ModuleWidget {
 // @elem LABEL_TIME label 0.0 label "time" 0.0 10.40 82.50
 // @elem LABEL_EFB label 0.0 label "echo fb" 0.0 25.40 82.50
 // @elem LABEL_VOL label 0.0 label "vol" 0.0 40.40 82.50
-// @elem LABEL_HALF label 0.0 label "half" 0.0 25.40 51.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 6.90 94.50
-// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 16.15 94.50
-// @elem LABEL_FBCV label 0.0 label "fb" 0.0 25.40 94.50
-// @elem LABEL_LPFCV label 0.0 label "lpf" 0.0 34.65 94.50
-// @elem LABEL_TIMECV label 0.0 label "time" 0.0 43.90 94.50
+// @elem LABEL_HALF label 0.0 label "half" 0.0 25.40 50.20
+// @elem LABEL_IN label 0.0 label "in" 0.0 5.50 96.50
+// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 15.45 96.50
+// @elem LABEL_FBCV label 0.0 label "fb" 0.0 25.40 96.50
+// @elem LABEL_LPFCV label 0.0 label "lpf" 0.0 35.35 96.50
+// @elem LABEL_TIMECV label 0.0 label "time" 0.0 45.30 96.50
 // @elem LABEL_L label 0.0 label "l" 0.0 25.10 114.00
 // @elem LABEL_R label 0.0 label "r" 0.0 40.90 114.00
 // @elem BOX_L panel_box 7.0 box "" 0.0 25.10 108.50
 // @elem BOX_R panel_box 7.0 box "" 0.0 40.90 108.50
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 10.40 116.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 10.00 116.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR
@@ -806,12 +806,12 @@ struct VoraxWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.40f, 74.00f)), module, Vorax::ECHO_TIME_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 74.00f)), module, Vorax::ECHO_FB_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.40f, 74.00f)), module, Vorax::VOLUME_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(25.40f, 44.00f)), module, Vorax::HALF_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(6.90f, 87.00f)), module, Vorax::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.15f, 87.00f)), module, Vorax::VOCT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.40f, 87.00f)), module, Vorax::FEEDBACK_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(34.65f, 87.00f)), module, Vorax::LPF_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.90f, 87.00f)), module, Vorax::TIME_CV_INPUT));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(25.40f, 42.00f)), module, Vorax::HALF_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(5.50f, 89.00f)), module, Vorax::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.45f, 89.00f)), module, Vorax::VOCT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.40f, 89.00f)), module, Vorax::FEEDBACK_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(35.35f, 89.00f)), module, Vorax::LPF_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.30f, 89.00f)), module, Vorax::TIME_CV_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.10f, 106.50f)), module, Vorax::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.90f, 106.50f)), module, Vorax::RIGHT_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.90f, 103.50f)), module, Vorax::LEVEL_LIGHT));

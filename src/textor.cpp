@@ -510,51 +510,51 @@ struct TextorWidget : ModuleWidget {
 // @elem FLECK_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_WEAVE label 0.0 label "weave" 0.0 25.40 35.50
 // @elem LABEL_REC label 0.0 label "rec" 0.0 10.40 29.00
-// @elem LABEL_MODE label 0.0 label "rhyt-text" 0.0 40.40 29.00
-// @elem LABEL_WARP label 0.0 label "warp" 0.0 10.40 54.50
-// @elem LABEL_WEFT label 0.0 label "weft" 0.0 25.40 54.50
-// @elem LABEL_FLECK label 0.0 label "fleck" 0.0 40.40 54.50
-// @elem LABEL_PITCH label 0.0 label "rnd-root" 0.0 25.40 45.00
-// @elem LABEL_G1 label 0.0 label "g1" 0.0 10.40 73.50
-// @elem LABEL_G2 label 0.0 label "g2" 0.0 25.40 73.50
-// @elem LABEL_G3 label 0.0 label "g3" 0.0 40.40 73.50
-// @elem BOX_G1 panel_box 6.0 box "" 0.0 10.40 68.00
-// @elem BOX_G2 panel_box 6.0 box "" 0.0 25.40 68.00
-// @elem BOX_G3 panel_box 6.0 box "" 0.0 40.40 68.00
-// @elem LABEL_IN label 0.0 label "in" 0.0 6.90 94.50
-// @elem LABEL_RECIN label 0.0 label "rec" 0.0 19.40 94.50
-// @elem LABEL_WEAVEIN label 0.0 label "weave" 0.0 31.90 94.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 44.40 94.50
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 40.40 25.20
+// @elem LABEL_PITCH label 0.0 label "pitch" 0.0 40.40 41.20
+// @elem LABEL_WARP label 0.0 label "warp" 0.0 9.40 58.50
+// @elem LABEL_WEFT label 0.0 label "weft" 0.0 25.40 58.50
+// @elem LABEL_FLECK label 0.0 label "fleck" 0.0 41.40 58.50
+// @elem LABEL_G1 label 0.0 label "g1" 0.0 9.40 75.50
+// @elem LABEL_G2 label 0.0 label "g2" 0.0 25.40 75.50
+// @elem LABEL_G3 label 0.0 label "g3" 0.0 41.40 75.50
+// @elem BOX_G1 panel_box 7.0 box "" 0.0 9.40 70.00
+// @elem BOX_G2 panel_box 7.0 box "" 0.0 25.40 70.00
+// @elem BOX_G3 panel_box 7.0 box "" 0.0 41.40 70.00
+// @elem LABEL_IN label 0.0 label "in" 0.0 5.50 96.50
+// @elem LABEL_RECIN label 0.0 label "rec" 0.0 18.77 96.50
+// @elem LABEL_WEAVEIN label 0.0 label "weave" 0.0 32.03 96.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 45.30 96.50
 // @elem LABEL_L label 0.0 label "l" 0.0 25.10 114.00
 // @elem LABEL_R label 0.0 label "r" 0.0 40.90 114.00
 // @elem BOX_L panel_box 7.0 box "" 0.0 25.10 108.50
 // @elem BOX_R panel_box 7.0 box "" 0.0 40.90 108.50
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 10.40 116.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 10.00 116.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 123.42f)))); // SCREW_BR
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(25.40f, 24.00f)), module, Textor::WEAVE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.40f, 46.00f)), module, Textor::WARP_LEVEL_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 46.00f)), module, Textor::WEFT_LEVEL_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.40f, 46.00f)), module, Textor::FLECK_LEVEL_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(40.40f, 22.00f)), module, Textor::MODE_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(25.40f, 40.00f)), module, Textor::PITCH_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(9.40f, 50.00f)), module, Textor::WARP_LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 50.00f)), module, Textor::WEFT_LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(41.40f, 50.00f)), module, Textor::FLECK_LEVEL_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(40.40f, 17.00f)), module, Textor::MODE_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(40.40f, 33.00f)), module, Textor::PITCH_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(10.40f, 22.00f)), module, Textor::REC_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(6.90f, 87.00f)), module, Textor::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.40f, 87.00f)), module, Textor::REC_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.90f, 87.00f)), module, Textor::WEAVE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.40f, 87.00f)), module, Textor::CLOCK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(5.50f, 89.00f)), module, Textor::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.77f, 89.00f)), module, Textor::REC_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.03f, 89.00f)), module, Textor::WEAVE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.30f, 89.00f)), module, Textor::CLOCK_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.10f, 106.50f)), module, Textor::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.90f, 106.50f)), module, Textor::RIGHT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.40f, 66.00f)), module, Textor::WARP_GATE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 66.00f)), module, Textor::WEFT_GATE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.40f, 66.00f)), module, Textor::FLECK_GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(9.40f, 68.00f)), module, Textor::WARP_GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 68.00f)), module, Textor::WEFT_GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(41.40f, 68.00f)), module, Textor::FLECK_GATE_OUTPUT));
         addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(13.60f, 18.80f)), module, Textor::REC_LIGHT));
-        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(15.40f, 63.00f)), module, Textor::WARP_LIGHT));
-        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(30.40f, 63.00f)), module, Textor::WEFT_LIGHT));
-        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(45.40f, 63.00f)), module, Textor::FLECK_LIGHT));
+        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(14.40f, 65.00f)), module, Textor::WARP_LIGHT));
+        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(30.40f, 65.00f)), module, Textor::WEFT_LIGHT));
+        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(46.40f, 65.00f)), module, Textor::FLECK_LIGHT));
         // @layout:end
     }
 };
