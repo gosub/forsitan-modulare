@@ -153,8 +153,10 @@ struct Perge : Module {
     float tiltEnv = 0.f;
     float tiltTimer = 0.f;
     // slewed values and their rolled targets: the warble drifts between
-    // rolls instead of stepping. tiltPitch in semitones; the FX values
-    // are bipolar offsets added to the knob-set amounts (clamped 0..1)
+    // rolls instead of stepping. tiltPitch offsets the pitch knob, a
+    // random hand on the control: repeats spawned under tilt get extra
+    // chances of quantized octave/fifth jumps, nothing unquantized. The
+    // FX values are bipolar offsets on the knob-set amounts (clamped)
     float tiltPitch = 0.f, tiltPitchT = 0.f;
     float tiltLofi = 0.f, tiltLofiT = 0.f;
     float tiltCrush = 0.f, tiltCrushT = 0.f;
@@ -210,7 +212,6 @@ struct Perge : Module {
     float lofiBase = 0.f, crushBase = 0.f, rvrbBase = 0.f, smearBase = 0.f;
     float knobT = 0.f;             // tempo knob mapped to samples
     float decayUnfrozen = 0.9f;    // per-repeat gain when not frozen
-    float tiltRate = 1.f;          // pitch drift of playing voices under tilt
     float lofiA = 0.01f;           // lofi darkening one-pole coefficient
     float filtG = 0.f, filtA1 = 1.f;
     bool filtLP = true;
@@ -489,7 +490,8 @@ struct Perge : Module {
     void updateParams(float sr) {
         mix = params[MIX_PARAM].getValue();
         pitchK = clamp(params[PITCH_PARAM].getValue()
-                        + inputs[PITCH_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+                        + inputs[PITCH_CV_INPUT].getVoltage() * 0.2f
+                        + tiltEnv * tiltPitch, -1.f, 1.f);
         sustain = clamp(params[SUSTAIN_PARAM].getValue()
                         + inputs[SUSTAIN_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
         float glitchK = centerDead(clamp(params[GLITCH_PARAM].getValue()
@@ -523,10 +525,6 @@ struct Perge : Module {
         // sustain -> per-repeat gain (freeze pins it to 1)
         decayUnfrozen = 0.25f + 0.745f * std::pow(clamp(sustain / 0.9f, 0.f, 1.f), 0.4f);
 
-        // one coherent tape-like wobble on everything that is playing,
-        // rather than big jumps on new repeats and a residue on old ones
-        tiltRate = (tiltEnv > 1e-3f)
-            ? std::pow(2.f, tiltEnv * tiltPitch / 12.f) : 1.f;
         float lofiEff = (tiltEnv > 1e-3f)
             ? clamp(lofiBase + tiltEnv * tiltLofi, 0.f, 1.f) : lofiBase;
         float fc = 16000.f * std::pow(1000.f / 16000.f, lofiEff);
@@ -584,7 +582,7 @@ struct Perge : Module {
             tiltTimer -= 1.f;
             if (tiltTimer <= 0.f) {
                 tiltTimer = (0.12f + 0.18f * urand()) * sr;
-                tiltPitchT = 1.5f * noise();
+                tiltPitchT = 0.5f * noise();
                 tiltLofiT = 0.35f * noise();
                 tiltCrushT = 0.25f * noise();
                 tiltRvrbT = 0.4f * noise();
@@ -742,7 +740,7 @@ struct Perge : Module {
             voiceSample(v, sL, sR);
             wetL += sL;
             wetR += sR;
-            v.pos += v.rate * tiltRate;
+            v.pos += v.rate;
             v.envPos += 1.0;
             if (v.pos >= v.len - 1 || v.envPos >= v.dur)
                 v.active = false;
