@@ -77,12 +77,12 @@ The wet bus runs through four bipolar effects, all inactive at noon:
 
 ## tilt
 
-**tilt** (momentary button or gate) is the chaos switch: while held, a
-random hand bends the knobs. The pitch control wanders around its setting,
-so repeats spawn with shifting chances of quantized octave/fifth jumps,
-and the lo-fi, crush, reverb and smear amounts bend around theirs. New
-targets are rolled a few times a second and glided between; everything
-snaps back when released.
+**tilt** (momentary button or gate) is the chaos switch: each press rolls
+one new random position for the pitch, **lofi/crs** and **rvrb/smr**
+controls, anywhere in their full range, and holds it while down, snapping
+back on release. A momentarily different pedal every time you stomp it:
+the repeats may come back octave-shifted, crushed, smeared, drowned or
+suddenly dry, and the next press is another surprise.
 
 ## Patching
 

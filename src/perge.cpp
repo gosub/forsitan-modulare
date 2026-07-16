@@ -149,19 +149,15 @@ struct Perge : Module {
     float clockPeriod = 0.f;    // measured external clock period (samples)
     float clockTimeout = 0.f;
 
-    // tilt random modulation
+    // tilt random modulation: each press rolls ONE new set of values
+    // across the full range of the pitch and FX knobs and holds it
+    // while down; tiltEnv fades the swap in and out. A momentary
+    // different pedal per press, not a continuous wobble
     float tiltEnv = 0.f;
-    float tiltTimer = 0.f;
-    // slewed values and their rolled targets: the warble drifts between
-    // rolls instead of stepping. tiltPitch offsets the pitch knob, a
-    // random hand on the control: repeats spawned under tilt get extra
-    // chances of quantized octave/fifth jumps, nothing unquantized. The
-    // FX values are bipolar offsets on the knob-set amounts (clamped)
-    float tiltPitch = 0.f, tiltPitchT = 0.f;
-    float tiltLofi = 0.f, tiltLofiT = 0.f;
-    float tiltCrush = 0.f, tiltCrushT = 0.f;
-    float tiltRvrb = 0.f, tiltRvrbT = 0.f;
-    float tiltSmear = 0.f, tiltSmearT = 0.f;
+    bool tiltWasOn = false;
+    float tiltPitch = 0.f;      // rolled pitch-knob value (-1..1)
+    float tiltLofiK = 0.f;      // rolled lofi/crush knob value (-1..1)
+    float tiltRvrbK = 0.f;      // rolled rvrb/smear knob value (-1..1)
 
     // ── fx state ─────────────────────────────────────────────────────────
     // lofi vibrato delay (per channel)
@@ -222,7 +218,6 @@ struct Perge : Module {
     float ledC = 0.002f;
     float tickFlash = 0.f;      // tempo tick LED pulse
     float tickC = 0.999f;
-    float tiltSlewC = 0.001f;
 
     // stolen-voice declick: the cut voice's last output decays here
     float declickL = 0.f, declickR = 0.f;
@@ -308,12 +303,8 @@ struct Perge : Module {
         clockPeriod = 0.f;
         clockTimeout = 0.f;
         tiltEnv = 0.f;
-        tiltTimer = 0.f;
-        tiltPitch = tiltPitchT = 0.f;
-        tiltLofi = tiltLofiT = 0.f;
-        tiltCrush = tiltCrushT = 0.f;
-        tiltRvrb = tiltRvrbT = 0.f;
-        tiltSmear = tiltSmearT = 0.f;
+        tiltWasOn = false;
+        tiltPitch = tiltLofiK = tiltRvrbK = 0.f;
         freezeLatch = false;
         sustainFrozen = false;
         declickL = declickR = 0.f;
@@ -377,7 +368,6 @@ struct Perge : Module {
         declickC = std::exp(-1.f / (0.0015f * sr));   // ~1.5 ms fade
         ledC = 1.f - std::exp(-1.f / (0.010f * sr));  // ~10 ms level LEDs
         tickC = std::exp(-1.f / (0.040f * sr));       // ~40 ms tick flash
-        tiltSlewC = 1.f - std::exp(-1.f / (0.100f * sr)); // ~100 ms tilt glide
         paramsDirty = true;
         onReset();
     }
@@ -492,8 +482,8 @@ struct Perge : Module {
     void updateParams(float sr) {
         mix = params[MIX_PARAM].getValue();
         pitchK = clamp(params[PITCH_PARAM].getValue()
-                        + inputs[PITCH_CV_INPUT].getVoltage() * 0.2f
-                        + tiltEnv * tiltPitch, -1.f, 1.f);
+                        + inputs[PITCH_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+        if (tiltEnv > 1e-3f) pitchK = crossfade(pitchK, tiltPitch, tiltEnv);
         sustain = clamp(params[SUSTAIN_PARAM].getValue()
                         + inputs[SUSTAIN_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
         float glitchK = centerDead(clamp(params[GLITCH_PARAM].getValue()
@@ -515,9 +505,16 @@ struct Perge : Module {
         glitch = std::max(0.f, -glitchK);
         dimens = std::max(0.f, glitchK);
         float lofiK = centerDead(params[LOFI_PARAM].getValue());
+        float rvrbK = centerDead(params[RVRB_PARAM].getValue());
+        // tilt fades the rolled knob values in over the panel settings:
+        // one bipolar value per knob, so lofi/crush and rvrb/smear stay
+        // mutually exclusive, exactly like a hand turning the controls
+        if (tiltEnv > 1e-3f) {
+            lofiK = crossfade(lofiK, tiltLofiK, tiltEnv);
+            rvrbK = crossfade(rvrbK, tiltRvrbK, tiltEnv);
+        }
         lofiBase = std::max(0.f, -lofiK);
         crushBase = std::max(0.f, lofiK);
-        float rvrbK = centerDead(params[RVRB_PARAM].getValue());
         rvrbBase = std::max(0.f, -rvrbK);
         smearBase = std::max(0.f, rvrbK);
 
@@ -527,15 +524,13 @@ struct Perge : Module {
         // sustain -> per-repeat gain (freeze pins it to 1)
         decayUnfrozen = 0.25f + 0.745f * std::pow(clamp(sustain / 0.9f, 0.f, 1.f), 0.4f);
 
-        float lofiEff = (tiltEnv > 1e-3f)
-            ? clamp(lofiBase + tiltEnv * tiltLofi, 0.f, 1.f) : lofiBase;
         // the band narrows from both ends as lofi deepens: darken toward
         // 1 kHz and thin the bass toward 450 Hz, old-gramophone style,
         // instead of only muffling. At small amounts the highpass sits
         // at 20 Hz and the first half of the throw stays warm/dark
-        float fc = 16000.f * std::pow(1000.f / 16000.f, lofiEff);
+        float fc = 16000.f * std::pow(1000.f / 16000.f, lofiBase);
         lofiA = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
-        float hfc = 20.f * std::pow(450.f / 20.f, lofiEff);
+        float hfc = 20.f * std::pow(450.f / 20.f, lofiBase);
         lofiHpA = 1.f - std::exp(-2.f * (float)M_PI * hfc / sr);
         float ffc = (filtSmooth < 0.f)
             ? 16000.f * std::pow(160.f / 16000.f, -filtSmooth)
@@ -582,34 +577,17 @@ struct Perge : Module {
         else if (sustain < 0.87f) sustainFrozen = false;
         bool frozen = freezeLatch || freezeGate || sustainFrozen;
 
-        // ── tilt: momentary random modulation ────────────────────────────
+        // ── tilt: momentary random re-roll of the knobs ──────────────────
         bool tiltOn = params[TILT_PARAM].getValue() > 0.5f
                       || inputs[TILT_GATE_INPUT].getVoltage() >= 1.f;
+        if (tiltOn && !tiltWasOn) {
+            tiltPitch = noise();
+            tiltLofiK = noise();
+            tiltRvrbK = noise();
+            paramsDirty = true;
+        }
+        tiltWasOn = tiltOn;
         tiltEnv += ((tiltOn ? 1.f : 0.f) - tiltEnv) * (30.f / sr);
-        if (tiltOn) {
-            tiltTimer -= 1.f;
-            if (tiltTimer <= 0.f) {
-                tiltTimer = (0.12f + 0.18f * urand()) * sr;
-                tiltPitchT = 0.5f * noise();
-                tiltLofiT = 0.35f * noise();
-                tiltCrushT = 0.25f * noise();
-                tiltRvrbT = 0.4f * noise();
-                tiltSmearT = 0.4f * noise();
-            }
-        }
-        tiltPitch += (tiltPitchT - tiltPitch) * tiltSlewC;
-        tiltLofi += (tiltLofiT - tiltLofi) * tiltSlewC;
-        tiltCrush += (tiltCrushT - tiltCrush) * tiltSlewC;
-        tiltRvrb += (tiltRvrbT - tiltRvrb) * tiltSlewC;
-        tiltSmear += (tiltSmearT - tiltSmear) * tiltSlewC;
-        if (tiltEnv > 1e-3f) {
-            // perturb the knob settings instead of replacing them: tilt
-            // is "your sound, randomly bent", never a drier/other patch
-            lofi = clamp(lofi + tiltEnv * tiltLofi, 0.f, 1.f);
-            crush = clamp(crush + tiltEnv * tiltCrush, 0.f, 1.f);
-            rvrb = clamp(rvrb + tiltEnv * tiltRvrb, 0.f, 1.f);
-            smear = clamp(smear + tiltEnv * tiltSmear, 0.f, 1.f);
-        }
 
         // ── envelope follower & capture ──────────────────────────────────
         float lvl = std::max(std::fabs(inL), std::fabs(inR));
