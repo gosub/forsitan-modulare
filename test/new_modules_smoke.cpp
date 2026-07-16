@@ -750,6 +750,41 @@ static void testPerge() {
         forced.add(m2.outputs[Perge::OUT_L_OUTPUT].getVoltage());
     }
     report("perge", "capture_gate", forced.rms(), forced.rms() > 0.005);
+    // dimension: the previous captures must come back as audible layers
+    // (they decay with the current train's age, not their own, or the
+    // slots are inaudible by the time they are "previous")
+    auto dimRun = [](float dimKnob) {
+        Perge p;
+        long f = 0;
+        p.inputs[Perge::IN_L_INPUT].channels = 1;
+        p.params[Perge::MIX_PARAM].setValue(1.f);
+        p.params[Perge::TEMPO_PARAM].setValue(0.7f);
+        p.params[Perge::SUSTAIN_PARAM].setValue(0.6f);
+        p.params[Perge::GLITCH_PARAM].setValue(dimKnob);
+        float ph = 0.f;
+        Stats s;
+        for (long i = 0; i < (long)(9.f * SR); i++) {
+            float t = i / SR;
+            float v = 0.f;
+            for (int k = 0; k < 3; k++) {   // three distinct phrases
+                float t0 = 0.5f + 2.f * k;
+                if (t >= t0 && t < t0 + 0.4f) {
+                    ph += (200.f + 90.f * k) / SR;
+                    if (ph >= 1.f) ph -= 1.f;
+                    v = std::sin(2.f * (float)M_PI * ph);
+                }
+            }
+            p.inputs[Perge::IN_L_INPUT].setVoltage(5.f * v);
+            p.process(makeArgs(f++));
+            if (t >= 5.5f)
+                s.add(p.outputs[Perge::OUT_L_OUTPUT].getVoltage());
+        }
+        return s.rms();
+    };
+    double dimOff = dimRun(0.f);
+    double dimOn = dimRun(1.f);
+    report("perge", "dimension_layers", dimOn / std::max(dimOff, 1e-9),
+           dimOn > 1.08 * dimOff);
 }
 
 int main() {

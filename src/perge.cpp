@@ -708,15 +708,26 @@ struct Perge : Module {
             if (live.len)
                 spawnVoice(live, 1.f, sens, atkK, relK, spread, pitchK,
                            decayPerRepeat, sr, grainCapSamples);
-            // extra layers, each on its own grid
+            // extra layers, each on its own grid. They decay with the
+            // CURRENT train's age, not their own: a slot is many ticks
+            // old by the time it is "previous" and decay^ownAge had
+            // already faded the layers to nothing. Each new capture
+            // re-fires the whole ensemble and sustain fades it together
             float dim1 = clamp(2.f * dimens, 0.f, 1.f);
             float dim2 = clamp(2.f * dimens - 1.f, 0.f, 1.f);
-            if (dim1 > 0.f && slots[1].len && (tickCount % 2 == 0))
-                spawnVoice(slots[1], dim1, sens, atkK, relK, spread, pitchK,
+            int trainAge = live.len ? live.age : 0;
+            if (dim1 > 0.f && slots[1].len && (tickCount % 2 == 0)) {
+                Slot s = slots[1];
+                s.age = trainAge;
+                spawnVoice(s, dim1, sens, atkK, relK, spread, pitchK,
                            decayPerRepeat, sr, grainCapSamples);
-            if (dim2 > 0.f && slots[2].len && (tickCount % 3 == 0))
-                spawnVoice(slots[2], dim2, sens, atkK, relK, spread, pitchK,
+            }
+            if (dim2 > 0.f && slots[2].len && (tickCount % 3 == 0)) {
+                Slot s = slots[2];
+                s.age = trainAge;
+                spawnVoice(s, dim2, sens, atkK, relK, spread, pitchK,
                            decayPerRepeat, sr, grainCapSamples);
+            }
             // frozen slots don't age: unfreezing resumes the decay train
             // from where it was instead of finding decay^age collapsed
             if (!frozen)

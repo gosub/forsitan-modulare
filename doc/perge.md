@@ -47,7 +47,9 @@ free-run and repeats start at whatever phase it happens to be in:
   unpredictable tempo accelerations fragment the flow. Clockwise
   (**dimension**): the two previous captures come back as extra layers,
   each locked to the grid but on its own rhythmic pattern (every 2nd and
-  every 3rd tick) — up to three samples coexist.
+  every 3rd tick) — up to three samples coexist. The layers ride the
+  current train's decay, so every new capture re-fires the whole ensemble
+  and **sustain** fades it as one.
 - The **mode** switch (bottom row, between the freeze and tilt jacks) plays
   repeats **standard**, **reverse**, or **tail** (only the swelling tail of
   each repeat).
