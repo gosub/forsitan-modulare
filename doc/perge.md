@@ -20,7 +20,11 @@ falls back below ~70% of the threshold (up to 2 seconds). **thrs** spans
 noise floors don't fire it — perge reacts to *playing*, not to sound being
 present. A gate into **capt** forces a capture by hand instead, whatever
 the level. The captured sample becomes the newest of three sample slots,
-and repeats of it are spawned on a tempo grid:
+and repeats of it are spawned on a tempo grid. Each committed capture
+restarts that grid, so the first repeat lands exactly one tempo interval
+after the note ends, delay-like, and the following ones stay phase-locked
+to your playing (right-click *Resync grid to new capture* to turn this off
+and let the grid free-run instead):
 
 - **tempo** sets the repeat rate (100 ms – 2 s, CV addable), or patch a clock into
   **clock** and the repeats follow it (the right-click *Clock multiplier*

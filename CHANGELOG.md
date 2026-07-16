@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     standard/reverse/tail repeats modes (panel switch); a grain-cap menu (on by default)
     that keeps each repeat to one tempo interval, or off to replay whole
     captured notes; an in-fx knob routing dry signal into the FX
-    section; momentary tilt warble (button/gate)
+    section; momentary tilt warble (button/gate); the tempo grid resyncs
+    on each new capture so the first repeat lands one interval after the
+    note ends (menu-defeatable)
 
 ## [2.7.6] - 2026-07-15
 ### Fixed
