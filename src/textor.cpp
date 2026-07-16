@@ -150,8 +150,6 @@ struct Textor : Module {
     int step = 0;
     float stepPhase = 0.f;      // samples into current step
     float stepSamples = 6000.f; // internal: 125 ms
-    float clockInterval = 0.f;  // measured, in samples
-    float sinceClock = 1e9f;
 
     // playback
     Voice voices[kMaxVoices];
@@ -160,12 +158,13 @@ struct Textor : Module {
     // control state
     float lastWovenKnob = -1.f;
     bool wasInReset = false, wasInRec = false;
+    bool zonesPrimed = false;   // first evaluation records zones without acting
     int controlPhase = 0;
     dsp::SchmittTrigger recTrig, weaveTrig, clockTrig;
     dsp::BooleanTrigger recButton;
     dsp::PulseGenerator gatePulse[kElements];
     float lightEnv[kElements] = {};
-    float sr = 48000.f;
+    float sr = 0.f;   // buffers (re)allocate lazily when this diverges
 
     Textor() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -185,19 +184,16 @@ struct Textor : Module {
         configOutput(WARP_GATE_OUTPUT, "Warp gate");
         configOutput(WEFT_GATE_OUTPUT, "Weft gate");
         configOutput(FLECK_GATE_OUTPUT, "Fleck gate");
-        onSampleRateChange();
     }
 
-    void onSampleRateChange() override {
-        sr = APP->engine->getSampleRate();
+    void initBuffers(float sampleRate) {
+        sr = sampleRate;
         bufLen = (int)(kBufferSeconds * sr);
         cloth.assign(bufLen, 0.f);
         shadow.assign(bufLen, 0.f);
         capturing = false;
         capturePos = 0;
         stepSamples = 0.125f * sr;
-        clockInterval = 0.f;
-        sinceClock = 1e9f;
         for (auto& v : voices)
             v.active = false;
         if (loomRunning)
@@ -209,7 +205,7 @@ struct Textor : Module {
         seed = 0;
         moveCounter = 0;
         lastWovenKnob = -1.f;
-        onSampleRateChange();
+        sr = 0.f;   // force buffer re-init on the next process()
     }
 
     json_t* dataToJson() override {
@@ -244,7 +240,7 @@ struct Textor : Module {
         static const float kRootSemis[10] =
             {0.f, 0.f, 0.f, 12.f, -12.f, 7.f, -7.f, 5.f, -5.f, 24.f};
 
-        Rng rng;
+        textor_dsp::Rng rng;
         rng.seed(seed);
         for (int e = 0; e < kElements; e++) {
             int lo, hi;
@@ -355,14 +351,21 @@ struct Textor : Module {
         if (weaveTrig.process(inputs[WEAVE_INPUT].getVoltage(), 0.1f, 1.f))
             reweave();
 
-        // knob zones
+        // knob zones (act on transitions only; the first evaluation just
+        // records where the knob already is, so a patch loading with the
+        // knob parked in a zone doesn't erase or record spuriously)
         float knob = params[WEAVE_PARAM].getValue();
         bool inReset = knob < kResetZone;
         bool inRec = !inReset && knob < kRecZone;
-        if (inReset && !wasInReset)
-            clearSample();
-        if (inRec && !wasInRec)
-            startCapture();
+        if (!zonesPrimed) {
+            zonesPrimed = true;
+        }
+        else {
+            if (inReset && !wasInReset)
+                clearSample();
+            if (inRec && !wasInRec)
+                startCapture();
+        }
         if (!inReset && !inRec) {
             if (lastWovenKnob < 0.f)
                 lastWovenKnob = knob;
@@ -384,6 +387,8 @@ struct Textor : Module {
     void process(const ProcessArgs& args) override {
         using namespace textor_dsp;
 
+        if (sr != args.sampleRate)
+            initBuffers(args.sampleRate);
         if (controlPhase == 0)
             updateControls();
         if (++controlPhase >= kControlDiv)
@@ -400,14 +405,8 @@ struct Textor : Module {
         lights[REC_LIGHT].setBrightness(capturing ? 1.f : 0.f);
 
         // --- step clock ---
-        sinceClock += 1.f;
         bool clocked = inputs[CLOCK_INPUT].isConnected();
         bool clockEdge = clockTrig.process(inputs[CLOCK_INPUT].getVoltage(), 0.1f, 1.f);
-        if (clockEdge) {
-            if (sinceClock < 2.f * sr)
-                clockInterval = sinceClock;
-            sinceClock = 0.f;
-        }
         if (loomRunning) {
             if (clocked) {
                 if (clockEdge) {
