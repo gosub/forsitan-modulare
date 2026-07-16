@@ -169,6 +169,7 @@ struct Perge : Module {
     int vibPos = 0;
     float vibPhase = 0.f;
     float lofiLp[2] = {};
+    float lofiHp[2] = {};
     // crush
     float crushPhase = 0.f;
     float crushHold[2] = {};
@@ -213,6 +214,7 @@ struct Perge : Module {
     float knobT = 0.f;             // tempo knob mapped to samples
     float decayUnfrozen = 0.9f;    // per-repeat gain when not frozen
     float lofiA = 0.01f;           // lofi darkening one-pole coefficient
+    float lofiHpA = 0.001f;        // lofi bass-cut one-pole coefficient
     float filtG = 0.f, filtA1 = 1.f;
     bool filtLP = true;
     // constants per sample rate
@@ -323,7 +325,7 @@ struct Perge : Module {
     void clearFx() {
         for (int c = 0; c < 2; c++) {
             std::fill(vibBuf[c].begin(), vibBuf[c].end(), 0.f);
-            lofiLp[c] = crushHold[c] = 0.f;
+            lofiLp[c] = lofiHp[c] = crushHold[c] = 0.f;
             for (int i = 0; i < kAp; i++)
                 std::fill(apBuf[c][i].begin(), apBuf[c][i].end(), 0.f);
             for (int i = 0; i < kComb; i++) {
@@ -527,8 +529,14 @@ struct Perge : Module {
 
         float lofiEff = (tiltEnv > 1e-3f)
             ? clamp(lofiBase + tiltEnv * tiltLofi, 0.f, 1.f) : lofiBase;
+        // the band narrows from both ends as lofi deepens: darken toward
+        // 1 kHz and thin the bass toward 450 Hz, old-gramophone style,
+        // instead of only muffling. At small amounts the highpass sits
+        // at 20 Hz and the first half of the throw stays warm/dark
         float fc = 16000.f * std::pow(1000.f / 16000.f, lofiEff);
         lofiA = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
+        float hfc = 20.f * std::pow(450.f / 20.f, lofiEff);
+        lofiHpA = 1.f - std::exp(-2.f * (float)M_PI * hfc / sr);
         float ffc = (filtSmooth < 0.f)
             ? 16000.f * std::pow(160.f / 16000.f, -filtSmooth)
             : 25.f * std::pow(2500.f / 25.f, filtSmooth);
@@ -773,8 +781,10 @@ struct Perge : Module {
                 float wob = vibBuf[c][i0] + f * (vibBuf[c][i1] - vibBuf[c][i0]);
                 float& lp = lofiLp[c];
                 lp += lofiA * (wob - lp);
+                float& hp = lofiHp[c];
+                hp += lofiHpA * (lp - hp);
                 float& x = (c == 0) ? fxL : fxR;
-                x = crossfade(x, lp, std::min(1.f, lofi * 2.f));
+                x = crossfade(x, lp - hp, std::min(1.f, lofi * 2.f));
             }
             vibPos = (vibPos + 1) % vn;
         }
