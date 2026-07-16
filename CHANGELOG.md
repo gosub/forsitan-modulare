@@ -20,8 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     that keeps each repeat to one tempo interval, or off to replay whole
     captured notes; an in-fx knob routing dry signal into the FX
     section; momentary tilt warble (button/gate); the tempo grid resyncs
-    on each new capture so the first repeat lands one interval after the
-    note ends (menu-defeatable)
+    on each new capture, to the note end (default: the first repeat lands
+    one interval after the note) or the note start, or off (menu)
 
 ## [2.7.6] - 2026-07-15
 ### Fixed

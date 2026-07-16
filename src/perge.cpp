@@ -182,7 +182,8 @@ struct Perge : Module {
     // ── housekeeping ─────────────────────────────────────────────────────
     int repeatsMode = MODE_STD;      // cached from REPEATSMODE_PARAM
     bool grainCap = true;            // cap grain playback to one tempo interval
-    bool resyncOnCapture = true;     // committed captures restart the tempo grid
+    enum { RESYNC_OFF, RESYNC_END, RESYNC_START };
+    int resyncMode = RESYNC_END;     // captures restart the tempo grid
     int clockMult = 2;               // index into kMults, default x1
     bool freezeLatch = false;
     bool sustainFrozen = false;      // freeze-zone state, with hysteresis
@@ -383,7 +384,7 @@ struct Perge : Module {
         for (int i = kNumSlots - 1; i > 0; i--)
             slots[i] = slots[i - 1];
         slots[0] = makeSlot(capStart, capLen, capPeak, 0);
-        resyncPending = true;
+        if (resyncMode == RESYNC_END) resyncPending = true;
     }
 
     // instantaneous stereo contribution of a voice (no state advance)
@@ -601,6 +602,7 @@ struct Perge : Module {
                 capStart = writePos;
                 capLen = 0;
                 capPeak = env;
+                if (resyncMode == RESYNC_START) resyncPending = true;
             }
             if (!capturing && env > thresh) {
                 capturing = true;
@@ -608,6 +610,7 @@ struct Perge : Module {
                 capStart = writePos;
                 capLen = 0;
                 capPeak = env;
+                if (resyncMode == RESYNC_START) resyncPending = true;
             }
             if (capturing) {
                 capLen++;
@@ -658,13 +661,13 @@ struct Perge : Module {
 
         float decayPerRepeat = frozen ? 1.f : decayUnfrozen;
 
-        // pedal-style resync: a committed capture restarts the grid, so
-        // the first repeat lands one full interval after the note ends
-        // instead of at a random phase of the free-running clock
+        // pedal-style resync: a capture restarts the grid at its commit
+        // (note end: the first repeat lands one full interval after the
+        // note) or at its onset (note start: repeats in rhythm with the
+        // attack), instead of a random phase of the free-running clock
         if (resyncPending) {
             resyncPending = false;
-            if (resyncOnCapture)
-                tickTimer = baseT;
+            tickTimer = baseT;
         }
 
         tickTimer -= 1.f;
@@ -876,7 +879,7 @@ struct Perge : Module {
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "grainCap", json_boolean(grainCap));
-        json_object_set_new(root, "resyncOnCapture", json_boolean(resyncOnCapture));
+        json_object_set_new(root, "resyncMode", json_integer(resyncMode));
         json_object_set_new(root, "clockMult", json_integer(clockMult));
         // freezeLatch is deliberately not saved: the buffer isn't either, so
         // a patch reloaded frozen would sit silent over empty tape
@@ -895,8 +898,8 @@ struct Perge : Module {
         }
         if (json_t* j = json_object_get(root, "grainCap"))
             grainCap = json_boolean_value(j);
-        if (json_t* j = json_object_get(root, "resyncOnCapture"))
-            resyncOnCapture = json_boolean_value(j);
+        if (json_t* j = json_object_get(root, "resyncMode"))
+            resyncMode = clamp((int)json_integer_value(j), 0, 2);
         if (json_t* j = json_object_get(root, "clockMult"))
             clockMult = clamp((int)json_integer_value(j), 0, 4);
     }
@@ -1041,8 +1044,8 @@ struct PergeWidget : ModuleWidget {
             {"1/4", "1/2", "x1", "x2", "x4"}, &m->clockMult));
         menu->addChild(createBoolPtrMenuItem("Cap grain to tempo interval",
             "", &m->grainCap));
-        menu->addChild(createBoolPtrMenuItem("Resync grid to new capture",
-            "", &m->resyncOnCapture));
+        menu->addChild(createIndexPtrSubmenuItem("Resync grid to capture",
+            {"Off", "Note end", "Note start"}, &m->resyncMode));
         menu->addChild(createMenuItem("Clear buffer", "", [m]() { m->onReset(); }));
     }
 };
