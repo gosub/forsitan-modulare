@@ -795,7 +795,7 @@ struct VoraxWidget : ModuleWidget {
 // @elem LABEL_R label 0.0 label "r" 0.0 40.90 114.00
 // @elem BOX_L panel_box 7.0 box "" 0.0 25.10 108.50
 // @elem BOX_R panel_box 7.0 box "" 0.0 40.90 108.50
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 10.00 116.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.40 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR
