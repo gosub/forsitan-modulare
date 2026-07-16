@@ -62,7 +62,7 @@ The wet bus runs through four bipolar effects, all inactive at noon:
 
 | knob | counterclockwise | clockwise |
 |------|------------------|-----------|
-| **lofi/crs** | lo-fi: pitch-LFO wobble through a narrowing band (darkens first, deep in the throw the bass thins too, old-gramophone style) | crush: sample-rate reduction, harsher as you turn |
+| **lofi/crs** | lo-fi: pitch-LFO wobble, tape-ish saturation and vinyl crackle through a narrowing band (darkens first, deep in the throw the bass thins too, old-gramophone style) | crush: sample-rate reduction, harsher as you turn |
 | **rvrb/smr** | deep dark reverb | smear: allpass diffusion that melts transients together |
 | **lp/hp** | lowpass (darker, warmer) | highpass (thinner, sharper) |
 

@@ -166,6 +166,7 @@ struct Perge : Module {
     float vibPhase = 0.f;
     float lofiLp[2] = {};
     float lofiHp[2] = {};
+    float fxEnv = 0.f;          // wet-bus level, gates the crackle
     // crush
     float crushPhase = 0.f;
     float crushHold[2] = {};
@@ -211,10 +212,12 @@ struct Perge : Module {
     float decayUnfrozen = 0.9f;    // per-repeat gain when not frozen
     float lofiA = 0.01f;           // lofi darkening one-pole coefficient
     float lofiHpA = 0.001f;        // lofi bass-cut one-pole coefficient
+    float lofiDrv = 1.f, lofiMk = 1.f;  // lofi soft-clip drive / makeup
     float filtG = 0.f, filtA1 = 1.f;
     bool filtLP = true;
     // constants per sample rate
     float envAtkC = 0.5f, envRelC = 0.01f, revDamp = 0.3f;
+    float crackRelC = 0.001f;
     float ledC = 0.002f;
     float tickFlash = 0.f;      // tempo tick LED pulse
     float tickC = 0.999f;
@@ -317,6 +320,7 @@ struct Perge : Module {
         for (int c = 0; c < 2; c++) {
             std::fill(vibBuf[c].begin(), vibBuf[c].end(), 0.f);
             lofiLp[c] = lofiHp[c] = crushHold[c] = 0.f;
+            fxEnv = 0.f;
             for (int i = 0; i < kAp; i++)
                 std::fill(apBuf[c][i].begin(), apBuf[c][i].end(), 0.f);
             for (int i = 0; i < kComb; i++) {
@@ -368,6 +372,7 @@ struct Perge : Module {
         declickC = std::exp(-1.f / (0.0015f * sr));   // ~1.5 ms fade
         ledC = 1.f - std::exp(-1.f / (0.010f * sr));  // ~10 ms level LEDs
         tickC = std::exp(-1.f / (0.040f * sr));       // ~40 ms tick flash
+        crackRelC = 1.f - std::exp(-1.f / (0.4f * sr));  // crackle gate release
         paramsDirty = true;
         onReset();
     }
@@ -532,6 +537,11 @@ struct Perge : Module {
         lofiA = 1.f - std::exp(-2.f * (float)M_PI * fc / sr);
         float hfc = 20.f * std::pow(450.f / 20.f, lofiBase);
         lofiHpA = 1.f - std::exp(-2.f * (float)M_PI * hfc / sr);
+        // saturation drive, normalized so a nominal 0.5 level stays at
+        // unity gain: quieter material squeezes up, peaks fold over
+        lofiDrv = 1.f + 3.f * lofiBase;
+        float s0 = 0.5f * lofiDrv;
+        lofiMk = 0.5f / (s0 * (27.f + s0 * s0) / (27.f + 9.f * s0 * s0));
         float ffc = (filtSmooth < 0.f)
             ? 16000.f * std::pow(160.f / 16000.f, -filtSmooth)
             : 25.f * std::pow(2500.f / 25.f, filtSmooth);
@@ -741,7 +751,8 @@ struct Perge : Module {
         float fxL = wetL + inL * infx;
         float fxR = wetR + inR * infx;
 
-        // lofi: pitch-LFO vibrato through a short delay, then darkening
+        // lofi: pitch-LFO vibrato through a short delay, then dirt
+        // (soft clip + crackle) into the narrowing band
         if (lofi > 1e-3f) {
             vibPhase += (3.5f + 4.f * modK) / sr;
             if (vibPhase >= 1.f) vibPhase -= 1.f;
@@ -750,6 +761,10 @@ struct Perge : Module {
             int vn = (int)vibBuf[0].size();
             vibBuf[0][vibPos] = fxL;
             vibBuf[1][vibPos] = fxR;
+            // the crackle only pops while the wet bus is alive, like a
+            // record that crackles while it plays and not after
+            float fxLvl = std::max(std::fabs(fxL), std::fabs(fxR));
+            fxEnv += (fxLvl - fxEnv) * ((fxLvl > fxEnv) ? envAtkC : crackRelC);
             for (int c = 0; c < 2; c++) {
                 float rp = vibPos - dly;
                 if (rp < 0.f) rp += vn;
@@ -757,12 +772,19 @@ struct Perge : Module {
                 float f = rp - i0;
                 int i1 = (i0 + 1) % vn;
                 float wob = vibBuf[c][i0] + f * (vibBuf[c][i1] - vibBuf[c][i0]);
+                float w = clamp(wob * lofiDrv, -3.f, 3.f); // tanh-ish soft clip
+                wob = (w * (27.f + w * w) / (27.f + 9.f * w * w)) * lofiMk;
                 float& lp = lofiLp[c];
                 lp += lofiA * (wob - lp);
                 float& hp = lofiHp[c];
                 hp += lofiHpA * (lp - hp);
+                float band = lp - hp;
+                // crackle lands after the band so the pops stay bright
+                // clicks over the darkened repeats, stylus-style
+                if (urand() < lofi * lofi * (60.f / sr))   // up to ~60 pops/s
+                    band += noise() * (0.6f * fxEnv + 0.05f * lofi);
                 float& x = (c == 0) ? fxL : fxR;
-                x = crossfade(x, lp - hp, std::min(1.f, lofi * 2.f));
+                x = crossfade(x, band, std::min(1.f, lofi * 2.f));
             }
             vibPos = (vibPos + 1) % vn;
         }
