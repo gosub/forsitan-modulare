@@ -91,6 +91,12 @@ released.
 
 ## Tips
 
+- Calibrate **thrs** to your source before anything else — the same ritual
+  as setting a noise gate's threshold, and worth treating as part of your
+  gain staging: play, watch the LED by the **capt** jack, and adjust until
+  it lights on your notes and goes dark between them. Everything dynamic in
+  the module keys off this. Too low and captures smear into rolling 2 s
+  chunks of whatever is sounding; too high and perge stops answering.
 - Feed it sparse, dynamic playing with **sens** high: the module answers
   loud phrases and ignores the quiet ones, like a duet partner.
 - **sustain** just below the freeze zone plus a slow clock makes drifting,
