@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.9.0] - unreleased
+### Added
+  - **vorax**, a new module: feedback drone synthesizer, a port of
+    Synthux Academy's Audrey II (MIT firmware by Nick Donadson /
+    Infrasonic Audio) — a Karplus-Strong string fed inaudible white
+    noise self-excites inside a feedback loop of overdrive, LPF/HPF,
+    ReverbSc reverb and a 1–100 ms "body" delay (right channel offset
+    4 samples for stereo width); a tape-style echo outside the loop
+    (50 ms–5 s, each repeat bandpassed and soft-clipped, feedback to
+    1.5) with a half-time doppler switch; audio input into the loop,
+    CV over pitch (V/oct), feedback gain, LPF cutoff and echo time
+  - **textor**, a new module: one-knob loop weaver, a behavioral clone
+    of the Fieldtone Weaver Modular — captures two seconds of audio
+    and scatters it over a 16-step loop as three elements (warp/weft/
+    fleck) with level knobs and per-onset gate outputs; every movement
+    of the weave knob weaves a new loop (reset and record zones at the
+    knob's start, no undo); texture/rhythm and root/random pitch
+    switches; record button + trigger replaces the sample while the
+    loop plays; clock input paces the steps; the sample is deliberately
+    not saved with the patch, only the weave's seed
+
 ## [2.8.0] - 2026-07-16
 ### Added
   - **perge**, a new module: stereo dynamic sampler and multi-effect,

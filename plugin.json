@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "2.8.0",
+  "version": "2.9.0",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -179,6 +179,28 @@
         "Effect",
         "Delay",
         "Granular"
+      ]
+    },
+    {
+      "slug": "vorax",
+      "name": "vorax",
+      "description": "Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop with overdrive, filters, reverb and body delay, plus a degrading tape echo (Audrey II port).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/vorax.md",
+      "tags": [
+        "Drone",
+        "Synth Voice",
+        "Physical modeling"
+      ]
+    },
+    {
+      "slug": "textor",
+      "name": "textor",
+      "description": "One-knob loop weaver: captures two seconds of audio and reweaves it into ever-new loops and textures, three elements with levels and gate outs (Fieldtone Weaver clone).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/textor.md",
+      "tags": [
+        "Sampler",
+        "Granular",
+        "Random"
       ]
     }
   ]

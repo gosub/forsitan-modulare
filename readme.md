@@ -26,6 +26,8 @@ A collection of VCV Rack modules.
 | [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
 | [bulla](doc/bulla.md) | Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
 | [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats with random octave/fifth pitch, freeze, glitch and layered dimension | [doc/perge.md](doc/perge.md) |
+| [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with reverb and degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
+| [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops, three elements with gate outs (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
 
 ## Tools
 
@@ -72,6 +74,8 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **lustro** | I traverse, I survey (the string surveyed into a filterbank; scando's sibling) |
 | **bulla** | bubble, blip — also the amulet worn by Roman children (Hordijk's Blippoo Box) |
 | **perge** | carry on!, keep going! (imperative of *pergere*) — a nod to the AC noises CONTINUA pedal it pays homage to, whose name is the Italian for the same exhortation |
+| **vorax** | voracious, all-devouring — the ever-hungry feedback plant (Synthux Academy's Audrey II) |
+| **textor** | weaver — reweaves two seconds of sound into ever-new cloth (the Fieldtone Weaver) |
 
 ## Author
 
