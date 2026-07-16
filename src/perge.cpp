@@ -240,7 +240,7 @@ struct Perge : Module {
         configParam(RVRB_PARAM, -1.f, 1.f, 0.f, "Reverb / Smear", "%", 0.f, 100.f);
         configParam(FILTER_PARAM, -1.f, 1.f, 0.f, "Lowpass / Highpass", "%", 0.f, 100.f);
         configParam(SENS_PARAM, 0.f, 1.f, 0.5f, "Sensitivity (dynamics response)", "%", 0.f, 100.f);
-        configParam(THRESH_PARAM, 0.f, 1.f, 0.15f, "Threshold", " V", 75.f, 0.02f);
+        configParam(THRESH_PARAM, 0.f, 1.f, 0.6f, "Threshold", " V", 200.f, 0.025f);
         {
             auto* q = configParam<MsSquaredQuantity>(ATTACK_PARAM, 0.f, 1.f, 0.1f, "Repeat attack", " ms");
             q->lo = 1.f; q->span = 799.f;
@@ -479,7 +479,9 @@ struct Perge : Module {
         filterK = clamp(params[FILTER_PARAM].getValue()
                         + inputs[FILTER_CV_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
         sens = params[SENS_PARAM].getValue();
-        thresh = 0.004f * std::pow(75.f, params[THRESH_PARAM].getValue());
+        // 25 mV .. 5 V at the jack: the top must clear the envelope bed of
+        // hot, reverb-heavy material so note attacks stay separable from it
+        thresh = 0.005f * std::pow(200.f, params[THRESH_PARAM].getValue());
         atkK = params[ATTACK_PARAM].getValue();
         relK = params[RELEASE_PARAM].getValue();
         modK = params[MOD_PARAM].getValue();
@@ -608,7 +610,11 @@ struct Perge : Module {
                 capLen++;
                 capPeak = std::max(capPeak, env);
                 bool tooLong = capLen >= (int)(kMaxCapSeconds * sr);
-                bool done = capForced ? !capGateHigh : env < thresh * 0.5f;
+                // end at 70% of the arming level: 3 dB of hysteresis keeps
+                // wet material committing note-aligned captures (6 dB made
+                // dense beds hold the capture open forever); the 120 ms
+                // follower release and the 30 ms minimum guard flutter
+                bool done = capForced ? !capGateHigh : env < thresh * 0.7f;
                 if (done || tooLong) {
                     capturing = false;
                     commitCapture(sr);
