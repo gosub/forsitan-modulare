@@ -598,7 +598,8 @@ struct Vorax : Module {
         OUTPUTS_LEN
     };
     enum LightId {
-        LEVEL_LIGHT,
+        LEVEL_L_LIGHT,
+        LEVEL_R_LIGHT,
         LIGHTS_LEN
     };
 
@@ -608,7 +609,7 @@ struct Vorax : Module {
     vorax_dsp::Smoothed smPitch, smFeedback, smBody, smLpf, smHpf,
         smVerbMix, smVerbDecay, smEchoSend, smEchoTime, smEchoFb, smVolume;
     int controlPhase = 0;
-    float levelEnv = 0.f;
+    float levelEnvL = 0.f, levelEnvR = 0.f;
 
     Vorax() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -739,8 +740,10 @@ struct Vorax : Module {
         outputs[LEFT_OUTPUT].setVoltage(clamp(5.f * outL, -10.f, 10.f));
         outputs[RIGHT_OUTPUT].setVoltage(clamp(5.f * outR, -10.f, 10.f));
 
-        levelEnv += (std::fabs(outL) - levelEnv) * 0.002f;
-        lights[LEVEL_LIGHT].setBrightness(clamp(levelEnv, 0.f, 1.f));
+        levelEnvL += (std::fabs(outL) - levelEnvL) * 0.002f;
+        levelEnvR += (std::fabs(outR) - levelEnvR) * 0.002f;
+        lights[LEVEL_L_LIGHT].setBrightness(clamp(levelEnvL, 0.f, 1.f));
+        lights[LEVEL_R_LIGHT].setBrightness(clamp(levelEnvR, 0.f, 1.f));
     }
 };
 
@@ -773,7 +776,8 @@ struct VoraxWidget : ModuleWidget {
 // @elem TIME_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem LEFT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem RIGHT_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LEVEL_L_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LEVEL_R_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_PITCH label 0.0 label "pitch" 0.0 10.40 28.50
 // @elem LABEL_FEEDBACK label 0.0 label "feedback" 0.0 25.40 33.50
 // @elem LABEL_BODY label 0.0 label "body" 0.0 40.40 28.50
@@ -791,8 +795,8 @@ struct VoraxWidget : ModuleWidget {
 // @elem LABEL_FBCV label 0.0 label "fb" 0.0 25.40 96.50
 // @elem LABEL_LPFCV label 0.0 label "lpf" 0.0 35.35 96.50
 // @elem LABEL_TIMECV label 0.0 label "time" 0.0 45.30 96.50
-// @elem LABEL_L label 0.0 label "l" 0.0 25.10 114.00
-// @elem LABEL_R label 0.0 label "r" 0.0 40.90 114.00
+// @elem LABEL_L label 0.0 label "L" 0.0 25.10 114.00
+// @elem LABEL_R label 0.0 label "R" 0.0 40.90 114.00
 // @elem BOX_L panel_box 7.0 box "" 0.0 25.10 108.50
 // @elem BOX_R panel_box 7.0 box "" 0.0 40.90 108.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.40 122.50
@@ -820,7 +824,8 @@ struct VoraxWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.30f, 89.00f)), module, Vorax::TIME_CV_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.10f, 106.50f)), module, Vorax::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.90f, 106.50f)), module, Vorax::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.90f, 103.50f)), module, Vorax::LEVEL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.10f, 103.50f)), module, Vorax::LEVEL_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.90f, 103.50f)), module, Vorax::LEVEL_R_LIGHT));
         // @layout:end
     }
 };

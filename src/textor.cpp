@@ -96,6 +96,8 @@ struct Textor : Module {
         WARP_LIGHT,
         WEFT_LIGHT,
         FLECK_LIGHT,
+        LEVEL_L_LIGHT,
+        LEVEL_R_LIGHT,
         LIGHTS_LEN
     };
 
@@ -164,6 +166,7 @@ struct Textor : Module {
     dsp::BooleanTrigger recButton;
     dsp::PulseGenerator gatePulse[kElements];
     float lightEnv[kElements] = {};
+    float levelEnvL = 0.f, levelEnvR = 0.f;
     float sr = 0.f;   // buffers (re)allocate lazily when this diverges
 
     Textor() {
@@ -465,8 +468,14 @@ struct Textor : Module {
                 v.active = false;
         }
 
-        outputs[LEFT_OUTPUT].setVoltage(5.f * softLimit(outL * 1.4f));
-        outputs[RIGHT_OUTPUT].setVoltage(5.f * softLimit(outR * 1.4f));
+        float vL = 5.f * softLimit(outL * 1.4f);
+        float vR = 5.f * softLimit(outR * 1.4f);
+        outputs[LEFT_OUTPUT].setVoltage(vL);
+        outputs[RIGHT_OUTPUT].setVoltage(vR);
+        levelEnvL += (std::fabs(vL * 0.2f) - levelEnvL) * 0.002f;
+        levelEnvR += (std::fabs(vR * 0.2f) - levelEnvR) * 0.002f;
+        lights[LEVEL_L_LIGHT].setBrightness(clamp(levelEnvL, 0.f, 1.f));
+        lights[LEVEL_R_LIGHT].setBrightness(clamp(levelEnvR, 0.f, 1.f));
 
         for (int e = 0; e < kElements; e++) {
             outputs[WARP_GATE_OUTPUT + e].setVoltage(
@@ -507,6 +516,8 @@ struct TextorWidget : ModuleWidget {
 // @elem WARP_LIGHT SmallLight 1.5 light "" 0.0
 // @elem WEFT_LIGHT SmallLight 1.5 light "" 0.0
 // @elem FLECK_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LEVEL_L_LIGHT SmallLight 1.5 light "" 0.0
+// @elem LEVEL_R_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LABEL_WEAVE label 0.0 label "weave" 0.0 25.40 35.50
 // @elem LABEL_REC label 0.0 label "rec" 0.0 10.40 29.00
 // @elem LABEL_MODE label 0.0 label "mode" 0.0 40.40 25.20
@@ -524,8 +535,8 @@ struct TextorWidget : ModuleWidget {
 // @elem LABEL_RECIN label 0.0 label "rec" 0.0 18.77 96.50
 // @elem LABEL_WEAVEIN label 0.0 label "weave" 0.0 32.03 96.50
 // @elem LABEL_CLK label 0.0 label "clk" 0.0 45.30 96.50
-// @elem LABEL_L label 0.0 label "l" 0.0 25.10 114.00
-// @elem LABEL_R label 0.0 label "r" 0.0 40.90 114.00
+// @elem LABEL_L label 0.0 label "L" 0.0 25.10 114.00
+// @elem LABEL_R label 0.0 label "R" 0.0 40.90 114.00
 // @elem BOX_L panel_box 7.0 box "" 0.0 25.10 108.50
 // @elem BOX_R panel_box 7.0 box "" 0.0 40.90 108.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.40 122.50
@@ -554,6 +565,8 @@ struct TextorWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(14.40f, 65.00f)), module, Textor::WARP_LIGHT));
         addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(30.40f, 65.00f)), module, Textor::WEFT_LIGHT));
         addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(46.40f, 65.00f)), module, Textor::FLECK_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.10f, 103.50f)), module, Textor::LEVEL_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.90f, 103.50f)), module, Textor::LEVEL_R_LIGHT));
         // @layout:end
     }
 };
