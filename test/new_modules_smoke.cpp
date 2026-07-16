@@ -1,7 +1,8 @@
 // new_modules_smoke — offline sanity checks for the v2.7.0 modules
-// (rete, ululo, tabes, lustro, bulla). Drives each module's process()
-// directly and checks for non-finite samples, runaway levels and basic
-// expected behavior (self-oscillation, loop decay, pluck response).
+// (rete, ululo, tabes, lustro, bulla) plus perge, vorax and textor.
+// Drives each module's process() directly and checks for non-finite
+// samples, runaway levels and basic expected behavior (self-oscillation,
+// loop decay, pluck response).
 //
 // Prints one CSV row per check: module,check,value,pass
 // Exits nonzero if any check fails.
@@ -18,6 +19,8 @@ rack::plugin::Plugin* pluginInstance = nullptr;
 #include "../src/lustro.cpp"
 #include "../src/bulla.cpp"
 #include "../src/perge.cpp"
+#include "../src/vorax.cpp"
+#include "../src/textor.cpp"
 
 #include <cstdio>
 #include <cmath>
@@ -805,6 +808,162 @@ static void testPerge() {
     report("perge", "slot_survives_lap", m4.slots[1].len, m4.slots[1].len > 0);
 }
 
+static void testVorax() {
+    Vorax m;
+    long frame = 0;
+    // feedback fully down: the loop must stay essentially silent
+    Stats quiet;
+    for (int i = 0; i < (int)(2 * SR); i++) {
+        m.process(makeArgs(frame++));
+        quiet.add(m.outputs[Vorax::LEFT_OUTPUT].getVoltage());
+    }
+    report("vorax", "silent_at_no_fb", quiet.rms(), quiet.rms() < 0.01);
+    // raise feedback past unity: the loop must self-excite from the
+    // -90 dBFS noise seed alone
+    m.params[Vorax::FEEDBACK_PARAM].setValue(6.f);
+    for (int i = 0; i < (int)(6 * SR); i++) m.process(makeArgs(frame++));
+    Stats s, sr_;
+    for (int i = 0; i < (int)(6 * SR); i++) {
+        m.process(makeArgs(frame++));
+        s.add(m.outputs[Vorax::LEFT_OUTPUT].getVoltage());
+        sr_.add(m.outputs[Vorax::RIGHT_OUTPUT].getVoltage());
+    }
+    report("vorax", "nans", s.nans + sr_.nans, s.nans + sr_.nans == 0);
+    report("vorax", "self_osc_rms", s.rms(), s.rms() > 0.05);
+    report("vorax", "peak", std::max(s.peak, sr_.peak),
+           std::max(s.peak, sr_.peak) < 12.f);
+    // stereo: the 4-sample body offset must decorrelate the channels
+    report("vorax", "right_alive", sr_.rms(), sr_.rms() > 0.05);
+    // everything hostile at once: reverb wet + max echo feedback + short
+    // time + body sweep, must stay bounded (each echo repeat is clipped)
+    m.params[Vorax::VERB_MIX_PARAM].setValue(1.f);
+    m.params[Vorax::VERB_DECAY_PARAM].setValue(1.f);
+    m.params[Vorax::ECHO_SEND_PARAM].setValue(1.f);
+    m.params[Vorax::ECHO_FB_PARAM].setValue(1.5f);
+    m.params[Vorax::ECHO_TIME_PARAM].setValue(0.1f);
+    m.params[Vorax::FEEDBACK_PARAM].setValue(12.f);
+    Stats h;
+    for (int i = 0; i < (int)(10 * SR); i++) {
+        m.params[Vorax::BODY_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.2f * i / SR));
+        m.process(makeArgs(frame++));
+        h.add(m.outputs[Vorax::LEFT_OUTPUT].getVoltage());
+        h.add(m.outputs[Vorax::RIGHT_OUTPUT].getVoltage());
+    }
+    report("vorax", "hostile_nans", h.nans, h.nans == 0);
+    report("vorax", "hostile_bounded", h.peak, h.peak <= 10.01f);
+    report("vorax", "hostile_alive", h.rms(), h.rms() > 0.05);
+    // feedback back down: the drone must die away
+    m.params[Vorax::FEEDBACK_PARAM].setValue(-60.f);
+    m.params[Vorax::ECHO_FB_PARAM].setValue(0.f);
+    m.params[Vorax::ECHO_SEND_PARAM].setValue(0.f);
+    m.params[Vorax::VERB_MIX_PARAM].setValue(0.f);
+    for (int i = 0; i < (int)(10 * SR); i++) m.process(makeArgs(frame++));
+    Stats dead;
+    for (int i = 0; i < (int)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        dead.add(m.outputs[Vorax::LEFT_OUTPUT].getVoltage());
+    }
+    report("vorax", "dies_at_no_fb", dead.rms(), dead.rms() < 0.01);
+}
+
+static void testTextor() {
+    Textor m;
+    long frame = 0;
+    m.inputs[Textor::AUDIO_INPUT].channels = 1;
+    m.inputs[Textor::REC_INPUT].channels = 1;
+    // capture 2 s of a 220 Hz sine via the rec trigger (the Schmitt
+    // trigger needs to see low before the pulse)
+    float phase = 0.f;
+    for (int i = 0; i < (int)(2.3f * SR); i++) {
+        phase += 220.f / SR; if (phase >= 1.f) phase -= 1.f;
+        m.inputs[Textor::AUDIO_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * phase));
+        m.inputs[Textor::REC_INPUT].setVoltage(i >= 1000 && i < 1100 ? 10.f : 0.f);
+        m.process(makeArgs(frame++));
+    }
+    m.inputs[Textor::AUDIO_INPUT].setVoltage(0.f);
+    // no weave yet: silent
+    Stats pre;
+    for (int i = 0; i < (int)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        pre.add(m.outputs[Textor::LEFT_OUTPUT].getVoltage());
+    }
+    report("textor", "silent_before_weave", pre.rms(), pre.rms() < 0.01);
+    // move the knob into the weave field (baseline), then nudge it: loop starts
+    m.params[Textor::WEAVE_PARAM].setValue(0.5f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    m.params[Textor::WEAVE_PARAM].setValue(0.6f);
+    Stats s;
+    int gates = 0;
+    float prevGate = 0.f;
+    for (int i = 0; i < (int)(6 * SR); i++) {
+        m.process(makeArgs(frame++));
+        s.add(m.outputs[Textor::LEFT_OUTPUT].getVoltage());
+        s.add(m.outputs[Textor::RIGHT_OUTPUT].getVoltage());
+        float g = m.outputs[Textor::WARP_GATE_OUTPUT].getVoltage()
+                + m.outputs[Textor::WEFT_GATE_OUTPUT].getVoltage()
+                + m.outputs[Textor::FLECK_GATE_OUTPUT].getVoltage();
+        if (g > 5.f && prevGate <= 5.f) gates++;
+        prevGate = g;
+    }
+    report("textor", "nans", s.nans, s.nans == 0);
+    report("textor", "loop_rms", s.rms(), s.rms() > 0.02);
+    report("textor", "peak", s.peak, s.peak <= 5.01f);   // soft-limited * 5V
+    report("textor", "gates_fire", gates, gates > 5);
+    // reweave changes the loop: different seeds should give a different
+    // event pattern (compare a coarse fingerprint: total event steps)
+    long fp1 = 0;
+    for (int e = 0; e < Textor::kElements; e++)
+        for (int i = 0; i < m.eventCount[e]; i++)
+            fp1 += (e + 1) * (m.events[e][i].step + 1);
+    m.params[Textor::WEAVE_PARAM].setValue(0.8f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    long fp2 = 0;
+    for (int e = 0; e < Textor::kElements; e++)
+        for (int i = 0; i < m.eventCount[e]; i++)
+            fp2 += (e + 1) * (m.events[e][i].step + 1);
+    report("textor", "reweave_changes_loop", std::labs(fp1 - fp2), fp1 != fp2);
+    // rhythm mode re-renders and keeps playing
+    m.params[Textor::MODE_PARAM].setValue(0.f);
+    Stats rh;
+    for (int i = 0; i < (int)(4 * SR); i++) {
+        m.process(makeArgs(frame++));
+        rh.add(m.outputs[Textor::LEFT_OUTPUT].getVoltage());
+    }
+    report("textor", "rhythm_alive", rh.rms(), rh.rms() > 0.005);
+    report("textor", "rhythm_nans", rh.nans, rh.nans == 0);
+    // external clock paces the steps: fast clock, count gate onsets rise
+    m.inputs[Textor::CLOCK_INPUT].channels = 1;
+    int fastGates = 0;
+    prevGate = 0.f;
+    for (int i = 0; i < (int)(4 * SR); i++) {
+        m.inputs[Textor::CLOCK_INPUT].setVoltage((i % 1500) < 200 ? 10.f : 0.f);
+        m.process(makeArgs(frame++));
+        float g = m.outputs[Textor::WARP_GATE_OUTPUT].getVoltage()
+                + m.outputs[Textor::WEFT_GATE_OUTPUT].getVoltage()
+                + m.outputs[Textor::FLECK_GATE_OUTPUT].getVoltage();
+        if (g > 5.f && prevGate <= 5.f) fastGates++;
+        prevGate = g;
+    }
+    report("textor", "clocked_gates", fastGates, fastGates > 0);
+    m.inputs[Textor::CLOCK_INPUT].channels = 0;
+    m.inputs[Textor::CLOCK_INPUT].setVoltage(0.f);
+    // reset zone: erases the sample and stops the loom
+    m.params[Textor::WEAVE_PARAM].setValue(0.f);
+    for (int i = 0; i < (int)(2 * SR); i++) m.process(makeArgs(frame++));
+    Stats off;
+    int offGates = 0;
+    prevGate = 0.f;
+    for (int i = 0; i < (int)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        off.add(m.outputs[Textor::LEFT_OUTPUT].getVoltage());
+        float g = m.outputs[Textor::WARP_GATE_OUTPUT].getVoltage();
+        if (g > 5.f && prevGate <= 5.f) offGates++;
+        prevGate = g;
+    }
+    report("textor", "reset_silences", off.rms(), off.rms() < 1e-4);
+    report("textor", "reset_stops_gates", offGates, offGates == 0);
+}
+
 int main() {
     rack::random::init();
     printf("module,check,value,pass\n");
@@ -815,5 +974,7 @@ int main() {
     testLustro();
     testBulla();
     testPerge();
+    testVorax();
+    testTextor();
     return failures ? 1 : 0;
 }
