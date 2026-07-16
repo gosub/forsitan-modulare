@@ -97,9 +97,10 @@ pre-baked `<path>` elements). Shared visual grammar:
   use a 3.2mm cap height on panels up to 90mm wide and 2.8mm on wider
   ones (only pellicula), auto-shrunk on long names to clear the screw zones (`regen_svg`
   handles this).
-- **forsitan logo** bottom corner: a rounded-rect "domino" with a divider line
-  and four dots, stroked/filled in the accent yellow `#ffd500`. On 2HP panels
-  it is rotated 90°.
+- **forsitan logo** at the bottom, centered horizontally (`width/2`,
+  y=122.5mm — see bulla/vorax/textor): a rounded-rect "domino" with a
+  divider line and four dots, stroked/filled in the accent yellow
+  `#ffd500`. Never tuck it in a corner. On 2HP panels it is rotated 90°.
 - **Input labels**: plain OCR-A text, light grey (`#e5e5e5`).
 - **Output labels**: OCR-A text in dark (`#1a1a1a`) sitting on a yellow
   (`#ffd500`) badge.
@@ -137,8 +138,11 @@ When laying out a panel (by hand or generated), follow these rules:
   per character at 2.2mm cap height.
 - **LEDs**: never free-floating. An output-level LED sits 2mm inset from
   the top-right corner of its output badge (box center +5,−5 — see
-  scando); stereo pairs get one LED per badge. An LED for a non-jack
+  scando). A stereo output pair always gets one level LED per badge —
+  both L and R, never just one of the two. An LED for a non-jack
   control sits at that control's top-right corner.
+- **Stereo output labels**: when the badge labels are just the channel
+  letters, write them uppercase — `L` and `R`, not `l` / `r`.
 - **Readability**: every jack and control gets a label; labels sit
   consistently (below jacks/knobs unless space forces otherwise), at ≥2.0mm
   cap height, never split across an element. Output badges must fully
