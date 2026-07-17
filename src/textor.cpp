@@ -4,28 +4,44 @@
 // reweaves it into a hypnotic loop. Every movement of the weave knob
 // generates a completely new loop — nothing saves, nothing recalls, there
 // is no way back. The original's algorithm is unpublished; this engine is
-// designed from its documented behavior.
+// designed from its documented behavior and from signal analysis of demo
+// recordings (2026-07: onset/tempo autocorrelation, envelope, stereo and
+// pitch statistics of the official walkthrough and a no-talking demo).
 //
-// The captured sample is scattered over a 16-step loop as three woven
-// elements, each with its own level and gate output (the gates fire even
-// with an empty buffer, so it doubles as a random rhythm generator):
-//   warp  — long, dense foundation strands
+// What the analysis established, and this engine implements:
+//   - every weave rolls its own tempo (dominant inter-onset periods from
+//     ~90 ms to ~1.3 s between rolls) and its own loop span (~1–4.5 s)
+//   - the three elements behave like randomly-divided periodic trains
+//     ("a random clock divider"), loosely on the grid, not a strict
+//     quantized pattern
+//   - loops evolve: successive repeats stay similar but drift (timing
+//     jitter, occasional fragment re-picks, probabilistic fires)
+//   - fragment envelopes are mostly soft (median attack ~150 ms)
+//   - pitch shifts are semitone-quantized even in random mode
+//   - the stereo image is nearly mono (L/R correlation ~0.95) with slow,
+//     gentle spatial movement, not per-grain panning
+//   - one element per roll carries decaying delay repeats at ~0.1–0.45 s
+//     ("a delayed spacey element")
+//   - on the hardware, every reroll restarts the fresh weave immediately,
+//     so a knob sweep sputters a rapid cascade of pattern beginnings;
+//     here that lives behind the "Restart loop on every weave" context
+//     menu option (off by default, weaves swap seamlessly instead)
+//
+// The three woven elements, each with a level knob and a gate output (the
+// gates fire even with an empty buffer, so it doubles as a random rhythm
+// generator):
+//   warp  — long, sparse foundation strands
 //   weft  — medium strands crossing it
-//   fleck — sparse, short, bright accents
-// Each strand is a fragment of the buffer with its own start, length,
-// pitch, direction and pan, fixed for the life of the loop.
+//   fleck — shorter, brighter, flightier accents
 //
 // The weave knob has three zones, like the hardware:
 //   full ccw       RESET — erases the sample and stops the loom
 //   low zone       REC   — entering it starts a 2 s capture
 //   the rest       WEAVE — any movement reweaves a brand new loop
-//
-// TEXTURE mode weaves long overlapping windowed strands (a morphing pad);
-// RHYTHM mode weaves short percussive fragments. The PITCH switch selects
-// ROOT (fragments shifted by musical intervals, sympathetic to the
-// sample's own key) or RANDOM (continuous random shifts). Re-recording
-// while the loop plays replaces the cloth but keeps the weave; the CLOCK
-// input paces the 16 steps externally.
+// When a capture completes with the loom stopped, playback starts by
+// itself with a fresh weave, like the hardware. The WEAVE input rerolls
+// on any voltage *change* (>0.5 V), so stepped random CV rerolls on every
+// new step, and a plain trigger works too.
 //
 // True to the original's impermanence, the sample is not saved with the
 // patch — only the weave (its seed) survives a reload.
@@ -34,9 +50,11 @@
 //   Knobs : WEAVE (big), WARP / WEFT / FLECK levels
 //   Switch: MODE (texture/rhythm), PITCH (root/random)
 //   Button: REC (with LED)
-//   In    : audio IN, REC trigger, WEAVE trigger, CLOCK
+//   In    : audio IN, REC trigger, WEAVE trigger/CV, CLOCK
 //   Out   : L, R, three element GATEs
-//   Light : REC (red, while capturing), gate activity per element
+//   Light : REC (red, while capturing), gate activity per element,
+//           output level per channel
+//   Menu  : Restart loop on every weave (hardware knob-sweep behavior)
 
 #include "forsitan.hpp"
 
@@ -103,34 +121,43 @@ struct Textor : Module {
 
     static constexpr int kElements = 3;
     static constexpr int kSteps = 16;
-    static constexpr int kMaxEventsPerElement = 12;
+    static constexpr int kMaxStrands = 4;   // per element
     static constexpr int kMaxVoices = 16;
     static constexpr float kBufferSeconds = 2.f;
+    static constexpr float kMaxDelaySeconds = 0.5f;
     static constexpr int kControlDiv = 32;
     // weave knob zones
     static constexpr float kResetZone = 0.04f;
     static constexpr float kRecZone = 0.12f;
 
-    struct Event {
-        int step = 0;
-        float startFrac = 0.f;  // buffer start, 0..1
-        float lenS = 0.5f;      // strand length in seconds
-        float semi = 0.f;       // pitch shift in semitones
+    // a periodic voice within the loop: fires when (step % div) == phase,
+    // always replaying the same fragment — that is what makes the loop a
+    // loop — but with per-fire jitter and occasional mutation
+    struct Strand {
+        int div = 4, phase = 0;
+        float prob = 1.f;       // fire probability per occurrence
+        float startFrac = 0.f;  // buffer start, 0..1 (mutates slowly)
+        float lenS = 0.5f;      // fragment length in seconds
+        float semi = 0.f;       // pitch shift, whole semitones
         bool reverse = false;
-        float pan = 0.f;        // -1..1
+        float pan = 0.f;        // narrow: -0.25..0.25
         float amp = 1.f;
+        float attackFrac = 0.4f;   // fraction of length spent rising
+        float jitterFrac = 0.08f;  // timing jitter, fraction of a step
     };
 
     struct Voice {
         bool active = false;
         int elem = 0;
+        int startDelay = 0;     // per-fire timing jitter, samples
         float pos = 0.f;        // buffer read position in samples
         float rate = 1.f;       // signed sample increment
         float age = 0.f;        // samples since onset
         float lenSamp = 1.f;
+        float attackFrac = 0.4f;
         float panL = 0.7f, panR = 0.7f;
         float amp = 1.f;
-        bool texture = true;
+        float kill = 0.f;       // >0: fast fadeout in progress
         int32_t order = 0;      // for oldest-voice stealing
     };
 
@@ -141,28 +168,48 @@ struct Textor : Module {
     int capturePos = 0;
 
     // the woven loop
-    Event events[kElements][kMaxEventsPerElement];
-    int eventCount[kElements] = {};
+    Strand strands[kElements][kMaxStrands];
+    int strandCount[kElements] = {};
     uint32_t seed = 0;
     uint32_t moveCounter = 0;
     bool loomRunning = false;
     bool lastTexture = true, lastRoot = true;
+    textor_dsp::Rng rt;   // free-running RNG for per-fire evolution
+
+    // per-roll character
+    float rollStepS = 0.125f;      // this roll's step period, seconds
+    int delayElem = 1;             // which element carries the delay
+    int delaySamp = 4800;
+    float delayFb = 0.45f;
+    float panRate[kElements] = {}; // slow spatial drift per element
+    float panPhase[kElements] = {};
+
+    // delay bus (one stereo delay, used by delayElem)
+    std::vector<float> dlyL, dlyR;
+    int dlyPos = 0;
 
     // step sequencing
     int step = 0;
     float stepPhase = 0.f;      // samples into current step
-    float stepSamples = 6000.f; // internal: 125 ms
+    float stepSamples = 6000.f;
+    float clockInterval = 0.f;  // measured clock period, samples
+    float sinceClock = 1e9f;
 
     // playback
     Voice voices[kMaxVoices];
     int32_t voiceOrder = 0;
 
+    // options
+    bool sweepRestart = false;  // hardware behavior: reroll restarts loop
+
     // control state
     float lastWovenKnob = -1.f;
+    float lastWeaveCv = 0.f;
+    bool weaveCvPrimed = false;
     bool wasInReset = false, wasInRec = false;
     bool zonesPrimed = false;   // first evaluation records zones without acting
     int controlPhase = 0;
-    dsp::SchmittTrigger recTrig, weaveTrig, clockTrig;
+    dsp::SchmittTrigger recTrig, clockTrig;
     dsp::BooleanTrigger recButton;
     dsp::PulseGenerator gatePulse[kElements];
     float lightEnv[kElements] = {};
@@ -180,8 +227,8 @@ struct Textor : Module {
         configButton(REC_PARAM, "Record");
         configInput(AUDIO_INPUT, "Audio");
         configInput(REC_INPUT, "Record trigger");
-        configInput(WEAVE_INPUT, "Weave trigger (new loop)");
-        configInput(CLOCK_INPUT, "Clock (paces the 16 steps)");
+        configInput(WEAVE_INPUT, "Weave (rerolls on any voltage change)");
+        configInput(CLOCK_INPUT, "Clock (paces the loom's steps)");
         configOutput(LEFT_OUTPUT, "Left");
         configOutput(RIGHT_OUTPUT, "Right");
         configOutput(WARP_GATE_OUTPUT, "Warp gate");
@@ -194,13 +241,18 @@ struct Textor : Module {
         bufLen = (int)(kBufferSeconds * sr);
         cloth.assign(bufLen, 0.f);
         shadow.assign(bufLen, 0.f);
+        dlyL.assign((int)(kMaxDelaySeconds * sr) + 4, 0.f);
+        dlyR.assign((int)(kMaxDelaySeconds * sr) + 4, 0.f);
+        dlyPos = 0;
         capturing = false;
         capturePos = 0;
-        stepSamples = 0.125f * sr;
+        stepSamples = rollStepS * sr;
+        clockInterval = 0.f;
+        sinceClock = 1e9f;
         for (auto& v : voices)
             v.active = false;
         if (loomRunning)
-            weaveEvents();
+            weaveStrands();
     }
 
     void onReset() override {
@@ -208,6 +260,8 @@ struct Textor : Module {
         seed = 0;
         moveCounter = 0;
         lastWovenKnob = -1.f;
+        weaveCvPrimed = false;
+        sweepRestart = false;
         sr = 0.f;   // force buffer re-init on the next process()
     }
 
@@ -216,6 +270,7 @@ struct Textor : Module {
         json_object_set_new(rootJ, "seed", json_integer((json_int_t)seed));
         json_object_set_new(rootJ, "moveCounter", json_integer((json_int_t)moveCounter));
         json_object_set_new(rootJ, "loomRunning", json_boolean(loomRunning));
+        json_object_set_new(rootJ, "sweepRestart", json_boolean(sweepRestart));
         return rootJ;
     }
 
@@ -227,56 +282,100 @@ struct Textor : Module {
             moveCounter = (uint32_t)json_integer_value(j);
         if ((j = json_object_get(rootJ, "loomRunning")))
             loomRunning = json_boolean_value(j);
+        if ((j = json_object_get(rootJ, "sweepRestart")))
+            sweepRestart = json_boolean_value(j);
         if (loomRunning)
-            weaveEvents();
+            weaveStrands();
     }
 
-    // generate the loop's event list from the current seed and switches
-    void weaveEvents() {
+    // generate the loop from the current seed and switches: a per-roll
+    // tempo, per-roll delay character, and each element's strands
+    void weaveStrands() {
         using namespace textor_dsp;
         bool texture = params[MODE_PARAM].getValue() > 0.5f;
         bool root = params[PITCH_PARAM].getValue() > 0.5f;
         lastTexture = texture;
         lastRoot = root;
 
+        textor_dsp::Rng w;
+        w.seed(seed);
+        rt.seed(seed ^ 0xABCD1234u);
+
+        // this roll's tempo: log-uniform 45..300 ms per step, so the
+        // 16-step loop spans ~0.7..4.8 s (matches measured loop lags and
+        // the wide per-roll tempo spread of the demos)
+        rollStepS = 0.045f * std::pow(300.f / 45.f, w.uniform());
+        if (sr > 0.f)
+            stepSamples = rollStepS * sr;
+
+        // one element per roll carries decaying delay repeats
+        {
+            float u = w.uniform();
+            delayElem = (u < 0.2f) ? 0 : (u < 0.7f) ? 1 : 2;
+            float t = clamp((1.f + (float)w.irange(0, 2)) * rollStepS, 0.10f, 0.48f);
+            delaySamp = std::max(1, (int)(t * (sr > 0.f ? sr : 48000.f)));
+            if (sr > 0.f)
+                delaySamp = std::min(delaySamp, (int)dlyL.size() - 2);
+            delayFb = w.range(0.35f, 0.6f);
+        }
+
+        // slow spatial drift, one lazy LFO per element
+        for (int e = 0; e < kElements; e++) {
+            panRate[e] = w.range(0.03f, 0.15f);
+            panPhase[e] = w.range(0.f, 2.f * (float)M_PI);
+        }
+
         // sympathetic intervals, weighted toward the root
         static const float kRootSemis[10] =
             {0.f, 0.f, 0.f, 12.f, -12.f, 7.f, -7.f, 5.f, -5.f, 24.f};
+        // element character tables: divisions of the 16-step loop
+        static const int kWarpDivs[4] = {4, 8, 8, 16};
+        static const int kWeftDivs[4] = {1, 2, 3, 4};
+        static const int kFleckDivs[5] = {1, 2, 2, 3, 4};
 
-        textor_dsp::Rng rng;
-        rng.seed(seed);
         for (int e = 0; e < kElements; e++) {
-            int lo, hi;
-            if (texture) {
-                // warp dense, weft medium, fleck sparse
-                lo = (e == 0) ? 4 : (e == 1) ? 3 : 2;
-                hi = (e == 0) ? 8 : (e == 1) ? 6 : 4;
-            }
-            else {
-                lo = (e == 0) ? 2 : (e == 1) ? 3 : 4;
-                hi = (e == 0) ? 5 : (e == 1) ? 8 : 10;
-            }
-            int n = std::min(rng.irange(lo, hi), kMaxEventsPerElement);
-            eventCount[e] = n;
-            for (int i = 0; i < n; i++) {
-                Event& ev = events[e][i];
-                ev.step = rng.irange(0, kSteps - 1);
-                ev.startFrac = rng.uniform();
+            int n;
+            if (e == 0)
+                n = 1 + (w.uniform() < 0.5f ? 1 : 0);
+            else if (e == 1)
+                n = 1 + (w.uniform() < 0.5f ? 1 : 0);
+            else
+                n = 1 + w.irange(0, 2);
+            strandCount[e] = std::min(n, kMaxStrands);
+            for (int i = 0; i < strandCount[e]; i++) {
+                Strand& s = strands[e][i];
+                if (e == 0)
+                    s.div = kWarpDivs[w.irange(0, 3)];
+                else if (e == 1)
+                    s.div = kWeftDivs[w.irange(0, 3)];
+                else
+                    s.div = kFleckDivs[w.irange(0, 4)];
+                s.phase = w.irange(0, s.div - 1);
+                s.prob = (e == 0) ? w.range(0.9f, 1.f)
+                       : (e == 1) ? w.range(0.75f, 1.f)
+                                  : w.range(0.6f, 0.95f);
+                s.startFrac = w.uniform();
+                float slot = s.div * rollStepS;   // time until it fires again
                 if (texture) {
-                    // long overlapping strands; flecks stay shorter
-                    float maxLen = (e == 2) ? 0.8f : 1.6f;
-                    ev.lenS = rng.range(0.4f, maxLen);
+                    // long smears that overlap their own repeats
+                    s.lenS = clamp(slot * w.range(0.8f, 1.6f), 0.15f, 1.8f);
+                    s.attackFrac = w.range(0.3f, 0.6f);
                 }
                 else {
-                    ev.lenS = rng.range(0.04f, (e == 0) ? 0.3f : 0.18f);
+                    s.lenS = clamp(slot * w.range(0.3f, 0.8f), 0.05f, 0.5f);
+                    s.attackFrac = w.range(0.12f, 0.32f);
                 }
+                // semitone-quantized even in random mode (measured)
                 if (root)
-                    ev.semi = kRootSemis[rng.irange(0, 9)] + ((e == 2) ? 12.f : 0.f);
+                    s.semi = kRootSemis[w.irange(0, 9)];
                 else
-                    ev.semi = rng.range(-12.f, 12.f) + ((e == 2) ? 7.f : 0.f);
-                ev.reverse = rng.uniform() < (texture ? 0.3f : 0.15f);
-                ev.pan = rng.range(-0.9f, 0.9f);
-                ev.amp = rng.range(0.7f, 1.f);
+                    s.semi = (float)w.irange(-12, 12);
+                if (e == 2)
+                    s.semi += 12.f;   // flecks sit an octave up
+                s.reverse = w.uniform() < (texture ? 0.3f : 0.15f);
+                s.pan = w.range(-0.25f, 0.25f);   // near-mono field
+                s.amp = w.range(0.7f, 1.f);
+                s.jitterFrac = w.range(0.04f, 0.14f);
             }
         }
     }
@@ -285,7 +384,18 @@ struct Textor : Module {
         moveCounter++;
         float knob = params[WEAVE_PARAM].getValue();
         seed = (uint32_t)(knob * 65535.f) * 2654435761u + moveCounter * 0x9e3779b9u;
-        weaveEvents();
+        weaveStrands();
+        if (sweepRestart && loomRunning) {
+            // hardware behavior: the fresh weave starts NOW — fade the old
+            // voices fast and fire step 0 on the next sample (next clock
+            // edge when externally clocked), so a knob sweep sputters a
+            // cascade of pattern beginnings
+            for (auto& v : voices)
+                if (v.active && v.kill <= 0.f)
+                    v.kill = 1.f;
+            step = kSteps - 1;
+            stepPhase = stepSamples;
+        }
         loomRunning = true;
     }
 
@@ -299,20 +409,28 @@ struct Textor : Module {
     void clearSample() {
         std::fill(cloth.begin(), cloth.end(), 0.f);
         std::fill(shadow.begin(), shadow.end(), 0.f);
+        std::fill(dlyL.begin(), dlyL.end(), 0.f);
+        std::fill(dlyR.begin(), dlyR.end(), 0.f);
         capturing = false;
         for (auto& v : voices)
             v.active = false;
         loomRunning = false;
     }
 
-    void fireStep() {
+    void fireStep(float interval) {
         using namespace textor_dsp;
-        bool texture = lastTexture;
         for (int e = 0; e < kElements; e++) {
-            for (int i = 0; i < eventCount[e]; i++) {
-                const Event& ev = events[e][i];
-                if (ev.step != step)
+            for (int i = 0; i < strandCount[e]; i++) {
+                Strand& s = strands[e][i];
+                if (step % s.div != s.phase)
                     continue;
+                if (rt.uniform() > s.prob)
+                    continue;   // probabilistic fire: the loop breathes
+                // occasional mutation: the strand re-picks its fragment,
+                // and the loop drifts somewhere new
+                if (rt.uniform() < 0.10f)
+                    s.startFrac = rt.uniform();
+
                 gatePulse[e].trigger(0.002f);
                 lightEnv[e] = 1.f;
 
@@ -329,14 +447,17 @@ struct Textor : Module {
                 v->elem = e;
                 v->order = voiceOrder++;
                 v->age = 0.f;
-                v->lenSamp = std::max(ev.lenS * sr, 32.f);
-                float rate = std::pow(2.f, ev.semi / 12.f);
-                v->rate = ev.reverse ? -rate : rate;
-                v->pos = ev.startFrac * (float)(bufLen - 1);
-                v->amp = ev.amp;
-                v->texture = texture;
-                // equal-power pan
-                float p = (ev.pan + 1.f) * 0.25f * M_PI;
+                v->kill = 0.f;
+                v->startDelay = (int)(s.jitterFrac * interval * rt.uniform());
+                v->lenSamp = std::max(s.lenS * sr, 32.f);
+                v->attackFrac = s.attackFrac;
+                float rate = std::pow(2.f, s.semi / 12.f);
+                v->rate = s.reverse ? -rate : rate;
+                v->pos = s.startFrac * (float)(bufLen - 1);
+                v->amp = s.amp * rt.range(0.85f, 1.15f);
+                // narrow pan + this element's slow drift, frozen at fire
+                float pan = clamp(s.pan + 0.12f * std::sin(panPhase[e]), -1.f, 1.f);
+                float p = (pan + 1.f) * 0.25f * (float)M_PI;
                 v->panL = std::cos(p);
                 v->panR = std::sin(p);
             }
@@ -350,9 +471,21 @@ struct Textor : Module {
         if (recHit)
             startCapture();
 
-        // weave trigger = a nudge of the knob
-        if (weaveTrig.process(inputs[WEAVE_INPUT].getVoltage(), 0.1f, 1.f))
-            reweave();
+        // weave input: reroll on any voltage change, so stepped random CV
+        // rerolls per step and a plain trigger works too
+        if (inputs[WEAVE_INPUT].isConnected()) {
+            float wcv = inputs[WEAVE_INPUT].getVoltage();
+            if (!weaveCvPrimed) {
+                weaveCvPrimed = true;
+                lastWeaveCv = wcv;
+            }
+            else if (std::fabs(wcv - lastWeaveCv) > 0.5f) {
+                lastWeaveCv = wcv;
+                reweave();
+            }
+        }
+        else
+            weaveCvPrimed = false;
 
         // knob zones (act on transitions only; the first evaluation just
         // records where the knob already is, so a patch loading with the
@@ -369,6 +502,8 @@ struct Textor : Module {
             if (inRec && !wasInRec)
                 startCapture();
         }
+        wasInReset = inReset;
+        wasInRec = inRec;
         if (!inReset && !inRec) {
             if (lastWovenKnob < 0.f)
                 lastWovenKnob = knob;
@@ -377,14 +512,19 @@ struct Textor : Module {
                 reweave();
             }
         }
-        wasInReset = inReset;
-        wasInRec = inRec;
 
         // flipping a switch re-renders the same weave in the new mode
         bool texture = params[MODE_PARAM].getValue() > 0.5f;
         bool root = params[PITCH_PARAM].getValue() > 0.5f;
         if (loomRunning && (texture != lastTexture || root != lastRoot))
-            weaveEvents();
+            weaveStrands();
+
+        // slow spatial drift
+        for (int e = 0; e < kElements; e++) {
+            panPhase[e] += panRate[e] * 2.f * (float)M_PI * kControlDiv / sr;
+            if (panPhase[e] > 2.f * (float)M_PI)
+                panPhase[e] -= 2.f * (float)M_PI;
+        }
     }
 
     void process(const ProcessArgs& args) override {
@@ -403,19 +543,30 @@ struct Textor : Module {
             if (++capturePos >= bufLen) {
                 capturing = false;
                 std::copy(shadow.begin(), shadow.end(), cloth.begin());
+                // the hardware starts playing a fresh weave by itself
+                // the moment a capture lands on a silent loom
+                if (!loomRunning)
+                    reweave();
             }
         }
         lights[REC_LIGHT].setBrightness(capturing ? 1.f : 0.f);
 
         // --- step clock ---
+        sinceClock += 1.f;
         bool clocked = inputs[CLOCK_INPUT].isConnected();
         bool clockEdge = clockTrig.process(inputs[CLOCK_INPUT].getVoltage(), 0.1f, 1.f);
+        if (clockEdge) {
+            if (sinceClock < 2.f * sr)
+                clockInterval = sinceClock;
+            sinceClock = 0.f;
+        }
+        float interval = (clocked && clockInterval > 0.f) ? clockInterval : stepSamples;
         if (loomRunning) {
             if (clocked) {
                 if (clockEdge) {
                     step = (step + 1) % kSteps;
                     stepPhase = 0.f;
-                    fireStep();
+                    fireStep(interval);
                 }
             }
             else {
@@ -423,20 +574,20 @@ struct Textor : Module {
                 if (stepPhase >= stepSamples) {
                     stepPhase -= stepSamples;
                     step = (step + 1) % kSteps;
-                    fireStep();
+                    fireStep(interval);
                 }
             }
         }
 
-        // --- voices ---
-        float outL = 0.f, outR = 0.f;
-        float levels[kElements] = {
-            params[WARP_LEVEL_PARAM].getValue(),
-            params[WEFT_LEVEL_PARAM].getValue(),
-            params[FLECK_LEVEL_PARAM].getValue()};
+        // --- voices, summed per element ---
+        float elemL[kElements] = {}, elemR[kElements] = {};
         for (auto& v : voices) {
             if (!v.active)
                 continue;
+            if (v.startDelay > 0) {
+                v.startDelay--;
+                continue;
+            }
             // wrap the read head around the cloth
             if (v.pos >= (float)bufLen) v.pos -= (float)bufLen;
             if (v.pos < 0.f) v.pos += (float)bufLen;
@@ -444,28 +595,59 @@ struct Textor : Module {
             int i1 = i0 + 1;
             if (i1 >= bufLen) i1 = 0;
             float frac = v.pos - (float)i0;
-            float s = cloth[i0] + (cloth[i1] - cloth[i0]) * frac;
+            float smp = cloth[i0] + (cloth[i1] - cloth[i0]) * frac;
 
+            // asymmetric raised-cosine window: soft rise, soft fall
             float t = v.age / v.lenSamp;
+            float a = v.attackFrac;
             float env;
-            if (v.texture) {
-                // raised-cosine window
-                float w = std::sin((float)M_PI * t);
-                env = w * w;
+            if (t < a)
+                env = 0.5f * (1.f - std::cos((float)M_PI * t / a));
+            else
+                env = 0.5f * (1.f + std::cos((float)M_PI * (t - a) / (1.f - a)));
+
+            if (v.kill > 0.f) {
+                // reroll restart: old weave fades out in ~8 ms
+                v.kill -= 1.f / (0.008f * sr);
+                if (v.kill <= 0.f) {
+                    v.active = false;
+                    continue;
+                }
+                env *= v.kill;
             }
-            else {
-                // fast attack, exponential-ish decay
-                float atk = std::min(v.age / (0.005f * sr), 1.f);
-                env = atk * std::exp(-5.f * t);
-            }
-            s *= env * v.amp * levels[v.elem];
-            outL += s * v.panL;
-            outR += s * v.panR;
+
+            smp *= env * v.amp;
+            elemL[v.elem] += smp * v.panL;
+            elemR[v.elem] += smp * v.panR;
 
             v.pos += v.rate;
             v.age += 1.f;
             if (v.age >= v.lenSamp)
                 v.active = false;
+        }
+
+        // --- the delayed spacey element: decaying repeats on its bus ---
+        {
+            int n = (int)dlyL.size();
+            int readIdx = dlyPos - delaySamp;
+            if (readIdx < 0) readIdx += n;
+            float wetL = dlyL[readIdx];
+            float wetR = dlyR[readIdx];
+            dlyL[dlyPos] = elemL[delayElem] + wetL * delayFb;
+            dlyR[dlyPos] = elemR[delayElem] + wetR * delayFb;
+            if (++dlyPos >= n) dlyPos = 0;
+            elemL[delayElem] += wetL * 0.6f;
+            elemR[delayElem] += wetR * 0.6f;
+        }
+
+        float levels[kElements] = {
+            params[WARP_LEVEL_PARAM].getValue(),
+            params[WEFT_LEVEL_PARAM].getValue(),
+            params[FLECK_LEVEL_PARAM].getValue()};
+        float outL = 0.f, outR = 0.f;
+        for (int e = 0; e < kElements; e++) {
+            outL += elemL[e] * levels[e];
+            outR += elemR[e] * levels[e];
         }
 
         float vL = 5.f * softLimit(outL * 1.4f);
@@ -568,6 +750,13 @@ struct TextorWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.10f, 103.50f)), module, Textor::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.90f, 103.50f)), module, Textor::LEVEL_R_LIGHT));
         // @layout:end
+    }
+
+    void appendContextMenu(Menu* menu) override {
+        Textor* module = getModule<Textor>();
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createBoolPtrMenuItem("Restart loop on every weave",
+            "", &module->sweepRestart));
     }
 };
 

@@ -881,14 +881,14 @@ static void testTextor() {
         m.process(makeArgs(frame++));
     }
     m.inputs[Textor::AUDIO_INPUT].setVoltage(0.f);
-    // no weave yet: silent
+    // a capture landing on a silent loom starts playback by itself
     Stats pre;
-    for (int i = 0; i < (int)(1 * SR); i++) {
+    for (int i = 0; i < (int)(2 * SR); i++) {
         m.process(makeArgs(frame++));
         pre.add(m.outputs[Textor::LEFT_OUTPUT].getVoltage());
     }
-    report("textor", "silent_before_weave", pre.rms(), pre.rms() < 0.01);
-    // move the knob into the weave field (baseline), then nudge it: loop starts
+    report("textor", "autoplay_after_rec", pre.rms(), pre.rms() > 0.02);
+    // move the knob into the weave field (baseline), then nudge it: reroll
     m.params[Textor::WEAVE_PARAM].setValue(0.5f);
     for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
     m.params[Textor::WEAVE_PARAM].setValue(0.6f);
@@ -910,18 +910,36 @@ static void testTextor() {
     report("textor", "peak", s.peak, s.peak <= 5.01f);   // soft-limited * 5V
     report("textor", "gates_fire", gates, gates > 5);
     // reweave changes the loop: different seeds should give a different
-    // event pattern (compare a coarse fingerprint: total event steps)
-    long fp1 = 0;
-    for (int e = 0; e < Textor::kElements; e++)
-        for (int i = 0; i < m.eventCount[e]; i++)
-            fp1 += (e + 1) * (m.events[e][i].step + 1);
+    // strand pattern (coarse fingerprint over divisions/phases + tempo)
+    auto fingerprint = [](Textor& t) {
+        long fp = (long)(t.rollStepS * 1e6f);
+        for (int e = 0; e < Textor::kElements; e++)
+            for (int i = 0; i < t.strandCount[e]; i++)
+                fp += (e + 1) * (t.strands[e][i].div * 31 + t.strands[e][i].phase + 1);
+        return fp;
+    };
+    long fp1 = fingerprint(m);
+    float tempo1 = m.rollStepS;
     m.params[Textor::WEAVE_PARAM].setValue(0.8f);
     for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
-    long fp2 = 0;
-    for (int e = 0; e < Textor::kElements; e++)
-        for (int i = 0; i < m.eventCount[e]; i++)
-            fp2 += (e + 1) * (m.events[e][i].step + 1);
+    long fp2 = fingerprint(m);
+    float tempo2 = m.rollStepS;
     report("textor", "reweave_changes_loop", std::labs(fp1 - fp2), fp1 != fp2);
+    // per-roll tempo: the two rolls should not share a step period
+    report("textor", "tempo_per_roll", std::fabs(tempo1 - tempo2),
+           std::fabs(tempo1 - tempo2) > 1e-4f);
+    // pitch shifts are semitone-quantized even in random mode
+    m.params[Textor::PITCH_PARAM].setValue(0.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    bool semiOk = true;
+    for (int e = 0; e < Textor::kElements; e++)
+        for (int i = 0; i < m.strandCount[e]; i++) {
+            float s = m.strands[e][i].semi;
+            if (std::fabs(s - std::round(s)) > 1e-4f) semiOk = false;
+        }
+    report("textor", "random_pitch_semitones", semiOk, semiOk);
+    m.params[Textor::PITCH_PARAM].setValue(1.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
     // rhythm mode re-renders and keeps playing
     m.params[Textor::MODE_PARAM].setValue(0.f);
     Stats rh;
@@ -947,6 +965,19 @@ static void testTextor() {
     report("textor", "clocked_gates", fastGates, fastGates > 0);
     m.inputs[Textor::CLOCK_INPUT].channels = 0;
     m.inputs[Textor::CLOCK_INPUT].setVoltage(0.f);
+    // hardware sweep behavior: rerolls with restart must stay clean
+    m.sweepRestart = true;
+    Stats sw;
+    for (int k = 0; k < 8; k++) {
+        m.params[Textor::WEAVE_PARAM].setValue(0.3f + 0.05f * k);
+        for (int i = 0; i < (int)(0.25f * SR); i++) {
+            m.process(makeArgs(frame++));
+            sw.add(m.outputs[Textor::LEFT_OUTPUT].getVoltage());
+        }
+    }
+    report("textor", "sweep_restart_nans", sw.nans, sw.nans == 0);
+    report("textor", "sweep_restart_alive", sw.rms(), sw.rms() > 0.005);
+    m.sweepRestart = false;
     // reset zone: erases the sample and stops the loom
     m.params[Textor::WEAVE_PARAM].setValue(0.f);
     for (int i = 0; i < (int)(2 * SR); i++) m.process(makeArgs(frame++));

@@ -17,14 +17,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     1.5) with a half-time doppler switch; audio input into the loop,
     CV over pitch (V/oct), feedback gain, LPF cutoff and echo time
   - **textor**, a new module: one-knob loop weaver, a behavioral clone
-    of the Fieldtone Weaver Modular — captures two seconds of audio
-    and scatters it over a 16-step loop as three elements (warp/weft/
-    fleck) with level knobs and per-onset gate outputs; every movement
+    of the Fieldtone Weaver Modular, its engine tuned against signal
+    analysis of published demos — captures two seconds of audio and
+    weaves it into a loop of three elements (warp/weft/fleck, level
+    knobs and gate outputs each): periodic clock-divider-like strands
+    with per-roll random tempo (~45–300 ms steps) and loop span, soft
+    asymmetric fragment envelopes, semitone-quantized pitch (random or
+    sympathetic-root, panel switch), a nearly mono field with slow
+    spatial drift, per-repeat jitter/mutation so loops evolve, and one
+    element per roll carrying decaying delay repeats; every movement
     of the weave knob weaves a new loop (reset and record zones at the
-    knob's start, no undo); texture/rhythm and root/random pitch
-    switches; record button + trigger replaces the sample while the
-    loop plays; clock input paces the steps; the sample is deliberately
-    not saved with the patch, only the weave's seed
+    knob's start, no undo), a capture landing on a silent loom starts
+    playing by itself, the weave input rerolls on any CV change, a
+    clock input paces the steps, and the hardware's
+    restart-on-every-reroll knob-sweep behavior is a context-menu
+    option (off by default); texture/rhythm switch re-renders the same
+    weave; the sample is deliberately not saved with the patch, only
+    the weave's seed
 
 ## [2.8.0] - 2026-07-16
 ### Added
