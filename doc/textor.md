@@ -22,8 +22,9 @@ Every weave rolls its own character:
   periodic strands, firing every N steps like a randomly-dialed clock
   divider, each strand forever replaying its own fragment of the buffer
   with fixed pitch, direction, length and position in the field.
-- **a delayed spacey element** — one element per roll carries decaying
-  delay repeats (~0.1–0.45 s, moderate feedback).
+- **a delayed spacey element** — most rolls hand one element decaying
+  delay repeats (~0.1–0.45 s, moderate feedback); about a third of the
+  rolls come out completely dry.
 - **evolution** — the loop repeats recognizably but never exactly:
   per-fire timing jitter, probabilistic fires, and strands that
   occasionally re-pick their fragment, so the weave slowly drifts.
@@ -107,7 +108,8 @@ can audition the same loop as pad and as beat.
 - A stepped random voltage into **weave** rerolls on every step; a slow
   LFO rerolls every time it drifts half a volt.
 - Solo an element: all levels down except one. The delay lives on a
-  different element each roll — hunt for the spacey one.
+  different element each roll (when the roll has one at all) — hunt for
+  the spacey one.
 
 ## Attribution
 

@@ -178,7 +178,7 @@ struct Textor : Module {
 
     // per-roll character
     float rollStepS = 0.125f;      // this roll's step period, seconds
-    int delayElem = 1;             // which element carries the delay
+    int delayElem = 1;             // which element carries the delay (-1: none)
     int delaySamp = 4800;
     float delayFb = 0.45f;
     float panRate[kElements] = {}; // slow spatial drift per element
@@ -308,10 +308,14 @@ struct Textor : Module {
         if (sr > 0.f)
             stepSamples = rollStepS * sr;
 
-        // one element per roll carries decaying delay repeats
+        // most rolls hand one element decaying delay repeats; about a
+        // third come out completely dry
         {
             float u = w.uniform();
-            delayElem = (u < 0.2f) ? 0 : (u < 0.7f) ? 1 : 2;
+            delayElem = (u < 0.35f) ? -1
+                      : (u < 0.48f) ? 0    // warp
+                      : (u < 0.80f) ? 1    // weft
+                                    : 2;   // fleck
             float t = clamp((1.f + (float)w.irange(0, 2)) * rollStepS, 0.10f, 0.48f);
             delaySamp = std::max(1, (int)(t * (sr > 0.f ? sr : 48000.f)));
             if (sr > 0.f)
@@ -627,17 +631,27 @@ struct Textor : Module {
         }
 
         // --- the delayed spacey element: decaying repeats on its bus ---
+        // on a dry roll (delayElem < 0) the bus keeps circulating with
+        // feedback only, so a leftover tail fades out instead of waiting,
+        // frozen, for the next delayed roll
         {
             int n = (int)dlyL.size();
             int readIdx = dlyPos - delaySamp;
             if (readIdx < 0) readIdx += n;
             float wetL = dlyL[readIdx];
             float wetR = dlyR[readIdx];
-            dlyL[dlyPos] = elemL[delayElem] + wetL * delayFb;
-            dlyR[dlyPos] = elemR[delayElem] + wetR * delayFb;
+            float inL = 0.f, inR = 0.f;
+            if (delayElem >= 0) {
+                inL = elemL[delayElem];
+                inR = elemR[delayElem];
+            }
+            dlyL[dlyPos] = inL + wetL * delayFb;
+            dlyR[dlyPos] = inR + wetR * delayFb;
             if (++dlyPos >= n) dlyPos = 0;
-            elemL[delayElem] += wetL * 0.6f;
-            elemR[delayElem] += wetR * 0.6f;
+            if (delayElem >= 0) {
+                elemL[delayElem] += wetL * 0.6f;
+                elemR[delayElem] += wetR * 0.6f;
+            }
         }
 
         float levels[kElements] = {

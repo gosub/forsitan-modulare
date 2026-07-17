@@ -24,8 +24,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     with per-roll random tempo (~45–300 ms steps) and loop span, soft
     asymmetric fragment envelopes, semitone-quantized pitch (random or
     sympathetic-root, panel switch), a nearly mono field with slow
-    spatial drift, per-repeat jitter/mutation so loops evolve, and one
-    element per roll carrying decaying delay repeats; every movement
+    spatial drift, per-repeat jitter/mutation so loops evolve, and on
+    most rolls (about two in three) one element carrying decaying
+    delay repeats; every movement
     of the weave knob weaves a new loop (reset and record zones at the
     knob's start, no undo), a capture landing on a silent loom starts
     playing by itself, the weave input rerolls on any CV change, a
