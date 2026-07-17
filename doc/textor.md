@@ -27,7 +27,10 @@ Every weave rolls its own character:
   rolls come out completely dry.
 - **evolution** — the loop repeats recognizably but never exactly:
   per-fire timing jitter, probabilistic fires, and strands that
-  occasionally re-pick their fragment, so the weave slowly drifts.
+  occasionally re-pick their fragment, so the weave drifts. How fast is
+  a context-menu choice: **Frozen** (the loop repeats exactly), **Slow**
+  (the default: a strand mutates on the order of once a minute) or
+  **Fast** (the drift rate measured in the hardware demos).
 - **soft edges** — fragments rise and fall on asymmetric raised-cosine
   windows (attacks mostly in the 50–400 ms range); rhythm mode is
   choppier, texture mode smears.
@@ -96,6 +99,11 @@ can audition the same loop as pad and as beat.
   rapid cascade of pattern beginnings (the characteristic Weaver scrub
   sound). Off by default: weaves then swap seamlessly in place, keeping
   the step position and letting running fragments ring out.
+- **Loop evolution** — how fast the weave drifts between repeats:
+  **Frozen** disables skips, mutation and jitter (the loop replays
+  exactly, only the slow spatial drift remains); **Slow** (default)
+  breathes gently and mutates rarely; **Fast** matches the drift rate
+  measured in the hardware demos.
 
 ## Tips
 

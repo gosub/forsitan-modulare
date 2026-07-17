@@ -201,6 +201,7 @@ struct Textor : Module {
 
     // options
     bool sweepRestart = false;  // hardware behavior: reroll restarts loop
+    int evolution = 1;          // 0 frozen, 1 slow, 2 fast (demo-matched)
 
     // control state
     float lastWovenKnob = -1.f;
@@ -271,6 +272,7 @@ struct Textor : Module {
         json_object_set_new(rootJ, "moveCounter", json_integer((json_int_t)moveCounter));
         json_object_set_new(rootJ, "loomRunning", json_boolean(loomRunning));
         json_object_set_new(rootJ, "sweepRestart", json_boolean(sweepRestart));
+        json_object_set_new(rootJ, "evolution", json_integer(evolution));
         return rootJ;
     }
 
@@ -284,6 +286,8 @@ struct Textor : Module {
             loomRunning = json_boolean_value(j);
         if ((j = json_object_get(rootJ, "sweepRestart")))
             sweepRestart = json_boolean_value(j);
+        if ((j = json_object_get(rootJ, "evolution")))
+            evolution = clamp((int)json_integer_value(j), 0, 2);
         if (loomRunning)
             weaveStrands();
     }
@@ -423,16 +427,23 @@ struct Textor : Module {
 
     void fireStep(float interval) {
         using namespace textor_dsp;
+        // how much the loop is allowed to drift per fire
+        static const float kMutateP[3] = {0.f, 0.01f, 0.10f};
+        static const float kSkipScale[3] = {0.f, 0.35f, 1.f};
+        static const float kJitScale[3] = {0.f, 0.5f, 1.f};
+        static const float kAmpJit[3] = {0.f, 0.05f, 0.15f};
+        int evo = clamp(evolution, 0, 2);
         for (int e = 0; e < kElements; e++) {
             for (int i = 0; i < strandCount[e]; i++) {
                 Strand& s = strands[e][i];
                 if (step % s.div != s.phase)
                     continue;
-                if (rt.uniform() > s.prob)
-                    continue;   // probabilistic fire: the loop breathes
+                // probabilistic fire: the loop breathes
+                if (rt.uniform() < (1.f - s.prob) * kSkipScale[evo])
+                    continue;
                 // occasional mutation: the strand re-picks its fragment,
                 // and the loop drifts somewhere new
-                if (rt.uniform() < 0.10f)
+                if (rt.uniform() < kMutateP[evo])
                     s.startFrac = rt.uniform();
 
                 gatePulse[e].trigger(0.002f);
@@ -452,13 +463,13 @@ struct Textor : Module {
                 v->order = voiceOrder++;
                 v->age = 0.f;
                 v->kill = 0.f;
-                v->startDelay = (int)(s.jitterFrac * interval * rt.uniform());
+                v->startDelay = (int)(s.jitterFrac * kJitScale[evo] * interval * rt.uniform());
                 v->lenSamp = std::max(s.lenS * sr, 32.f);
                 v->attackFrac = s.attackFrac;
                 float rate = std::pow(2.f, s.semi / 12.f);
                 v->rate = s.reverse ? -rate : rate;
                 v->pos = s.startFrac * (float)(bufLen - 1);
-                v->amp = s.amp * rt.range(0.85f, 1.15f);
+                v->amp = s.amp * rt.range(1.f - kAmpJit[evo], 1.f + kAmpJit[evo]);
                 // narrow pan + this element's slow drift, frozen at fire
                 float pan = clamp(s.pan + 0.12f * std::sin(panPhase[e]), -1.f, 1.f);
                 float p = (pan + 1.f) * 0.25f * (float)M_PI;
@@ -771,6 +782,8 @@ struct TextorWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);
         menu->addChild(createBoolPtrMenuItem("Restart loop on every weave",
             "", &module->sweepRestart));
+        menu->addChild(createIndexPtrSubmenuItem("Loop evolution",
+            {"Frozen", "Slow", "Fast"}, &module->evolution));
     }
 };
 
