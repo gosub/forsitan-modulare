@@ -137,7 +137,10 @@ struct Imber : Module {
         configParam(FXMORPH_PARAM, 0.f, 1.f, 0.f, "FX constellation morph");
         configParam(REACH_PARAM, 0.05f, 0.7f, 0.25f, "Reach");
         configParam(COUPLE_PARAM, 0.f, 1.f, 1.f, "Couple");
-        configParam(BPM_PARAM, 60.f, 180.f, 100.f, "Tempo", " bpm");
+        // stored as log2(bpm): exponential taper down to glacial tempos,
+        // displayed in bpm (base-2 display), CV is 1 V/oct (doubles per volt)
+        configParam(BPM_PARAM, std::log2(1.f), std::log2(180.f),
+                    std::log2(100.f), "Tempo", " bpm", 2.f, 1.f);
         configParam(SPD_PARAM, 0.1f, 2.f, 1.f, "Speed", "x");
         configParam(LPM_PARAM, 0.1f, 3.f, 2.f, "Max loop length", " s");
         configParam(SKP_PARAM, 0.f, 1.f, 0.15f, "Skip probability", "%", 0.f, 100.f);
@@ -174,7 +177,7 @@ struct Imber : Module {
         configInput(NDC_INPUT, "Nudge clocks trigger");
         configInput(RRF_INPUT, "Reroll FX trigger");
         configInput(NDF_INPUT, "Nudge FX trigger");
-        configInput(BPM_INPUT, "Tempo CV");
+        configInput(BPM_INPUT, "Tempo CV (1 V/oct: +1 V doubles the tempo)");
         configInput(SPD_INPUT, "Speed CV");
         configInput(PLS_INPUT, "Micro trigger probability CV");
         configInput(BIT_INPUT, "Bitcrush CV");
@@ -235,7 +238,7 @@ struct Imber : Module {
         eng.rerollFx(constRng);
         eng.timingRng.seed(constRng.next());
         imber_dsp::Rng& r = constRng;
-        params[BPM_PARAM].setValue(r.range(60.f, 180.f));
+        params[BPM_PARAM].setValue(r.range(std::log2(60.f), std::log2(180.f)));
         params[SPD_PARAM].setValue(r.range(0.1f, 2.f));
         params[LPM_PARAM].setValue(r.range(0.1f, 3.f));
         params[SKP_PARAM].setValue(r.uniform());
@@ -359,8 +362,9 @@ struct Imber : Module {
                          0.05f, 0.7f);
         p.couple = clampf(params[COUPLE_PARAM].getValue()
                           + inputs[COUPLE_INPUT].getVoltage() / 10.f, 0.f, 1.f);
-        p.bpm = clampf(params[BPM_PARAM].getValue()
-                       + inputs[BPM_INPUT].getVoltage() * 12.f, 60.f, 180.f);
+        p.bpm = clampf(std::pow(2.f, params[BPM_PARAM].getValue()
+                                     + inputs[BPM_INPUT].getVoltage()),
+                       1.f, 360.f);
         p.spd = clampf(params[SPD_PARAM].getValue()
                        + inputs[SPD_INPUT].getVoltage() / 5.f, 0.1f, 2.f);
         p.lpm = params[LPM_PARAM].getValue();

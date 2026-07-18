@@ -78,8 +78,10 @@ LPM seconds long; samples come from a 64-buffer loop bank via an urn
 
 ## Clocks: drunk time
 
-The master clock (BPM, with CV) derives all five divisions, and every
-division edge is jittered by a bounded random walk — Haiku's signature
+The master clock (BPM 1–180, exponential knob — the bottom of the range
+is glacial, a quarter note per minute; the CV is 1 V/oct, +1 V doubles
+the tempo, and can push past the knob up to 360) derives all five
+divisions, and every division edge is jittered by a bounded random walk — Haiku's signature
 "structured but never repeating" micro-timing. The same jittered edges
 drive the voices and the five **gate outputs**, so external gear locks
 to imber-time, not metronome-time.
