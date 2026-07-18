@@ -67,6 +67,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     with 1 V/oct CV, LEN play window, loop/one-shot and trig/gate
     modes, free-running loop when unpatched, EOC trigger out; only
     the seed is saved, a reload regenerates the identical sound
+  - **guttur**, a new module: chaotic resonator drone, a port of Tom
+    Mudd's Gutter Synthesis (GPL-3, also drawing on the SuperCollider
+    port by Mads Kjeldgaard and Scott Carver, whose oversampling
+    classes are Jatin Chowdhury's from ChowDSP-VCV) — a forced damped
+    Duffing oscillator whose forcing loop runs *through* two banks of
+    24 resonant bandpass biquads, so oscillator and resonators are one
+    coupled chaotic system; the historic quirks are kept faithfully
+    (Q indexed per filter in the biquad normalization but per bank in
+    the gain terms, one Q array shared between banks, the chaos
+    "lowpass" that is really a differencing step, the output tapped
+    from the filter sum before the distortion), while the SC port's
+    fasttan mistuning (a factor of pi) and the atan-approx 0/0 at zero
+    are not; five chaos knobs (drive/tone/damp/rate/smooth) with
+    attenuverted CV, resonator macros over the 20 factory banks from
+    the original Max patch (per-bank select with glided morphing,
+    pitch with 1 V/oct, master Q, seeded per-filter spread scatter
+    saved with the patch and re-rolled by Randomize, bank gains,
+    level), runtime-switchable distortion (five types, oversampled,
+    1x-16x menu), filters-off raw-Duffing mode, reset button/trigger
+    that re-ignites the chaos, audio input that replaces the internal
+    sine forcing when patched, and a DUFF output carrying the raw
+    chaotic state as a modulation source
 
 ## [2.8.0] - 2026-07-16
 ### Added

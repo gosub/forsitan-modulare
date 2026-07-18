@@ -30,6 +30,7 @@ A collection of VCV Rack modules.
 | [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops, three elements with gate outs (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
 | [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing — drunk clocks, morphing constellations, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
 | [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine synthesis families (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
+| [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters, 20 morphing factory banks (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
 
 ## Tools
 
@@ -80,6 +81,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **textor** | weaver — reweaves two seconds of sound into ever-new cloth (the Fieldtone Weaver) |
 | **imber** | rain shower, downpour (a generative rain of samples, inspired by Giorgio Sancristoforo's Haiku) |
 | **sylla** | *almost Latin* — a clipped *syllaba*, syllable: haiku are counted in syllables, and sylla speaks one small sound at a time |
+| **guttur** | throat — the guttural voice, punning on Tom Mudd's Gutter Synthesis it ports |
 
 ## Author
 
