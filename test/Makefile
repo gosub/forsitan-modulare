@@ -10,7 +10,7 @@ all: draen_sweep new_modules_smoke perge_render
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-new_modules_smoke: new_modules_smoke.cpp ../src/rete.cpp ../src/ululo.cpp ../src/tabes.cpp ../src/lustro.cpp ../src/bulla.cpp ../src/perge.cpp ../src/scando_engine.hpp
+new_modules_smoke: new_modules_smoke.cpp ../src/rete.cpp ../src/ululo.cpp ../src/tabes.cpp ../src/lustro.cpp ../src/bulla.cpp ../src/perge.cpp ../src/scando_engine.hpp ../src/imber.cpp ../src/sylla.cpp ../src/imber/imber_dsp.hpp ../src/imber/imber_gen.hpp ../src/imber/imber_fx.hpp ../src/imber/imber_engine.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 perge_render: perge_render.cpp ../src/perge.cpp

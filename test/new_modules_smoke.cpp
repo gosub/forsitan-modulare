@@ -1,5 +1,6 @@
 // new_modules_smoke — offline sanity checks for the v2.7.0 modules
-// (rete, ululo, tabes, lustro, bulla) plus perge, vorax and textor.
+// (rete, ululo, tabes, lustro, bulla) plus perge, vorax, textor,
+// imber and sylla.
 // Drives each module's process() directly and checks for non-finite
 // samples, runaway levels and basic expected behavior (self-oscillation,
 // loop decay, pluck response).
@@ -14,6 +15,8 @@
 rack::plugin::Plugin* pluginInstance = nullptr;
 
 #include "../src/rete.cpp"
+#include "../src/imber.cpp"
+#include "../src/sylla.cpp"
 #include "../src/ululo.cpp"
 #include "../src/tabes.cpp"
 #include "../src/lustro.cpp"
@@ -995,6 +998,165 @@ static void testTextor() {
     report("textor", "reset_stops_gates", offGates, offGates == 0);
 }
 
+static void testImber() {
+    Imber m;
+    long frame = 0;
+    // first process initializes the engine at SR; then pin everything
+    // deterministic: fixed timing seed, all clocks reachable, FX far away
+    m.process(makeArgs(frame++));
+    m.eng.init(SR, 42);
+    for (int i = 0; i < imber_engine::DIV_COUNT; i++) {
+        m.eng.clk[i].ax = m.eng.clk[i].bx = 0.45f + 0.025f * i;
+        m.eng.clk[i].ay = m.eng.clk[i].by = 0.5f;
+    }
+    for (int i = 0; i < imber_engine::kFxObjs; i++) {
+        m.eng.fxo[i].ax = m.eng.fxo[i].bx = 0.95f;
+        m.eng.fxo[i].ay = m.eng.fxo[i].by = 0.95f;
+    }
+    m.params[Imber::REACH_PARAM].setValue(0.7f);
+
+    // the worker-thread bank should land while the engine idles
+    // (simulated samples run faster than wall time; yield to the worker)
+    long waited = 0;
+    while (!m.eng.bank && waited < (long)(30 * SR)) {
+        m.process(makeArgs(frame++));
+        if (++waited % (long)SR == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    report("imber", "bank_lands_s", waited / SR, m.eng.bank != nullptr);
+    if (!m.eng.bank)
+        return;
+    report("imber", "bank_sizes",
+           m.eng.bank->loops.size(),
+           m.eng.bank->loops.size() == (size_t)imber_gen::kBankLoops
+           && m.eng.bank->skips.size() == (size_t)imber_gen::kBankSkips
+           && m.eng.bank->micros.size() == (size_t)imber_gen::kBankMicros);
+
+    // main render window: audio, gates, skip/micro activity, couplings
+    Stats s, sk, mi;
+    int g16 = 0;
+    float prevG = 0.f;
+    for (long i = 0; i < (long)(8 * SR); i++) {
+        m.process(makeArgs(frame++));
+        s.add(m.outputs[Imber::LEFT_OUTPUT].getVoltage());
+        s.add(m.outputs[Imber::RIGHT_OUTPUT].getVoltage());
+        sk.add(m.outputs[Imber::SKIP_OUTPUT].getVoltage());
+        mi.add(m.outputs[Imber::MICRO_OUTPUT].getVoltage());
+        float g = m.outputs[Imber::G16N_OUTPUT].getVoltage();
+        if (g > 5.f && prevG <= 5.f) g16++;
+        prevG = g;
+    }
+    report("imber", "nans", s.nans, s.nans == 0);
+    report("imber", "rms", s.rms(), s.rms() > 0.01);
+    report("imber", "peak", s.peak, s.peak <= 5.01f);
+    // 16n at 100 bpm is ~150 ms; drunk jitter still lands near 53 in 8 s
+    report("imber", "gate16_count", g16, g16 > 25 && g16 < 90);
+    report("imber", "skip_voice_alive", sk.rms(), sk.peak > 0.01f);
+    report("imber", "micro_voice_alive", mi.rms(), mi.peak > 0.01f);
+    int bound = 0;
+    for (int i = 0; i < Imber::kPlayers; i++)
+        bound += m.eng.pl[i].boundClock >= 0;
+    report("imber", "players_bound", bound, bound == Imber::kPlayers);
+    // default spread has 4 vertically aligned pairs -> sync couplings
+    report("imber", "pairs_detected", m.eng.pairCount, m.eng.pairCount >= 4);
+
+    // FX assignment: park an fx cluster on player 1
+    for (int i = 0; i < imber_engine::kFxObjs; i++) {
+        m.eng.fxo[i].ax = m.eng.fxo[i].bx =
+            m.params[Imber::X1_PARAM].getValue();
+        m.eng.fxo[i].ay = m.eng.fxo[i].by =
+            m.params[Imber::Y1_PARAM].getValue();
+    }
+    Stats fx;
+    for (long i = 0; i < (long)(3 * SR); i++) {
+        m.process(makeArgs(frame++));
+        fx.add(m.outputs[Imber::LEFT_OUTPUT].getVoltage());
+    }
+    report("imber", "fx_stack_nans", fx.nans, fx.nans == 0);
+    report("imber", "fx_stack_mask", m.eng.fxMask[0], m.eng.fxMask[0] == 0xff);
+
+    // ON off freezes and silences the engine (and its gates)
+    m.params[Imber::ON_PARAM].setValue(0.f);
+    for (long i = 0; i < (long)(0.5f * SR); i++)
+        m.process(makeArgs(frame++));
+    Stats off;
+    int offGates = 0;
+    prevG = 0.f;
+    for (long i = 0; i < (long)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        off.add(m.outputs[Imber::LEFT_OUTPUT].getVoltage());
+        float g = m.outputs[Imber::G16N_OUTPUT].getVoltage();
+        if (g > 5.f && prevG <= 5.f) offGates++;
+        prevG = g;
+    }
+    report("imber", "off_silences", off.rms(), off.rms() < 1e-3);
+    report("imber", "off_stops_gates", offGates, offGates == 0);
+}
+
+static void testSylla() {
+    Sylla m;
+    long frame = 0;
+    // default: loop on, nothing patched -> generates itself and free-runs
+    long waited = 0;
+    while (m.buffer.empty() && waited < (long)(30 * SR)) {
+        m.process(makeArgs(frame++));
+        if (++waited % (long)SR == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    report("sylla", "render_lands_s", waited / SR, !m.buffer.empty());
+    if (m.buffer.empty())
+        return;
+    Stats s;
+    int eoc = 0;
+    float prevE = 0.f;
+    for (long i = 0; i < (long)(9 * SR); i++) {
+        m.process(makeArgs(frame++));
+        s.add(m.outputs[Sylla::OUT_OUTPUT].getVoltage());
+        float e = m.outputs[Sylla::EOC_OUTPUT].getVoltage();
+        if (e > 5.f && prevE <= 5.f) eoc++;
+        prevE = e;
+    }
+    report("sylla", "nans", s.nans, s.nans == 0);
+    report("sylla", "freerun_rms", s.rms(), s.rms() > 0.02);
+    report("sylla", "eoc_fires", eoc, eoc >= 1);
+
+    // regenerating as micro swaps in a much shorter buffer
+    size_t loopLen = m.buffer.size();
+    m.params[Sylla::FAMILY_PARAM].setValue(8.f);   // micro
+    m.params[Sylla::GEN_PARAM].setValue(1.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    m.params[Sylla::GEN_PARAM].setValue(0.f);
+    waited = 0;
+    while (m.buffer.size() == loopLen && waited < (long)(30 * SR)) {
+        m.process(makeArgs(frame++));
+        if (++waited % (long)SR == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    report("sylla", "gen_swaps_buffer", m.buffer.size(),
+           m.buffer.size() != loopLen && m.buffer.size() < SR);
+
+    // one-shot trigger mode: plays once, then falls silent
+    m.params[Sylla::LOOP_PARAM].setValue(0.f);
+    m.inputs[Sylla::TRIG_INPUT].channels = 1;
+    m.inputs[Sylla::TRIG_INPUT].setVoltage(0.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    m.inputs[Sylla::TRIG_INPUT].setVoltage(10.f);
+    for (int i = 0; i < 16; i++) m.process(makeArgs(frame++));
+    m.inputs[Sylla::TRIG_INPUT].setVoltage(0.f);
+    Stats shot;
+    for (long i = 0; i < (long)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        shot.add(m.outputs[Sylla::OUT_OUTPUT].getVoltage());
+    }
+    Stats tail;
+    for (long i = 0; i < (long)(0.5f * SR); i++) {
+        m.process(makeArgs(frame++));
+        tail.add(m.outputs[Sylla::OUT_OUTPUT].getVoltage());
+    }
+    report("sylla", "oneshot_plays", shot.peak, shot.peak > 0.05f);
+    report("sylla", "oneshot_stops", tail.rms(), tail.rms() < 1e-4);
+}
+
 int main() {
     rack::random::init();
     printf("module,check,value,pass\n");
@@ -1007,5 +1169,7 @@ int main() {
     testPerge();
     testVorax();
     testTextor();
+    testImber();
+    testSylla();
     return failures ? 1 : 0;
 }
