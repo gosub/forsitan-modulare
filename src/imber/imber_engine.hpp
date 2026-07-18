@@ -149,6 +149,24 @@ struct Engine {
         rvlCached = -1.f;
     }
 
+    // last-resort recovery: a non-finite sample escaped — flush every
+    // stateful buffer so the poisoning cannot latch, keep the music state
+    void recover() {
+        for (int i = 0; i < kPlayers; i++) {
+            Player& p = pl[i];
+            p.fx.clearState();
+            p.cur.pos = 0.f;
+            p.prev.buf = -1;
+            p.xfade = 0.f;
+            p.gain = 0.f;
+            p.actEnv = 0.f;
+        }
+        skip.active = false;
+        micro.active = false;
+        master.clearState();
+        masterGain = 0.f;
+    }
+
     // ------------------------------------------------- constellations ---
 
     // stratified placement: shuffled jittered grid cells, so a roll can't
@@ -401,6 +419,13 @@ struct Engine {
 
     float readHead(Head& h, float rate, bool reversed) {
         if (h.buf < 0 || !bank) return 0.f;
+        // a poisoned head (NaN pos/window) must never reach the indexing
+        if (!std::isfinite(h.pos) || !std::isfinite(h.loopDurS)
+            || !std::isfinite(h.loopInS)) {
+            h.pos = 0.f;
+            h.loopInS = 0.f;
+            h.loopDurS = 0.5f;
+        }
         const std::vector<float>& b = bufferFor(h);
         int len = (int)b.size();
         float P = clampf(h.loopDurS * sr, 64.f, (float)len);
@@ -428,8 +453,9 @@ struct Engine {
     static float sampleAt(const std::vector<float>& b, float idx) {
         int len = (int)b.size();
         if (len < 2) return 0.f;
-        if (idx < 0.f) idx = 0.f;
-        if (idx > (float)(len - 1)) idx = (float)(len - 1);
+        // NaN-proof clamp: !(idx >= 0) also catches non-finite indices
+        if (!(idx >= 0.f)) idx = 0.f;
+        else if (idx > (float)(len - 1)) idx = (float)(len - 1);
         int i0 = (int)idx;
         int i1 = std::min(i0 + 1, len - 1);
         float fr = idx - i0;
@@ -439,6 +465,10 @@ struct Engine {
     float renderOneShot(OneShot& o, const std::vector<std::vector<float> >& set,
                         const std::vector<std::vector<float> >* prevSet) {
         if (!o.active || o.buf < 0) return 0.f;
+        if (!std::isfinite(o.pos)) {
+            o.active = false;
+            return 0.f;
+        }
         const std::vector<std::vector<float> >& s =
             (o.inPrevBank && prevSet) ? *prevSet : set;
         int bi = o.buf < (int)s.size() ? o.buf : 0;
@@ -536,7 +566,7 @@ struct Engine {
         if (micro.active) {
             const std::vector<float>& mb =
                 bank->micros[micro.buf < (int)bank->micros.size() ? micro.buf : 0];
-            if (micro.pos >= (float)mb.size() - 1.f)
+            if (!(micro.pos < (float)mb.size() - 1.f))   // also catches NaN
                 micro.active = false;
             else {
                 mv = sampleAt(mb, micro.pos);

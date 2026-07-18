@@ -103,6 +103,8 @@ struct Imber : Module {
     imber_engine::Engine eng;
     imber_engine::Params eParams;
     std::shared_ptr<BankJob> bankJob;
+    // UI-safe mirror of the render progress (audio thread owns bankJob)
+    std::atomic<int> bankProgressPct{-1};
     uint64_t bankSeed = 0;
     bool ephemeral = false;
     float sr = 0.f;
@@ -142,7 +144,9 @@ struct Imber : Module {
         configParam(SKS_PARAM, 0.5f, 2.f, 1.f, "Skip speed", "x");
         configParam(SCV_PARAM, 0.f, 1.f, 0.5f, "Skip level", "%", 0.f, 100.f);
         configParam(RVL_PARAM, 0.f, 1.f, 0.4f, "Reverb length", "%", 0.f, 100.f);
-        configParam(VOL_PARAM, -38.f, 8.f, 0.f, "Volume", " dB");
+        // like the original's RND: randomize never touches volume or power
+        configParam(VOL_PARAM, -38.f, 8.f, 0.f, "Volume", " dB")
+            ->randomizeEnabled = false;
         configParam(PLS_PARAM, 0.f, 1.f, 0.3f, "Micro trigger probability", "%", 0.f, 100.f);
         configParam(INSTAB_PARAM, 0.f, 1.f, 0.25f, "Micro instability", "%", 0.f, 100.f);
         configParam(PLV_PARAM, 0.f, 1.f, 0.5f, "Micro level", "%", 0.f, 100.f);
@@ -151,7 +155,8 @@ struct Imber : Module {
         configParam(BIT_PARAM, 0.f, 1.f, 0.f, "Master bitcrush", "%", 0.f, 100.f);
         configParam(NSE_PARAM, 0.f, 1.f, 0.f, "Noise inject", "%", 0.f, 100.f);
         configParam(TAP_PARAM, 0.f, 1.f, 0.f, "Tape wow/flutter/age", "%", 0.f, 100.f);
-        configSwitch(ON_PARAM, 0.f, 1.f, 1.f, "Engine", {"Off", "On"});
+        configSwitch(ON_PARAM, 0.f, 1.f, 1.f, "Engine", {"Off", "On"})
+            ->randomizeEnabled = false;
         configButton(RRC_PARAM, "Reroll clock constellations");
         configButton(NDC_PARAM, "Nudge clock constellations");
         configButton(RRF_PARAM, "Reroll FX constellations");
@@ -420,6 +425,13 @@ struct Imber : Module {
             bankSeed = bankJob->bank->seed;
             bankJob.reset();
         }
+        if (bankJob) {
+            int total = imber_gen::kBankLoops + imber_gen::kBankSkips
+                        + imber_gen::kBankMicros;
+            bankProgressPct.store(100 * bankJob->progress.load() / total);
+        }
+        else
+            bankProgressPct.store(-1);
 
         if (controlPhase == 0)
             updateControls();
@@ -429,6 +441,10 @@ struct Imber : Module {
         float outL, outR, skipV, microV;
         bool gates[imber_engine::DIV_COUNT];
         eng.process(eParams, outL, outR, skipV, microV, gates);
+        if (!std::isfinite(outL + outR + skipV + microV)) {
+            eng.recover();
+            outL = outR = skipV = microV = 0.f;
+        }
 
         for (int d = 0; d < imber_engine::DIV_COUNT; d++) {
             if (gates[d])
@@ -586,13 +602,11 @@ struct ImberDisplay : TransparentWidget {
             nvgText(args.vg, pc.x, pc.y, n, NULL);
         }
         // bank render progress
-        if (module->bankJob) {
-            int total = imber_gen::kBankLoops + imber_gen::kBankSkips
-                        + imber_gen::kBankMicros;
-            float f = (float)module->bankJob->progress.load() / total;
+        int pct = module->bankProgressPct.load();
+        if (pct >= 0) {
             nvgBeginPath(args.vg);
             nvgRect(args.vg, 4.f, box.size.y - 6.f,
-                    (box.size.x - 8.f) * f, 2.5f);
+                    (box.size.x - 8.f) * pct / 100.f, 2.5f);
             nvgFillColor(args.vg, nvgRGB(0xff, 0xd5, 0x00));
             nvgFill(args.vg);
         }

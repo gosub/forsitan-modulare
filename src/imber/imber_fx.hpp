@@ -151,6 +151,22 @@ struct PlayerFx {
     void setTarget(int kind, bool on) { tgt[kind] = on ? 1.f : 0.f; }
     bool reversed() const { return en[FX_REV] > 0.5f; }
 
+    // flush every stateful buffer (recovery path: a non-finite value in
+    // any feedback structure would otherwise latch forever)
+    void clearState() {
+        lpf.reset();
+        hpf.reset();
+        for (int i = 0; i < 3; i++)
+            bpf[i].reset();
+        bitHp.reset();
+        std::fill(dly.begin(), dly.end(), 0.f);
+        std::fill(grn.begin(), grn.end(), 0.f);
+        for (int i = 0; i < 4; i++)
+            std::fill(rvb.comb[i].begin(), rvb.comb[i].end(), 0.f);
+        for (int i = 0; i < 2; i++)
+            std::fill(rvb.ap[i].begin(), rvb.ap[i].end(), 0.f);
+    }
+
     void rollGrainTaps(Rng& rng) {
         for (int i = 0; i < 3; i++) {
             tapOld[i] = tapNew[i];
@@ -247,6 +263,16 @@ struct MasterChain {
         noiseEnv = 0.f;
         crushHpL.setTau(120.f, sr);
         crushHpR.setTau(120.f, sr);
+        limEnv = 0.f;
+    }
+
+    void clearState() {
+        std::fill(tapeL.begin(), tapeL.end(), 0.f);
+        std::fill(tapeR.begin(), tapeR.end(), 0.f);
+        noiseBp.reset();
+        crushHpL.reset();
+        crushHpR.reset();
+        noiseEnv = 0.f;
         limEnv = 0.f;
     }
 
