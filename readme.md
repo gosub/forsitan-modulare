@@ -28,6 +28,8 @@ A collection of VCV Rack modules.
 | [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats with random octave/fifth pitch, freeze, glitch and layered dimension | [doc/perge.md](doc/perge.md) |
 | [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with reverb and degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
 | [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops, three elements with gate outs (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
+| [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing — drunk clocks, morphing constellations, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
+| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine synthesis families (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
 
 ## Tools
 
@@ -76,6 +78,8 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **perge** | carry on!, keep going! (imperative of *pergere*) — a nod to the AC noises CONTINUA pedal it pays homage to, whose name is the Italian for the same exhortation |
 | **vorax** | voracious, all-devouring — the ever-hungry feedback plant (Synthux Academy's Audrey II) |
 | **textor** | weaver — reweaves two seconds of sound into ever-new cloth (the Fieldtone Weaver) |
+| **imber** | rain shower, downpour (a generative rain of samples, inspired by Giorgio Sancristoforo's Haiku) |
+| **sylla** | *almost Latin* — a clipped *syllaba*, syllable: haiku are counted in syllables, and sylla speaks one small sound at a time |
 
 ## Author
 

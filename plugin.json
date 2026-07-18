@@ -202,6 +202,17 @@
         "Granular",
         "Random"
       ]
+    },
+    {
+      "slug": "sylla",
+      "name": "sylla",
+      "description": "Random sample generator and player: renders ever-new procedural samples from nine synthesis families (drone, pad, fragment, bell, ambient, glitch, karplus, skip, micro), nothing loaded from disk (Haiku-inspired, imber's little voice).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/sylla.md",
+      "tags": [
+        "Sampler",
+        "Random",
+        "Synth Voice"
+      ]
     }
   ]
 }

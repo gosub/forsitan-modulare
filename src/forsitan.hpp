@@ -26,3 +26,4 @@ extern Model* modelBulla;
 extern Model* modelPerge;
 extern Model* modelVorax;
 extern Model* modelTextor;
+extern Model* modelSylla;
