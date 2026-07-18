@@ -71,6 +71,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | textor | one-knob loop weaver (Fieldtone Weaver clone: 2s capture rewoven per knob move, 3 elements with gates) | 50.8mm (10HP) |
 | imber | generative rain (Haiku-inspired: 8 players on a 2D field, drunk clocks, morphing clock/FX constellations, procedural sample bank) | 182.88mm (36HP) |
 | sylla | random sample generator/player (imber's generator library as a standalone voice, 9 families) | 40.64mm (8HP) |
+| guttur | chaotic resonator drone (Gutter Synthesis port: Duffing oscillator coupled through 2x24 resonant bandpass filters, 20 morphing factory banks) | 121.92mm (24HP) |
 
 ## limen module
 
