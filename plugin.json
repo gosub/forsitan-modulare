@@ -204,6 +204,18 @@
       ]
     },
     {
+      "slug": "imber",
+      "name": "imber",
+      "description": "Generative rain: 8 sample players on a 2D field where position is routing, driven by drunk-jittered clocks and morphing clock/FX constellations; skip and micro voices, master lo-fi chain, every sound procedurally generated at seed time (inspired by Giorgio Sancristoforo's Haiku).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/imber.md",
+      "tags": [
+        "Sampler",
+        "Random",
+        "Granular",
+        "Drone"
+      ]
+    },
+    {
       "slug": "sylla",
       "name": "sylla",
       "description": "Random sample generator and player: renders ever-new procedural samples from nine synthesis families (drone, pad, fragment, bell, ambient, glitch, karplus, skip, micro), nothing loaded from disk (Haiku-inspired, imber's little voice).",
