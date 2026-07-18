@@ -36,6 +36,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     option (off by default); texture/rhythm switch re-renders the same
     weave; the sample is deliberately not saved with the patch, only
     the weave's seed
+  - **imber**, a new module: generative rain, inspired by Giorgio
+    Sancristoforo's Haiku (architecture, timing model, effect designs
+    and voice behavior reconstructed by reverse-engineering; sound
+    material tuned by ear, procedurally generated at seed time by a
+    worker thread, never loaded from disk) — 8 looping sample players
+    on a 2D field where position is routing: a player sounds only when
+    a clock is within REACH (5 divisions 2n–32n, all drunk-jittered,
+    the bound division sets how fast its loop window churns) and picks
+    up every effect within reach (rev/lpf/hpf/bpf/bit/dly/grn/rvb, in
+    Haiku's fixed order); clocks and FX live in two morphable rolled
+    constellations (reroll/nudge buttons + triggers, stratified
+    placement); aligned players couple (sync read heads / sync loop
+    windows / diagonal jump swaps, COUPLE macro); per-player X/Y/CHG
+    knobs + ½/1/2 speed and division-colored activity LED, poly X/Y CV
+    (channel N → player N); skip voice (CD-skip material on the 8th
+    grid) and micro voice (tiny one-shots, INSTAB macro for the
+    change/variability/division-drift trio); master chain of tube
+    warmth → bitcrush → gated noise inject → tape wow/flutter/age →
+    soft limiter at −1 dBFS; RND (constellations + all faders except
+    VOL), RESEED (new 64+64+64 bank in the background), CLR; five
+    jittered gate outs, skip/micro outs, field display with bank
+    progress; bank seed + constellations saved with the patch unless
+    the Ephemeral menu option is on
+  - **sylla**, a new module: random sample generator and player, the
+    standalone voice of imber's generator library — FAMILY snap knob
+    (drone, pad, fragment, bell, ambient, glitch, karplus, skip,
+    micro), GEN button/trigger renders a brand new sample in a worker
+    thread (busy LED, the old sample keeps playing), SPEED 0.1–2×
+    with 1 V/oct CV, LEN play window, loop/one-shot and trig/gate
+    modes, free-running loop when unpatched, EOC trigger out; only
+    the seed is saved, a reload regenerates the identical sound
 
 ## [2.8.0] - 2026-07-16
 ### Added

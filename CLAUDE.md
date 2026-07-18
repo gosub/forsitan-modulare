@@ -69,6 +69,8 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | perge | stereo dynamic sampler and multi-effect (dynamics-gated repeats, freeze, glitch/dimension, lofi/crush, reverb/smear, tilt filter; AC noises CONTINUA homage) | 101.6mm (20HP) |
 | vorax | feedback drone synthesizer (Audrey II port: self-exciting Karplus-Strong loop, reverb, degrading tape echo) | 50.8mm (10HP) |
 | textor | one-knob loop weaver (Fieldtone Weaver clone: 2s capture rewoven per knob move, 3 elements with gates) | 50.8mm (10HP) |
+| imber | generative rain (Haiku-inspired: 8 players on a 2D field, drunk clocks, morphing clock/FX constellations, procedural sample bank) | 182.88mm (36HP) |
+| sylla | random sample generator/player (imber's generator library as a standalone voice, 9 families) | 40.64mm (8HP) |
 
 ## limen module
 
