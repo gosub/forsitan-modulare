@@ -28,3 +28,4 @@ extern Model* modelVorax;
 extern Model* modelTextor;
 extern Model* modelImber;
 extern Model* modelSylla;
+extern Model* modelGuttur;

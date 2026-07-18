@@ -28,6 +28,7 @@ void init(Plugin* p) {
 	p->addModel(modelTextor);
 	p->addModel(modelImber);
 	p->addModel(modelSylla);
+	p->addModel(modelGuttur);
 	// Any other plugin initialization may go here.
 	// As an alternative, consider lazy-loading assets and lookup tables when your module is created to reduce startup times of Rack.
 }

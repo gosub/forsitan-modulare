@@ -225,6 +225,17 @@
         "Random",
         "Synth Voice"
       ]
+    },
+    {
+      "slug": "guttur",
+      "name": "guttur",
+      "description": "Chaotic resonator drone: a forced Duffing oscillator coupled through two banks of 24 resonant bandpass filters, with 20 morphing factory banks, spread scatter and a chaotic aux output (Gutter Synthesis port).",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/guttur.md",
+      "tags": [
+        "Drone",
+        "Physical modeling",
+        "Distortion"
+      ]
     }
   ]
 }
