@@ -24,6 +24,7 @@ static const int kFxObjs = imber_fx::FX_KINDS;
 struct Params {
     float px[kPlayers], py[kPlayers];   // field position 0..1
     float chg[kPlayers];                // change prob (already expo-mapped)
+    bool voiceOn[kPlayers];             // per-voice mute (panel bezel latch)
     float speedMult[kPlayers];          // ½ / 1 / 2
     float clkMorph, fxMorph;            // constellation A→B
     float reach;                        // 0.05..0.7 field units
@@ -40,6 +41,7 @@ struct Params {
             px[i] = py[i] = 0.5f;
             chg[i] = 0.1f;
             speedMult[i] = 1.f;
+            voiceOn[i] = true;
         }
         clkMorph = fxMorph = 0.f;
         reach = 0.25f; couple = 1.f;
@@ -567,7 +569,10 @@ struct Engine {
         float mixL = 0.f, mixR = 0.f;
         for (int i = 0; i < kPlayers; i++) {
             Player& p = pl[i];
-            float tg = (p.boundClock >= 0 && p.cur.buf >= 0) ? 1.f : 0.f;
+            // a muted voice keeps its binding (so the panel can still show
+            // which clock it would follow) and simply loses its gain
+            float tg = (p.boundClock >= 0 && p.cur.buf >= 0
+                        && prm.voiceOn[i]) ? 1.f : 0.f;
             p.gain += (tg - p.gain) * (1.f / (0.08f * sr));
             if (p.gain < 0.001f && tg == 0.f) {
                 p.actEnv *= 0.9999f;

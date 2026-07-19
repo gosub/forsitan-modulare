@@ -55,6 +55,10 @@ struct Imber : Module {
         CHG5_PARAM, CHG6_PARAM, CHG7_PARAM, CHG8_PARAM,
         SPD1_PARAM, SPD2_PARAM, SPD3_PARAM, SPD4_PARAM,
         SPD5_PARAM, SPD6_PARAM, SPD7_PARAM, SPD8_PARAM,
+        VON1_PARAM, VON2_PARAM, VON3_PARAM, VON4_PARAM,
+        VON5_PARAM, VON6_PARAM, VON7_PARAM, VON8_PARAM,
+        NEW1_PARAM, NEW2_PARAM, NEW3_PARAM, NEW4_PARAM,
+        NEW5_PARAM, NEW6_PARAM, NEW7_PARAM, NEW8_PARAM,
         CLKMORPH_PARAM, FXMORPH_PARAM, REACH_PARAM, COUPLE_PARAM,
         BPM_PARAM, SPD_PARAM, LPM_PARAM, SKP_PARAM,
         SKS_PARAM, SCV_PARAM, RVL_PARAM, VOL_PARAM,
@@ -114,6 +118,7 @@ struct Imber : Module {
     imber_dsp::Rng constRng;   // constellation rolls
     dsp::SchmittTrigger rrcTrig, ndcTrig, rrfTrig, ndfTrig, rndTrig, reseedTrig;
     dsp::BooleanTrigger rrcBtn, ndcBtn, rrfBtn, ndfBtn, rndBtn, reseedBtn, clrBtn;
+    dsp::BooleanTrigger newBtn[imber_engine::kPlayers];
     dsp::PulseGenerator gatePulse[imber_engine::DIV_COUNT];
     float levelEnvL = 0.f, levelEnvR = 0.f;
     int controlPhase = 0;
@@ -134,6 +139,13 @@ struct Imber : Module {
             configSwitch(SPD1_PARAM + i, 0.f, 2.f, 1.f,
                          string::f("Player %d speed", i + 1),
                          {"1/2", "1", "2"});
+            // muting is a performance state, not a sound design one: like
+            // VOL and the master power, no randomize may touch it
+            configSwitch(VON1_PARAM + i, 0.f, 1.f, 1.f,
+                         string::f("Player %d", i + 1), {"Muted", "On"})
+                ->randomizeEnabled = false;
+            configButton(NEW1_PARAM + i,
+                         string::f("Player %d: load a new sample now", i + 1));
         }
         configParam(CLKMORPH_PARAM, 0.f, 1.f, 0.f, "Clock constellation morph");
         configParam(FXMORPH_PARAM, 0.f, 1.f, 0.f, "FX constellation morph");
@@ -339,6 +351,10 @@ struct Imber : Module {
             startBank(sr, constRng.next());
         if (clrBtn.process(params[CLR_PARAM].getValue() > 0.5f))
             spreadPlayers();
+        for (int i = 0; i < kPlayers; i++)
+            if (newBtn[i].process(params[NEW1_PARAM + i].getValue() > 0.5f)
+                && eng.bank)
+                eng.loadPlayerSample(eng.pl[i]);
 
         using imber_dsp::clampf;
         imber_engine::Params& p = eParams;
@@ -357,6 +373,7 @@ struct Imber : Module {
             p.chg[i] = chg * chg * chg;   // exponential: low is genuinely rare
             int s = (int)params[SPD1_PARAM + i].getValue();
             p.speedMult[i] = s == 0 ? 0.5f : (s == 2 ? 2.f : 1.f);
+            p.voiceOn[i] = params[VON1_PARAM + i].getValue() > 0.5f;
         }
         p.clkMorph = clampf(params[CLKMORPH_PARAM].getValue()
                             + inputs[CLKMORPH_INPUT].getVoltage() / 10.f, 0.f, 1.f);
@@ -402,7 +419,10 @@ struct Imber : Module {
             eng.microEffDiv = p.microDiv;
         }
 
-        // player LEDs: color = bound division, brightness = activity
+        // player LEDs: color = bound division, brightness = activity.
+        // Three states must stay distinguishable: playing (division color),
+        // out of reach (dark), muted (steady dim white -- no division color
+        // is near neutral grey, so it never reads as a division).
         static const float divColor[5][3] = {
             {1.f, 0.25f, 0.25f},    // 2n
             {1.f, 0.65f, 0.1f},     // 4n
@@ -412,6 +432,11 @@ struct Imber : Module {
         };
         for (int i = 0; i < kPlayers; i++) {
             int d = eng.pl[i].boundClock;
+            if (!p.voiceOn[i]) {
+                for (int c = 0; c < 3; c++)
+                    lights[P1_LIGHT + 3 * i + c].setBrightness(0.2f);
+                continue;
+            }
             float a = d >= 0
                 ? 0.25f + 0.75f * imber_dsp::clampf(eng.pl[i].actEnv, 0.f, 1.f)
                 : 0.f;
@@ -600,14 +625,23 @@ struct ImberDisplay : TransparentWidget {
             Vec pc = fieldPos(p.px[i], p.py[i]);
             float act = imber_dsp::clampf(e.pl[i].actEnv, 0.f, 1.f);
             bool bound = e.pl[i].boundClock >= 0;
+            char n[4];
+            snprintf(n, sizeof(n), "%d", i + 1);
             nvgBeginPath(args.vg);
             nvgCircle(args.vg, pc.x, pc.y, 4.f);
+            if (!p.voiceOn[i]) {
+                // muted: hollow ring, so it never reads as an unbound player
+                nvgStrokeColor(args.vg, nvgRGBA(0xf9, 0xf9, 0xf9, 0x70));
+                nvgStrokeWidth(args.vg, 1.f);
+                nvgStroke(args.vg);
+                nvgFillColor(args.vg, nvgRGBA(0xf9, 0xf9, 0xf9, 0x70));
+                nvgText(args.vg, pc.x, pc.y, n, NULL);
+                continue;
+            }
             nvgFillColor(args.vg, bound
                 ? nvgRGBA(0xf9, 0xf9, 0xf9, 0x60 + (int)(0x9f * act))
                 : nvgRGBA(0x99, 0x99, 0x99, 0x50));
             nvgFill(args.vg);
-            char n[4];
-            snprintf(n, sizeof(n), "%d", i + 1);
             nvgFillColor(args.vg, nvgRGB(0x10, 0x10, 0x10));
             nvgText(args.vg, pc.x, pc.y, n, NULL);
         }
@@ -666,30 +700,30 @@ struct ImberWidget : ModuleWidget {
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
-// @elem X1_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X2_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X3_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X4_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X5_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X6_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X7_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem X8_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y1_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y2_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y3_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y4_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y5_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y6_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y7_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem Y8_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG1_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG2_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG3_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG4_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG5_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG6_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG7_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem CHG8_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem X1_PARAM Trimpot 3.03 param "" 0.0
+// @elem X2_PARAM Trimpot 3.03 param "" 0.0
+// @elem X3_PARAM Trimpot 3.03 param "" 0.0
+// @elem X4_PARAM Trimpot 3.03 param "" 0.0
+// @elem X5_PARAM Trimpot 3.03 param "" 0.0
+// @elem X6_PARAM Trimpot 3.03 param "" 0.0
+// @elem X7_PARAM Trimpot 3.03 param "" 0.0
+// @elem X8_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y1_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y2_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y3_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y4_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y5_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y6_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y7_PARAM Trimpot 3.03 param "" 0.0
+// @elem Y8_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG1_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG2_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG3_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG4_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG5_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG6_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG7_PARAM Trimpot 3.03 param "" 0.0
+// @elem CHG8_PARAM Trimpot 3.03 param "" 0.0
 // @elem SPD1_PARAM CKSSThree 2.3 param "" 0.0
 // @elem SPD2_PARAM CKSSThree 2.3 param "" 0.0
 // @elem SPD3_PARAM CKSSThree 2.3 param "" 0.0
@@ -698,6 +732,22 @@ struct ImberWidget : ModuleWidget {
 // @elem SPD6_PARAM CKSSThree 2.3 param "" 0.0
 // @elem SPD7_PARAM CKSSThree 2.3 param "" 0.0
 // @elem SPD8_PARAM CKSSThree 2.3 param "" 0.0
+// @elem VON1_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P1_LIGHT
+// @elem VON2_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P2_LIGHT
+// @elem VON3_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P3_LIGHT
+// @elem VON4_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P4_LIGHT
+// @elem VON5_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P5_LIGHT
+// @elem VON6_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P6_LIGHT
+// @elem VON7_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P7_LIGHT
+// @elem VON8_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P8_LIGHT
+// @elem NEW1_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW2_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW3_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW4_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW5_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW6_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW7_PARAM TL1105 2.6 param "" 0.0
+// @elem NEW8_PARAM TL1105 2.6 param "" 0.0
 // @elem CLKMORPH_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem FXMORPH_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem REACH_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -753,20 +803,14 @@ struct ImberWidget : ModuleWidget {
 // @elem MICRO_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEFT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem RIGHT_OUTPUT PJ301MPort 4.18 output "" 0.0
-// @elem P1_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P2_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P3_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P4_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P5_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P6_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P7_LIGHT SmallLight 1.5 light "" 0.0
-// @elem P8_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LEVEL_L_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LEVEL_R_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_ROWX label 0.0 label "x" 0.0 63.00 18.60
-// @elem LABEL_ROWY label 0.0 label "y" 0.0 63.00 30.60
-// @elem LABEL_ROWCHG label 0.0 label "chg" 0.0 63.00 42.60
-// @elem LABEL_ROWSPD label 0.0 label "spd" 0.0 63.00 54.60
+// @elem LABEL_ROWON label 0.0 label "on" 0.0 63.00 12.10
+// @elem LABEL_ROWX label 0.0 label "x" 0.0 63.00 21.10
+// @elem LABEL_ROWY label 0.0 label "y" 0.0 63.00 29.10
+// @elem LABEL_ROWCHG label 0.0 label "chg" 0.0 63.00 37.10
+// @elem LABEL_ROWSPD label 0.0 label "spd" 0.0 63.00 47.10
+// @elem LABEL_ROWNEW label 0.0 label "new" 0.0 63.00 57.10
 // @elem LABEL_CLKM label 0.0 label "clk" 0.0 9.00 74.50
 // @elem LABEL_FXM label 0.0 label "fx" 0.0 20.50 74.50
 // @elem LABEL_RCH label 0.0 label "rch" 0.0 32.00 74.50
@@ -833,38 +877,46 @@ struct ImberWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(172.72f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(172.72f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(74.00f, 17.50f)), module, Imber::X1_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(86.40f, 17.50f)), module, Imber::X2_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(98.80f, 17.50f)), module, Imber::X3_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(111.20f, 17.50f)), module, Imber::X4_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(123.60f, 17.50f)), module, Imber::X5_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(136.00f, 17.50f)), module, Imber::X6_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(148.40f, 17.50f)), module, Imber::X7_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(160.80f, 17.50f)), module, Imber::X8_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(74.00f, 29.50f)), module, Imber::Y1_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(86.40f, 29.50f)), module, Imber::Y2_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(98.80f, 29.50f)), module, Imber::Y3_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(111.20f, 29.50f)), module, Imber::Y4_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(123.60f, 29.50f)), module, Imber::Y5_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(136.00f, 29.50f)), module, Imber::Y6_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(148.40f, 29.50f)), module, Imber::Y7_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(160.80f, 29.50f)), module, Imber::Y8_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(74.00f, 41.50f)), module, Imber::CHG1_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(86.40f, 41.50f)), module, Imber::CHG2_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(98.80f, 41.50f)), module, Imber::CHG3_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(111.20f, 41.50f)), module, Imber::CHG4_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(123.60f, 41.50f)), module, Imber::CHG5_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(136.00f, 41.50f)), module, Imber::CHG6_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(148.40f, 41.50f)), module, Imber::CHG7_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(160.80f, 41.50f)), module, Imber::CHG8_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(74.00f, 53.50f)), module, Imber::SPD1_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(86.40f, 53.50f)), module, Imber::SPD2_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(98.80f, 53.50f)), module, Imber::SPD3_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(111.20f, 53.50f)), module, Imber::SPD4_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(123.60f, 53.50f)), module, Imber::SPD5_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(136.00f, 53.50f)), module, Imber::SPD6_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(148.40f, 53.50f)), module, Imber::SPD7_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(160.80f, 53.50f)), module, Imber::SPD8_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(74.00f, 20.00f)), module, Imber::X1_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(86.40f, 20.00f)), module, Imber::X2_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(98.80f, 20.00f)), module, Imber::X3_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(111.20f, 20.00f)), module, Imber::X4_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(123.60f, 20.00f)), module, Imber::X5_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(136.00f, 20.00f)), module, Imber::X6_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(148.40f, 20.00f)), module, Imber::X7_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(160.80f, 20.00f)), module, Imber::X8_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(74.00f, 28.00f)), module, Imber::Y1_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(86.40f, 28.00f)), module, Imber::Y2_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(98.80f, 28.00f)), module, Imber::Y3_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(111.20f, 28.00f)), module, Imber::Y4_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(123.60f, 28.00f)), module, Imber::Y5_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(136.00f, 28.00f)), module, Imber::Y6_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(148.40f, 28.00f)), module, Imber::Y7_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(160.80f, 28.00f)), module, Imber::Y8_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(74.00f, 36.00f)), module, Imber::CHG1_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(86.40f, 36.00f)), module, Imber::CHG2_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(98.80f, 36.00f)), module, Imber::CHG3_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(111.20f, 36.00f)), module, Imber::CHG4_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(123.60f, 36.00f)), module, Imber::CHG5_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(136.00f, 36.00f)), module, Imber::CHG6_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(148.40f, 36.00f)), module, Imber::CHG7_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(160.80f, 36.00f)), module, Imber::CHG8_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(74.00f, 46.00f)), module, Imber::SPD1_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(86.40f, 46.00f)), module, Imber::SPD2_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(98.80f, 46.00f)), module, Imber::SPD3_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(111.20f, 46.00f)), module, Imber::SPD4_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(123.60f, 46.00f)), module, Imber::SPD5_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(136.00f, 46.00f)), module, Imber::SPD6_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(148.40f, 46.00f)), module, Imber::SPD7_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(160.80f, 46.00f)), module, Imber::SPD8_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(74.00f, 56.00f)), module, Imber::NEW1_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(86.40f, 56.00f)), module, Imber::NEW2_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(98.80f, 56.00f)), module, Imber::NEW3_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(111.20f, 56.00f)), module, Imber::NEW4_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(123.60f, 56.00f)), module, Imber::NEW5_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(136.00f, 56.00f)), module, Imber::NEW6_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(148.40f, 56.00f)), module, Imber::NEW7_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(160.80f, 56.00f)), module, Imber::NEW8_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(9.00f, 66.00f)), module, Imber::CLKMORPH_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.50f, 66.00f)), module, Imber::FXMORPH_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(32.00f, 66.00f)), module, Imber::REACH_PARAM));
@@ -920,14 +972,14 @@ struct ImberWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(122.00f, 110.00f)), module, Imber::MICRO_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.50f, 110.00f)), module, Imber::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(153.00f, 110.00f)), module, Imber::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(79.50f, 11.50f)), module, Imber::P1_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(91.90f, 11.50f)), module, Imber::P2_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(104.30f, 11.50f)), module, Imber::P3_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(116.70f, 11.50f)), module, Imber::P4_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(129.10f, 11.50f)), module, Imber::P5_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(141.50f, 11.50f)), module, Imber::P6_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(153.90f, 11.50f)), module, Imber::P7_LIGHT));
-        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(166.30f, 11.50f)), module, Imber::P8_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(74.00f, 11.00f)), module, Imber::VON1_PARAM, Imber::P1_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(86.40f, 11.00f)), module, Imber::VON2_PARAM, Imber::P2_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(98.80f, 11.00f)), module, Imber::VON3_PARAM, Imber::P3_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(111.20f, 11.00f)), module, Imber::VON4_PARAM, Imber::P4_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(123.60f, 11.00f)), module, Imber::VON5_PARAM, Imber::P5_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(136.00f, 11.00f)), module, Imber::VON6_PARAM, Imber::P6_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(148.40f, 11.00f)), module, Imber::VON7_PARAM, Imber::P7_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(160.80f, 11.00f)), module, Imber::VON8_PARAM, Imber::P8_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(142.50f, 107.00f)), module, Imber::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(158.00f, 107.00f)), module, Imber::LEVEL_R_LIGHT));
         // @layout:end

@@ -67,14 +67,28 @@ three; the display draws the pair lines):
 
 ## Players
 
-Each of the 8 columns: **X**, **Y**, **CHG** (probability of loading a
-new random sample, evaluated on every quarter note — exponentially
-mapped, so low values are genuinely rare; default ≈ 10%), and a **½/1/2**
-speed switch (multiplied with the global SPD). The LED shows the bound
-division's color (red 2n → blue 32n, brightness = activity); dark means
-out of reach, and silent. Loop windows drunk-walk in ±200 ms steps up to
-LPM seconds long; samples come from a 64-buffer loop bank via an urn
-(never the same one twice in a row).
+Each of the 8 columns, top to bottom: an **on/off button**, **X**, **Y**,
+**CHG** (probability of loading a new random sample, evaluated on every
+quarter note — exponentially mapped, so low values are genuinely rare;
+default ≈ 10%), a **½/1/2** speed switch (multiplied with the global
+SPD), and **new** (load a different sample into that voice right now,
+without waiting for a CHG roll).
+
+The on/off button is also the voice's indicator, and its three states
+are distinct: **division color** (red 2n → blue 32n, brightness =
+activity) when the voice is playing, **dark** when no clock is within
+REACH, and a **steady dim white** when you have muted it. A muted voice
+keeps its clock binding and its place in the couplings, so the field
+display still shows where it sits — as a hollow ring rather than a
+filled dot — and it comes back in time when you switch it on again.
+
+Muting is performance state, not sound design: neither the panel **RND**
+button nor Rack's own randomize touches it, the same exemption VOL and
+the master power already have.
+
+Loop windows drunk-walk in ±200 ms steps up to LPM seconds long; samples
+come from a 64-buffer loop bank via an urn (never the same one twice in
+a row).
 
 ## Engine: original and sparse
 

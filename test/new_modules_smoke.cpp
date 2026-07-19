@@ -1076,6 +1076,64 @@ static void testImber() {
     report("imber", "fx_stack_nans", fx.nans, fx.nans == 0);
     report("imber", "fx_stack_mask", m.eng.fxMask[0], m.eng.fxMask[0] == 0xff);
 
+    // per-voice mute + force-new-sample, and the randomize exemption
+    {
+        m.params[Imber::SCV_PARAM].setValue(0.f);   // isolate the 8 players
+        m.params[Imber::PLV_PARAM].setValue(0.f);
+        m.params[Imber::SKP_PARAM].setValue(0.f);
+        m.params[Imber::PLS_PARAM].setValue(0.f);
+        for (int i = 0; i < Imber::kPlayers; i++)
+            m.params[Imber::VON1_PARAM + i].setValue(0.f);
+        for (long i = 0; i < (long)(2 * SR); i++) m.process(makeArgs(frame++));
+        Stats mute;
+        for (long i = 0; i < (long)(2 * SR); i++) {
+            m.process(makeArgs(frame++));
+            mute.add(m.outputs[Imber::LEFT_OUTPUT].getVoltage());
+        }
+        report("imber", "all_voices_muted_silent", mute.rms(), mute.rms() < 1e-4);
+        // muting must not unbind: the panel still shows the would-be clock
+        int stillBound = 0;
+        for (int i = 0; i < Imber::kPlayers; i++)
+            stillBound += m.eng.pl[i].boundClock >= 0;
+        report("imber", "muted_keeps_binding", stillBound,
+               stillBound == Imber::kPlayers);
+
+        for (int i = 0; i < Imber::kPlayers; i++)
+            m.params[Imber::VON1_PARAM + i].setValue(1.f);
+        for (long i = 0; i < (long)(2 * SR); i++) m.process(makeArgs(frame++));
+        Stats back;
+        for (long i = 0; i < (long)(2 * SR); i++) {
+            m.process(makeArgs(frame++));
+            back.add(m.outputs[Imber::LEFT_OUTPUT].getVoltage());
+        }
+        report("imber", "unmute_restores", back.rms(), back.rms() > 0.01);
+
+        // the new-sample button loads a different buffer on every press
+        int changed = 0, prevBuf = m.eng.pl[0].cur.buf;
+        for (int k = 0; k < 6; k++) {
+            m.params[Imber::NEW1_PARAM].setValue(1.f);
+            for (long i = 0; i < (long)(0.05f * SR); i++) m.process(makeArgs(frame++));
+            m.params[Imber::NEW1_PARAM].setValue(0.f);
+            for (long i = 0; i < (long)(0.05f * SR); i++) m.process(makeArgs(frame++));
+            if (m.eng.pl[0].cur.buf != prevBuf) {
+                changed++;
+                prevBuf = m.eng.pl[0].cur.buf;
+            }
+        }
+        report("imber", "new_sample_button", changed, changed == 6);
+
+        // mutes are performance state: no randomize path may touch them
+        m.params[Imber::VON3_PARAM].setValue(0.f);
+        m.bigRandom();
+        report("imber", "rnd_spares_mutes",
+               m.params[Imber::VON3_PARAM].getValue(),
+               m.params[Imber::VON3_PARAM].getValue() < 0.5f);
+        report("imber", "mute_not_randomizable",
+               m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled ? 1 : 0,
+               !m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled);
+        m.params[Imber::VON3_PARAM].setValue(1.f);
+    }
+
     // sparse engine: a slow clock with short windows must open real gaps,
     // and the same mode at speed must fall back to the continuous bed
     {
