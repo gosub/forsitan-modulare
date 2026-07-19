@@ -1122,16 +1122,6 @@ static void testImber() {
         }
         report("imber", "new_sample_button", changed, changed == 6);
 
-        // mutes are performance state: no randomize path may touch them
-        m.params[Imber::VON3_PARAM].setValue(0.f);
-        m.bigRandom();
-        report("imber", "rnd_spares_mutes",
-               m.params[Imber::VON3_PARAM].getValue(),
-               m.params[Imber::VON3_PARAM].getValue() < 0.5f);
-        report("imber", "mute_not_randomizable",
-               m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled ? 1 : 0,
-               !m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled);
-        m.params[Imber::VON3_PARAM].setValue(1.f);
     }
 
     // sparse engine: a slow clock with short windows must open real gaps,
@@ -1199,6 +1189,18 @@ static void testImber() {
     }
     report("imber", "off_silences", off.rms(), off.rms() < 1e-3);
     report("imber", "off_stops_gates", offGates, offGates == 0);
+
+    // mutes are performance state: no randomize path may touch them.
+    // Runs last: bigRandom() rerolls the constellations and every fader,
+    // which would contaminate any check placed after it.
+    m.params[Imber::VON3_PARAM].setValue(0.f);
+    m.bigRandom();
+    report("imber", "rnd_spares_mutes",
+           m.params[Imber::VON3_PARAM].getValue(),
+           m.params[Imber::VON3_PARAM].getValue() < 0.5f);
+    report("imber", "mute_not_randomizable",
+           m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled ? 1 : 0,
+           !m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled);
 }
 
 static void testSylla() {

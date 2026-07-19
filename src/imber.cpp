@@ -435,7 +435,7 @@ struct Imber : Module {
         for (int i = 0; i < kPlayers; i++) {
             int d = eng.pl[i].boundClock;
             if (!p.voiceOn[i]) {
-                static const float mutedCol[3] = {0.85f, 0.1f, 1.f};
+                static const float mutedCol[3] = {0.6f, 0.f, 1.f};
                 for (int c = 0; c < 3; c++)
                     lights[P1_LIGHT + 3 * i + c].setBrightness(mutedCol[c]);
                 continue;
@@ -504,6 +504,22 @@ struct Imber : Module {
 };
 
 // ------------------------------------------------------ field display ---
+
+// Rack's stock RedGreenBlueLight mixes SCHEME_RED/GREEN/BLUE, not
+// primaries, and SCHEME_BLUE (0x29b2ef) carries a green component of
+// 0.70 -- so screen-blending a bright blue already washes toward cyan,
+// and red+blue lands on pale lavender instead of violet. With pure
+// primaries the channels never overlap, so the rendered color is exactly
+// the brightness triple that was written.
+template <typename TBase = GrayModuleLightWidget>
+struct TPureRgbLight : TBase {
+    TPureRgbLight() {
+        this->addBaseColor(nvgRGB(0xff, 0x00, 0x00));
+        this->addBaseColor(nvgRGB(0x00, 0xff, 0x00));
+        this->addBaseColor(nvgRGB(0x00, 0x00, 0xff));
+    }
+};
+using PureRgbLight = TPureRgbLight<>;
 
 struct ImberDisplay : TransparentWidget {
     Imber* module = nullptr;
@@ -975,14 +991,14 @@ struct ImberWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(122.00f, 110.00f)), module, Imber::MICRO_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.50f, 110.00f)), module, Imber::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(153.00f, 110.00f)), module, Imber::RIGHT_OUTPUT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(74.00f, 11.00f)), module, Imber::VON1_PARAM, Imber::P1_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(86.40f, 11.00f)), module, Imber::VON2_PARAM, Imber::P2_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(98.80f, 11.00f)), module, Imber::VON3_PARAM, Imber::P3_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(111.20f, 11.00f)), module, Imber::VON4_PARAM, Imber::P4_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(123.60f, 11.00f)), module, Imber::VON5_PARAM, Imber::P5_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(136.00f, 11.00f)), module, Imber::VON6_PARAM, Imber::P6_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(148.40f, 11.00f)), module, Imber::VON7_PARAM, Imber::P7_LIGHT));
-        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(160.80f, 11.00f)), module, Imber::VON8_PARAM, Imber::P8_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(74.00f, 11.00f)), module, Imber::VON1_PARAM, Imber::P1_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(86.40f, 11.00f)), module, Imber::VON2_PARAM, Imber::P2_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(98.80f, 11.00f)), module, Imber::VON3_PARAM, Imber::P3_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(111.20f, 11.00f)), module, Imber::VON4_PARAM, Imber::P4_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(123.60f, 11.00f)), module, Imber::VON5_PARAM, Imber::P5_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(136.00f, 11.00f)), module, Imber::VON6_PARAM, Imber::P6_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(148.40f, 11.00f)), module, Imber::VON7_PARAM, Imber::P7_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<PureRgbLight>>>(mm2px(Vec(160.80f, 11.00f)), module, Imber::VON8_PARAM, Imber::P8_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(142.50f, 107.00f)), module, Imber::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(158.00f, 107.00f)), module, Imber::LEVEL_R_LIGHT));
         // @layout:end
