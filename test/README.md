@@ -11,6 +11,7 @@ make check               # run every smoke test
 ./smoke_sylla            # or just one module's checks
 ./draen_sweep            # both banks
 ./draen_sweep hyf        # one bank: draen | hyf
+./guttur_probe           # guttur diagnostics: shapers | forcing
 ```
 
 ## smoke_&lt;module&gt;
@@ -71,3 +72,28 @@ FILTER, SENS, THRESH, ATTACK, RELEASE, MOD, DECAY, SPREAD, INFX) or the
 switches/menu members `repeatsMode` / `clockMult` / `altRouting` / `grainCap`,
 plus `seed`, `tiltStart` / `tiltEnd`, `freezeAt` (seconds). Input is ±1 (driven
 at ±5 V internally); it appends a 6 s tail so repeats and reverb ring out.
+
+## guttur_probe
+
+Two diagnostic maps for the guttur engine (not checks — `smoke_guttur`
+carries the assertions). Run with no argument for both, or `shapers` /
+`forcing` for one.
+
+```
+guttur_probe [shapers|forcing]
+```
+
+- **`shapers`** — the distortion transfer curves, plus a per-shaper verdict
+  (`max|out|`, monotonic, saturates/folds/UNBOUNDED). Every shaper sits
+  *inside* the feedback loop, so a non-monotonic one folds instead of
+  clipping and an unbounded one diverges the loop. Both failure modes have
+  happened: the kvraudio tanh fit railed the output within 100 ms, and
+  `fastatan` folds above |v| = 1.89 (kept, as the "Atan (folding)" setting).
+  Check this after touching `guttur_dsp::distortion`.
+- **`forcing`** — dead-air fraction (50 ms blocks below −60 dBFS over 20 s)
+  against forcing frequency and against loop drive. Silence needs *two*
+  factors: an overdriven feedback loop collapses the Duffing onto a fixed
+  point, and only an audio-rate forcing sine restarts it. Sub-audio forcing
+  with a tame loop is fine (0 % dead); so is a hot loop at 700 Hz. This is
+  what separates "guttur is broken" from "you turned **tone** down with the
+  loop cranked".

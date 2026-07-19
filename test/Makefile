@@ -11,12 +11,15 @@ SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
-all: draen_sweep perge_render $(SMOKE_BINS)
+all: draen_sweep perge_render guttur_probe $(SMOKE_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 perge_render: perge_render.cpp ../src/perge.cpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+guttur_probe: guttur_probe.cpp smoke_harness.hpp ../src/guttur.cpp $(wildcard ../src/guttur/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
@@ -36,6 +39,6 @@ check: $(SMOKE_BINS)
 	exit $$rc
 
 clean:
-	rm -f draen_sweep perge_render $(SMOKE_BINS)
+	rm -f draen_sweep perge_render guttur_probe $(SMOKE_BINS)
 
 .PHONY: all check clean
