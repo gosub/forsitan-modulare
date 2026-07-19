@@ -64,10 +64,15 @@ drive it identically:
 | **one-shot** | an edge plays the window once | plays while the gate is high, and stops at the window end even if the gate stays up |
 | **loop** | an edge toggles the loop on / off | loops while the gate is high |
 
-The loop toggle starts *on*, so a fresh sylla with LOOP up and nothing
-patched drones as soon as its first sample lands — an instant
-generative drone/texture source. Press PLAY to stop it, press again to
-start it over. The run state is saved with the patch.
+A fresh sylla starts in one-shot + trigger, so it sits quiet until you
+ask for a sound: press PLAY to speak the sample once. The loop toggle
+starts *on*, so flipping LOOP up drones straight away with nothing
+patched — an instant generative drone/texture source. PLAY stops it,
+another press starts it over. The run state is saved with the patch.
+
+Retriggering a window that is already sounding is declicked: the level
+it was cut at decays away over 2 ms underneath the new window's
+fade-in, so fast retriggers stay clean.
 
 ## Patching
 

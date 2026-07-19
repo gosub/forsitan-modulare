@@ -1245,8 +1245,8 @@ static void testSylla() {
         settle(1e-3f);
     };
 
-    // default: loop on, trigger mode, nothing patched -> the run latch
-    // starts on, so the first sample drones as soon as it lands
+    // default: one-shot, trigger mode, nothing patched -> silent until
+    // something asks it to play
     long waited = 0;
     while (m.buffer.empty() && waited < (long)(30 * SR)) {
         m.process(makeArgs(frame++));
@@ -1256,6 +1256,11 @@ static void testSylla() {
     report("sylla", "render_lands_s", waited / SR, !m.buffer.empty());
     if (m.buffer.empty())
         return;
+    Stats idle = run(0.5f);
+    report("sylla", "default_is_silent", idle.rms(), idle.rms() < 1e-4);
+
+    // flipping LOOP up starts the run latch, which defaults on
+    m.params[Sylla::LOOP_PARAM].setValue(1.f);
     Stats s;
     int eoc = 0;
     float prevE = 0.f;
@@ -1304,9 +1309,35 @@ static void testSylla() {
     report("sylla", "oneshot_trig_plays", shot.peak, shot.peak > 0.05f);
     report("sylla", "oneshot_trig_stops", tail.rms(), tail.rms() < 1e-4);
 
+    // retriggering under a live signal must not step: compare the biggest
+    // sample-to-sample jump across the retrigger with steady playback
+    auto maxStep = [&](float secs) {
+        float prev = m.outputs[Sylla::OUT_OUTPUT].getVoltage();
+        float worst = 0.f;
+        for (long i = 0; i < (long)(secs * SR); i++) {
+            m.process(makeArgs(frame++));
+            float v = m.outputs[Sylla::OUT_OUTPUT].getVoltage();
+            worst = std::max(worst, std::fabs(v - prev));
+            prev = v;
+        }
+        return worst;
+    };
+    m.params[Sylla::LEN_PARAM].setValue(1.f);      // full-length window
+    pulse(1e-3f);
+    settle(0.3f);                                  // well inside the window
+    float steady = maxStep(0.3f);
+    m.params[Sylla::TRIG_PARAM].setValue(1.f);     // retrigger mid-flight
+    float jump = maxStep(0.05f);
+    m.params[Sylla::TRIG_PARAM].setValue(0.f);
+    settle(0.01f);
+    report("sylla", "retrigger_step_ratio", jump / std::max(steady, 1e-6f),
+           jump <= std::max(steady * 2.f, 0.02f));
+    settle(0.5f);
+
     // one-shot + gate: sounds while high, and a held gate still stops at
     // the window end rather than retriggering forever
     m.params[Sylla::GATE_PARAM].setValue(1.f);
+    m.params[Sylla::LEN_PARAM].setValue(0.02f);    // short window again
     settle(0.05f);
     m.inputs[Sylla::TRIG_INPUT].setVoltage(10.f);
     Stats gateOn = run(0.15f);

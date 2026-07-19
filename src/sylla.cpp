@@ -20,7 +20,9 @@
 //              one-shot + gate : plays while the gate is high
 //              loop     + trig : an edge toggles the loop on / off
 //              loop     + gate : loops while the gate is high
-//           Generating a sample never starts playback by itself.
+//           Generating a sample never starts playback by itself; the
+//           default state is one-shot + trigger, so a fresh sylla waits
+//           for a press. Retriggers are declicked.
 //   Out   : OUT (mono, level LED), EOC trigger (fires at each window
 //           end / loop wrap)
 //
@@ -85,6 +87,9 @@ struct Sylla : Module {
     bool pendingRender = false;
     bool running = true;      // loop + trigger mode: the run latch
     bool oneShotDone = false; // one-shot + gate mode: window already spoken
+    float lastOut = 0.f;      // previous output, for the retrigger declick
+    float declickVal = 0.f;
+    float declickRamp = 0.f;
 
     Sylla() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -96,7 +101,7 @@ struct Sylla : Module {
         configParam(SPEED_PARAM, 0.1f, 2.f, 1.f, "Speed", "x");
         configParam(LEN_PARAM, 0.02f, 1.f, 1.f, "Play window", "%", 0.f, 100.f);
         configParam(LEVEL_PARAM, 0.f, 1.f, 0.8f, "Level", "%", 0.f, 100.f);
-        configSwitch(LOOP_PARAM, 0.f, 1.f, 1.f, "Play mode", {"One-shot", "Loop"});
+        configSwitch(LOOP_PARAM, 0.f, 1.f, 0.f, "Play mode", {"One-shot", "Loop"});
         configSwitch(GATE_PARAM, 0.f, 1.f, 0.f, "Trigger mode", {"Trigger", "Gate"});
         configInput(GEN_INPUT, "Generate trigger");
         configInput(SPEED_INPUT, "Speed (1 V/oct around the knob)");
@@ -129,6 +134,7 @@ struct Sylla : Module {
         playing = false;
         running = true;
         oneShotDone = false;
+        lastOut = declickVal = declickRamp = 0.f;
         pos = 0.f;
         sampleSeed = 0;
         pendingRender = true;
@@ -185,12 +191,23 @@ struct Sylla : Module {
         bool trigEdge = playTrig.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f);
         trigEdge |= trigButton.process(btnHeld);
 
+        // throwing the playhead back to the start under a live signal is a
+        // step discontinuity: hold the level it was cut at and decay that
+        // stub away while the window's own fade-in comes up under it
+        auto restart = [&]() {
+            if (std::fabs(lastOut) > 1e-5f) {
+                declickVal = lastOut;
+                declickRamp = 1.f;
+            }
+            pos = 0.f;
+        };
+
         //          | trigger mode                 | gate mode
         //  one-shot| edge plays the window once   | plays while the gate is high
         //  loop    | edge toggles the loop on/off | loops while the gate is high
         if (gateMode) {
             if (trigEdge) {
-                pos = 0.f;      // a rising gate always restarts the window
+                restart();      // a rising gate always restarts the window
                 oneShotDone = false;
             }
             playing = gateHigh && !(!loop && oneShotDone);
@@ -199,14 +216,14 @@ struct Sylla : Module {
             if (trigEdge) {
                 running = !running;
                 if (running)
-                    pos = 0.f;
+                    restart();
             }
             playing = running;
         }
         else {
             if (trigEdge) {
                 playing = true;
-                pos = 0.f;
+                restart();
             }
         }
         bool wantPlay = playing;
@@ -246,6 +263,15 @@ struct Sylla : Module {
                 pos += imber_dsp::clampf(rate, 0.05f, 8.f);
             }
         }
+
+        // the cut-off stub, fading out over 2 ms on top of the new window
+        if (declickRamp > 0.f) {
+            out += declickVal * declickRamp;
+            declickRamp -= args.sampleTime / 0.002f;
+            if (declickRamp < 0.f)
+                declickRamp = 0.f;
+        }
+        lastOut = out;
 
         float v = out * params[LEVEL_PARAM].getValue() * 5.f;
         outputs[OUT_OUTPUT].setVoltage(v);
