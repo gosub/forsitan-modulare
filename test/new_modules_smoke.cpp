@@ -1076,6 +1076,55 @@ static void testImber() {
     report("imber", "fx_stack_nans", fx.nans, fx.nans == 0);
     report("imber", "fx_stack_mask", m.eng.fxMask[0], m.eng.fxMask[0] == 0xff);
 
+    // sparse engine: a slow clock with short windows must open real gaps,
+    // and the same mode at speed must fall back to the continuous bed
+    {
+        m.engineMode = 1;
+        m.params[Imber::BPM_PARAM].setValue(std::log2(1.f));
+        m.params[Imber::LPM_PARAM].setValue(0.3f);
+        for (long i = 0; i < (long)(3 * SR); i++) m.process(makeArgs(frame++));
+        Stats sp;
+        long quiet = 0, gap = 0, maxGap = 0, n = 0;
+        for (long i = 0; i < (long)(20 * SR); i++) {
+            m.process(makeArgs(frame++));
+            float v = m.outputs[Imber::LEFT_OUTPUT].getVoltage();
+            sp.add(v);
+            n++;
+            if (std::fabs(v) < 0.02f) {
+                quiet++;
+                if (++gap > maxGap) maxGap = gap;
+            }
+            else gap = 0;
+        }
+        report("imber", "sparse_nans", sp.nans, sp.nans == 0);
+        report("imber", "sparse_silence_pct", 100.0 * quiet / n,
+               100.0 * quiet / n > 60.0);
+        report("imber", "sparse_longest_gap_s", maxGap / (double)SR,
+               maxGap / (double)SR > 1.0);
+        report("imber", "sparse_drops_full_level", sp.peak, sp.peak > 0.5f);
+
+        // fast clock: edges outrun the material, gate never closes
+        m.params[Imber::BPM_PARAM].setValue(std::log2(180.f));
+        m.params[Imber::LPM_PARAM].setValue(2.f);
+        for (long i = 0; i < (long)(3 * SR); i++) m.process(makeArgs(frame++));
+        long fastQuiet = 0, fastN = 0;
+        Stats fs;
+        for (long i = 0; i < (long)(5 * SR); i++) {
+            m.process(makeArgs(frame++));
+            float v = m.outputs[Imber::LEFT_OUTPUT].getVoltage();
+            fs.add(v);
+            fastN++;
+            if (std::fabs(v) < 0.02f) fastQuiet++;
+        }
+        report("imber", "sparse_fast_is_continuous", 100.0 * fastQuiet / fastN,
+               100.0 * fastQuiet / fastN < 10.0);
+        report("imber", "sparse_fast_nans", fs.nans, fs.nans == 0);
+        m.engineMode = 0;
+        m.params[Imber::BPM_PARAM].setValue(std::log2(100.f));
+        m.params[Imber::LPM_PARAM].setValue(2.f);
+        for (long i = 0; i < (long)(2 * SR); i++) m.process(makeArgs(frame++));
+    }
+
     // ON off freezes and silences the engine (and its gates)
     m.params[Imber::ON_PARAM].setValue(0.f);
     for (long i = 0; i < (long)(0.5f * SR); i++)

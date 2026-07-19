@@ -34,6 +34,7 @@ struct Params {
     int microDiv;                       // 0..4 panel division
     float bit, nse, tap, rvl, vol;      // master faders (vol = linear gain)
     bool on;
+    bool sparse;                        // engine mode: clocked articulation
     Params() {
         for (int i = 0; i < kPlayers; i++) {
             px[i] = py[i] = 0.5f;
@@ -48,6 +49,7 @@ struct Params {
         microDiv = 3;
         bit = nse = tap = 0.f; rvl = 0.4f; vol = 1.f;
         on = true;
+        sparse = false;
     }
 };
 
@@ -83,7 +85,14 @@ struct Engine {
         imber_fx::PlayerFx fx;
         Urn urn;
         float actEnv;         // display activity
-        Player() : xfade(0.f), boundClock(-1), gain(0.f), actEnv(0.f) {}
+        // sparse mode: one drop = one pass through the loop window. The
+        // clock edge opens it, the material running out closes it, and the
+        // silence in between is where the sparseness comes from.
+        bool grainActive;
+        float grainLeft;      // samples of material left in this drop
+        float dropGain;       // click-free gate envelope
+        Player() : xfade(0.f), boundClock(-1), gain(0.f), actEnv(0.f),
+                   grainActive(false), grainLeft(0.f), dropGain(0.f) {}
     };
     Player pl[kPlayers];
     uint8_t fxMask[kPlayers];
@@ -160,6 +169,9 @@ struct Engine {
             p.xfade = 0.f;
             p.gain = 0.f;
             p.actEnv = 0.f;
+            p.grainActive = false;
+            p.grainLeft = 0.f;
+            p.dropGain = 0.f;
         }
         skip.active = false;
         micro.active = false;
@@ -275,6 +287,21 @@ struct Engine {
         p.actEnv = std::min(1.f, p.actEnv + 0.4f);
     }
 
+    // sparse mode, on a clock edge: start a drop if the player is silent,
+    // or top up the one already sounding. Topping up rather than
+    // retriggering is what makes the mode degrade gracefully — once edges
+    // arrive faster than the material lasts the gate never closes, and the
+    // player is back to the continuous bed with no seam and no stutter.
+    void openDrop(Player& p, const Params& prm, int i) {
+        float rate = clampf(prm.spd, 0.05f, 2.f) * prm.speedMult[i];
+        if (rate < 1e-4f) rate = 1e-4f;
+        if (!p.grainActive) {
+            p.cur.pos = 0.f;
+            p.grainActive = true;
+        }
+        p.grainLeft = p.cur.loopDurS * sr / rate;
+    }
+
     const std::vector<float>& bufferFor(const Head& h) {
         const Bank* bk = (h.inPrevBank && bankPrev) ? bankPrev.get() : bank.get();
         int i = h.buf;
@@ -284,9 +311,11 @@ struct Engine {
 
     void fireDivision(int d, const Params& prm) {
         // players bound to this division churn their loop windows
-        for (int i = 0; i < kPlayers; i++)
-            if (pl[i].boundClock == d)
-                walkLoop(pl[i], prm);
+        for (int i = 0; i < kPlayers; i++) {
+            if (pl[i].boundClock != d) continue;
+            walkLoop(pl[i], prm);
+            if (prm.sparse) openDrop(pl[i], prm, i);
+        }
 
         if (d == DIV_4N) {
             // auto sample change, evaluated every quarter
@@ -544,6 +573,21 @@ struct Engine {
                 p.actEnv *= 0.9999f;
                 continue;
             }
+            // sparse: run down the drop, then hold silence until the next
+            // edge. Original mode leaves the gate wide open forever.
+            float dtg = 1.f;
+            if (prm.sparse) {
+                if (p.grainActive && (p.grainLeft -= 1.f) <= 0.f)
+                    p.grainActive = false;
+                dtg = p.grainActive ? 1.f : 0.f;
+            }
+            else
+                p.grainActive = true;
+            p.dropGain += (dtg - p.dropGain) * (1.f / (0.004f * sr));
+            if (p.dropGain < 0.001f && dtg == 0.f) {
+                p.actEnv *= 0.999f;
+                continue;
+            }
             float rate = clampf(prm.spd, 0.05f, 2.f) * prm.speedMult[i];
             bool rev = p.fx.reversed();
             float smp = readHead(p.cur, rate, rev);
@@ -556,7 +600,7 @@ struct Engine {
                     p.prev.buf = -1;
                 }
             }
-            smp = p.fx.process(smp, voiceRng) * p.gain;
+            smp = p.fx.process(smp, voiceRng) * p.gain * p.dropGain;
             p.actEnv += (std::fabs(smp) * 2.f - p.actEnv) * 0.001f;
             float pan = clampf(prm.px[i], 0.f, 1.f) * kPi * 0.5f;
             mixL += smp * std::cos(pan);

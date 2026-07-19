@@ -107,6 +107,8 @@ struct Imber : Module {
     std::atomic<int> bankProgressPct{-1};
     uint64_t bankSeed = 0;
     bool ephemeral = false;
+    // 0 = original (continuous Haiku bed), 1 = sparse (clocked drops)
+    int engineMode = 0;
     float sr = 0.f;
 
     imber_dsp::Rng constRng;   // constellation rolls
@@ -263,6 +265,7 @@ struct Imber : Module {
     json_t* dataToJson() override {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "ephemeral", json_boolean(ephemeral));
+        json_object_set_new(rootJ, "engineMode", json_integer(engineMode));
         if (!ephemeral) {
             json_object_set_new(rootJ, "bankSeed",
                                 json_integer((json_int_t)bankSeed));
@@ -290,6 +293,8 @@ struct Imber : Module {
         json_t* j;
         if ((j = json_object_get(rootJ, "ephemeral")))
             ephemeral = json_boolean_value(j);
+        if ((j = json_object_get(rootJ, "engineMode")))
+            engineMode = (int)json_integer_value(j);
         if (ephemeral)
             return;   // roll everything fresh, as saved nothing
         if ((j = json_object_get(rootJ, "bankSeed")))
@@ -389,6 +394,7 @@ struct Imber : Module {
                        + inputs[RVL_INPUT].getVoltage() / 10.f, 0.f, 1.f);
         p.vol = std::pow(10.f, params[VOL_PARAM].getValue() / 20.f);
         p.on = params[ON_PARAM].getValue() > 0.5f;
+        p.sparse = engineMode == 1;
 
         // panel division change overrides the drifted one
         if (p.microDiv != eng.lastMicroDivParam) {
@@ -930,6 +936,10 @@ struct ImberWidget : ModuleWidget {
     void appendContextMenu(Menu* menu) override {
         Imber* module = getModule<Imber>();
         menu->addChild(new MenuSeparator);
+        menu->addChild(createIndexPtrSubmenuItem(
+            "Engine",
+            {"original (continuous bed)", "sparse (clocked drops)"},
+            &module->engineMode));
         menu->addChild(createBoolPtrMenuItem(
             "Ephemeral (reroll bank + constellations on load)",
             "", &module->ephemeral));

@@ -76,6 +76,36 @@ out of reach, and silent. Loop windows drunk-walk in ±200 ms steps up to
 LPM seconds long; samples come from a 64-buffer loop bank via an urn
 (never the same one twice in a row).
 
+## Engine: original and sparse
+
+The context menu picks between two engines. **original** is the default
+and is the Haiku model as ported: the players loop continuously, and a
+clock edge only churns the loop window. Tempo is heard in the gate
+outputs, the sample changes and the Skip/Micro rolls, but the bed
+itself never stops — at 1 bpm it is the same wash as at 250, only more
+static.
+
+**sparse** makes the clock articulate. On its division's edge a player
+restarts at the loop head and plays **one pass** through its window,
+then falls silent until the next edge. The drop lasts `LPM ÷ SPD`, so
+the sparseness is that over the clock interval:
+
+| BPM | LPM | result |
+|-----|-----|--------|
+| 100 | 2 s | drop outlasts the interval: the continuous bed, unchanged |
+| 20 | 0.5 s | ~7% silence, gaps around 0.2 s: drizzle |
+| 1 | 0.3 s | ~96% silence, gaps to 7 s: isolated drops |
+
+There is no mode boundary to fall off. When edges arrive faster than
+the material lasts, each one tops up the drop already sounding instead
+of retriggering it, so the gate simply never closes and you are back to
+the continuous bed with no seam and no stutter. Sweeping BPM or LPM
+across that point is smooth in both directions.
+
+Because a drop ends when its material runs out, **SPD thins the rain
+too**: at 2x the grain is over in half the time, leaving twice the
+silence, an octave up. That is varispeed behaving like varispeed.
+
 ## Clocks: drunk time
 
 The master clock (BPM 1–250, exponential knob — the bottom of the range
