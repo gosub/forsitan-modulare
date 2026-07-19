@@ -12,10 +12,15 @@
 //   Knobs : FAMILY (snap), SPEED (0.1–2x, CV adds 1 V/oct), LEN (play
 //           window from the start of the buffer), LEVEL
 //   Switch: LOOP (one-shot / loop), GATE (trig / gate mode)
-//   Button: GEN (with busy LED), PLAY (fires / retriggers by hand; also
-//           acts as a gate source in gate mode)
-//   In    : GEN trigger, SPEED CV, TRIG (fire / retrigger; gate in
-//           gate mode; unpatched + LOOP = free-running)
+//   Button: GEN (with busy LED), PLAY (a trigger and a gate source of
+//           its own, so the module plays with nothing patched)
+//   In    : GEN trigger, SPEED CV, TRIG / gate. The transport is the
+//           LOOP x GATE square:
+//              one-shot + trig : an edge plays the window once
+//              one-shot + gate : plays while the gate is high
+//              loop     + trig : an edge toggles the loop on / off
+//              loop     + gate : loops while the gate is high
+//           Generating a sample never starts playback by itself.
 //   Out   : OUT (mono, level LED), EOC trigger (fires at each window
 //           end / loop wrap)
 //
@@ -78,7 +83,8 @@ struct Sylla : Module {
     dsp::BooleanTrigger genButton, trigButton;
     dsp::PulseGenerator eocPulse;
     bool pendingRender = false;
-    bool btnPrev = false;
+    bool running = true;      // loop + trigger mode: the run latch
+    bool oneShotDone = false; // one-shot + gate mode: window already spoken
 
     Sylla() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -121,6 +127,8 @@ struct Sylla : Module {
     void onReset() override {
         buffer.clear();
         playing = false;
+        running = true;
+        oneShotDone = false;
         pos = 0.f;
         sampleSeed = 0;
         pendingRender = true;
@@ -129,6 +137,7 @@ struct Sylla : Module {
     json_t* dataToJson() override {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "sampleSeed", json_integer((json_int_t)sampleSeed));
+        json_object_set_new(rootJ, "running", json_boolean(running));
         return rootJ;
     }
 
@@ -138,6 +147,9 @@ struct Sylla : Module {
             sampleSeed = (uint64_t)json_integer_value(j);
             pendingRender = true;
         }
+        json_t* r = json_object_get(rootJ, "running");
+        if (r)
+            running = json_boolean_value(r);
     }
 
     void process(const ProcessArgs& args) override {
@@ -161,40 +173,43 @@ struct Sylla : Module {
             job.reset();
             if (pos >= (float)buffer.size())
                 pos = 0.f;
-            // a fresh sample on a silent one-shot plays itself once
-            if (!playing && !inputs[TRIG_INPUT].isConnected()) {
-                playing = true;
-                pos = 0.f;
-            }
         }
         lights[BUSY_LIGHT].setBrightness(job ? 1.f : 0.f);
 
         bool loop = params[LOOP_PARAM].getValue() > 0.5f;
         bool gateMode = params[GATE_PARAM].getValue() > 0.5f;
-        bool connected = inputs[TRIG_INPUT].isConnected();
+        // the button is a trigger and a gate source in its own right, so
+        // everything below works with no cable patched
         bool btnHeld = params[TRIG_PARAM].getValue() > 0.5f;
-        // the button is a gate source of its own, so holding it plays even
-        // in gate mode with a low input
         bool gateHigh = inputs[TRIG_INPUT].getVoltage() >= 1.f || btnHeld;
-        bool playHit = playTrig.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f);
-        playHit |= trigButton.process(btnHeld);
-        if (playHit) {
-            playing = true;
-            pos = 0.f;
+        bool trigEdge = playTrig.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f);
+        trigEdge |= trigButton.process(btnHeld);
+
+        //          | trigger mode                 | gate mode
+        //  one-shot| edge plays the window once   | plays while the gate is high
+        //  loop    | edge toggles the loop on/off | loops while the gate is high
+        if (gateMode) {
+            if (trigEdge) {
+                pos = 0.f;      // a rising gate always restarts the window
+                oneShotDone = false;
+            }
+            playing = gateHigh && !(!loop && oneShotDone);
         }
-        // in gate mode letting the button go ends the note, the same way
-        // a falling input gate does
-        if (gateMode && btnPrev && !btnHeld)
-            playing = false;
-        btnPrev = btnHeld;
-        auto want = [&]() {
-            if (gateMode && (connected || btnHeld))
-                return playing && gateHigh;
-            if (!connected && loop)
-                return true;   // free-running loop when nothing is patched
-            return playing;
-        };
-        bool wantPlay = want();
+        else if (loop) {
+            if (trigEdge) {
+                running = !running;
+                if (running)
+                    pos = 0.f;
+            }
+            playing = running;
+        }
+        else {
+            if (trigEdge) {
+                playing = true;
+                pos = 0.f;
+            }
+        }
+        bool wantPlay = playing;
 
         float out = 0.f;
         if (!buffer.empty() && (wantPlay || env > 0.001f)) {
@@ -207,11 +222,14 @@ struct Sylla : Module {
                 if (loop)
                     pos -= win;
                 else {
+                    // the window has been spoken; in gate mode it stays
+                    // quiet until the gate falls and rises again
                     playing = false;
+                    oneShotDone = true;
                     pos = 0.f;
                 }
             }
-            wantPlay = want();
+            wantPlay = playing;
             env +=((wantPlay ? 1.f : 0.f) - env) * (1.f / (0.003f * args.sampleRate));
             if (wantPlay || env > 0.001f) {
                 int i0 = (int)pos;
