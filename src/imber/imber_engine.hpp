@@ -512,11 +512,18 @@ struct Engine {
         for (int d = 0; d < DIV_COUNT; d++) {
             double interval = (60.0 / clampf(prm.bpm, 0.5f, 500.f))
                               * divMult(d) * sr;
+            float lim = 0.25f * (float)(interval / sr);
+            // a tempo jump must not strand the next edge. Speeding up used
+            // to leave the old, slower deadline standing (2 bpm -> 2n is a
+            // minute away), so the clock stayed dead until it elapsed; the
+            // stale jitter offset was oversized for the new interval too.
+            jitter[d] = clampf(jitter[d], -lim, lim);
+            if (nominal[d] > t + interval)
+                nominal[d] = t + interval;
             if (t >= nominal[d] + jitter[d] * sr) {
                 nominal[d] += interval;
                 if (nominal[d] + jitter[d] * sr < t)
                     nominal[d] = t + interval;   // catch up after rate/bpm jumps
-                float lim = 0.25f * (float)(interval / sr);
                 float step = std::min(0.2f, (float)(interval / sr) / 6.f);
                 jitter[d] = clampf(jitter[d] + timingRng.bipolar() * step,
                                    -lim, lim);
