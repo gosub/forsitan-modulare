@@ -6,10 +6,36 @@ They link against `libRack` from the SDK, so `RACK_DIR` must point to it
 
 ```
 cd test
-make
+make -j                  # build everything
+make check               # run every smoke test
+./smoke_sylla            # or just one module's checks
 ./draen_sweep            # both banks
 ./draen_sweep hyf        # one bank: draen | hyf
 ```
+
+## smoke_&lt;module&gt;
+
+One binary per module, each pairing `smoke_harness.hpp` with the single
+`src/<module>.cpp` it exercises. They drive the module's `process()` directly
+and check for non-finite samples, runaway levels and basic expected behavior
+(self-oscillation, loop decay, pluck response), printing one CSV row per check:
+
+```
+module,check,value,pass
+```
+
+Each exits nonzero if any of its checks fail. `make check` runs the lot, prints
+a single header (via `--no-header` on each binary) and fails if any binary does.
+
+To add a module, drop a `smoke_<module>.cpp` next to the others and add its name
+to `SMOKE_MODULES` in the Makefile; the pattern rule handles the rest. Modules
+pulling in header-only DSP libraries need one extra dependency line (see
+`smoke_lustro` / `smoke_imber` / `smoke_guttur`).
+
+**These are not reproducible runs.** `rack::random::init()` seeds from the
+clock, so checks over randomized material vary run to run — `imber`'s
+`sparse_drops_full_level` in particular asserts that a loud drop lands inside a
+20 s window of a deliberately sparse field, and can fail by chance.
 
 ## draen_sweep
 

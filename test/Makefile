@@ -5,18 +5,37 @@ RACK_DIR ?= ../../Rack-SDK
 CXXFLAGS += -O2 -std=c++11 -I$(RACK_DIR)/include -I$(RACK_DIR)/dep/include
 LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 
-all: draen_sweep new_modules_smoke perge_render
+# One smoke binary per module: `make -j` builds them in parallel and a change
+# to one module only rebuilds its own harness.
+SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
+                guttur
+SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
+
+all: draen_sweep perge_render $(SMOKE_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
-	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
-
-new_modules_smoke: new_modules_smoke.cpp ../src/rete.cpp ../src/ululo.cpp ../src/tabes.cpp ../src/lustro.cpp ../src/bulla.cpp ../src/perge.cpp ../src/scando_engine.hpp ../src/imber.cpp ../src/sylla.cpp ../src/imber/imber_dsp.hpp ../src/imber/imber_gen.hpp ../src/imber/imber_fx.hpp ../src/imber/imber_engine.hpp ../src/guttur.cpp ../src/guttur/guttur_banks.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 perge_render: perge_render.cpp ../src/perge.cpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-clean:
-	rm -f draen_sweep new_modules_smoke perge_render
+smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-.PHONY: all clean
+# Header-only DSP libraries the modules pull in.
+smoke_lustro: ../src/scando_engine.hpp
+smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
+smoke_guttur: $(wildcard ../src/guttur/*.hpp)
+
+# Run every smoke test, printing one CSV header for the lot.
+# Fails if any binary does.
+check: $(SMOKE_BINS)
+	@echo "module,check,value,pass"; \
+	rc=0; \
+	for t in $(SMOKE_BINS); do ./$$t --no-header || rc=1; done; \
+	exit $$rc
+
+clean:
+	rm -f draen_sweep perge_render $(SMOKE_BINS)
+
+.PHONY: all check clean

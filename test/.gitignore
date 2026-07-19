@@ -1,3 +1,5 @@
 draen_sweep
-new_modules_smoke
 perge_render
+smoke_*
+!smoke_*.cpp
+!smoke_*.hpp
