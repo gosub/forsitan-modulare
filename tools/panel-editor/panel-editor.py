@@ -25,7 +25,9 @@ WIDGET_VISUALS = {
     'RoundBlackKnob':     {'r': 4.8,  'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.5},
     'Rogan1PWhite':       {'r': 4.5,  'fill': '#eeeeee', 'stroke': '#aaa', 'sw': 0.5},
     'Rogan2PWhite':       {'r': 5.5,  'fill': '#eeeeee', 'stroke': '#aaa', 'sw': 0.5},
-    'Trimpot':            {'r': 2.5,  'fill': '#363636', 'stroke': '#888', 'sw': 0.4},
+    'Trimpot':            {'r': 3.03, 'fill': '#363636', 'stroke': '#888', 'sw': 0.4},
+    # a latching button with a light in it: one control, one indicator
+    'VCVLightBezelLatch': {'r': 3.6,  'fill': '#444',    'stroke': '#999', 'sw': 0.4},
     'PJ301MPort':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'PJ3410Port':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'TL1105':             {'r': 2.6,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
@@ -57,9 +59,10 @@ LAYOUT_HEAD_RE = re.compile(
 # @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  — X Y optional for SVG-only kinds
 ELEM_RE = re.compile(
     r'//\s*@elem\s+(\S+)\s+(\S+)\s+([\d.]+)\s+(\w+)\s+"([^"]*)"\s*([-\d.]+)'
-    r'(?:\s+([\d.]+)\s+([\d.]+))?')
+    r'(?:\s+([\d.]+)\s+([\d.]+))?'
+    r'(?:\s+light=(\w+))?')
 VEC_RE      = re.compile(r'mm2px\(Vec\(([\d.]+)f?,\s*([\d.]+)f?\)')
-ID_RE       = re.compile(r'(\w+)::(\w+)\)')
+ID_RE       = re.compile(r'(\w+)::(\w+)[,)]')
 SCREW_ID_RE = re.compile(r'createWidget.*mm2px.*Vec.*//\s*(\w+)')
 
 
@@ -95,6 +98,8 @@ def parse_cpp(path):
             # SVG-only elements carry position in the @elem line itself
             'x': float(ox) if ox else 0.0,
             'y': float(oy) if oy else 0.0,
+            # a param that houses its own light (VCVLightBezelLatch)
+            'light': g[8],
         }
         elem_order.append(eid)
 
@@ -146,6 +151,9 @@ def cpp_line(el, module):
         return f'        addChild(createWidget<{ctype}>({vec})); // {eid}'
     ref = f'module, {module}::{eid}'
     if kind == 'param':
+        if el.get('light'):
+            return (f'        addParam(createLightParamCentered<{ctype}>'
+                    f'({vec}, {ref}, {module}::{el["light"]}));')
         return f'        addParam(createParamCentered<{ctype}>({vec}, {ref}));'
     if kind == 'input':
         return f'        addInput(createInputCentered<{ctype}>({vec}, {ref}));'
@@ -167,9 +175,10 @@ def generate_block(layout):
                 f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
                 f'{e["kind"]} "{e["label"]}" {e["label_dy"]} {e["x"]:.2f} {e["y"]:.2f}')
         else:
+            tail = f' light={e["light"]}' if e.get('light') else ''
             lines.append(
                 f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
-                f'{e["kind"]} "{e["label"]}" {e["label_dy"]}')
+                f'{e["kind"]} "{e["label"]}" {e["label_dy"]}{tail}')
     lines.append('')
     for e in layout['elements']:
         cl = cpp_line(e, m)
