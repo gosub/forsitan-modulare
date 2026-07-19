@@ -1,4 +1,5 @@
 draen_sweep
+guttur_probe
 perge_render
 smoke_*
 !smoke_*.cpp

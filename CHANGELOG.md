@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.9.0] - unreleased
+## [2.9.0] - 2026-07-20
 ### Added
   - **vorax**, a new module: feedback drone synthesizer, a port of
     Synthux Academy's Audrey II (MIT firmware by Nick Donadson /
