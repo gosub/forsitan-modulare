@@ -40,8 +40,15 @@ public:
         float fc = 0.98f * (sampleRate / 2.0f);
         auto Qs = calculateButterQs(2*N);
 
-        for(int i = 0; i < N; ++i)
+        for(int i = 0; i < N; ++i) {
+            // forsitan: also clear the filter state, not just the
+            // coefficients. These are recursive, so a single non-finite
+            // sample latches them permanently, and without this a reset
+            // cannot recover -- the host re-inits the engine and the
+            // oversampler keeps returning NaN.
+            filters[i].reset();
             filters[i].setParameters(BiquadFilter::Type::LOWPASS, fc / (osRatio * sampleRate), Qs[i], 1.0f);
+        }
     }
     
     inline float process(float x) noexcept {
