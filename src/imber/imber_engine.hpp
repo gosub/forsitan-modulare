@@ -510,7 +510,7 @@ struct Engine {
         // jitter; the same jittered edges feed voices and gate outs
         t += 1.0;
         for (int d = 0; d < DIV_COUNT; d++) {
-            double interval = (60.0 / clampf(prm.bpm, 0.5f, 400.f))
+            double interval = (60.0 / clampf(prm.bpm, 0.5f, 500.f))
                               * divMult(d) * sr;
             if (t >= nominal[d] + jitter[d] * sr) {
                 nominal[d] += interval;

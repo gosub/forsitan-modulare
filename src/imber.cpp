@@ -139,7 +139,7 @@ struct Imber : Module {
         configParam(COUPLE_PARAM, 0.f, 1.f, 1.f, "Couple");
         // stored as log2(bpm): exponential taper down to glacial tempos,
         // displayed in bpm (base-2 display), CV is 1 V/oct (doubles per volt)
-        configParam(BPM_PARAM, std::log2(1.f), std::log2(180.f),
+        configParam(BPM_PARAM, std::log2(1.f), std::log2(250.f),
                     std::log2(100.f), "Tempo", " bpm", 2.f, 1.f);
         configParam(SPD_PARAM, 0.1f, 2.f, 1.f, "Speed", "x");
         configParam(LPM_PARAM, 0.1f, 3.f, 2.f, "Max loop length", " s");
@@ -364,7 +364,7 @@ struct Imber : Module {
                           + inputs[COUPLE_INPUT].getVoltage() / 10.f, 0.f, 1.f);
         p.bpm = clampf(std::pow(2.f, params[BPM_PARAM].getValue()
                                      + inputs[BPM_INPUT].getVoltage()),
-                       1.f, 360.f);
+                       1.f, 500.f);
         p.spd = clampf(params[SPD_PARAM].getValue()
                        + inputs[SPD_INPUT].getVoltage() / 5.f, 0.1f, 2.f);
         p.lpm = params[LPM_PARAM].getValue();
