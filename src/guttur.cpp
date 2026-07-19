@@ -373,7 +373,9 @@ struct Guttur : Module {
         configParam(SPREAD_PARAM, 0.f, 1.f, 0.f, "Spread (per-filter scatter)",
                     "%", 0.f, 100.f);
         configParam(GAINA_PARAM, 0.f, 2.f, 1.f, "Bank A gain");
-        configParam(GAINB_PARAM, 0.f, 2.f, 1.f, "Bank B gain");
+        // both originals start with bank B muted; with both banks on the same
+        // preset their outputs are identical, so finalY is simply doubled
+        configParam(GAINB_PARAM, 0.f, 2.f, 0.f, "Bank B gain");
         configParam(LEVEL_PARAM, 0.f, 3.5f, 1.4f, "Level (drive into the sum)");
         configSwitch(DIST_PARAM, 0.f, 5.f, 1.f, "Distortion",
                      {"Hard clip", "Soft clip", "Atan (folding)", "Atan approx",
