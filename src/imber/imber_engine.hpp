@@ -25,6 +25,10 @@ struct Params {
     float px[kPlayers], py[kPlayers];   // field position 0..1
     float chg[kPlayers];                // change prob (already expo-mapped)
     bool voiceOn[kPlayers];             // per-voice mute (panel bezel latch)
+    // equal-power pan gains, computed with px at control rate: doing the
+    // sin/cos per sample cost 16 trig calls every frame for a value that
+    // only moves when a knob or its CV does
+    float panL[kPlayers], panR[kPlayers];
     float speedMult[kPlayers];          // ½ / 1 / 2
     float clkMorph, fxMorph;            // constellation A→B
     float reach;                        // 0.05..0.7 field units
@@ -42,6 +46,7 @@ struct Params {
             chg[i] = 0.1f;
             speedMult[i] = 1.f;
             voiceOn[i] = true;
+            panL[i] = panR[i] = 0.70710678f;
         }
         clkMorph = fxMorph = 0.f;
         reach = 0.25f; couple = 1.f;
@@ -540,9 +545,9 @@ struct Engine {
         // drunk clocks: every division fires at nominal + bounded-walk
         // jitter; the same jittered edges feed voices and gate outs
         t += 1.0;
+        const double beatSamples = (60.0 / clampf(prm.bpm, 0.5f, 500.f)) * sr;
         for (int d = 0; d < DIV_COUNT; d++) {
-            double interval = (60.0 / clampf(prm.bpm, 0.5f, 500.f))
-                              * divMult(d) * sr;
+            double interval = beatSamples * divMult(d);
             float lim = 0.25f * (float)(interval / sr);
             // a tempo jump must not strand the next edge. Speeding up used
             // to leave the old, slower deadline standing (2 bpm -> 2n is a
@@ -607,9 +612,8 @@ struct Engine {
             }
             smp = p.fx.process(smp, voiceRng) * p.gain * p.dropGain;
             p.actEnv += (std::fabs(smp) * 2.f - p.actEnv) * 0.001f;
-            float pan = clampf(prm.px[i], 0.f, 1.f) * kPi * 0.5f;
-            mixL += smp * std::cos(pan);
-            mixR += smp * std::sin(pan);
+            mixL += smp * prm.panL[i];
+            mixR += smp * prm.panR[i];
         }
         // sum/8 per the original, plus makeup gain so a typical field
         // lands near Rack levels before the master chain

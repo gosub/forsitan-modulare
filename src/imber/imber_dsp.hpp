@@ -170,10 +170,15 @@ inline float fold(float x, float thresh) {
     return x;
 }
 
-// quantize to 2^bits levels
-inline float crush(float x, float bits) {
-    float lv = std::pow(2.f, bits);
+// quantise to a precomputed level count. Callers whose bit depth only
+// moves at control rate (or on sample load) should hold the level and use
+// this, rather than paying a pow() per sample inside crush().
+inline float crushLv(float x, float lv) {
     return std::floor(x * lv + 0.5f) / lv;
+}
+
+inline float crush(float x, float bits) {
+    return crushLv(x, std::pow(2.f, bits));
 }
 
 // ------------------------------------------------ buffer-level helpers ---

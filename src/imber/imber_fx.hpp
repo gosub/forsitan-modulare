@@ -76,8 +76,10 @@ struct PlayerFx {
     float rampInc;
 
     PlayerFx() : sr(0.f), rampInc(0.f), lpfFc(0.f), hpfFc(0.f), bpfQ(1.f),
-                 bits(6.f), dlyIdx(0), dlySamp(1), grnIdx(0), tapXf(1.f),
-                 grnClock(0), grnRollAt(1) {
+                 bits(6.f), bitLv(64.f), dlyIdx(0), dlySamp(1), grnIdx(0), tapXf(1.f),
+                 grnClock(0), grnRollAt(1),
+                 dlyIdle(0), grnIdle(0), rvbIdle(0),
+                 dlyTail(1), grnTail(1), rvbTail(1) {
         for (int i = 0; i < FX_KINDS; i++)
             en[i] = tgt[i] = 0.f;
         for (int i = 0; i < 3; i++) {
@@ -88,7 +90,7 @@ struct PlayerFx {
 
     Biquad lpf, hpf, bpf[3];
     float lpfFc, hpfFc, bpfFc[3], bpfQ;
-    float bits;
+    float bits, bitLv;   // bitLv = 2^bits, refreshed with bits
     OnePoleHp bitHp;
 
     std::vector<float> dly;
@@ -101,6 +103,14 @@ struct PlayerFx {
     int grnClock, grnRollAt;
 
     Schroeder rvb;
+
+    // The spatial trio keeps running after its FX leaves reach so the tail
+    // rings out instead of being chopped. Once the tail is inaudible there
+    // is nothing left to ring, so each one parks itself: idle counts
+    // samples since the FX switched off, and the limits are one full tail
+    // (delay 375 ms at 0.5 fb, the 1.5 s granular ring, reverb RT60 max).
+    int dlyIdle, grnIdle, rvbIdle;
+    int dlyTail, grnTail, rvbTail;
 
     void init(float sampleRate) {
         sr = sampleRate;
@@ -117,6 +127,7 @@ struct PlayerFx {
         grnRollAt = (int)(0.16f * sr);
         rvb.init(sr);
         bits = 6.f;
+        bitLv = 64.f;
         lpfFc = 1200.f;
         hpfFc = 500.f;
         bpfQ = 6.f;
@@ -125,6 +136,13 @@ struct PlayerFx {
             tapOld[i] = tapNew[i] = 1 + i * 1000;
         }
         bitHp.setTau(150.f, sr);
+        dlyTail = (int)(4.f * sr);      // 375 ms at 0.5 fb -> -60 dB in ~3.8 s
+        grnTail = (int)(1.6f * sr);     // must exceed the 1.5 s ring, so it
+                                        // parks holding silence, not old audio
+        rvbTail = (int)(12.f * sr);     // RT60 tops out at 10 s
+        dlyIdle = dlyTail;
+        grnIdle = grnTail;
+        rvbIdle = rvbTail;
         rollFilters();
     }
 
@@ -138,6 +156,7 @@ struct PlayerFx {
             bpfFc[i] = 200.f * std::pow(10.f, rng.uniform() * 1.5f); // 200–6.3k
         bpfQ = rng.range(4.f, 12.f);
         bits = rng.range(3.f, 8.f);
+        bitLv = std::pow(2.f, bits);
         rollFilters();
     }
 
@@ -165,6 +184,9 @@ struct PlayerFx {
             std::fill(rvb.comb[i].begin(), rvb.comb[i].end(), 0.f);
         for (int i = 0; i < 2; i++)
             std::fill(rvb.ap[i].begin(), rvb.ap[i].end(), 0.f);
+        dlyIdle = dlyTail;
+        grnIdle = grnTail;
+        rvbIdle = rvbTail;
     }
 
     void rollGrainTaps(Rng& rng) {
@@ -192,13 +214,14 @@ struct PlayerFx {
             x += en[FX_BPF] * (w * 1.2f + 0.25f * x - x);
         }
         if (en[FX_BIT] > 0.f) {
-            float c = bitHp.process(crush(x, bits));
+            float c = bitHp.process(crushLv(x, bitLv));
             x += en[FX_BIT] * (c - x);
         }
 
         // spatial trio runs continuously so tails ring out across
         // proximity changes; only the mix follows the ramp
-        {
+        dlyIdle = en[FX_DLY] > 0.f ? 0 : dlyIdle + 1;
+        if (dlyIdle < dlyTail) {
             int r = dlyIdx - dlySamp;
             if (r < 0) r += (int)dly.size();
             float wet = dly[r];
@@ -206,7 +229,8 @@ struct PlayerFx {
             if (++dlyIdx >= (int)dly.size()) dlyIdx = 0;
             x += wet * 0.7f;
         }
-        {
+        grnIdle = en[FX_GRN] > 0.f ? 0 : grnIdle + 1;
+        if (grnIdle < grnTail) {
             grn[grnIdx] = x * en[FX_GRN];
             if (++grnIdx >= (int)grn.size()) grnIdx = 0;
             if (++grnClock >= grnRollAt) {
@@ -227,7 +251,8 @@ struct PlayerFx {
             x += w * 0.4f;
         }
         {
-            float wet = rvb.process(x * en[FX_RVB]);
+            rvbIdle = en[FX_RVB] > 0.f ? 0 : rvbIdle + 1;
+            float wet = rvbIdle < rvbTail ? rvb.process(x * en[FX_RVB]) : 0.f;
             x += wet * 0.6f;
         }
         return x;
@@ -249,6 +274,7 @@ struct MasterChain {
     OnePoleHp crushHpL, crushHpR;
     // limiter
     float limEnv;
+    float limAtk, limRel;   // depend only on sr; never recompute per sample
     Rng rng;
 
     void init(float sampleRate, uint64_t seed) {
@@ -264,6 +290,8 @@ struct MasterChain {
         crushHpL.setTau(120.f, sr);
         crushHpR.setTau(120.f, sr);
         limEnv = 0.f;
+        limAtk = 1.f - std::exp(-1.f / (0.002f * sr));
+        limRel = 1.f - std::exp(-1.f / (0.2f * sr));
     }
 
     void clearState() {
@@ -296,12 +324,12 @@ struct MasterChain {
 
         // Bitcrush + TPDF dither + post-HP
         if (bit > 0.001f) {
-            float bits = 16.f - 12.f * bit;
-            float lsb = std::pow(0.5f, bits);
+            float lv = std::pow(2.f, 16.f - 12.f * bit);
+            float lsb = 1.f / lv;          // 0.5^bits == 1 / 2^bits
             float dl = (rng.uniform() - rng.uniform()) * lsb;
             float dr = (rng.uniform() - rng.uniform()) * lsb;
-            float cl = crushHpL.process(crush(l + dl, bits));
-            float cr = crushHpR.process(crush(r + dr, bits));
+            float cl = crushHpL.process(crushLv(l + dl, lv));
+            float cr = crushHpR.process(crushLv(r + dr, lv));
             l += bit * (cl - l);
             r += bit * (cr - r);
         }
@@ -316,35 +344,40 @@ struct MasterChain {
             r += n * nse * 0.35f * gate;
         }
 
-        // TapeMod — wow + flutter on a modulated delay line, slow age AM
+        // TapeMod — wow + flutter on a modulated delay line, slow age AM.
+        // The delay line keeps being fed even when TAP is off, so turning
+        // it up never reads a stale buffer, but the four sines and the two
+        // interpolated reads are skipped -- TAP defaults to 0, and this
+        // whole stage used to run flat out to be multiplied by zero.
         {
             tapeL[tapeIdx] = l;
             tapeR[tapeIdx] = r;
-            wowPh += kTau * 0.8f / sr;
-            flutPh += kTau * 8.5f / sr;
-            agePh += kTau * 0.07f / sr;
-            if (wowPh > kTau) wowPh -= kTau;
-            if (flutPh > kTau) flutPh -= kTau;
-            if (agePh > kTau) agePh -= kTau;
-            float depth = tap * (0.0025f * std::sin(wowPh)
-                                 + 0.00018f * std::sin(flutPh));
-            float base = 0.03f * sr;
-            float dl = base * (1.f + depth * 30.f);
-            float outL = readTape(tapeL, dl);
-            float outR = readTape(tapeR, dl * 1.001f);
+            if (tap > 0.001f) {
+                wowPh += kTau * 0.8f / sr;
+                flutPh += kTau * 8.5f / sr;
+                agePh += kTau * 0.07f / sr;
+                if (wowPh > kTau) wowPh -= kTau;
+                if (flutPh > kTau) flutPh -= kTau;
+                if (agePh > kTau) agePh -= kTau;
+                float depth = tap * (0.0025f * std::sin(wowPh)
+                                     + 0.00018f * std::sin(flutPh));
+                float base = 0.03f * sr;
+                float dl = base * (1.f + depth * 30.f);
+                float outL = readTape(tapeL, dl);
+                float outR = readTape(tapeR, dl * 1.001f);
+                float age = 1.f - tap * 0.25f
+                            * (0.5f + 0.5f * std::sin(agePh));
+                l += tap * (outL * age - l);
+                r += tap * (outR * age - r);
+            }
             if (++tapeIdx >= (int)tapeL.size()) tapeIdx = 0;
-            float age = 1.f - tap * 0.25f * (0.5f + 0.5f * std::sin(agePh));
-            l += tap * (outL * age - l);
-            r += tap * (outR * age - r);
         }
 
         // volume into the soft limiter, ceiling −1 dBFS
         l *= vol;
         r *= vol;
         float peak = std::max(std::fabs(l), std::fabs(r));
-        float atk = 1.f - std::exp(-1.f / (0.002f * sr));
-        float rel = 1.f - std::exp(-1.f / (0.2f * sr));
-        limEnv += (peak - limEnv) * (peak > limEnv ? atk : rel);
+        limEnv += (peak - limEnv) * (peak > limEnv ? limAtk : limRel);
         float g = limEnv > 0.891f ? 0.891f / limEnv : 1.f;
         l = softLimit(l * g);
         r = softLimit(r * g);

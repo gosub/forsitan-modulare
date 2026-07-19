@@ -374,6 +374,9 @@ struct Imber : Module {
             int s = (int)params[SPD1_PARAM + i].getValue();
             p.speedMult[i] = s == 0 ? 0.5f : (s == 2 ? 2.f : 1.f);
             p.voiceOn[i] = params[VON1_PARAM + i].getValue() > 0.5f;
+            float pan = p.px[i] * imber_dsp::kPi * 0.5f;
+            p.panL[i] = std::cos(pan);
+            p.panR[i] = std::sin(pan);
         }
         p.clkMorph = clampf(params[CLKMORPH_PARAM].getValue()
                             + inputs[CLKMORPH_INPUT].getVoltage() / 10.f, 0.f, 1.f);
