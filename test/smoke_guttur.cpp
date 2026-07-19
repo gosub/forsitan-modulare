@@ -217,4 +217,67 @@ static void testGuttur() {
     }
 }
 
-SMOKE_MAIN(testGuttur)
+// The reported hard latch: with filters ON the module went permanently
+// silent, and neither a parameter change, Randomize, nor Initialize brought
+// it back -- only switching filters off, which bypasses the oversampler
+// entirely. Cause: duffX is a raw Duffing state that transiently reaches
+// ~1e46, the (float) cast into the oversampler yields inf, and the
+// anti-imaging/anti-aliasing filters are recursive, so their state latched.
+// AAFilter::reset() only rewrote coefficients and never cleared that state,
+// so re-init could not recover either.
+static void testGutturLatch() {
+    // 1. the engine must survive an inf forced through the oversampler
+    {
+        Guttur m;
+        long frame = 0;
+        skip(m, frame, 1);
+        m.engine.oversample.upsample(INFINITY);
+        (void) m.engine.oversample.downsample();
+        Meter after;
+        run(m, frame, after, 3);
+        report("guttur", "survives_inf_in_oversampler", after.rms(),
+               after.nans == 0 && after.rms() > 0.05);
+    }
+    // 2. and a poisoned oversampler must be cleared by reset(), not just
+    //    have its coefficients rewritten
+    {
+        VariableOversampling<> os;
+        os.reset(48000.f);
+        os.setOversamplingIndex(1);
+        os.upsample(INFINITY);
+        (void) os.downsample();
+        os.reset(48000.f);            // must scrub the IIR state
+        os.upsample(1.f);
+        float y = os.downsample();
+        report("guttur", "oversampler_reset_clears_state", y,
+               std::isfinite(y));
+    }
+    // 3. duffX must never reach the oversampler as a non-finite float, at
+    //    default settings or under the curated randomize ranges
+    {
+        Guttur m;
+        long frame = 0;
+        Meter all;
+        auto draw = [](float lo, float hi) {
+            return lo + rack::random::uniform() * (hi - lo);
+        };
+        for (int r = 0; r < 12; r++) {
+            m.params[Guttur::DRIVE_PARAM].setValue(draw(0.5f, 2.5f));
+            m.params[Guttur::GAINA_PARAM].setValue(draw(1.f, 2.f));
+            m.params[Guttur::GAINB_PARAM].setValue(draw(1.f, 2.f));
+            m.params[Guttur::LEVEL_PARAM].setValue(draw(1.4f, 3.f));
+            m.params[Guttur::DAMP_PARAM].setValue(draw(0.f, 0.55f));
+            m.params[Guttur::Q_PARAM].setValue(draw(0.f, 0.55f));
+            m.params[Guttur::PITCH_PARAM].setValue(draw(0.15f, 1.f));
+            m.params[Guttur::RATE_PARAM].setValue(draw(1.f, 10.f));
+            m.params[Guttur::SMOOTH_PARAM].setValue(draw(0.f, 4.f));
+            run(m, frame, all, 1);
+        }
+        // the module may legitimately be quiet in some of these states, but
+        // it must never be latched: every sample finite, nothing railed
+        report("guttur", "randomize_no_latch", all.nans + all.railed,
+               all.nans == 0 && all.railFrac() < 0.02);
+    }
+}
+
+SMOKE_MAIN(testGuttur, testGutturLatch)
