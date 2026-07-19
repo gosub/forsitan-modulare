@@ -151,6 +151,13 @@ struct Engine {
         }
         skip = OneShot();
         micro = OneShot();
+        // the urns and the MCV walk are musical state too: leaving them
+        // behind here meant a reseed never fully reseeded, and whatever
+        // the very first process() rolled (every division fires at once
+        // while nominal[] is still 0) survived every later init()
+        skipUrn = Urn();
+        microUrn = Urn();
+        mcvWalk = Drunk();
         microEffDiv = DIV_16N;
         lastMicroDivParam = -1;
         for (int d = 0; d < DIV_COUNT; d++) {
