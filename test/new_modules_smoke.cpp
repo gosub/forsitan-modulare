@@ -1265,6 +1265,66 @@ static void testSylla() {
     }
     report("sylla", "oneshot_plays", shot.peak, shot.peak > 0.05f);
     report("sylla", "oneshot_stops", tail.rms(), tail.rms() < 1e-4);
+
+    // the PLAY button fires the same one-shot with no cable patched
+    m.inputs[Sylla::TRIG_INPUT].channels = 0;
+    m.inputs[Sylla::TRIG_INPUT].setVoltage(0.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    m.params[Sylla::TRIG_PARAM].setValue(1.f);
+    for (int i = 0; i < 16; i++) m.process(makeArgs(frame++));
+    m.params[Sylla::TRIG_PARAM].setValue(0.f);
+    Stats btn;
+    for (long i = 0; i < (long)(1 * SR); i++) {
+        m.process(makeArgs(frame++));
+        btn.add(m.outputs[Sylla::OUT_OUTPUT].getVoltage());
+    }
+    report("sylla", "button_plays", btn.peak, btn.peak > 0.05f);
+
+    // family = random renders from the seed instead of the knob
+    m.params[Sylla::FAMILY_PARAM].setValue(9.f);   // random
+    size_t prevLen = m.buffer.size();
+    m.params[Sylla::GEN_PARAM].setValue(1.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    m.params[Sylla::GEN_PARAM].setValue(0.f);
+    waited = 0;
+    while (m.buffer.size() == prevLen && waited < (long)(30 * SR)) {
+        m.process(makeArgs(frame++));
+        if (++waited % (long)SR == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    report("sylla", "random_family_renders", m.buffer.size(),
+           !m.buffer.empty() && m.buffer.size() != prevLen);
+
+    // a long buffer to gate against: a drone loop
+    m.params[Sylla::FAMILY_PARAM].setValue(0.f);
+    prevLen = m.buffer.size();
+    m.params[Sylla::GEN_PARAM].setValue(1.f);
+    for (int i = 0; i < 64; i++) m.process(makeArgs(frame++));
+    m.params[Sylla::GEN_PARAM].setValue(0.f);
+    waited = 0;
+    while (m.buffer.size() == prevLen && waited < (long)(30 * SR)) {
+        m.process(makeArgs(frame++));
+        if (++waited % (long)SR == 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+
+    // in gate mode the held button sustains and releasing it stops
+    m.params[Sylla::GATE_PARAM].setValue(1.f);
+    m.params[Sylla::TRIG_PARAM].setValue(1.f);
+    Stats held;
+    for (long i = 0; i < (long)(0.5f * SR); i++) {
+        m.process(makeArgs(frame++));
+        held.add(m.outputs[Sylla::OUT_OUTPUT].getVoltage());
+    }
+    m.params[Sylla::TRIG_PARAM].setValue(0.f);
+    for (int i = 0; i < (int)(0.05f * SR); i++) m.process(makeArgs(frame++));
+    Stats released;
+    for (long i = 0; i < (long)(0.3f * SR); i++) {
+        m.process(makeArgs(frame++));
+        released.add(m.outputs[Sylla::OUT_OUTPUT].getVoltage());
+    }
+    report("sylla", "gate_button_holds", held.rms(), held.rms() > 0.01);
+    report("sylla", "gate_button_releases", released.rms(), released.rms() < 1e-4);
 }
 
 static void testGuttur() {

@@ -1,8 +1,9 @@
 // sylla.cpp — VCV Rack 2 module
 // sylla (diminutive of Latin syllaba, "syllable") is the small voice of
 // the imber pair: a random sample generator and player. Pick a family
-// (drone, pad, fragment, bell, ambient, glitch, karplus, skip, micro),
-// press GEN, and a worker thread renders a brand new sample from the
+// (drone, pad, fragment, bell, ambient, glitch, karplus, skip, micro,
+// or random, which lets the seed choose), press GEN, and a worker
+// thread renders a brand new sample from the
 // shared procedural generator library — nothing is ever loaded from
 // disk, every sound is spoken fresh. The previous sample keeps playing
 // until the new one is ready.
@@ -11,7 +12,8 @@
 //   Knobs : FAMILY (snap), SPEED (0.1–2x, CV adds 1 V/oct), LEN (play
 //           window from the start of the buffer), LEVEL
 //   Switch: LOOP (one-shot / loop), GATE (trig / gate mode)
-//   Button: GEN (with busy LED)
+//   Button: GEN (with busy LED), PLAY (fires / retriggers by hand; also
+//           acts as a gate source in gate mode)
 //   In    : GEN trigger, SPEED CV, TRIG (fire / retrigger; gate in
 //           gate mode; unpatched + LOOP = free-running)
 //   Out   : OUT (mono, level LED), EOC trigger (fires at each window
@@ -31,6 +33,7 @@ struct Sylla : Module {
     enum ParamId {
         FAMILY_PARAM,
         GEN_PARAM,
+        TRIG_PARAM,
         SPEED_PARAM,
         LEN_PARAM,
         LEVEL_PARAM,
@@ -72,16 +75,18 @@ struct Sylla : Module {
     float env = 0.f;          // declick on gate stop
     float levelEnv = 0.f;
     dsp::SchmittTrigger genTrig, playTrig;
-    dsp::BooleanTrigger genButton;
+    dsp::BooleanTrigger genButton, trigButton;
     dsp::PulseGenerator eocPulse;
     bool pendingRender = false;
+    bool btnPrev = false;
 
     Sylla() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configSwitch(FAMILY_PARAM, 0.f, 8.f, 0.f, "Family",
+        configSwitch(FAMILY_PARAM, 0.f, 9.f, 0.f, "Family",
             {"Drone", "Pad", "Fragment", "Bell", "Ambient", "Glitch",
-             "Karplus", "Skip", "Micro"});
+             "Karplus", "Skip", "Micro", "Random"});
         configButton(GEN_PARAM, "Generate a new sample");
+        configButton(TRIG_PARAM, "Play / retrigger");
         configParam(SPEED_PARAM, 0.1f, 2.f, 1.f, "Speed", "x");
         configParam(LEN_PARAM, 0.02f, 1.f, 1.f, "Play window", "%", 0.f, 100.f);
         configParam(LEVEL_PARAM, 0.f, 1.f, 0.8f, "Level", "%", 0.f, 100.f);
@@ -99,6 +104,10 @@ struct Sylla : Module {
             return;
         sampleSeed = seed;
         int family = (int)std::round(params[FAMILY_PARAM].getValue());
+        // "random" picks a family from the seed itself, so a reload from
+        // the saved seed still regenerates the very same sound
+        if (family >= imber_gen::FAM_COUNT)
+            family = (int)(seed % (uint64_t)imber_gen::FAM_COUNT);
         std::shared_ptr<Job> j(new Job());
         job = j;
         std::thread([j, family, sr, seed]() {
@@ -163,16 +172,29 @@ struct Sylla : Module {
         bool loop = params[LOOP_PARAM].getValue() > 0.5f;
         bool gateMode = params[GATE_PARAM].getValue() > 0.5f;
         bool connected = inputs[TRIG_INPUT].isConnected();
-        bool gateHigh = inputs[TRIG_INPUT].getVoltage() >= 1.f;
-        if (playTrig.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f)) {
+        bool btnHeld = params[TRIG_PARAM].getValue() > 0.5f;
+        // the button is a gate source of its own, so holding it plays even
+        // in gate mode with a low input
+        bool gateHigh = inputs[TRIG_INPUT].getVoltage() >= 1.f || btnHeld;
+        bool playHit = playTrig.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f);
+        playHit |= trigButton.process(btnHeld);
+        if (playHit) {
             playing = true;
             pos = 0.f;
         }
-        bool wantPlay = playing;
-        if (gateMode && connected)
-            wantPlay = playing && gateHigh;
-        if (!connected && loop)
-            wantPlay = true;   // free-running loop when nothing is patched
+        // in gate mode letting the button go ends the note, the same way
+        // a falling input gate does
+        if (gateMode && btnPrev && !btnHeld)
+            playing = false;
+        btnPrev = btnHeld;
+        auto want = [&]() {
+            if (gateMode && (connected || btnHeld))
+                return playing && gateHigh;
+            if (!connected && loop)
+                return true;   // free-running loop when nothing is patched
+            return playing;
+        };
+        bool wantPlay = want();
 
         float out = 0.f;
         if (!buffer.empty() && (wantPlay || env > 0.001f)) {
@@ -189,12 +211,8 @@ struct Sylla : Module {
                     pos = 0.f;
                 }
             }
-            wantPlay = playing;
-            if (gateMode && connected)
-                wantPlay = playing && gateHigh;
-            if (!connected && loop)
-                wantPlay = true;
-            env += ((wantPlay ? 1.f : 0.f) - env) * (1.f / (0.003f * args.sampleRate));
+            wantPlay = want();
+            env +=((wantPlay ? 1.f : 0.f) - env) * (1.f / (0.003f * args.sampleRate));
             if (wantPlay || env > 0.001f) {
                 int i0 = (int)pos;
                 int i1 = std::min(i0 + 1, len - 1);
@@ -231,6 +249,7 @@ struct SyllaWidget : ModuleWidget {
 // @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
 // @elem FAMILY_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem GEN_PARAM TL1105 2.6 param "" 0.0
+// @elem TRIG_PARAM TL1105 2.6 param "" 0.0
 // @elem SPEED_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem LEN_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -253,6 +272,7 @@ struct SyllaWidget : ModuleWidget {
 // @elem LABEL_GENIN label 0.0 label "gen" 0.0 8.00 87.50
 // @elem LABEL_SPD label 0.0 label "spd" 0.0 20.32 87.50
 // @elem LABEL_TRIG label 0.0 label "trig" 0.0 32.60 87.50
+// @elem LABEL_PLAY label 0.0 label "play" 0.0 32.60 99.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 12.40 114.00
 // @elem LABEL_EOC label 0.0 label "eoc" 0.0 28.20 114.00
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 12.40 108.50
@@ -265,6 +285,7 @@ struct SyllaWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(30.48f, 123.42f)))); // SCREW_BR
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.60f, 21.00f)), module, Sylla::FAMILY_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(30.00f, 19.00f)), module, Sylla::GEN_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(32.60f, 92.00f)), module, Sylla::TRIG_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.60f, 41.00f)), module, Sylla::SPEED_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(28.00f, 41.00f)), module, Sylla::LEN_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.60f, 60.00f)), module, Sylla::LEVEL_PARAM));

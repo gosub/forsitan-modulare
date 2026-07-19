@@ -27,6 +27,7 @@ next GEN press draws from:
 | **karplus** | Karplus-Strong plucks and runs |
 | **skip** | CD-skip material: a frozen segment repeated, comb + tanh, choppy gate |
 | **micro** | tiny one-shots (grains, blips, ticks, chirps, thumps) — milliseconds long |
+| **random** | let the sample's own seed pick the family, so every GEN is a surprise |
 
 Every pitch is quantized to one pentatonic-minor table on D — the tonal
 glue that keeps random material musical. All families get a light,
@@ -34,7 +35,9 @@ randomized lo-fi "dirt" pass.
 
 ## Controls
 
-- **FAMILY** — generator family for the next render (snap knob).
+- **FAMILY** — generator family for the next render (snap knob). The
+  last position, *random*, derives the family from the seed, so a
+  reloaded patch still comes back with the same sound.
 - **GEN** (button + trigger input) — render a new sample. The yellow LED
   lights while the worker thread is busy; the old sample plays until the
   new one lands. Requests during a render are ignored.
@@ -47,6 +50,9 @@ randomized lo-fi "dirt" pass.
   there.
 - **GATE** switch — *trigger* plays the whole window per trigger;
   *gate* sustains only while the TRIG input is high.
+- **PLAY** button — fires (or retriggers) playback by hand, with no
+  cable patched. In gate mode it acts as a gate source of its own:
+  the sound sustains while it is held.
 
 ## Patching
 
