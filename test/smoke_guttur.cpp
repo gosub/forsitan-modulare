@@ -3,6 +3,8 @@
 
 #include "smoke_harness.hpp"
 #include "../src/guttur.cpp"
+#include <vector>
+#include <complex>
 
 // A bounded, non-NaN output is not enough for a feedback module: a diverged
 // loop rails at the clamp and reads as "bounded", and an engine that has
@@ -35,6 +37,74 @@ struct Meter {
     double railFrac() const { return n ? (double) railed / n : 0.0; }
 };
 
+// Is the engine wandering, or locked onto a fixed point?
+//
+// A Duffing oscillator either explores its attractor or settles into a
+// periodic orbit, and guttur has large parameter regions that lock. A locked
+// state passes every check above — alive, bounded, not dead, not railed —
+// but it is a static drone, not gutter synthesis. Shipping the default in
+// one of those regions is a real regression (it happened: muting bank B put
+// the default there), so measure movement directly.
+//
+// Spectral flux: mean L1 distance between successive normalized magnitude
+// spectra. A fixed tone holds its spectrum and scores ~0; a wandering one
+// scores ~0.9. Zero-crossing statistics were tried first and do not
+// discriminate at all (0.065 locked vs 0.070 wandering).
+struct Flux {
+    static const size_t N = 1024;
+    std::vector<float> x;
+    void add(float v) { x.push_back(v); }
+
+    static void fft(std::vector<std::complex<double>>& a) {
+        size_t n = a.size();
+        for (size_t i = 1, j = 0; i < n; i++) {
+            size_t b = n >> 1;
+            for (; j & b; b >>= 1) j ^= b;
+            j ^= b;
+            if (i < j) std::swap(a[i], a[j]);
+        }
+        for (size_t l = 2; l <= n; l <<= 1) {
+            double an = -2 * M_PI / l;
+            std::complex<double> wl(std::cos(an), std::sin(an));
+            for (size_t i = 0; i < n; i += l) {
+                std::complex<double> w(1);
+                for (size_t k = 0; k < l / 2; k++) {
+                    auto u = a[i + k], v = a[i + k + l / 2] * w;
+                    a[i + k] = u + v; a[i + k + l / 2] = u - v; w *= wl;
+                }
+            }
+        }
+    }
+
+    double value() const {
+        std::vector<std::vector<double>> spec;
+        for (size_t off = 0; off + N <= x.size(); off += N) {
+            std::vector<std::complex<double>> buf(N);
+            double e = 0;
+            for (size_t i = 0; i < N; i++) {
+                e += (double) x[off + i] * x[off + i];
+                buf[i] = x[off + i] * (0.5 - 0.5 * std::cos(2 * M_PI * i / (N - 1)));
+            }
+            if (std::sqrt(e / N) < 0.01) continue;   // silent frame, no spectrum
+            fft(buf);
+            std::vector<double> p(N / 2);
+            double tot = 0;
+            for (size_t k = 1; k < N / 2; k++) { p[k] = std::abs(buf[k]); tot += p[k]; }
+            if (tot <= 0) continue;
+            for (size_t k = 1; k < N / 2; k++) p[k] /= tot;
+            spec.push_back(p);
+        }
+        if (spec.size() < 2) return 0;
+        double fl = 0;
+        for (size_t i = 1; i < spec.size(); i++) {
+            double d = 0;
+            for (size_t k = 1; k < N / 2; k++) d += std::fabs(spec[i][k] - spec[i-1][k]);
+            fl += d;
+        }
+        return fl / (spec.size() - 1);
+    }
+};
+
 // advance without measuring (settle after a parameter change)
 static void skip(Guttur& m, long& frame, double secs) {
     for (long i = 0; i < (long)(secs * SR); i++) m.process(makeArgs(frame++));
@@ -57,9 +127,11 @@ static void testGuttur() {
         long frame = 0;
         skip(m, frame, 1);   // discard the ignition transient
         Meter s, d;
+        Flux fx;
         for (long i = 0; i < (long)(20 * SR); i++) {
             m.process(makeArgs(frame++));
-            s.add(m.outputs[Guttur::OUT_OUTPUT].getVoltage());
+            float v = m.outputs[Guttur::OUT_OUTPUT].getVoltage();
+            s.add(v); fx.add(v);
             d.add(m.outputs[Guttur::DUFF_OUTPUT].getVoltage());
         }
         report("guttur", "nans", s.nans + d.nans, s.nans + d.nans == 0);
@@ -69,6 +141,9 @@ static void testGuttur() {
         report("guttur", "peak", s.peak, s.peak <= 10.01f);
         report("guttur", "duff_alive", d.rms(), d.rms() > 0.01);
         report("guttur", "duff_bounded", d.peak, d.peak <= 10.01f);
+        // the defaults must land in a wandering region, not a locked one
+        double flux = fx.value();
+        report("guttur", "default_not_static", flux, flux > 0.30);
     }
 
     Guttur m;
@@ -128,7 +203,7 @@ static void testGuttur() {
     m.params[Guttur::Q_PARAM].setValue(0.430777f);
     m.params[Guttur::SPREAD_PARAM].setValue(0.f);
     m.params[Guttur::GAINA_PARAM].setValue(1.f);
-    m.params[Guttur::GAINB_PARAM].setValue(0.f);
+    m.params[Guttur::GAINB_PARAM].setValue(1.f);
     for (int type = 0; type <= 5; type++) {
         m.params[Guttur::DIST_PARAM].setValue((float) type);
         skip(m, frame, 1);   // settle after the switch
