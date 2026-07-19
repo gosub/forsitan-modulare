@@ -373,9 +373,12 @@ struct Guttur : Module {
         configParam(SPREAD_PARAM, 0.f, 1.f, 0.f, "Spread (per-filter scatter)",
                     "%", 0.f, 100.f);
         configParam(GAINA_PARAM, 0.f, 2.f, 1.f, "Bank A gain");
-        // both originals start with bank B muted; with both banks on the same
-        // preset their outputs are identical, so finalY is simply doubled
-        configParam(GAINB_PARAM, 0.f, 2.f, 0.f, "Bank B gain");
+        // Both banks on. The SC *class* defaults gains2=0, but its example
+        // patch — the one that actually sounds like the record — runs both
+        // at 1.5, and total loop gain is what decides whether the chaos
+        // wanders or locks onto a fixed point: below roughly gainA+gainB =
+        // 1.5 the Duffing settles and the module becomes a static drone.
+        configParam(GAINB_PARAM, 0.f, 2.f, 1.f, "Bank B gain");
         configParam(LEVEL_PARAM, 0.f, 3.5f, 1.4f, "Level (drive into the sum)");
         configSwitch(DIST_PARAM, 0.f, 5.f, 1.f, "Distortion",
                      {"Hard clip", "Soft clip", "Atan (folding)", "Atan approx",
