@@ -483,7 +483,11 @@ struct Guttur : Module {
             glideCoef = 1.0 - std::exp(-(double) kControlDiv / (sr * ms * 1e-3));
     }
 
-    void onReset() override {
+    // The modern form: overriding the deprecated onReset() instead hides
+    // Module::onReset(const ResetEvent&) in this scope, and relies on Rack
+    // still dispatching to the legacy hook.
+    void onReset(const ResetEvent& e) override {
+        Module::onReset(e);
         sr = 0.f;   // force re-init on the next process()
     }
 
