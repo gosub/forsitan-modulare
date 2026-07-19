@@ -230,12 +230,32 @@ struct Engine {
 
         float out;
         if (filtersOn) {
+            // duffX is a raw Duffing state: duffY is an unbounded
+            // integrator and the -finalY^3 term is explosive, so it
+            // transiently reaches absurd magnitudes (measured 2.2e46 under
+            // Randomize). Past FLT_MAX the cast below yields inf, and the
+            // oversampler's anti-imaging/anti-aliasing filters are
+            // *recursive*: one inf latches their state permanently, killing
+            // the whole filtered path in a way that survives re-init and
+            // every parameter change. Clamp to the same +-100 the
+            // raw-Duffing branch uses (at default settings duffX peaks at
+            // 69.6, so this never fires in normal operation).
+            if (!std::isfinite(duffX))
+                resetDuff();
+            duffX = std::fmax(std::fmin(duffX, 100.0), -100.0);
+
             // distortion shapes the feedback state, oversampled
             oversample.upsample((float) duffX);
             float* osBuffer = oversample.getOSBuffer();
             for (int k = 0; k < oversample.getOversamplingRatio(); k++)
                 osBuffer[k] = (float) distortion(osBuffer[k], distType);
             duffX = oversample.downsample();
+            // belt and braces: if the oversampler still hands back a
+            // non-finite sample, scrub its state rather than latching
+            if (!std::isfinite(duffX)) {
+                oversample.reset((float) Fs);
+                resetDuff();
+            }
             // output the value from the filter, not from the distortion
             out = (float) (finalY * 0.125);
         }
