@@ -28,6 +28,11 @@
 //    pi·f/Fs to a fasttan() that already multiplies by pi internally,
 //    mistuning every filter a factor of pi up — not replicated.)
 //
+// The forcing sine runs at omega·dt·44100/(2·pi) Hz — TONE and RATE multiply
+// into one frequency. Below ~10 Hz the banks stop being excited, duffX parks
+// on a DC drift the bandpasses reject, and the module goes silent between
+// surges; the defaults (omega 0.02, dt 5, ~700 Hz) match the originals.
+//
 // Rack-native additions: 20 factory banks (Tom Mudd's filters.txt) with
 // glided morphing between them, PITCH (V/oct) and master Q macros, SPREAD
 // per-filter scatter (seeded, survives save/load), runtime-switchable
@@ -146,9 +151,9 @@ struct Engine {
             Q[f] = 30.0;
         resetDuff();
         gamma = 0.2;
-        omega = 2e-4;
+        omega = 0.02;
         c = 0.01;
-        dt = 0.03;
+        dt = 5.0;
         calcCoeffs();
         oversample.reset((float) sampleRate);
     }
@@ -329,10 +334,13 @@ struct Guttur : Module {
     Guttur() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam(DRIVE_PARAM, 0.f, 10.f, 0.2f, "Drive (gamma forcing)");
-        configParam(TONE_PARAM, 0.f, 1.f, 0.0752575f, "Tone (forcing frequency)",
+        // 0.5752575 puts omega at the original's 0.02; with dt = 5 that is a
+        // ~700 Hz forcing sine. Below ~10 Hz the banks lose their excitation
+        // and the whole engine falls silent between surges — see the header.
+        configParam(TONE_PARAM, 0.f, 1.f, 0.5752575f, "Tone (forcing frequency)",
                     "", 1e4f, 1e-4f);
         configParam(DAMP_PARAM, 0.f, 1.f, 0.5f, "Damping (c)", "", 1e4f, 1e-4f);
-        configParam(RATE_PARAM, 0.f, 5.f, 0.03f, "Rate (dt time step)");
+        configParam(RATE_PARAM, 0.f, 10.f, 5.f, "Rate (dt time step)");
         configParam(SMOOTH_PARAM, 0.f, 5.f, 1.f, "Smooth (chaos lowpass)");
         configParam(DRIVE_ATT_PARAM, -1.f, 1.f, 0.f, "Drive CV amount", "%", 0.f, 100.f);
         configParam(TONE_ATT_PARAM, -1.f, 1.f, 0.f, "Tone CV amount", "%", 0.f, 100.f);
@@ -396,9 +404,9 @@ struct Guttur : Module {
         dcDuff.reset();
         double tau = 0.005;   // 5 ms, replaces SC's per-block SlopeSignal
         smGamma.setup(0.2, tau, sr);
-        smOmega.setup(2e-4, tau, sr);
+        smOmega.setup(0.02, tau, sr);
         smC.setup(0.01, tau, sr);
-        smDt.setup(0.03, tau, sr);
+        smDt.setup(5.0, tau, sr);
         smSmooth.setup(0.0, tau, sr);
         smSingleGain.setup(1.4, tau, sr);
         smGainA.setup(1.0, tau, sr);
@@ -491,8 +499,8 @@ struct Guttur : Module {
         smC.target = 1e-4 * std::pow(10.0, 4.0 * clamp(dtp, 0.f, 1.f));
 
         float rate = params[RATE_PARAM].getValue()
-                   + params[RATE_ATT_PARAM].getValue() * inputs[RATE_CV_INPUT].getVoltage() * 0.5f;
-        smDt.target = clamp(rate, 0.f, 5.f);
+                   + params[RATE_ATT_PARAM].getValue() * inputs[RATE_CV_INPUT].getVoltage();
+        smDt.target = clamp(rate, 0.f, 10.f);
 
         smSmooth.target = params[SMOOTH_PARAM].getValue();
         smSingleGain.target = clamp(params[LEVEL_PARAM].getValue(), 0.f, 5.f);

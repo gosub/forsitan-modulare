@@ -26,10 +26,13 @@ duffX ──> [bank A: 24 bandpass] ──┬─> finalY ──> out (×0.125)
 
 The result is metallic, physical, scraping — bowed sheet metal, dragged
 chains, feedback trombones — sound that seems to *touch* surfaces as it
-moves. With the default settings the internal forcing sine is far below
-audio rate (~0.04 Hz), so the system **breathes**: it surges into
-screaming resonance and collapses back roughly every 12 seconds. Faster
-**tone** settings turn that breathing into growl, then into pitch.
+moves. The internal forcing sine runs at **tone** × **rate** (the two
+knobs multiply into one frequency); at the default ~700 Hz the engine
+runs continuously. Turning **tone** or **rate** right down takes the
+forcing below audio rate, and the system starts to **breathe** instead:
+it surges into screaming resonance and collapses back between surges.
+Below ~10 Hz the collapses become long silences, which is a setting, not
+a fault.
 
 At power-on (and on every **reset**) the chaos is ignited by a short
 parameter kick — the same transient the SuperCollider version produces on
@@ -42,7 +45,7 @@ its first block — so the module always wakes up making sound.
 | **drive** | forcing amount (gamma, 0–10). More drive, more violence |
 | **tone** | forcing sine frequency coefficient (exponential). Low = slow surging drones, high = growls and tones |
 | **damp** | damping (exponential). High damping chokes the chaos; low lets it ring |
-| **rate** | internal time step (dt, 0–5). Scales how fast the whole system runs; a chaos "pitch/speed" control |
+| **rate** | internal time step (dt, 0–10). Scales how fast the whole system runs; multiplies with **tone** to set the forcing frequency |
 | **smooth** | chaos-state lowpass (0–5). Softens duffX; higher = darker, rounder (no CV) |
 
 ## Resonator controls
