@@ -1322,6 +1322,11 @@ static void testSylla() {
         }
         return worst;
     };
+    // a plain sine stands in for the generated sample: its own adjacent
+    // samples barely move, so any step in the output is the artifact
+    m.buffer.assign((size_t)(2 * SR), 0.f);
+    for (size_t i = 0; i < m.buffer.size(); i++)
+        m.buffer[i] = 0.5f * std::sin(2.f * M_PI * 55.f * (float)i / SR);
     m.params[Sylla::LEN_PARAM].setValue(1.f);      // full-length window
     pulse(1e-3f);
     settle(0.3f);                                  // well inside the window
@@ -1331,7 +1336,49 @@ static void testSylla() {
     m.params[Sylla::TRIG_PARAM].setValue(0.f);
     settle(0.01f);
     report("sylla", "retrigger_step_ratio", jump / std::max(steady, 1e-6f),
-           jump <= std::max(steady * 2.f, 0.02f));
+           jump <= steady * 3.f);
+    settle(0.5f);
+
+    // and a fresh sample landing under a playing head must not step
+    // either: the sine plays on until the render swaps in under it. It
+    // rides on an offset, so cutting it is a step at any phase, while
+    // the zero-mean material that lands cannot mask one.
+    m.buffer.assign((size_t)(2 * SR), 0.f);
+    for (size_t i = 0; i < m.buffer.size(); i++)
+        m.buffer[i] = 0.4f + 0.3f * std::sin(2.f * M_PI * 55.f * (float)i / SR);
+    m.params[Sylla::LOOP_PARAM].setValue(1.f);     // keep it sounding
+    tap(0.02f);
+    settle(0.3f);
+    steady = maxStep(0.3f);
+    m.params[Sylla::FAMILY_PARAM].setValue(0.f);   // drone: smooth material
+    m.params[Sylla::GEN_PARAM].setValue(1.f);
+    settle(64.f / SR);
+    m.params[Sylla::GEN_PARAM].setValue(0.f);
+    // The step is only interesting on the handful of samples where the
+    // buffer actually changes hands; measuring a whole window instead
+    // just picks up the new material's own liveliness and hides it.
+    float swap = 0.f;
+    {
+        size_t was = m.buffer.size();
+        float prev = m.outputs[Sylla::OUT_OUTPUT].getVoltage();
+        long spun = 0, since = -1;
+        while (since < 8 && spun < (long)(30 * SR)) {
+            m.process(makeArgs(frame++));
+            float v = m.outputs[Sylla::OUT_OUTPUT].getVoltage();
+            if (since >= 0 || m.buffer.size() != was) {
+                swap = std::max(swap, std::fabs(v - prev));
+                since++;
+            }
+            prev = v;
+            if (++spun % (long)SR == 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+    }
+    // cutting the fixture dead would step by its offset alone, about
+    // 0.4 * 0.8 * 5 = 1.6 V; a crossfaded handover moves by a few mV
+    report("sylla", "regen_step_v", swap, swap < 0.5f);
+    tap(0.02f);                                    // toggle the loop back off
+    m.params[Sylla::LOOP_PARAM].setValue(0.f);
     settle(0.5f);
 
     // one-shot + gate: sounds while high, and a held gate still stops at

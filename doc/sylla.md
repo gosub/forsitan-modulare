@@ -70,9 +70,11 @@ starts *on*, so flipping LOOP up drones straight away with nothing
 patched — an instant generative drone/texture source. PLAY stops it,
 another press starts it over. The run state is saved with the patch.
 
-Retriggering a window that is already sounding is declicked: the level
-it was cut at decays away over 2 ms underneath the new window's
-fade-in, so fast retriggers stay clean.
+Nothing ever cuts mid-signal. Retriggering a sounding window, and a
+freshly generated sample landing under a playing head, both hand over
+through a 4 ms crossfade: the outgoing audio keeps playing from a
+second read head while the new one comes up under it. Hammer PLAY or
+GEN as fast as you like, it stays clean.
 
 ## Patching
 

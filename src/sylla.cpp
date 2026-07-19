@@ -22,7 +22,8 @@
 //              loop     + gate : loops while the gate is high
 //           Generating a sample never starts playback by itself; the
 //           default state is one-shot + trigger, so a fresh sylla waits
-//           for a press. Retriggers are declicked.
+//           for a press. Retriggers and new samples landing under the
+//           playhead hand over through a short crossfade.
 //   Out   : OUT (mono, level LED), EOC trigger (fires at each window
 //           end / loop wrap)
 //
@@ -35,6 +36,9 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+
+// crossfade time for playhead jumps (retrigger, or a new sample landing)
+static const float SYLLA_XFADE_SEC = 0.004f;
 
 struct Sylla : Module {
     enum ParamId {
@@ -87,9 +91,18 @@ struct Sylla : Module {
     bool pendingRender = false;
     bool running = true;      // loop + trigger mode: the run latch
     bool oneShotDone = false; // one-shot + gate mode: window already spoken
-    float lastOut = 0.f;      // previous output, for the retrigger declick
-    float declickVal = 0.f;
-    float declickRamp = 0.f;
+
+    // Any jump in the playhead — a retrigger, or a fresh sample landing
+    // under it — is a step, and a step is a click. Both go through a
+    // short crossfade instead: the outgoing audio keeps playing from a
+    // second read head while the new one comes up under it. tailSrc is
+    // the main buffer for a retrigger, or tailBuf (holding the sample
+    // just replaced) when a render lands.
+    std::vector<float> tailBuf;
+    const std::vector<float>* tailSrc = nullptr;
+    float tailPos = 0.f;
+    float tailEnv = 0.f;
+    float xfade = 1.f;        // 0 = all tail, 1 = all main
 
     Sylla() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -108,6 +121,15 @@ struct Sylla : Module {
         configInput(TRIG_INPUT, "Trigger / gate");
         configOutput(OUT_OUTPUT, "Audio");
         configOutput(EOC_OUTPUT, "End of cycle");
+    }
+
+    // hand the currently sounding audio to the tail voice, which fades it
+    // out while whatever comes next fades in
+    void beginXfade(const std::vector<float>* src) {
+        tailSrc = src;
+        tailPos = pos;
+        tailEnv = env;
+        xfade = 0.f;
     }
 
     void startRender(float sr, uint64_t seed) {
@@ -134,7 +156,8 @@ struct Sylla : Module {
         playing = false;
         running = true;
         oneShotDone = false;
-        lastOut = declickVal = declickRamp = 0.f;
+        tailSrc = nullptr;
+        xfade = 1.f;
         pos = 0.f;
         sampleSeed = 0;
         pendingRender = true;
@@ -173,10 +196,14 @@ struct Sylla : Module {
         if (genHit && !job)
             startRender(args.sampleRate, (uint64_t)random::u64());
 
-        // collect a finished render (vector swap, no allocation here)
+        // collect a finished render (vector swaps, no allocation here).
+        // The outgoing sample is parked in tailBuf so the crossfade can
+        // keep reading it after the new one takes its place.
         if (job && job->done.load()) {
+            tailBuf.swap(buffer);
             buffer.swap(job->buf);
             job.reset();
+            beginXfade(&tailBuf);
             if (pos >= (float)buffer.size())
                 pos = 0.f;
         }
@@ -191,14 +218,10 @@ struct Sylla : Module {
         bool trigEdge = playTrig.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f);
         trigEdge |= trigButton.process(btnHeld);
 
-        // throwing the playhead back to the start under a live signal is a
-        // step discontinuity: hold the level it was cut at and decay that
-        // stub away while the window's own fade-in comes up under it
+        // a retrigger crossfades from the window it interrupts, reading
+        // the same buffer from where the playhead was
         auto restart = [&]() {
-            if (std::fabs(lastOut) > 1e-5f) {
-                declickVal = lastOut;
-                declickRamp = 1.f;
-            }
+            beginXfade(&buffer);
             pos = 0.f;
         };
 
@@ -227,6 +250,10 @@ struct Sylla : Module {
             }
         }
         bool wantPlay = playing;
+
+        // one rate for both read heads, so the tail keeps its pitch
+        float rate = imber_dsp::clampf(params[SPEED_PARAM].getValue()
+            * std::pow(2.f, inputs[SPEED_INPUT].getVoltage()), 0.05f, 8.f);
 
         float out = 0.f;
         if (!buffer.empty() && (wantPlay || env > 0.001f)) {
@@ -258,20 +285,31 @@ struct Sylla : Module {
                 float fadeOut = std::min(1.f, (win - pos)
                                               / (0.01f * args.sampleRate));
                 out = smp * env * fadeIn * imber_dsp::clampf(fadeOut, 0.f, 1.f);
-                float rate = params[SPEED_PARAM].getValue()
-                    * std::pow(2.f, inputs[SPEED_INPUT].getVoltage());
-                pos += imber_dsp::clampf(rate, 0.05f, 8.f);
+                pos += rate;
             }
         }
 
-        // the cut-off stub, fading out over 2 ms on top of the new window
-        if (declickRamp > 0.f) {
-            out += declickVal * declickRamp;
-            declickRamp -= args.sampleTime / 0.002f;
-            if (declickRamp < 0.f)
-                declickRamp = 0.f;
+        // crossfade: the interrupted audio still plays from the tail head
+        // while the new window comes up under it
+        if (xfade < 1.f) {
+            float tail = 0.f;
+            if (tailSrc && tailEnv > 0.001f) {
+                int tlen = (int)tailSrc->size();
+                if (tailPos >= 0.f && tailPos < (float)(tlen - 1)) {
+                    int i0 = (int)tailPos;
+                    float fr = tailPos - i0;
+                    const std::vector<float>& tb = *tailSrc;
+                    tail = (tb[i0] + (tb[i0 + 1] - tb[i0]) * fr) * tailEnv;
+                }
+            }
+            out = out * xfade + tail * (1.f - xfade);
+            tailPos += rate;
+            xfade += args.sampleTime / SYLLA_XFADE_SEC;
+            if (xfade >= 1.f) {
+                xfade = 1.f;
+                tailSrc = nullptr;
+            }
         }
-        lastOut = out;
 
         float v = out * params[LEVEL_PARAM].getValue() * 5.f;
         outputs[OUT_OUTPUT].setVoltage(v);
