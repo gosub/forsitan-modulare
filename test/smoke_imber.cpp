@@ -7,9 +7,34 @@
 static void testImber() {
     Imber m;
     long frame = 0;
-    // first process initializes the engine at SR; then pin everything
-    // deterministic: fixed timing seed, all clocks reachable, FX far away
+    // The constructor seeds constRng from the clock, and the first process
+    // draws both the engine seed and the bank seed from it. Pin both before
+    // any process() runs: the very first frame fires every clock division at
+    // once (nominal[] is still 0) and rolls real musical state off that seed,
+    // so the eng.init() below is too late to be the only pin.
+    m.constRng.seed(42);
+    m.bankSeed = 42;
+    // first process initializes the engine at SR and kicks off the bank
     m.process(makeArgs(frame++));
+
+    // Wait on the worker by sleeping, NOT by spinning process(): the bank
+    // takes a wall-clock-dependent time to build, so engine frames burned
+    // while waiting would start the checks from a different phase every run.
+    // Sleeping keeps the cost at exactly one process() to install the bank
+    // (and stops the spin from starving the worker: ~0.4 s here, was ~9 s).
+    int waitedMs = 0;
+    while (m.bankJob && !m.bankJob->done.load() && waitedMs < 30000) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        waitedMs += 20;
+    }
+    m.process(makeArgs(frame++));   // installs the finished bank
+    report("imber", "bank_lands", waitedMs / 1000.0, m.eng.bank != nullptr);
+    if (!m.eng.bank)
+        return;
+
+    // Now pin the engine for the checks: fixed timing seed, all clocks
+    // reachable, FX parked far away. init() leaves the landed bank alone,
+    // so re-running it here is safe.
     m.eng.init(SR, 42);
     for (int i = 0; i < imber_engine::DIV_COUNT; i++) {
         m.eng.clk[i].ax = m.eng.clk[i].bx = 0.45f + 0.025f * i;
@@ -20,18 +45,6 @@ static void testImber() {
         m.eng.fxo[i].ay = m.eng.fxo[i].by = 0.95f;
     }
     m.params[Imber::REACH_PARAM].setValue(0.7f);
-
-    // the worker-thread bank should land while the engine idles
-    // (simulated samples run faster than wall time; yield to the worker)
-    long waited = 0;
-    while (!m.eng.bank && waited < (long)(30 * SR)) {
-        m.process(makeArgs(frame++));
-        if (++waited % (long)SR == 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
-    report("imber", "bank_lands_s", waited / SR, m.eng.bank != nullptr);
-    if (!m.eng.bank)
-        return;
     report("imber", "bank_sizes",
            m.eng.bank->loops.size(),
            m.eng.bank->loops.size() == (size_t)imber_gen::kBankLoops
