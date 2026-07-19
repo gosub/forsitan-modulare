@@ -88,8 +88,15 @@ inline double distortion(double v, int type) {
             double w = v * 1.3;
             return 0.75 * (std::sqrt(w * w + 1.0) * 1.65 - 1.65) / v;
         }
-        case 4:   // tanh approximation (kvraudio)
-            return (0.1076 * v * v * v + 3.029 * v) / (v * v + 3.124);
+        case 4: { // tanh approximation (kvraudio)
+            // The rational approximation only tracks tanh over roughly
+            // |v| <= 3; beyond that it turns around and grows as 0.1076*v,
+            // so in the feedback loop it diverges (|finalY| hit 1e13 within
+            // 100 ms and railed the output). Clamp to its valid range, where
+            // it is monotonic and saturates at ~0.989.
+            double w = std::fmax(std::fmin(v, 3.0), -3.0);
+            return (0.1076 * w * w * w + 3.029 * w) / (w * w + 3.124);
+        }
         default:
             return v;
     }
