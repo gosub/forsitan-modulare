@@ -70,17 +70,24 @@ struct Dcblocker {
 // Types 0-4 as documented for the SC port (its enum had an accidental
 // pass-through at index 2; we use the intended five).
 
+// The musicdsp fast atan approximation. Note it is NOT monotonic: it peaks
+// at x = 1/sqrt(0.28) = 1.890 and then decays back toward zero, so used as a
+// waveshaper it folds rather than clips. Kept for the types that want that.
 inline double fastatan(double x) { return x / (1.0 + 0.28 * (x * x)); }
 
 inline double distortion(double v, int type) {
     switch (type) {
         case 0:   // hard clip
             return std::fmax(std::fmin(v, 1.0), -1.0);
-        case 1: { // variable-hardness clip, shape = 3
-            const double invAtanShape = 1.0 / fastatan(3.0);
-            return invAtanShape * fastatan(v * 3.0);
-        }
-        case 2:   // fast atan
+        case 1:   // variable-hardness clip, shape = 3
+            // musicdsp normalizes this by fastatan(shape) so that input 1
+            // maps to output 1, which leaves a small-signal gain of
+            // 3/fastatan(3) = 3.52 — 11 dB of extra gain injected straight
+            // into the feedback loop. Normalize by the shape instead, for
+            // unity gain at the origin, and use the exact atan so the curve
+            // saturates instead of folding back at |v| > 0.63.
+            return std::atan(v * 3.0) / 3.0;
+        case 2:   // fast atan — folds back above |v| = 1.89 (see above)
             return fastatan(v);
         case 3: { // atan approximation (kvraudio)
             if (std::fabs(v) < 1e-12)
@@ -97,6 +104,8 @@ inline double distortion(double v, int type) {
             double w = std::fmax(std::fmin(v, 3.0), -3.0);
             return (0.1076 * w * w * w + 3.029 * w) / (w * w + 3.124);
         }
+        case 5:   // exact atan, as Tom Mudd's Java used before the SC port
+            return std::atan(v);   // swapped fastatan() in
         default:
             return v;
     }
@@ -366,8 +375,9 @@ struct Guttur : Module {
         configParam(GAINA_PARAM, 0.f, 2.f, 1.f, "Bank A gain");
         configParam(GAINB_PARAM, 0.f, 2.f, 1.f, "Bank B gain");
         configParam(LEVEL_PARAM, 0.f, 3.5f, 1.4f, "Level (drive into the sum)");
-        configSwitch(DIST_PARAM, 0.f, 4.f, 1.f, "Distortion",
-                     {"Hard clip", "Soft clip", "Atan", "Atan approx", "Tanh approx"});
+        configSwitch(DIST_PARAM, 0.f, 5.f, 1.f, "Distortion",
+                     {"Hard clip", "Soft clip", "Atan (folding)", "Atan approx",
+                      "Tanh approx", "Atan (exact)"});
         configSwitch(FILT_PARAM, 0.f, 1.f, 1.f, "Filters",
                      {"Off (raw Duffing)", "On"});
         configButton(RESET_PARAM, "Reset chaos");

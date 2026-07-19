@@ -58,7 +58,7 @@ its first block — so the module always wakes up making sound.
 | **spread** | per-filter random detune/Q scatter. 0 = exact presets; ~0.3 gives bank B the ±5 % shimmer of the SC example patch. The random pattern is seeded per instance, saved with the patch, re-rolled by Rack's Randomize |
 | **gain a / gain b** | bank balance, 0–2 (CV-able) |
 | **level** | drive into the filter sum (0–3.5). This is *inside* the feedback loop: it changes behavior, not just loudness |
-| **dist** | distortion of the chaotic state: hard clip / soft clip / atan / atan-approx / tanh-approx. Shapes the *feedback*, so it changes the character of the chaos rather than adding fuzz |
+| **dist** | distortion of the chaotic state: hard clip / soft clip / atan (folding) / atan-approx / tanh-approx / atan (exact). Shapes the *feedback*, so it changes the character of the chaos rather than adding fuzz. "Atan (folding)" is the SC port's fast approximation, which turns over above \|v\| = 1.89 and folds; the other atan settings saturate cleanly. Atan-approx and atan (exact) run the loop hottest |
 | **filters** | switch the banks off for raw-Duffing mode: bounded chaos with hard resets — "snazzy clicks" |
 | **reset** | button + trigger: zero the chaotic state and re-ignite. Percussive |
 
