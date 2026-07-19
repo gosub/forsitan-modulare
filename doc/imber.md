@@ -77,7 +77,10 @@ without waiting for a CHG roll).
 The on/off button is also the voice's indicator, and its three states
 are distinct: **division color** (red 2n → blue 32n, brightness =
 activity) when the voice is playing, **dark** when no clock is within
-REACH, and a **steady dim white** when you have muted it. A muted voice
+REACH, and **bright violet** when you have muted it. The division
+palette runs red → orange → yellow → green → blue, so violet is the one
+hue nothing else claims, and it stays bright where the division colors
+dim with inactivity. A muted voice
 keeps its clock binding and its place in the couplings, so the field
 display still shows where it sits — as a hollow ring rather than a
 filled dot — and it comes back in time when you switch it on again.

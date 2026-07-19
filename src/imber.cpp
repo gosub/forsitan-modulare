@@ -421,8 +421,10 @@ struct Imber : Module {
 
         // player LEDs: color = bound division, brightness = activity.
         // Three states must stay distinguishable: playing (division color),
-        // out of reach (dark), muted (steady dim white -- no division color
-        // is near neutral grey, so it never reads as a division).
+        // out of reach (dark), muted (full-brightness violet). The palette
+        // runs red->orange->yellow->green->blue, so violet is the one hue
+        // no division claims, and going bright rather than dim keeps it
+        // clear of the "dim = barely active" reading.
         static const float divColor[5][3] = {
             {1.f, 0.25f, 0.25f},    // 2n
             {1.f, 0.65f, 0.1f},     // 4n
@@ -433,8 +435,9 @@ struct Imber : Module {
         for (int i = 0; i < kPlayers; i++) {
             int d = eng.pl[i].boundClock;
             if (!p.voiceOn[i]) {
+                static const float mutedCol[3] = {0.85f, 0.1f, 1.f};
                 for (int c = 0; c < 3; c++)
-                    lights[P1_LIGHT + 3 * i + c].setBrightness(0.2f);
+                    lights[P1_LIGHT + 3 * i + c].setBrightness(mutedCol[c]);
                 continue;
             }
             float a = d >= 0
@@ -732,14 +735,14 @@ struct ImberWidget : ModuleWidget {
 // @elem SPD6_PARAM CKSSThree 2.3 param "" 0.0
 // @elem SPD7_PARAM CKSSThree 2.3 param "" 0.0
 // @elem SPD8_PARAM CKSSThree 2.3 param "" 0.0
-// @elem VON1_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P1_LIGHT
-// @elem VON2_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P2_LIGHT
-// @elem VON3_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P3_LIGHT
-// @elem VON4_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P4_LIGHT
-// @elem VON5_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P5_LIGHT
-// @elem VON6_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P6_LIGHT
-// @elem VON7_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P7_LIGHT
-// @elem VON8_PARAM VCVLightBezelLatch 3.6 param "" 0.0 light=P8_LIGHT
+// @elem VON1_PARAM VCVLightLatch 3.05 param "" 0.0 light=P1_LIGHT
+// @elem VON2_PARAM VCVLightLatch 3.05 param "" 0.0 light=P2_LIGHT
+// @elem VON3_PARAM VCVLightLatch 3.05 param "" 0.0 light=P3_LIGHT
+// @elem VON4_PARAM VCVLightLatch 3.05 param "" 0.0 light=P4_LIGHT
+// @elem VON5_PARAM VCVLightLatch 3.05 param "" 0.0 light=P5_LIGHT
+// @elem VON6_PARAM VCVLightLatch 3.05 param "" 0.0 light=P6_LIGHT
+// @elem VON7_PARAM VCVLightLatch 3.05 param "" 0.0 light=P7_LIGHT
+// @elem VON8_PARAM VCVLightLatch 3.05 param "" 0.0 light=P8_LIGHT
 // @elem NEW1_PARAM TL1105 2.6 param "" 0.0
 // @elem NEW2_PARAM TL1105 2.6 param "" 0.0
 // @elem NEW3_PARAM TL1105 2.6 param "" 0.0
@@ -972,14 +975,14 @@ struct ImberWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(122.00f, 110.00f)), module, Imber::MICRO_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.50f, 110.00f)), module, Imber::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(153.00f, 110.00f)), module, Imber::RIGHT_OUTPUT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(74.00f, 11.00f)), module, Imber::VON1_PARAM, Imber::P1_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(86.40f, 11.00f)), module, Imber::VON2_PARAM, Imber::P2_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(98.80f, 11.00f)), module, Imber::VON3_PARAM, Imber::P3_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(111.20f, 11.00f)), module, Imber::VON4_PARAM, Imber::P4_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(123.60f, 11.00f)), module, Imber::VON5_PARAM, Imber::P5_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(136.00f, 11.00f)), module, Imber::VON6_PARAM, Imber::P6_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(148.40f, 11.00f)), module, Imber::VON7_PARAM, Imber::P7_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezelLatch<RedGreenBlueLight>>(mm2px(Vec(160.80f, 11.00f)), module, Imber::VON8_PARAM, Imber::P8_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(74.00f, 11.00f)), module, Imber::VON1_PARAM, Imber::P1_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(86.40f, 11.00f)), module, Imber::VON2_PARAM, Imber::P2_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(98.80f, 11.00f)), module, Imber::VON3_PARAM, Imber::P3_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(111.20f, 11.00f)), module, Imber::VON4_PARAM, Imber::P4_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(123.60f, 11.00f)), module, Imber::VON5_PARAM, Imber::P5_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(136.00f, 11.00f)), module, Imber::VON6_PARAM, Imber::P6_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(148.40f, 11.00f)), module, Imber::VON7_PARAM, Imber::P7_LIGHT));
+        addParam(createLightParamCentered<VCVLightLatch<MediumLight<RedGreenBlueLight>>>(mm2px(Vec(160.80f, 11.00f)), module, Imber::VON8_PARAM, Imber::P8_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(142.50f, 107.00f)), module, Imber::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(158.00f, 107.00f)), module, Imber::LEVEL_R_LIGHT));
         // @layout:end

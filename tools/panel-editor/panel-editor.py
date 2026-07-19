@@ -26,8 +26,9 @@ WIDGET_VISUALS = {
     'Rogan1PWhite':       {'r': 4.5,  'fill': '#eeeeee', 'stroke': '#aaa', 'sw': 0.5},
     'Rogan2PWhite':       {'r': 5.5,  'fill': '#eeeeee', 'stroke': '#aaa', 'sw': 0.5},
     'Trimpot':            {'r': 3.03, 'fill': '#363636', 'stroke': '#888', 'sw': 0.4},
-    # a latching button with a light in it: one control, one indicator
+    # latching buttons with a light in them: one control, one indicator
     'VCVLightBezelLatch': {'r': 3.6,  'fill': '#444',    'stroke': '#999', 'sw': 0.4},
+    'VCVLightLatch':      {'r': 3.05, 'fill': '#444',    'stroke': '#999', 'sw': 0.4},
     'PJ301MPort':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'PJ3410Port':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'TL1105':             {'r': 2.6,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
