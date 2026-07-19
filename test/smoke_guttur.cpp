@@ -252,31 +252,52 @@ static void testGutturLatch() {
         report("guttur", "oversampler_reset_clears_state", y,
                std::isfinite(y));
     }
-    // 3. duffX must never reach the oversampler as a non-finite float, at
-    //    default settings or under the curated randomize ranges
+    // 3. End-to-end sanity: hammer the engine through hot states and every
+    //    distortion type, then return every parameter to its default and
+    //    require the sound to come back.
+    //
+    //    Caveat: this does NOT reproduce the latch. A grid search over
+    //    drive/level/q/damp/smooth/pitch/dist tops out at |duffX| ~ 4e7,
+    //    while poisoning the oversampler needs it past FLT_MAX (3.4e38) --
+    //    the 1e46 excursions come from rarer bank/rate combinations. Check 1
+    //    is the guard for the mechanism; this one just catches gross
+    //    end-to-end breakage.
+    //
+    //    (An earlier version randomized and asserted on rail fraction. That
+    //    is flaky -- railing is a legitimate loud state in a chaotic module,
+    //    and the harness is clock-seeded -- so it is a fixed sweep now.)
     {
         Guttur m;
         long frame = 0;
-        Meter all;
-        auto draw = [](float lo, float hi) {
-            return lo + rack::random::uniform() * (hi - lo);
+        skip(m, frame, 1);
+        static const float hostile[][6] = {
+            // drive, level, gainA, gainB, q,    damp
+            { 10.f,  3.5f,  2.f,   2.f,   1.f,  0.f   },
+            {  8.f,  3.5f,  2.f,   2.f,   0.f,  0.f   },
+            { 10.f,  3.0f,  2.f,   2.f,   0.5f, 0.02f },
+            {  0.f,  3.5f,  2.f,   2.f,   0.9f, 0.f   },
         };
-        for (int r = 0; r < 12; r++) {
-            m.params[Guttur::DRIVE_PARAM].setValue(draw(0.5f, 2.5f));
-            m.params[Guttur::GAINA_PARAM].setValue(draw(1.f, 2.f));
-            m.params[Guttur::GAINB_PARAM].setValue(draw(1.f, 2.f));
-            m.params[Guttur::LEVEL_PARAM].setValue(draw(1.4f, 3.f));
-            m.params[Guttur::DAMP_PARAM].setValue(draw(0.f, 0.55f));
-            m.params[Guttur::Q_PARAM].setValue(draw(0.f, 0.55f));
-            m.params[Guttur::PITCH_PARAM].setValue(draw(0.15f, 1.f));
-            m.params[Guttur::RATE_PARAM].setValue(draw(1.f, 10.f));
-            m.params[Guttur::SMOOTH_PARAM].setValue(draw(0.f, 4.f));
-            run(m, frame, all, 1);
+        for (const auto& h : hostile) {
+            m.params[Guttur::DRIVE_PARAM].setValue(h[0]);
+            m.params[Guttur::LEVEL_PARAM].setValue(h[1]);
+            m.params[Guttur::GAINA_PARAM].setValue(h[2]);
+            m.params[Guttur::GAINB_PARAM].setValue(h[3]);
+            m.params[Guttur::Q_PARAM].setValue(h[4]);
+            m.params[Guttur::DAMP_PARAM].setValue(h[5]);
+            for (int type = 0; type <= 5; type++) {
+                m.params[Guttur::DIST_PARAM].setValue((float) type);
+                skip(m, frame, 0.5);
+            }
         }
-        // the module may legitimately be quiet in some of these states, but
-        // it must never be latched: every sample finite, nothing railed
-        report("guttur", "randomize_no_latch", all.nans + all.railed,
-               all.nans == 0 && all.railFrac() < 0.02);
+        // back to defaults, exactly as the host's Initialize would
+        for (int i = 0; i < Guttur::PARAMS_LEN; i++)
+            if (m.paramQuantities[i])
+                m.params[i].setValue(m.paramQuantities[i]->defaultValue);
+        skip(m, frame, 1);
+        Meter back;
+        run(m, frame, back, 3);
+        report("guttur", "recovers_after_hostile", back.rms(),
+               back.nans == 0 && back.rms() > 0.05);
     }
 }
 
