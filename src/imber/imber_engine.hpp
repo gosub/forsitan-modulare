@@ -269,7 +269,14 @@ struct Engine {
         const std::vector<float>& b = bufferFor(h);
         float lenS = (float)b.size() / sr;
         float maxDur = clampf(std::min(2.f, prm.lpm), 0.06f, lenS);
-        h.loopDurS = clampf(h.loopDurS + timingRng.bipolar() * 0.2f, 0.05f, maxDur);
+        // the bound division sets the loop window: one clock interval of
+        // material, deviated +-25%, so tempo is audible in the bed and not
+        // only in the gate outs. LPM stays the ceiling (the buffers hold
+        // 2 s at most), so very slow tempos flatten out against it.
+        float interval = (60.f / clampf(prm.bpm, 0.5f, 400.f))
+                         * divMult(p.boundClock >= 0 ? p.boundClock : DIV_8N);
+        float target = interval * (1.f + timingRng.bipolar() * 0.25f);
+        h.loopDurS = clampf(target, 0.05f, maxDur);
         h.loopInS = clampf(h.loopInS + timingRng.bipolar() * 0.2f,
                            0.f, std::max(0.f, lenS - h.loopDurS));
         p.actEnv = std::min(1.f, p.actEnv + 0.4f);

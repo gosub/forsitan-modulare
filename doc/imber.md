@@ -72,9 +72,12 @@ new random sample, evaluated on every quarter note — exponentially
 mapped, so low values are genuinely rare; default ≈ 10%), and a **½/1/2**
 speed switch (multiplied with the global SPD). The LED shows the bound
 division's color (red 2n → blue 32n, brightness = activity); dark means
-out of reach, and silent. Loop windows drunk-walk in ±200 ms steps up to
-LPM seconds long; samples come from a 64-buffer loop bank via an urn
-(never the same one twice in a row).
+out of reach, and silent. On every edge of its bound division a player
+re-cuts its loop window to one clock interval of material, deviated
+±25%, so the tempo is heard in the bed and not only in the gate outs;
+**LPM** caps it (the buffers hold 2 s at most, so below roughly 15 bpm
+the windows flatten against that ceiling). Samples come from a 64-buffer
+loop bank via an urn (never the same one twice in a row).
 
 ## Clocks: drunk time
 
