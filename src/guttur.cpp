@@ -385,6 +385,9 @@ struct Guttur : Module {
                       "Tanh approx", "Atan (exact)"});
         configSwitch(FILT_PARAM, 0.f, 1.f, 1.f, "Filters",
                      {"Off (raw Duffing)", "On"});
+        // raw-Duffing mode is a different instrument (clicks, not drones);
+        // landing in it on half of all randomizes reads as a broken module
+        paramQuantities[FILT_PARAM]->randomizeEnabled = false;
         configButton(RESET_PARAM, "Reset chaos");
         configInput(DRIVE_CV_INPUT, "Drive CV");
         configInput(TONE_CV_INPUT, "Tone CV");
@@ -464,10 +467,30 @@ struct Guttur : Module {
         sr = 0.f;   // force re-init on the next process()
     }
 
+    // Uniform randomization over the full panel ranges lands in a musical
+    // state about 5% of the time: the engine has large degenerate regions
+    // where it locks onto a fixed point (a static drone) or goes silent, and
+    // three axes decide which. Total loop gain (GAIN A + GAIN B + LEVEL) must
+    // clear a threshold or the Duffing settles; DAMP and Q above ~0.6 choke
+    // the chaos the same way; RATE at 0 stops the forcing clock dead. Keep
+    // the knobs full-range for hand exploration, but draw the dice from the
+    // region where the thing actually sings.
     void onRandomize(const RandomizeEvent& e) override {
         Module::onRandomize(e);
         spreadSeed = random::u32();
         regenScatter();
+        auto draw = [](float lo, float hi) {
+            return lo + random::uniform() * (hi - lo);
+        };
+        params[DRIVE_PARAM].setValue(draw(0.5f, 2.5f));
+        params[GAINA_PARAM].setValue(draw(1.f, 2.f));
+        params[GAINB_PARAM].setValue(draw(1.f, 2.f));
+        params[LEVEL_PARAM].setValue(draw(1.4f, 3.f));
+        params[DAMP_PARAM].setValue(draw(0.f, 0.55f));
+        params[Q_PARAM].setValue(draw(0.f, 0.55f));
+        params[PITCH_PARAM].setValue(draw(0.15f, 1.f));
+        params[RATE_PARAM].setValue(draw(1.f, 10.f));
+        params[SMOOTH_PARAM].setValue(draw(0.f, 4.f));
     }
 
     json_t* dataToJson() override {

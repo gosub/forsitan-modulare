@@ -42,7 +42,7 @@ its first block — so the module always wakes up making sound.
 
 | knob | function |
 |------|----------|
-| **drive** | forcing amount (gamma, 0–10). More drive, more violence |
+| **drive** | forcing amount (gamma, 0–10). *Not* a violence control: past ~2.5 the forcing sine starts to entrain the chaos and the module locks into a static tone. The lively range is roughly 0.5–2.5 |
 | **tone** | forcing sine frequency coefficient (exponential). Low = slow surging drones, high = growls and tones |
 | **damp** | damping (exponential). High damping chokes the chaos; low lets it ring |
 | **rate** | internal time step (dt, 0–10). Scales how fast the whole system runs; multiplies with **tone** to set the forcing frequency |
@@ -79,6 +79,34 @@ its first block — so the module always wakes up making sound.
 - **Bank glide**: 20 ms / 100 ms / 500 ms / 2 s — how long bank morphs,
   pitch and q changes take to slew. Long glides make bank switching an
   instrument of its own.
+
+## Finding a good sound
+
+guttur has large dead regions in its parameter space, and they are not a
+bug: a Duffing oscillator either wanders chaotically or locks onto a
+fixed point, and most of the knob space locks. Measured over the whole
+panel range, uniform randomization lands somewhere musical about 5 % of
+the time. Three axes decide it:
+
+- **Total feedback gain** (**gain a** + **gain b** + **level**) is the
+  master switch. Too low and the system settles into a static drone;
+  the lively region starts around `gain a + gain b = 1.5` with **level**
+  at 1.4 or above. This is the first thing to check when it sounds dead.
+- **damp** and **q** above roughly 60 % of their travel choke the chaos
+  into a fixed tone.
+- **drive** above ~2.5 entrains the system to the forcing sine — a
+  legitimate pitched sound, but a static one.
+
+Right-click **Randomize** draws from the lively region rather than the
+full ranges (about 60 % usable), so it is a better way to explore than
+sweeping knobs blind. The knobs themselves stay full-range.
+
+The locked states that remain are intrinsic: mode-locking windows are
+interleaved through the space, so neighbouring settings can differ
+sharply. Nudge a knob rather than assuming a setting is broken, and
+remember that recordings of gutter synthesis are *performances* — much
+of that life comes from a player moving these controls, or from audio
+going into **in** rather than the internal sine.
 
 ## Tips
 
