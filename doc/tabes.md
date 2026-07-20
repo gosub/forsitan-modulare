@@ -53,6 +53,7 @@ has become, splicing back to it doesn't click.
 | **send** (+ **cv**) | how much of the **return** signal is re-recorded onto the tape (see FX loop below); default 50% |
 | **rec** / **gate** | record toggle / gate |
 | **dub** / **gate** | overdub toggle / gate (see below) |
+| **lvl** (trimpot) | dub record level, and so how much of the old tape the record head erases: low is gentle sound-on-sound, full is a punch-in replace |
 | **splice** / **trig** | restore the pristine recording, age back to zero |
 
 ## Overdub
@@ -67,10 +68,23 @@ you hear both. Layer as many passes as you like.
   old tape sounds like: your part is sharp against material that has already
   been round a hundred times.
 - Layers are added **before** the tape's saturation bound, so stacking
-  compresses into the ceiling and settles rather than clipping. With **decay**
-  up, old layers fade under new ones on their own, which is the whole
-  Frippertronics trick: an endlessly rewritten loop that never quite fills up.
-- The input is at unity: attenuate upstream if you want quieter layers.
+  compresses into the ceiling and settles rather than clipping.
+- **lvl** (the small trimpot left of the button) is the record level, and on
+  tape that is the same thing as how much gets erased. A record head lays down
+  the new signal with a bias field that partly demagnetizes whatever was
+  already on the tape: you cannot add without taking away, which is exactly
+  why every tape sound-on-sound rig decays instead of piling up forever. So
+  one knob does both jobs, as it does on the machine:
+  - **low** (8-10 o'clock): a quiet layer, almost nothing erased. Passes
+    accumulate for a long time. This is the archival end.
+  - **middle** (default, 12 o'clock): the classic sound-on-sound balance.
+    New material arrives strong, old material sinks a step further down with
+    every dub pass, so the loop is always renewing without ever filling up.
+  - **full**: a punch-in **replace**. What was under the head is gone and only
+    what you play remains. Useful for fixing one phrase without re-recording
+    the whole loop.
+  - **zero**: rehearse. You hear yourself over the loop but nothing is
+    written and nothing is erased.
 - Punch in and out are crossfaded over about 10 ms. A step written into the
   tape would be a click baked in *permanently*, heard on every future pass, so
   the ramp matters more here than anywhere else in the module.
@@ -153,8 +167,12 @@ independent.
   and the reverb feeds itself into a self-sustaining drone (the tape saturates
   softly above nominal level, so the loop settles instead of clipping).
 - Record a bass figure, then **dub** a line over it every few passes with
-  **decay** around 11 o'clock: each layer arrives sharp and sinks into the
-  murk as the next ones land, so the loop is always both new and old.
+  **lvl** at noon and **decay** around 11 o'clock: each layer arrives sharp
+  and sinks a step further down as the next ones land, so the loop is always
+  both new and old and never fills up. That self-limiting quality is the whole
+  Frippertronics trick, and it comes from the erasure, not from the decay.
+- **lvl** hard right turns **dub** into a punch-in fix: drop in over one
+  phrase, replace it, drop out, and the rest of the loop keeps its age.
 - **eoc → dub gate** through a divider dubs exactly one pass every *n*
   repeats, hands-free.
 - **ramp → a filter cutoff** locks a sweep to the loop; **ramp** into a
