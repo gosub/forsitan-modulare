@@ -55,8 +55,17 @@ constexpr float kRatioFloor = 0.25f;
 constexpr float kRatioCeil  = 1.0f;
 
 // Fixed output reconstruction filter, in Hz at the HOST rate. Stands in for the
-// device's analog output stage, which knows nothing about the clock sagging.
-constexpr float kOutputCutoff = 6000.f;
+// device's analog output stage, which knows nothing about the clock sagging. A
+// cheap toy's filter is lazy: one gentle pole, so the ZERO-ORDER-HOLD imaging
+// (the staircase's spectral copies at multiples of the inner rate) leaks through
+// as grit rather than being scrubbed clean. That leakage is most of why a
+// starved chip sounds broken instead of merely detuned.
+constexpr float kOutputCutoff = 7500.f;
+
+// The chip's word length on a FRESH battery. It is a cheap converter, so this is
+// already lossy; starving drops the DAC reference and sheds a few more bits.
+constexpr float kFreshBits = 12.f;
+constexpr float kStarvedBits = 8.f;
 
 // ---------------------------------------------------------------------------
 // Sag — load model: output amplitude in, supply rail out.
@@ -94,6 +103,8 @@ struct InnerDelay {
     float delaySamples = 4800.f; // in INNER samples
     float feedback = 0.5f;
     float headroom = 1.f;        // shrinks as the rail drops (analog starve)
+    float bias = 0.f;            // clip asymmetry, grows as the rail drops
+    float quantStep = 0.f;       // DAC step; 0 = off. Set from the rail.
     float damp = 0.f;            // one-pole in the feedback path
     float dampState = 0.f;
 
@@ -131,9 +142,13 @@ struct InnerDelay {
         float r = read(delaySamples);
         dampState += (r - dampState) * (1.f - damp);
         float w = in + feedback * dampState;
-        // Starved supply = collapsed headroom: the rail itself is the clipper.
+        // Starved supply = collapsed headroom: the rail itself is the clipper,
+        // and its two halves sag unequally, so the clip goes asymmetric (bias).
         float h = std::max(headroom, 0.05f);
-        w = h * std::tanh(w / h);
+        w = h * std::tanh((w + bias) / h) - h * std::tanh(bias / h);
+        // Cheap converter: quantize what actually lands in memory. The step
+        // widens as the rail drops, so the noise floor rises with the load.
+        if (quantStep > 0.f) w = std::round(w / quantStep) * quantStep;
         buf[(size_t)writeIdx] = w;
         writeIdx = (writeIdx + 1) % (int)buf.size();
         return r;
@@ -149,9 +164,15 @@ struct StarvedClock {
 
     float phase = 0.f;   // fractional inner-clock accumulator
     float held = 0.f;    // zero-order-hold output register
-    float lp1 = 0.f, lp2 = 0.f; // fixed reconstruction filter
+    float lp = 0.f;      // fixed one-pole reconstruction filter
     float kOut = 0.3f;
-    float ratio = 1.f;   // current clock rate, relative to nominal
+    float ratio = 1.f;   // current clock rate, relative to the FRESH-battery rate
+
+    // The chip's nominal clock relative to the host rate, on a fresh battery.
+    // Below 1 the device already aliases and images before any starving: it is a
+    // cheap toy, not a studio converter. This is the knob that stops the effect
+    // from sounding like a clean modulated delay.
+    float baseRatio = 0.5f;
 
     // Macro controls
     float droop  = 0.f;  // static rate loss from a flat battery   (0..1)
@@ -164,7 +185,7 @@ struct StarvedClock {
         sag.setRates(sr, 12.f, 3.f);
         kOut = clampf(1.f - std::exp(-2.f * M_PI * kOutputCutoff / sr), 0.f, 1.f);
         phase = 0.f;
-        held = lp1 = lp2 = 0.f;
+        held = lp = 0.f;
         ratio = 1.f;
     }
 
@@ -172,7 +193,7 @@ struct StarvedClock {
         inner.reset();
         sag.reset();
         phase = 0.f;
-        held = lp1 = lp2 = 0.f;
+        held = lp = 0.f;
         ratio = 1.f;
     }
 
@@ -182,20 +203,23 @@ struct StarvedClock {
         float load = sag.process(held);
         ratio = clampf(1.f - droop - starve * load, kRatioFloor, kRatioCeil);
 
-        // The rail also squeezes the analog headroom, so loud passages both
-        // slow down and crush. This is the half that survives at droop = 0.
-        inner.headroom = clampf(1.f - 0.75f * (1.f - ratio), 0.05f, 1.f);
+        // The rail also squeezes the analog stage: loud passages slow down AND
+        // crush AND lose bits. sag01 is 0 on a fresh full clock, 1 fully starved.
+        float sag01 = clampf((1.f - ratio) / (1.f - kRatioFloor), 0.f, 1.f);
+        inner.headroom = clampf(1.f - 0.75f * sag01, 0.05f, 1.f);
+        inner.bias = 0.25f * sag01;
+        float bits = kFreshBits - (kFreshBits - kStarvedBits) * sag01;
+        inner.quantStep = 2.f / std::pow(2.f, bits);
 
-        phase += ratio;
+        phase += baseRatio * ratio;
         if (phase >= 1.f) {
             phase -= 1.f;
             held = inner.tick(in); // input is sampled ONLY here: aliasing is real
         }
 
-        // Fixed 2-pole reconstruction filter, wet path only.
-        lp1 += (held - lp1) * kOut;
-        lp2 += (lp1 - lp2) * kOut;
-        return lp2;
+        // Lazy 1-pole reconstruction, wet path only: lets the ZOH imaging leak.
+        lp += (held - lp) * kOut;
+        return lp;
     }
 };
 

@@ -129,9 +129,12 @@ static Stats render(const std::vector<float>& in, std::vector<float>& out,
                     float battery, float delayMs, float feedback, float mix,
                     float tailSeconds) {
     inedia::StarvedClock sc;
-    int maxInner = (int)(2.0f * SR);
+    sc.baseRatio = 0.5f; // fresh-battery clock ~24 kHz: a cheap chip, not hi-fi
+    float innerRate = sc.baseRatio * SR;
+    int maxInner = (int)(2.0f * innerRate);
     sc.init(SR, maxInner);
-    sc.inner.delaySamples = delayMs * 0.001f * SR; // inner samples at nominal rate
+    // Delay time is fixed in INNER samples; convert against the nominal rate.
+    sc.inner.delaySamples = delayMs * 0.001f * innerRate;
     sc.inner.feedback = feedback;
     sc.inner.damp = 0.35f;
 
