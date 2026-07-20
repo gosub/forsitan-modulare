@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.9.1] - unreleased
+### Added
+  - **tabes**: **dub**, an overdub button and gate. The live input is
+    added at the write head without erasing what is there, so layers
+    can be built up over the loop while the whole stack keeps
+    decaying. The dub is laid down clean and only starts dulling on
+    the passes that follow; it is added before the tape's saturation
+    bound, so stacked layers compress into the ceiling instead of
+    clipping. Punch in and out ride a ~10 ms ramp so no step is baked
+    into the tape, and the input is monitored while dubbing in the
+    default monitor mode. Inert while recording and on blank tape.
+    **splice** is unchanged and still restores the original take, so
+    it discards every dub along with the wear
+
 ## [2.9.0] - 2026-07-20
 ### Added
   - **vorax**, a new module: feedback drone synthesizer, a port of

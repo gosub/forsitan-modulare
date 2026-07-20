@@ -63,7 +63,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | draen | drone synthesizer (two 37-engine banks: dronecaster ports + hyf originals; played from hz/amp, fading engine select, bank via context menu) | 40.64mm (8HP) |
 | rete | feedback integrator network (8 leaky integrators, random 8×8 matrix, self-oscillating chaos) | 50.8mm (10HP) |
 | ululo | feedback guitar (six comb strings + saturating amp in a howling loop, poly V/oct retuning) | 40.64mm (8HP) |
-| tabes | disintegration looper (per-pass tape aging, splice restore, loop overlap, FX send/return) | 60.96mm (12HP) |
+| tabes | disintegration looper (per-pass tape aging, overdub, splice restore, loop overlap, FX send/return) | 60.96mm (12HP) |
 | lustro | scanned filter (scando string drives the band gains of a 16-band resonant filterbank) | 50.8mm (10HP) |
 | bulla | Hordijk Blippoo Box (two cross-modulating oscillators, two runglers, twin-peak filter) | 50.8mm (10HP) |
 | perge | stereo dynamic sampler and multi-effect (dynamics-gated repeats, freeze, glitch/dimension, lofi/crush, reverb/smear, tilt filter; AC noises CONTINUA homage) | 101.6mm (20HP) |
