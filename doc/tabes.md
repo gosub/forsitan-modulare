@@ -11,9 +11,8 @@ compresses, the level sags, hiss creeps in, and dropouts appear more and
 more often as the loop wears out. William Basinski's *Disintegration Loops*,
 as a module.
 
-**dub** layers new material onto the loop without erasing what is already
-there, so a piece can be built up pass over pass while the whole stack keeps
-decaying.
+**dub** layers new material onto the loop while it runs, so a piece can be
+built up pass over pass while the whole stack keeps decaying.
 
 A pristine copy of the original recording is kept off-tape. **splice** puts
 fresh tape in the machine: the loop restarts from the original recording at
@@ -53,15 +52,16 @@ has become, splicing back to it doesn't click.
 | **send** (+ **cv**) | how much of the **return** signal is re-recorded onto the tape (see FX loop below); default 50% |
 | **rec** / **gate** | record toggle / gate |
 | **dub** / **gate** | overdub toggle / gate (see below) |
-| **lvl** (trimpot) | dub record level, and so how much of the old tape the record head erases: low is gentle sound-on-sound, full is a punch-in replace |
+| **dub lvl** (trimpot) | dub record level, and so how much of the old tape the record head erases: low is gentle sound-on-sound, full is a punch-in replace |
 | **splice** / **trig** | restore the pristine recording, age back to zero |
 
 ## Overdub
 
-**dub** adds the live input to the tape at the write head without erasing
-what is already on it. Press it (or hold the **dub** gate high) and play: the
-loop keeps running and your part is written into it, so the next time round
-you hear both. Layer as many passes as you like.
+**dub** adds the live input to the tape at the write head. Press it (or hold
+the **dub** gate high) and play: the loop keeps running and your part is
+written into it, so the next time round you hear both. Layer as many passes as
+you like, bearing in mind that recording always costs some of what was there
+before (see **dub lvl**).
 
 - The new layer goes on **clean**, after the pass's degradation, and only
   starts dulling on the passes that follow. That is what a fresh pass over
@@ -69,10 +69,10 @@ you hear both. Layer as many passes as you like.
   been round a hundred times.
 - Layers are added **before** the tape's saturation bound, so stacking
   compresses into the ceiling and settles rather than clipping.
-- **lvl** (the small trimpot left of the button) is the record level, and on
-  tape that is the same thing as how much gets erased. A record head lays down
-  the new signal with a bias field that partly demagnetizes whatever was
-  already on the tape: you cannot add without taking away, which is exactly
+- **dub lvl** (the small trimpot at the left of the button row) is the record
+  level, and on tape that is the same thing as how much gets erased. A record
+  head lays down the new signal with a bias field that partly demagnetizes what
+  was already on the tape: you cannot add without taking away, which is exactly
   why every tape sound-on-sound rig decays instead of piling up forever. So
   one knob does both jobs, as it does on the machine:
   - **low** (8-10 o'clock): a quiet layer, almost nothing erased. Passes
@@ -167,11 +167,11 @@ independent.
   and the reverb feeds itself into a self-sustaining drone (the tape saturates
   softly above nominal level, so the loop settles instead of clipping).
 - Record a bass figure, then **dub** a line over it every few passes with
-  **lvl** at noon and **decay** around 11 o'clock: each layer arrives sharp
+  **dub lvl** at noon and **decay** around 11 o'clock: each layer arrives sharp
   and sinks a step further down as the next ones land, so the loop is always
   both new and old and never fills up. That self-limiting quality is the whole
   Frippertronics trick, and it comes from the erasure, not from the decay.
-- **lvl** hard right turns **dub** into a punch-in fix: drop in over one
+- **dub lvl** hard right turns **dub** into a punch-in fix: drop in over one
   phrase, replace it, drop out, and the rest of the loop keeps its age.
 - **eoc → dub gate** through a divider dubs exactly one pass every *n*
   repeats, hands-free.

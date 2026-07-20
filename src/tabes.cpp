@@ -708,9 +708,9 @@ struct TabesWidget : ModuleWidget {
 // @elem LABEL_WOW label 0.0 label "wow" 0.0 26.00 32.50
 // @elem LABEL_OVERLAP label 0.0 label "overlap" 0.0 40.00 32.50
 // @elem LABEL_SENDMIX label 0.0 label "send" 0.0 53.50 32.50
-// @elem LABEL_DUBLVL label 0.0 label "lvl" 0.0 11.00 62.50
-// @elem LABEL_DUB label 0.0 label "dub" 0.0 26.00 62.50
-// @elem LABEL_REC label 0.0 label "rec" 0.0 40.00 62.50
+// @elem LABEL_DUBLVL label 0.0 label "dub lvl" 0.0 11.00 62.50
+// @elem LABEL_DUB label 0.0 label "dub" 0.0 40.00 62.50
+// @elem LABEL_REC label 0.0 label "rec" 0.0 26.00 62.50
 // @elem LABEL_SPLICE label 0.0 label "splice" 0.0 53.50 62.50
 // @elem LABEL_IN label 0.0 label "in" 0.0 10.16 78.50
 // @elem LABEL_SEND label 0.0 label "send" 0.0 10.16 95.50
@@ -734,11 +734,11 @@ struct TabesWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(26.00f, 21.82f)), module, Tabes::WOW_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.00f, 21.82f)), module, Tabes::OVERLAP_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.50f, 21.82f)), module, Tabes::SEND_MIX_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(40.00f, 55.00f)), module, Tabes::REC_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.90f, 52.10f)), module, Tabes::REC_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(26.00f, 55.00f)), module, Tabes::REC_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(28.90f, 52.10f)), module, Tabes::REC_LIGHT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 55.00f)), module, Tabes::DUB_LEVEL_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(26.00f, 55.00f)), module, Tabes::DUB_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(28.90f, 52.10f)), module, Tabes::DUB_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(40.00f, 55.00f)), module, Tabes::DUB_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.90f, 52.10f)), module, Tabes::DUB_LIGHT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(53.50f, 55.00f)), module, Tabes::SPLICE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.00f, 40.00f)), module, Tabes::DECAY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.00f, 40.00f)), module, Tabes::WOW_CV_INPUT));
@@ -746,8 +746,8 @@ struct TabesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 40.00f)), module, Tabes::SEND_MIX_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.16f, 71.00f)), module, Tabes::AUDIO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.48f, 88.00f)), module, Tabes::RETURN_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 71.00f)), module, Tabes::REC_GATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.00f, 71.00f)), module, Tabes::DUB_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.00f, 71.00f)), module, Tabes::REC_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 71.00f)), module, Tabes::DUB_GATE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 71.00f)), module, Tabes::SPLICE_TRIG_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 88.00f)), module, Tabes::SEND_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.80f, 88.00f)), module, Tabes::AGE_OUTPUT));
