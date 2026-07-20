@@ -15,15 +15,23 @@
 // an ambient blur. SEND/RETURN insert an external effect into the write path,
 // so whatever the pedal does is re-recorded and compounds pass over pass.
 //
+// DUB layers the live input onto the tape at the write head, so a performance
+// can be built up pass over pass while the whole stack keeps decaying. As on
+// real tape, recording partly erases what is already there and the amount is
+// the record level itself (DUB LEVEL): low is gentle sound-on-sound, the top
+// is a punch-in replace. SPLICE still restores the original take, so it
+// discards every dub along with the wear.
+//
 // Controls:
 //   Knobs : DECAY (loss per pass), WOW (wow/flutter depth), OVERLAP (loop
-//           crossfade), SEND (fx return mix)
-//   Btns  : REC (toggle recording), SPLICE (restore pristine recording)
-//   In    : IN (audio), REC gate, SPLICE trigger, DECAY/WOW/OVERLAP/SEND CV,
-//           RETURN (fx return)
+//           crossfade), SEND (fx return mix), DUB LEVEL (trimpot)
+//   Btns  : REC (toggle recording), DUB (toggle overdub), SPLICE (restore
+//           pristine recording)
+//   In    : IN (audio), REC gate, DUB gate, SPLICE trigger,
+//           DECAY/WOW/OVERLAP/SEND CV, RETURN (fx return)
 //   Out   : OUT (audio), AGE (0.1V per pass, clamps at 10V), EOC (trigger,
 //           one per heard repeat), RAMP (audible head 0..10V), SEND (fx send)
-//   Light : REC (on while recording)
+//   Light : REC (on while recording), DUB (on while overdubbing)
 
 #include "forsitan.hpp"
 
@@ -37,6 +45,9 @@ struct Tabes : Module {
         SPLICE_PARAM,
         OVERLAP_PARAM,     // loop-point crossfade length (0 = anti-click only)
         SEND_MIX_PARAM,    // how much of the fx return is re-recorded
+        DUB_PARAM,         // overdub toggle: layer the input onto the tape
+        DUB_LEVEL_PARAM,   // record level while dubbing (and so how much of
+                           // the old tape the record head displaces)
         PARAMS_LEN
     };
     enum InputId {
@@ -48,6 +59,7 @@ struct Tabes : Module {
         OVERLAP_CV_INPUT,
         SEND_MIX_CV_INPUT,
         RETURN_INPUT,      // fx return, folded back onto the tape
+        DUB_GATE_INPUT,    // overdub gate (high = layering)
         INPUTS_LEN
     };
     enum OutputId {
@@ -60,6 +72,7 @@ struct Tabes : Module {
     };
     enum LightId {
         REC_LIGHT,
+        DUB_LIGHT,
         EOC_LIGHT,
         OUT_LIGHT,
         LIGHTS_LEN
@@ -102,6 +115,14 @@ struct Tabes : Module {
     int recStartFade = 0;         // snapshot samples left to read
     float loopGain = 0.f;         // 0 = recording/empty, 1 = playing
     float loopGainStep = 0.f;     // per-sample ramp (1 / window)
+    // overdub: the live input is added at the write head, so a fresh layer
+    // joins the tape and starts aging with it from the next pass on. dubGain
+    // rides the same ~10 ms ramp as loopGain, both to keep the punch-in out of
+    // the tape (a step written mid-waveform is a permanent click, baked in)
+    // and to fade the input into the monitor mix at the same rate.
+    bool overdubbing = false;
+    bool dubGateWasHigh = false;
+    float dubGain = 0.f;
     float lastOffset = 0.f;       // last wow read offset, to continue the head
     float lastOvl = 0.f;          // last overlap length (samples), for splice()
     // splice declick: a ~10 ms linear crossfade from the aged tape to the
@@ -121,7 +142,7 @@ struct Tabes : Module {
 
     float curSampleRate = 0.f;
     uint32_t noiseState = 0x6c078965u;
-    dsp::BooleanTrigger recButton, spliceButton;
+    dsp::BooleanTrigger recButton, spliceButton, dubButton;
     dsp::SchmittTrigger spliceTrigger;
     dsp::PulseGenerator eocPulse;
     float eocFlash = 0.f;
@@ -135,6 +156,8 @@ struct Tabes : Module {
         configButton(SPLICE_PARAM, "Splice (restore pristine tape)");
         configParam(OVERLAP_PARAM, 0.f, 1.f, 0.f, "Loop overlap");
         configParam(SEND_MIX_PARAM, 0.f, 1.f, 0.5f, "FX return mix");
+        configButton(DUB_PARAM, "Overdub (layer the input onto the tape)");
+        configParam(DUB_LEVEL_PARAM, 0.f, 1.f, 0.7f, "Dub record level");
         configInput(AUDIO_INPUT, "Audio (polyphonic: records all channels)");
         configInput(REC_GATE_INPUT, "Record gate");
         configInput(SPLICE_TRIG_INPUT, "Splice trigger");
@@ -143,12 +166,14 @@ struct Tabes : Module {
         configInput(OVERLAP_CV_INPUT, "Loop overlap CV");
         configInput(SEND_MIX_CV_INPUT, "FX return mix CV");
         configInput(RETURN_INPUT, "FX return (re-recorded onto the tape)");
+        configInput(DUB_GATE_INPUT, "Overdub gate");
         configOutput(AUDIO_OUTPUT, "Audio (matches the recorded channel count)");
         configOutput(AGE_OUTPUT, "Age (0.1V per pass)");
         configOutput(EOC_OUTPUT, "End of loop trigger (one per heard repeat)");
         configOutput(RAMP_OUTPUT, "Audible head position (0..10V ramp)");
         configOutput(SEND_OUTPUT, "FX send (the loop read)");
         configLight(REC_LIGHT, "Recording");
+        configLight(DUB_LIGHT, "Overdubbing");
         configLight(EOC_LIGHT, "End of loop");
         configLight(OUT_LIGHT, "Output level");
     }
@@ -165,6 +190,8 @@ struct Tabes : Module {
         recStartFade = 0;
         xfReadPos = 0;
         loopGain = 0.f;
+        overdubbing = false;
+        dubGain = 0.f;
         lastOffset = 0.f;
         wowPhase = flutterPhase = 0.f;
         dropEnv = 1.f;
@@ -198,6 +225,7 @@ struct Tabes : Module {
         recording = true;
         recPos = 0;
         age = 0;
+        overdubbing = false;   // a new take replaces the tape; nothing to layer
         xfadeRemain = 0;
         spliceFade = 0;   // drop any in-flight splice fade
         channels = clamp(inCh, 1, kMaxChannels);   // tape width for this take
@@ -363,6 +391,18 @@ struct Tabes : Module {
         if (!gateHigh && gateWasHigh && recording) stopRecording(sr);
         gateWasHigh = gateHigh;
 
+        // ── overdub control: same button/gate shape as rec ──────────────────
+        // Inert while recording or on blank tape: there is nothing to layer
+        // onto, and arming it there would only surprise later.
+        bool canDub = !recording && loopLen > 0;
+        if (dubButton.process(params[DUB_PARAM].getValue() > 0.5f))
+            overdubbing = canDub && !overdubbing;
+        bool dubGateHigh = inputs[DUB_GATE_INPUT].getVoltage() >= 1.f;
+        if (dubGateHigh && !dubGateWasHigh) overdubbing = canDub;
+        if (!dubGateHigh && dubGateWasHigh) overdubbing = false;
+        dubGateWasHigh = dubGateHigh;
+        if (!canDub) overdubbing = false;
+
         if (spliceButton.process(params[SPLICE_PARAM].getValue() > 0.5f)
             || spliceTrigger.process(inputs[SPLICE_TRIG_INPUT].getVoltage(), 0.1f, 1.f))
             splice();
@@ -388,6 +428,15 @@ struct Tabes : Module {
         // signal is never baked into the tape on its own
         bool fxActive = inputs[RETURN_INPUT].isConnected()
                      && outputs[SEND_OUTPUT].isConnected();
+
+        // overdub punch-in/out ramp; stepped here so the write head below and
+        // the monitor mix at the bottom share the same gain this sample
+        float dubLevel = params[DUB_LEVEL_PARAM].getValue();
+        float dubTarget = overdubbing ? 1.f : 0.f;
+        if (dubGain < dubTarget)
+            dubGain = std::min(dubTarget, dubGain + loopGainStep);
+        else if (dubGain > dubTarget)
+            dubGain = std::max(dubTarget, dubGain - loopGainStep);
 
         // output width: the recorded tape width while a loop or recording
         // exists, otherwise follow the input so monitoring is poly too
@@ -511,6 +560,26 @@ struct Tabes : Module {
                 if (fxActive)
                     w = (1.f - sendMix) * w
                       + sendMix * inputs[RETURN_INPUT].getPolyVoltage(c) * 0.2f;
+                // overdub: add the live input at the write head. It goes on
+                // *after* the degradation chain, so a fresh layer is laid down
+                // clean and only starts dulling on the passes that follow, the
+                // way a new pass over old tape actually sounds. Before the
+                // bound below, so stacked layers compress into the ceiling
+                // instead of clipping. The head gap is real: with OVERLAP up
+                // you hear two repeats per rotation but dub onto only one.
+                //
+                // Tape cannot add without taking away: the record head's bias
+                // field partly demagnetizes what is already on the tape, which
+                // is why every sound-on-sound tape rig decays. That erasure is
+                // not a separate quantity, it is the same knob as the record
+                // level, so DUB LEVEL drives both. Squared, so the useful
+                // sound-on-sound range stays gentle and only the very top is a
+                // full punch-in replace.
+                if (dubGain > 0.f) {
+                    float dl = dubGain * dubLevel;
+                    w *= 1.f - dl * dl;
+                    w += dl * in[c];
+                }
                 if (!std::isfinite(w)) w = 0.f;
                 // bound the tape so a hot fx-return loop saturates instead of
                 // exploding: transparent below ±1 (±5V nominal), tanh-fold the
@@ -552,8 +621,12 @@ struct Tabes : Module {
         // mode monitors whatever the loop isn't covering (recording, empty,
         // and the fade between). Both ride opposite the loop's gain, so the
         // sum stays continuous through a rec press.
+        // While overdubbing you must hear what you are playing, so the default
+        // mode opens the monitor for the dub too (loopGain is 1 during
+        // playback, which would otherwise mute the input you are layering).
         float passGain = (monitorMode == MONITOR_ALWAYS)    ? 1.f            : 0.f;
-        float monGain  = (monitorMode == MONITOR_WHILE_REC) ? (1.f - loopGain) : 0.f;
+        float monGain  = (monitorMode == MONITOR_WHILE_REC)
+                       ? std::max(1.f - loopGain, dubGain) : 0.f;
 
         outputs[AUDIO_OUTPUT].setChannels(nc);
         outputs[SEND_OUTPUT].setChannels(nc);
@@ -572,6 +645,7 @@ struct Tabes : Module {
         outputs[RAMP_OUTPUT].setVoltage(
             loopLen > 0 ? 10.f * headAge / (loopLen - lastOvl) : 0.f);
         lights[REC_LIGHT].setBrightness(recording ? 1.f : 0.f);
+        lights[DUB_LIGHT].setBrightness(dubGain);   // fades with the punch ramp
         // ~100 ms flash per loop wrap; smoothed audio level on the out badge
         eocFlash *= 1.f - 10.f * args.sampleTime;
         if (eocFlash < 0.f) eocFlash = 0.f;
@@ -610,6 +684,9 @@ struct TabesWidget : ModuleWidget {
 // @elem SEND_MIX_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem REC_PARAM TL1105 2.0 param "" 0.0
 // @elem REC_LIGHT SmallLight 1.5 light "" 0.0
+// @elem DUB_LEVEL_PARAM Trimpot 3.03 param "" 0.0
+// @elem DUB_PARAM TL1105 2.0 param "" 0.0
+// @elem DUB_LIGHT SmallLight 1.5 light "" 0.0
 // @elem SPLICE_PARAM TL1105 2.0 param "" 0.0
 // @elem DECAY_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem WOW_CV_INPUT PJ301MPort 4.18 input "" 0.0
@@ -618,6 +695,7 @@ struct TabesWidget : ModuleWidget {
 // @elem AUDIO_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem RETURN_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem REC_GATE_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem DUB_GATE_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SPLICE_TRIG_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem SEND_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem AGE_OUTPUT PJ301MPort 4.18 output "" 0.0
@@ -630,7 +708,9 @@ struct TabesWidget : ModuleWidget {
 // @elem LABEL_WOW label 0.0 label "wow" 0.0 26.00 32.50
 // @elem LABEL_OVERLAP label 0.0 label "overlap" 0.0 40.00 32.50
 // @elem LABEL_SENDMIX label 0.0 label "send" 0.0 53.50 32.50
-// @elem LABEL_REC label 0.0 label "rec" 0.0 40.00 62.50
+// @elem LABEL_DUBLVL label 0.0 label "dub lvl" 0.0 11.00 62.50
+// @elem LABEL_DUB label 0.0 label "dub" 0.0 40.00 62.50
+// @elem LABEL_REC label 0.0 label "rec" 0.0 26.00 62.50
 // @elem LABEL_SPLICE label 0.0 label "splice" 0.0 53.50 62.50
 // @elem LABEL_IN label 0.0 label "in" 0.0 10.16 78.50
 // @elem LABEL_SEND label 0.0 label "send" 0.0 10.16 95.50
@@ -654,8 +734,11 @@ struct TabesWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(26.00f, 21.82f)), module, Tabes::WOW_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.00f, 21.82f)), module, Tabes::OVERLAP_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.50f, 21.82f)), module, Tabes::SEND_MIX_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(40.00f, 55.00f)), module, Tabes::REC_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.90f, 52.10f)), module, Tabes::REC_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(26.00f, 55.00f)), module, Tabes::REC_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(28.90f, 52.10f)), module, Tabes::REC_LIGHT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 55.00f)), module, Tabes::DUB_LEVEL_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(40.00f, 55.00f)), module, Tabes::DUB_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.90f, 52.10f)), module, Tabes::DUB_LIGHT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(53.50f, 55.00f)), module, Tabes::SPLICE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.00f, 40.00f)), module, Tabes::DECAY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.00f, 40.00f)), module, Tabes::WOW_CV_INPUT));
@@ -663,7 +746,8 @@ struct TabesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 40.00f)), module, Tabes::SEND_MIX_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.16f, 71.00f)), module, Tabes::AUDIO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.48f, 88.00f)), module, Tabes::RETURN_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 71.00f)), module, Tabes::REC_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.00f, 71.00f)), module, Tabes::REC_GATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 71.00f)), module, Tabes::DUB_GATE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 71.00f)), module, Tabes::SPLICE_TRIG_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(10.16f, 88.00f)), module, Tabes::SEND_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.80f, 88.00f)), module, Tabes::AGE_OUTPUT));

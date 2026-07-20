@@ -11,6 +11,9 @@ compresses, the level sags, hiss creeps in, and dropouts appear more and
 more often as the loop wears out. William Basinski's *Disintegration Loops*,
 as a module.
 
+**dub** layers new material onto the loop while it runs, so a piece can be
+built up pass over pass while the whole stack keeps decaying.
+
 A pristine copy of the original recording is kept off-tape. **splice** puts
 fresh tape in the machine: the loop restarts from the original recording at
 pass zero. The swap is crossfaded over about 10 ms, so however worn the tape
@@ -48,7 +51,56 @@ has become, splicing back to it doesn't click.
 | **overlap** (+ **cv**) | how soon the next play head starts. Two heads take turns playing the loop straight through; each new head starts *overlap* earlier than the previous one finishes, and the two crossfade (equal power) where they meet. At zero they play back to back (a plain loop). Turned up, the next repeat begins before the last has ended — at the max it starts when the current head is halfway, so the loop plays over itself for an ambient wash. The tape still ages underneath, so it keeps rotting while it smears |
 | **send** (+ **cv**) | how much of the **return** signal is re-recorded onto the tape (see FX loop below); default 50% |
 | **rec** / **gate** | record toggle / gate |
+| **dub** / **gate** | overdub toggle / gate (see below) |
+| **dub lvl** (trimpot) | dub record level, and so how much of the old tape the record head erases: low is gentle sound-on-sound, full is a punch-in replace |
 | **splice** / **trig** | restore the pristine recording, age back to zero |
+
+## Overdub
+
+**dub** adds the live input to the tape at the write head. Press it (or hold
+the **dub** gate high) and play: the loop keeps running and your part is
+written into it, so the next time round you hear both. Layer as many passes as
+you like, bearing in mind that recording always costs some of what was there
+before (see **dub lvl**).
+
+- The new layer goes on **clean**, after the pass's degradation, and only
+  starts dulling on the passes that follow. That is what a fresh pass over
+  old tape sounds like: your part is sharp against material that has already
+  been round a hundred times.
+- Layers are added **before** the tape's saturation bound, so stacking
+  compresses into the ceiling and settles rather than clipping.
+- **dub lvl** (the small trimpot at the left of the button row) is the record
+  level, and on tape that is the same thing as how much gets erased. A record
+  head lays down the new signal with a bias field that partly demagnetizes what
+  was already on the tape: you cannot add without taking away, which is exactly
+  why every tape sound-on-sound rig decays instead of piling up forever. So
+  one knob does both jobs, as it does on the machine:
+  - **low** (8-10 o'clock): a quiet layer, almost nothing erased. Passes
+    accumulate for a long time. This is the archival end.
+  - **middle** (default, 12 o'clock): the classic sound-on-sound balance.
+    New material arrives strong, old material sinks a step further down with
+    every dub pass, so the loop is always renewing without ever filling up.
+  - **full**: a punch-in **replace**. What was under the head is gone and only
+    what you play remains. Useful for fixing one phrase without re-recording
+    the whole loop.
+  - **zero**: rehearse. You hear yourself over the loop but nothing is
+    written and nothing is erased.
+- Punch in and out are crossfaded over about 10 ms. A step written into the
+  tape would be a click baked in *permanently*, heard on every future pass, so
+  the ramp matters more here than anywhere else in the module.
+- While dubbing you hear the input over the loop (in the default monitor
+  mode), so you can play along.
+- **dub** is inert while recording and on blank tape, and starting a new
+  recording cancels it.
+- **splice throws overdubs away.** It restores the tape as originally
+  recorded, so it discards your layers along with the wear. Splice is for
+  un-rotting a take, not for undoing a performance; there is no undo for a
+  dub.
+- The write head is a real head: with **overlap** up you hear two repeats per
+  tape rotation but dub onto only one of them, so what you play lands once per
+  rotation regardless of how many times you heard it go by.
+- Polyphonic like the rest: a mono input dubs onto every track of a stereo
+  tape, and channels beyond the tape's width are ignored.
 
 ## FX loop (send / return)
 
@@ -114,6 +166,15 @@ independent.
   slowly dissolves into its own reverb tail as it ages. Push the **send** knob
   and the reverb feeds itself into a self-sustaining drone (the tape saturates
   softly above nominal level, so the loop settles instead of clipping).
+- Record a bass figure, then **dub** a line over it every few passes with
+  **dub lvl** at noon and **decay** around 11 o'clock: each layer arrives sharp
+  and sinks a step further down as the next ones land, so the loop is always
+  both new and old and never fills up. That self-limiting quality is the whole
+  Frippertronics trick, and it comes from the erasure, not from the decay.
+- **dub lvl** hard right turns **dub** into a punch-in fix: drop in over one
+  phrase, replace it, drop out, and the rest of the loop keeps its age.
+- **eoc → dub gate** through a divider dubs exactly one pass every *n*
+  repeats, hands-free.
 - **ramp → a filter cutoff** locks a sweep to the loop; **ramp** into a
   wavetable index scans the table once per pass.
 - The loop's contents are not saved with the patch; the tape is blank on
