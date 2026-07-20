@@ -485,4 +485,127 @@ static void testTabesMk2() {
     }
 }
 
-SMOKE_MAIN(testTabes, testTabesMk2)
+// overdub: layer the live input onto the tape at the write head
+static void testTabesOverdub() {
+    // press the DUB button for one sample (it is a toggle)
+    auto tapDub = [](Tabes& m, long& frame) {
+        m.params[Tabes::DUB_PARAM].setValue(1.f);
+        m.process(makeArgs(frame++));
+        m.params[Tabes::DUB_PARAM].setValue(0.f);
+    };
+
+    // a full pass of overdub adds energy to the tape, and splice discards it
+    {
+        Tabes m; long frame = 0;
+        m.params[Tabes::WOW_PARAM].setValue(0.f);
+        m.params[Tabes::DECAY_PARAM].setValue(0.1f);   // aging must not mask it
+        m.monitorMode = Tabes::MONITOR_NEVER;          // isolate the tape
+        tabesRecord(m, frame, 0.5f);
+        Stats before;
+        for (int i = 0; i < (int)(0.5f * SR); i++) {
+            m.process(makeArgs(frame++));
+            before.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+        }
+        // dub a 660 Hz sine over one full rotation of the tape
+        tapDub(m, frame);
+        report("tabes", "dub_armed", m.overdubbing ? 1 : 0, m.overdubbing);
+        float pd = 0.f;
+        for (int i = 0; i < (int)(0.5f * SR); i++) {
+            pd += 660.f / SR; if (pd >= 1.f) pd -= 1.f;
+            m.inputs[Tabes::AUDIO_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * pd));
+            m.process(makeArgs(frame++));
+        }
+        tapDub(m, frame);
+        m.inputs[Tabes::AUDIO_INPUT].setVoltage(0.f);
+        report("tabes", "dub_disarmed", m.overdubbing ? 1 : 0, !m.overdubbing);
+        Stats after;
+        for (int i = 0; i < (int)(0.5f * SR); i++) {
+            m.process(makeArgs(frame++));
+            after.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+        }
+        // two uncorrelated sines of equal level sum to ~sqrt(2) the RMS; the
+        // tape bound shaves some of that, so require a clear rise, not the
+        // exact figure
+        report("tabes", "dub_adds_energy", after.rms(),
+               after.rms() > 1.25 * before.rms());
+        report("tabes", "dub_nans", after.nans, after.nans == 0);
+        report("tabes", "dub_bounded", after.peak, after.peak <= 10.01f);
+        // splice restores the original take: the dub goes with the wear
+        m.params[Tabes::SPLICE_PARAM].setValue(1.f);
+        m.process(makeArgs(frame++));
+        m.params[Tabes::SPLICE_PARAM].setValue(0.f);
+        Stats spliced;
+        for (int i = 0; i < (int)(0.5f * SR); i++) {
+            m.process(makeArgs(frame++));
+            spliced.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+        }
+        report("tabes", "dub_splice_discards", spliced.rms(),
+               spliced.rms() < 1.1 * before.rms());
+    }
+
+    // clickless punch in and out: the write gain ramps, so neither the tape
+    // nor the monitored output steps when the dub engages or releases
+    {
+        Tabes m; long frame = 0;
+        m.params[Tabes::WOW_PARAM].setValue(0.3f);
+        tabesRecord(m, frame, 0.5f);
+        float ph = 0.f;
+        auto sine = [&]() { ph += 330.f / SR; if (ph >= 1.f) ph -= 1.f;
+                            return 5.f * std::sin(2.f * M_PI * ph); };
+        for (int i = 0; i < (int)(0.2f * SR); i++) {
+            m.inputs[Tabes::AUDIO_INPUT].setVoltage(sine());
+            m.process(makeArgs(frame++));
+        }
+        float prev = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage(), maxStep = 0.f;
+        auto runStep = [&](int n) {
+            for (int i = 0; i < n; i++) {
+                m.inputs[Tabes::AUDIO_INPUT].setVoltage(sine());
+                m.process(makeArgs(frame++));
+                float v = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+                maxStep = std::max(maxStep, std::fabs(v - prev));
+                prev = v;
+            }
+        };
+        m.params[Tabes::DUB_PARAM].setValue(1.f);   // punch in
+        runStep(1);
+        m.params[Tabes::DUB_PARAM].setValue(0.f);
+        runStep((int)(0.1f * SR));
+        m.params[Tabes::DUB_PARAM].setValue(1.f);   // punch out
+        runStep(1);
+        m.params[Tabes::DUB_PARAM].setValue(0.f);
+        runStep((int)(0.1f * SR));
+        report("tabes", "dub_punch_max_step", maxStep, maxStep < 1.f);
+    }
+
+    // the gate follows its edges, and both button and gate are inert on blank
+    // tape: arming with nothing to layer onto must not record or latch
+    {
+        Tabes m; long frame = 0;
+        m.inputs[Tabes::AUDIO_INPUT].channels = 1;
+        m.inputs[Tabes::DUB_GATE_INPUT].channels = 1;
+        m.inputs[Tabes::DUB_GATE_INPUT].setVoltage(10.f);
+        for (int i = 0; i < 100; i++) {
+            m.inputs[Tabes::AUDIO_INPUT].setVoltage(4.f);
+            m.process(makeArgs(frame++));
+        }
+        report("tabes", "dub_blank_inert", m.overdubbing ? 1 : 0, !m.overdubbing);
+        report("tabes", "dub_blank_no_loop", m.loopLen, m.loopLen == 0);
+        m.inputs[Tabes::DUB_GATE_INPUT].setVoltage(0.f);
+        tabesRecord(m, frame, 0.3f);
+        m.inputs[Tabes::DUB_GATE_INPUT].setVoltage(10.f);
+        m.process(makeArgs(frame++));
+        report("tabes", "dub_gate_on", m.overdubbing ? 1 : 0, m.overdubbing);
+        m.inputs[Tabes::DUB_GATE_INPUT].setVoltage(0.f);
+        m.process(makeArgs(frame++));
+        report("tabes", "dub_gate_off", m.overdubbing ? 1 : 0, !m.overdubbing);
+        // starting a new take cancels an armed dub
+        m.inputs[Tabes::DUB_GATE_INPUT].setVoltage(10.f);
+        m.process(makeArgs(frame++));
+        m.inputs[Tabes::REC_GATE_INPUT].setVoltage(10.f);
+        m.process(makeArgs(frame++));
+        report("tabes", "dub_cancelled_by_rec", m.overdubbing ? 1 : 0,
+               !m.overdubbing);
+    }
+}
+
+SMOKE_MAIN(testTabes, testTabesMk2, testTabesOverdub)
