@@ -15,14 +15,16 @@
 // an ambient blur. SEND/RETURN insert an external effect into the write path,
 // so whatever the pedal does is re-recorded and compounds pass over pass.
 //
-// DUB layers the live input onto the tape at the write head without erasing
-// what is there, so a performance can be built up pass over pass while the
-// whole stack keeps decaying. SPLICE still restores the original take, so it
+// DUB layers the live input onto the tape at the write head, so a performance
+// can be built up pass over pass while the whole stack keeps decaying. As on
+// real tape, recording partly erases what is already there and the amount is
+// the record level itself (DUB LEVEL): low is gentle sound-on-sound, the top
+// is a punch-in replace. SPLICE still restores the original take, so it
 // discards every dub along with the wear.
 //
 // Controls:
 //   Knobs : DECAY (loss per pass), WOW (wow/flutter depth), OVERLAP (loop
-//           crossfade), SEND (fx return mix)
+//           crossfade), SEND (fx return mix), DUB LEVEL (trimpot)
 //   Btns  : REC (toggle recording), DUB (toggle overdub), SPLICE (restore
 //           pristine recording)
 //   In    : IN (audio), REC gate, DUB gate, SPLICE trigger,
@@ -44,6 +46,8 @@ struct Tabes : Module {
         OVERLAP_PARAM,     // loop-point crossfade length (0 = anti-click only)
         SEND_MIX_PARAM,    // how much of the fx return is re-recorded
         DUB_PARAM,         // overdub toggle: layer the input onto the tape
+        DUB_LEVEL_PARAM,   // record level while dubbing (and so how much of
+                           // the old tape the record head displaces)
         PARAMS_LEN
     };
     enum InputId {
@@ -153,6 +157,7 @@ struct Tabes : Module {
         configParam(OVERLAP_PARAM, 0.f, 1.f, 0.f, "Loop overlap");
         configParam(SEND_MIX_PARAM, 0.f, 1.f, 0.5f, "FX return mix");
         configButton(DUB_PARAM, "Overdub (layer the input onto the tape)");
+        configParam(DUB_LEVEL_PARAM, 0.f, 1.f, 0.7f, "Dub record level");
         configInput(AUDIO_INPUT, "Audio (polyphonic: records all channels)");
         configInput(REC_GATE_INPUT, "Record gate");
         configInput(SPLICE_TRIG_INPUT, "Splice trigger");
@@ -426,6 +431,7 @@ struct Tabes : Module {
 
         // overdub punch-in/out ramp; stepped here so the write head below and
         // the monitor mix at the bottom share the same gain this sample
+        float dubLevel = params[DUB_LEVEL_PARAM].getValue();
         float dubTarget = overdubbing ? 1.f : 0.f;
         if (dubGain < dubTarget)
             dubGain = std::min(dubTarget, dubGain + loopGainStep);
@@ -561,7 +567,19 @@ struct Tabes : Module {
                 // bound below, so stacked layers compress into the ceiling
                 // instead of clipping. The head gap is real: with OVERLAP up
                 // you hear two repeats per rotation but dub onto only one.
-                if (dubGain > 0.f) w += dubGain * in[c];
+                //
+                // Tape cannot add without taking away: the record head's bias
+                // field partly demagnetizes what is already on the tape, which
+                // is why every sound-on-sound tape rig decays. That erasure is
+                // not a separate quantity, it is the same knob as the record
+                // level, so DUB LEVEL drives both. Squared, so the useful
+                // sound-on-sound range stays gentle and only the very top is a
+                // full punch-in replace.
+                if (dubGain > 0.f) {
+                    float dl = dubGain * dubLevel;
+                    w *= 1.f - dl * dl;
+                    w += dl * in[c];
+                }
                 if (!std::isfinite(w)) w = 0.f;
                 // bound the tape so a hot fx-return loop saturates instead of
                 // exploding: transparent below ±1 (±5V nominal), tanh-fold the
@@ -666,6 +684,7 @@ struct TabesWidget : ModuleWidget {
 // @elem SEND_MIX_PARAM RoundBlackKnob 4.5 param "" 0.0
 // @elem REC_PARAM TL1105 2.0 param "" 0.0
 // @elem REC_LIGHT SmallLight 1.5 light "" 0.0
+// @elem DUB_LEVEL_PARAM Trimpot 3.03 param "" 0.0
 // @elem DUB_PARAM TL1105 2.0 param "" 0.0
 // @elem DUB_LIGHT SmallLight 1.5 light "" 0.0
 // @elem SPLICE_PARAM TL1105 2.0 param "" 0.0
@@ -689,6 +708,7 @@ struct TabesWidget : ModuleWidget {
 // @elem LABEL_WOW label 0.0 label "wow" 0.0 26.00 32.50
 // @elem LABEL_OVERLAP label 0.0 label "overlap" 0.0 40.00 32.50
 // @elem LABEL_SENDMIX label 0.0 label "send" 0.0 53.50 32.50
+// @elem LABEL_DUBLVL label 0.0 label "lvl" 0.0 11.00 62.50
 // @elem LABEL_DUB label 0.0 label "dub" 0.0 26.00 62.50
 // @elem LABEL_REC label 0.0 label "rec" 0.0 40.00 62.50
 // @elem LABEL_SPLICE label 0.0 label "splice" 0.0 53.50 62.50
@@ -716,6 +736,7 @@ struct TabesWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.50f, 21.82f)), module, Tabes::SEND_MIX_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(40.00f, 55.00f)), module, Tabes::REC_PARAM));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.90f, 52.10f)), module, Tabes::REC_LIGHT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 55.00f)), module, Tabes::DUB_LEVEL_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(26.00f, 55.00f)), module, Tabes::DUB_PARAM));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(28.90f, 52.10f)), module, Tabes::DUB_LIGHT));
         addParam(createParamCentered<TL1105>(mm2px(Vec(53.50f, 55.00f)), module, Tabes::SPLICE_PARAM));
