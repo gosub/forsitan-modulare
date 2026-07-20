@@ -500,18 +500,33 @@ static void testTabesOverdub() {
         m.params[Tabes::WOW_PARAM].setValue(0.f);
         m.params[Tabes::DECAY_PARAM].setValue(0.1f);   // aging must not mask it
         m.monitorMode = Tabes::MONITOR_NEVER;          // isolate the tape
+        m.params[Tabes::DUB_LEVEL_PARAM].setValue(0.7f);
         tabesRecord(m, frame, 0.5f);
+        // amplitude of one frequency in a captured block (quadrature detector)
+        auto binAmp = [](const std::vector<float>& x, float f) {
+            double re = 0, im = 0;
+            for (size_t i = 0; i < x.size(); i++) {
+                double a = 2.0 * M_PI * f * i / SR;
+                re += x[i] * std::cos(a); im += x[i] * std::sin(a);
+            }
+            return 2.0 * std::hypot(re, im) / std::max<size_t>(1, x.size());
+        };
+        std::vector<float> bufBefore, bufAfter;
         Stats before;
         for (int i = 0; i < (int)(0.5f * SR); i++) {
             m.process(makeArgs(frame++));
-            before.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+            float v = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+            before.add(v); bufBefore.push_back(v);
         }
-        // dub a 660 Hz sine over one full rotation of the tape
+        // dub a 517 Hz sine over one full rotation of the tape. 517 is not a
+        // harmonic of the recorded 220, so the tape's own saturation cannot
+        // manufacture it and any energy there is the dub.
+        const float DUBF = 517.f;
         tapDub(m, frame);
         report("tabes", "dub_armed", m.overdubbing ? 1 : 0, m.overdubbing);
         float pd = 0.f;
         for (int i = 0; i < (int)(0.5f * SR); i++) {
-            pd += 660.f / SR; if (pd >= 1.f) pd -= 1.f;
+            pd += DUBF / SR; if (pd >= 1.f) pd -= 1.f;
             m.inputs[Tabes::AUDIO_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * pd));
             m.process(makeArgs(frame++));
         }
@@ -521,13 +536,16 @@ static void testTabesOverdub() {
         Stats after;
         for (int i = 0; i < (int)(0.5f * SR); i++) {
             m.process(makeArgs(frame++));
-            after.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+            float v = m.outputs[Tabes::AUDIO_OUTPUT].getVoltage();
+            after.add(v); bufAfter.push_back(v);
         }
-        // two uncorrelated sines of equal level sum to ~sqrt(2) the RMS; the
-        // tape bound shaves some of that, so require a clear rise, not the
-        // exact figure
-        report("tabes", "dub_adds_energy", after.rms(),
-               after.rms() > 1.25 * before.rms());
+        // the dubbed tone must now be on the tape where it was not before.
+        // (Total RMS is the wrong probe: the record head also erases, so a
+        // dub can leave the level flat or lower while adding material.)
+        double dubBefore = binAmp(bufBefore, DUBF);
+        double dubAfter  = binAmp(bufAfter, DUBF);
+        report("tabes", "dub_tone_absent_before", dubBefore, dubBefore < 0.05);
+        report("tabes", "dub_tone_present_after", dubAfter, dubAfter > 1.5);
         report("tabes", "dub_nans", after.nans, after.nans == 0);
         report("tabes", "dub_bounded", after.peak, after.peak <= 10.01f);
         // splice restores the original take: the dub goes with the wear
@@ -541,6 +559,47 @@ static void testTabesOverdub() {
         }
         report("tabes", "dub_splice_discards", spliced.rms(),
                spliced.rms() < 1.1 * before.rms());
+    }
+
+    // dub level drives erasure as well as record level, as tape does. At the
+    // top it is a punch-in replace: one full pass of silence at level 1 must
+    // leave the tape essentially empty, where the same pass at a low level
+    // leaves the original take largely intact.
+    {
+        auto dubSilentPass = [&](float level, bool arm) {
+            Tabes m; long frame = 0;
+            m.params[Tabes::WOW_PARAM].setValue(0.f);
+            m.params[Tabes::DECAY_PARAM].setValue(0.1f);
+            m.monitorMode = Tabes::MONITOR_NEVER;
+            m.params[Tabes::DUB_LEVEL_PARAM].setValue(level);
+            tabesRecord(m, frame, 0.5f);
+            Stats before;
+            for (int i = 0; i < (int)(0.5f * SR); i++) {
+                m.process(makeArgs(frame++));
+                before.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+            }
+            if (arm) tapDub(m, frame);              // dub silence over one pass
+            for (int i = 0; i < (int)(0.5f * SR); i++)
+                m.process(makeArgs(frame++));
+            if (arm) tapDub(m, frame);
+            Stats after;
+            for (int i = 0; i < (int)(0.5f * SR); i++) {
+                m.process(makeArgs(frame++));
+                after.add(m.outputs[Tabes::AUDIO_OUTPUT].getVoltage());
+            }
+            return after.rms() / std::max(1e-6, before.rms());
+        };
+        // control: the same two passes with the dub never armed, so the tape's
+        // own aging is divided out rather than mistaken for erasure
+        double ctrl  = dubSilentPass(0.f, false);
+        double kept1 = dubSilentPass(1.f, true);
+        double kept0 = dubSilentPass(0.2f, true);
+        report("tabes", "dub_full_erases", kept1 / ctrl, kept1 / ctrl < 0.05);
+        report("tabes", "dub_low_preserves", kept0 / ctrl, kept0 / ctrl > 0.9);
+        // level 0 is a rehearse mode: the tape must be bit-identical to the
+        // control, not merely close
+        double keptZ = dubSilentPass(0.f, true);
+        report("tabes", "dub_zero_no_op", keptZ - ctrl, std::fabs(keptZ - ctrl) < 1e-9);
     }
 
     // clickless punch in and out: the write gain ramps, so neither the tape
