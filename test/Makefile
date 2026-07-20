@@ -11,7 +11,11 @@ SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
-all: draen_sweep perge_render guttur_probe $(SMOKE_BINS)
+all: draen_sweep perge_render guttur_probe inedia_probe $(SMOKE_BINS)
+
+# Standalone: the starved-clock engine is Rack-free, so this needs no libRack.
+inedia_probe: inedia_probe.cpp ../src/inedia_engine.hpp
+	$(CXX) -O2 -std=c++11 $< -o $@
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -39,6 +43,6 @@ check: $(SMOKE_BINS)
 	exit $$rc
 
 clean:
-	rm -f draen_sweep perge_render guttur_probe $(SMOKE_BINS)
+	rm -f draen_sweep perge_render guttur_probe inedia_probe $(SMOKE_BINS)
 
 .PHONY: all check clean
