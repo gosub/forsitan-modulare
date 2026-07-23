@@ -16,15 +16,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     mid-supply, the OTAs saturate and drag the cutoff down with the
     signal, and a diode pair across the resonance network clamps the
     feedback once it gets loud. **lp**, **bp**, **hp** and **notch**
-    come out simultaneously. **drive** is the Wasp's own level pot
-    (unity at noon, where a ±5 V signal sits right at the rails);
+    come out simultaneously, and a fifth output **mix** is the
+    A-124's own: a passive pot crossfading the lowpass and highpass
+    nodes, with a CV input as on the A-124-2. It is not just a fader
+    between two sounds — blending a lowpass and a highpass always
+    leaves a null, and it slides from above the cutoff, through it at
+    the centre, to below it, which is the manual's "asymmetrical /
+    symmetrical / asymmetrical notch". An LFO on the mix CV is a
+    passable phaser, and one you can move the cutoff under.
+    **drive** is the Wasp's own level pot (unity at noon, where a
+    ±5 V signal sits right at the rails);
     **grit** is the supply headroom, morphing between the soft
     tanh-dominated compression of a roomy rail and the hard slam of a
     mean one, and deciding how long the diode clamp lets the resonance
     run. The circuit's quirks are kept, not smoothed: maximum Q falls
     as the filter opens (≈ 10.3 at 640 Hz, ≈ 3.9 at 10 kHz), the
     resonance path is a frequency-dependent shelf rather than a plain
-    gain, and self-oscillation drifts flat as it gets loud.
+    gain, and the mix null smears from −70 dB to −10 dB as you drive
+    it. Self-oscillation is a deliberate addition: the A-124 manual
+    is explicit that the hardware cannot do it, but the last tenth of
+    the **res** travel cancels the residual damping so this one sings,
+    tracking 1 V/oct and drifting flat as it gets loud.
     Oversampling 1×–16× in the context menu, default 2×, about 1 % of
     one core. Topology, component values and nonlinearity shapes from
     Köper, Holters, Esqueda and Parker, "A Virtual Analog Model of the

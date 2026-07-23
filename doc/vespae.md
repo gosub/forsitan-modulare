@@ -18,7 +18,9 @@ clamps the feedback once things get loud. Push it and it does not politely
 compress — it goes lopsided, buzzes, and shifts under you.
 
 Structurally it is an ordinary 12 dB/octave state-variable filter, so all
-four responses come out at once: **lp**, **bp**, **hp** and **notch**.
+four responses come out at once: **lp**, **bp**, **hp** and **notch**. A
+fifth output, **mix**, is the A-124's own: a pot crossfading the lowpass and
+highpass nodes.
 
 ## Controls
 
@@ -30,6 +32,7 @@ four responses come out at once: **lp**, **bp**, **hp** and **notch**.
 | **res** | resonance. The last tenth of the travel tips it into self-oscillation |
 | **drive** | input level, −21.6 dB to +21.6 dB, unity at noon. This is the dirt control |
 | **grit** | supply headroom, from a roomy 12 V down to a mean 2 V |
+| **mix** | crossfades the **mix** output from pure lowpass (full left) to pure highpass (full right) |
 
 | jack | |
 |------|--|
@@ -37,7 +40,40 @@ four responses come out at once: **lp**, **bp**, **hp** and **notch**.
 | **v/oct** | 1 V/oct cutoff, scaled by **trk** |
 | **fm** | cutoff CV through the **fm** attenuverter |
 | **res** | resonance CV, ±5 V for the full range |
-| **lp** / **bp** / **hp** / **notch** | the four simultaneous outputs, each with a level LED |
+| **mix** | mix CV, ±5 V for the full range |
+| **lp** / **bp** / **hp** / **notch** / **mix** | the five simultaneous outputs, each with a level LED |
+
+## The mix output
+
+The real A-124 has only two jacks: a bandpass output, and one output fed by
+a pot with the lowpass on one end and the highpass on the other. That pot is
+the **mix** knob, and **mix** is its output. We keep the four filter nodes on
+their own jacks as well, so nothing is lost by having it.
+
+It is worth a knob of its own because it is not simply a fader between two
+sounds. Blending a lowpass and a highpass always produces a null, and the
+null moves as you turn:
+
+| **mix** | null sits at | result |
+|---------|--------------|--------|
+| hard left | — | pure lowpass |
+| left of centre | above the cutoff | lowpass with a notch above it |
+| centre | the cutoff | symmetrical notch |
+| right of centre | below the cutoff | highpass with a notch below it |
+| hard right | — | pure highpass |
+
+The null is at `fc·√((1−mix)/mix)`, which is the manual's "asymmetrical /
+symmetrical / asymmetrical notch". Sweeping the **mix** CV with an LFO
+sounds like phasing, as Doepfer's manual points out — and unlike a real
+phaser you can move the cutoff at the same time.
+
+Two things to know. The pot is passive, so at the centre both halves are at
+half level and the notch output is 6 dB down on the extremes; that is what
+the hardware does and it is not compensated. And the notch is only deep
+while the filter is behaving: at a 20 mV probe level the null measures below
+−70 dB, but by 1 V in it is −30 dB and by 5 V only −10 dB, because the
+saturating OTAs pull the cutoff around at twice the signal frequency and the
+null smears with it. Drive it hard and the notch opens up.
 
 ## drive and grit
 
@@ -88,10 +124,15 @@ long the diode clamp lets the resonance run before it bites, so a high
   break up and the quiet ones do not.
 - **notch** with **res** low is a usable tone-shaper; with **res** high it
   is a narrow, moving hole.
-- The four outputs are simultaneous, so you can take **lp** to the mixer and
-  **hp** to a delay send off the same filter.
+- A slow LFO into the **mix** CV, **res** low, and the **mix** output is a
+  passable phaser. Add a second, slower LFO on the cutoff and the two nulls
+  drift against each other.
+- The five outputs are simultaneous, so you can take **lp** to the mixer and
+  **hp** to a delay send off the same filter — or **mix** to one and **bp**
+  to another.
 - The module self-oscillates with nothing patched: it is a serviceable sine
-  (well, sine-ish, and less so as **grit** rises) with 1 V/oct tracking.
+  (well, sine-ish, and less so as **grit** rises) with 1 V/oct tracking. The
+  hardware cannot do this; see the notes at the end.
 
 ## Oversampling
 
@@ -129,19 +170,29 @@ solve, and the OTA saturation is applied by scheduling the integrator gains
 on the previous sample instead of iterating. The CD4069 is a soft asymmetric
 clipper rather than the paper's two fitted MOSFETs.
 
-**Deliberately different.** Two places where the circuit, taken literally,
+**Deliberately different.** Three places where the circuit, taken literally,
 does not make a good module:
 
-- The circuit's own damping never quite reaches zero, so at maximum **res**
-  the last of it is cancelled to give genuine self-oscillation. The
-  hardware does sing; the small-signal analysis alone does not predict it.
+- **Five outputs where the hardware has two.** The A-124 brings out only the
+  bandpass and the LP/HP mix; the lowpass, highpass and notch exist inside it
+  but never reach a jack. They are all on the panel here, with the mix pot
+  kept as well (and given a CV input, as on the A-124-2 slim version).
+
+- **Self-oscillation, which the hardware does not have.** The A-124 manual
+  is blunt about it: "The filter can't go into self oscillation, in contrast
+  to most of the other VCFs in the A-100 system." Its damping never quite
+  reaches zero. Here the last tenth of the **res** travel cancels that
+  damping anyway, so the filter sings — bounded by the diode clamp, and
+  tracking 1 V/oct. This is an addition for the sake of the module, not a
+  correction of the circuit.
 - Read literally, the diode clamp holds the resonance to about a tenth of
   the rail — while the paper's own state-space plots show the integrator
   states reaching those rails at high resonance. The clamp is backed off by
   a fixed trim so that self-oscillation lands where the hardware sits.
 
-Both are single named constants at the top of `src/vespae.cpp`.
+The latter two are single named constants at the top of `src/vespae.cpp`.
 
 `test/vespae_probe` prints the measurements this was tuned against:
 magnitude response, Q versus cutoff, self-oscillation level and frequency,
-THD versus **drive** and **grit**.
+the mix output's null position and depth, and THD versus **drive** and
+**grit**.
