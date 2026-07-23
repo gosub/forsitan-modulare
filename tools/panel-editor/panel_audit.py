@@ -48,7 +48,8 @@ RADIUS_OVERRIDE = {'RoundHugeBlackKnob': 9.12, 'RoundBigBlackKnob': 7.62,
 
 # Widgets that are not round, as (half-width, half-height) in mm.
 # VCVSlider's background SVG is 19.8426 x 76.535 px at 75 dpi = 6.72 x 25.92 mm.
-RECT_OVERRIDE = {'VCVSlider': (3.36, 12.96), 'VCVLightSlider': (3.36, 12.96)}
+RECT_OVERRIDE = {'VCVSlider': (3.36, 12.96), 'VCVLightSlider': (3.36, 12.96),
+                 'CKSS': (2.0, 5.0), 'CKSSThree': (2.0, 5.0)}
 
 def bbox(el):
     x, y = el['x'], el['y']
