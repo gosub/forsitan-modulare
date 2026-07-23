@@ -197,6 +197,60 @@ static void testMix() {
     report("vespae", "mix_cv_peak", s.peak, s.peak < 8.f);
 }
 
+// The two panel mods, neither of which is on the A-124. They work in
+// opposite regimes: bias only bites once something is already clipping,
+// hiss only matters when little else is going on.
+static void testMods() {
+    auto driven = [](float bias) {
+        Vespae m; long fr = 0;
+        m.params[Vespae::CUTOFF_PARAM].setValue(0.45f);
+        m.params[Vespae::RES_PARAM].setValue(0.85f);
+        m.params[Vespae::DRIVE_PARAM].setValue(0.75f);
+        m.params[Vespae::BIAS_PARAM].setValue(bias);
+        return feedSine(m, fr, 220.f, 4.f, Vespae::LP_OUTPUT, 0.8, 0.6);
+    };
+    Stats b0 = driven(0.f), b1 = driven(1.f);
+    double c0 = b0.peak / std::max(b0.rms(), 1e-9);
+    double c1 = b1.peak / std::max(b1.rms(), 1e-9);
+    report("vespae", "bias_nans", b1.nans, b1.nans == 0);
+    // lopsided clipping pushes one half of the wave out further
+    report("vespae", "bias_raises_crest", c1 / c0, c1 > c0 * 1.05);
+    // ...without being a level control
+    report("vespae", "bias_keeps_level", b1.rms() / std::max(b0.rms(), 1e-9),
+           std::fabs(b1.rms() / std::max(b0.rms(), 1e-9) - 1.0) < 0.10);
+
+    auto floorAt = [](float hiss) {
+        Vespae m; long fr = 0;
+        m.params[Vespae::CUTOFF_PARAM].setValue(0.6f);
+        m.params[Vespae::RES_PARAM].setValue(0.2f);
+        m.params[Vespae::HISS_PARAM].setValue(hiss);
+        for (int i = 0; i < (int)(1.0 * SR); i++) m.process(makeArgs(fr++));
+        Stats s;
+        for (int i = 0; i < (int)SR; i++) {
+            m.process(makeArgs(fr++));
+            s.add(m.outputs[Vespae::LP_OUTPUT].getVoltage());
+        }
+        return s;
+    };
+    Stats h0 = floorAt(0.f), h1 = floorAt(1.f);
+    // fully down, the idle dither must stay inaudible so silence is silence
+    report("vespae", "hiss_off_is_silent", h0.rms(), h0.rms() < 0.005);
+    report("vespae", "hiss_on_is_audible", h1.rms(), h1.rms() > 0.01);
+    report("vespae", "hiss_nans", h1.nans, h1.nans == 0);
+    report("vespae", "hiss_bounded", h1.peak, h1.peak < 3.f);
+
+    // both mods maxed, driven hard, resonance at the top: still bounded
+    Vespae m; long fr = 0;
+    m.params[Vespae::CUTOFF_PARAM].setValue(0.45f);
+    m.params[Vespae::RES_PARAM].setValue(1.f);
+    m.params[Vespae::DRIVE_PARAM].setValue(1.f);
+    m.params[Vespae::BIAS_PARAM].setValue(1.f);
+    m.params[Vespae::HISS_PARAM].setValue(1.f);
+    Stats s = feedSine(m, fr, 110.f, 8.f, Vespae::LP_OUTPUT, 1.0, 2.0);
+    report("vespae", "mods_max_nans", s.nans, s.nans == 0);
+    report("vespae", "mods_max_peak", s.peak, s.peak < 8.f);
+}
+
 // Hostile CV and knob motion at the extremes, on all five outputs.
 static void testStress() {
     Vespae m; long fr = 0;
@@ -216,6 +270,8 @@ static void testStress() {
         m.inputs[Vespae::RES_CV_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * 0.7f * t));
         m.params[Vespae::CUTOFF_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.23f * t));
         m.params[Vespae::GRIT_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.13f * t));
+        m.params[Vespae::BIAS_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.09f * t));
+        m.params[Vespae::HISS_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.17f * t));
         m.process(makeArgs(fr++));
         for (int o = 0; o < 5; o++) s[o].add(m.outputs[Vespae::LP_OUTPUT + o].getVoltage());
     }
@@ -229,5 +285,5 @@ static void testStress() {
     }
 }
 
-SMOKE_MAIN(testSeparation, testResonance, testDrive, testMix, testOversampling,
-           testStress)
+SMOKE_MAIN(testSeparation, testResonance, testDrive, testMix, testMods,
+           testOversampling, testStress)
