@@ -8,7 +8,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # One smoke binary per module: `make -j` builds them in parallel and a change
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
-                guttur vespae quadrare
+                guttur vespae quadrare vestigia
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 all: draen_sweep perge_render guttur_probe vespae_probe $(SMOKE_BINS)
