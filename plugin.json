@@ -247,6 +247,18 @@
         "Distortion",
         "Hardware clone"
       ]
+    },
+    {
+      "slug": "quadrare",
+      "name": "quadrare",
+      "description": "Patchable Walsh-Hadamard codec: audio is cut into blocks of 16 to 256 samples, transformed into Walsh coefficients, and transformed back. 16 bipolar band sliders, each with its own polyphonic coefficient send and return, so the transform domain is a real insert point. KEEP thresholds to the largest coefficients and QUANT reduces their bit depth, the two lossy stages of a transform codec. Freeze, residual and per-band component outputs.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/quadrare.md",
+      "tags": [
+        "Effect",
+        "Polyphonic",
+        "Filter",
+        "Distortion"
+      ]
     }
   ]
 }
