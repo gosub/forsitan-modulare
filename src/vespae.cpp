@@ -22,8 +22,13 @@
 // crossfades the two. We keep the four filter nodes on their own jacks and
 // add that pot as a fifth output, with a CV input for it as on the A-124-2.
 //
+// Two trimpots are mods rather than emulation: BIAS walks the CD4069's
+// switching point further off mid-supply, HISS raises the inverter noise
+// inside the loop. See doc/vespae.md for what each actually does.
+//
 // Controls:
-//   Knobs : CUTOFF, RES, DRIVE, GRIT, MIX, FM (attenuverter), TRACK
+//   Knobs : CUTOFF, RES, DRIVE, GRIT, MIX
+//   Trims : FM (attenuverter), TRACK, BIAS, HISS
 //   In    : IN (audio), V/OCT, FM, RES CV, MIX CV
 //   Out   : LP, BP, HP, NOTCH, MIX
 //   Lights: one level LED per output
@@ -70,6 +75,14 @@ static constexpr float kInvBias = 0.06f;
 // the paper's own state-space plots (Fig. 11) show it reaching them. This
 // trim backs the clamp off to where the hardware actually sits.
 static constexpr float kDiodeTrim = 0.5f;
+
+// ── the two panel mods, neither of them on the hardware ─────────────────────
+// How far the bias trimpot can walk the inverter threshold, and the range of
+// the hiss trimpot. kHissMin is also the idle dither that lets the filter
+// find its way into self-oscillation from silence.
+static constexpr float kBiasRange = 0.50f;
+static constexpr float kHissMin = 1e-5f;
+static constexpr float kHissMax = 3e-2f;
 
 // ── cheap saturators ────────────────────────────────────────────────────────
 // Padé tanh, exact enough (<0.4 %) and bounded once the argument is clamped.
@@ -125,6 +138,7 @@ struct Core {
     float Ra = 0.f, Rb = 0.f, Rc = 0.f;   // resonance star network
     float otaK = 1.5f;        // tanh knee per unit of normalised node voltage
     float diodeBias = 1.f;    // volts across D1/D2 per unit of normalised hp
+    float invBias = kInvBias; // CD4069 threshold offset from mid-supply
     float roomHi = kRoomHi, roomLo = kRoomLo;
     float Tos = 1.f / 96000.f;
 
@@ -190,7 +204,7 @@ struct Core {
         hp = -(u + cTerm + (K + g2) * s1 + s2) / denom;
 
         // summing inverter: finite headroom, threshold below mid-supply
-        hp = railClip(hp - kInvBias, roomHi, roomLo);
+        hp = railClip(hp - invBias, roomHi, roomLo);
 
         // integrators, each output clamped by its inverter's rails; feeding
         // the clamped value back into the state is what bounds the whole loop
@@ -230,6 +244,8 @@ struct Vespae : Module {
         MIX_PARAM,
         FM_PARAM,
         TRACK_PARAM,
+        BIAS_PARAM,
+        HISS_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -268,13 +284,14 @@ struct Vespae : Module {
     float levelEnv[kOuts] = {};
     float acX = 0.f, acY = 0.f, acR = 0.9974f;   // ~20 Hz input coupling
     uint32_t noise = 0x1234567u;
+    float noiseAmt = vespae::kHissMin;
 
     int osIndex = 1;             // 2^osIndex, default 2x
     int lastOsIndex = -1;
     float lastSampleRate = 0.f;
     // GRIT and DRIVE only move when a hand does; their pow() calls are the
     // most expensive thing in the control block, so cache them on the knob.
-    float lastGrit = -1.f, lastDrive = -1.f;
+    float lastGrit = -1.f, lastDrive = -1.f, lastHiss = -1.f;
     float supplyC = 4.9f, otaKC = 1.5f, roomHiC = 0.2f, roomLoC = 0.1f;
     float driveGainC = 1.f;
 
@@ -287,6 +304,8 @@ struct Vespae : Module {
         configParam(MIX_PARAM,    0.f, 1.f, 0.f,  "Mix (lowpass to highpass)", "%", 0.f, 100.f);
         configParam(FM_PARAM,    -1.f, 1.f, 0.f,  "FM amount", "%", 0.f, 100.f);
         configParam(TRACK_PARAM,  0.f, 1.f, 1.f,  "V/oct tracking", "%", 0.f, 100.f);
+        configParam(BIAS_PARAM,   0.f, 1.f, 0.f,  "Inverter bias (mod: lopsided clipping)", "%", 0.f, 100.f);
+        configParam(HISS_PARAM,   0.f, 1.f, 0.f,  "Inverter hiss (mod: noise in the loop)", "%", 0.f, 100.f);
         configInput(AUDIO_INPUT,  "Audio");
         configInput(VOCT_INPUT,   "1V/oct cutoff");
         configInput(FM_INPUT,     "Cutoff FM");
@@ -404,6 +423,21 @@ struct Vespae : Module {
                        * vespae::kR4 / (vespae::kR4 + core.Ra + core.Rc);
 
         // ── input: level pot, then the C1/R1 AC coupling ────────────────────
+        // ── the two mods ────────────────────────────────────────────────────
+        // Neither is on the A-124. bias walks the CD4069's switching point
+        // further off mid-supply, so the two halves of the waveform clip at
+        // very different levels and the rasp turns even-harmonic. hiss is the
+        // inverter noise, which does almost nothing to a loud signal but
+        // wanders the operating point of a loop that is close to oscillating.
+        core.invBias = vespae::kInvBias
+                     + vespae::kBiasRange * params[BIAS_PARAM].getValue();
+        const float hiss = params[HISS_PARAM].getValue();
+        if (hiss != lastHiss) {
+            lastHiss = hiss;
+            noiseAmt = vespae::kHissMin
+                     * std::pow(vespae::kHissMax / vespae::kHissMin, hiss);
+        }
+
         const float drive = params[DRIVE_PARAM].getValue();
         if (drive != lastDrive) {
             lastDrive = drive;
@@ -430,7 +464,7 @@ struct Vespae : Module {
         upsampler.upsample(u);
         const float* osIn = upsampler.getOSBuffer();
         for (int k = 0; k < ratio; k++) {
-            core.process(osIn[k] + 1e-5f * dither());
+            core.process(osIn[k] + noiseAmt * dither());
             osOut[0][k] = dcBlock[0].process(core.lp);
             osOut[1][k] = dcBlock[1].process(core.hp);
             osOut[2][k] = dcBlock[2].process(core.bp);
@@ -465,8 +499,10 @@ struct VespaeWidget : ModuleWidget {
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
 // @elem FM_PARAM Trimpot 3.03 param "" 0.0
-// @elem CUTOFF_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem TRACK_PARAM Trimpot 3.03 param "" 0.0
+// @elem CUTOFF_PARAM RoundBigBlackKnob 7.62 param "" 0.0
+// @elem BIAS_PARAM Trimpot 3.03 param "" 0.0
+// @elem HISS_PARAM Trimpot 3.03 param "" 0.0
 // @elem RES_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DRIVE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem GRIT_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -486,9 +522,11 @@ struct VespaeWidget : ModuleWidget {
 // @elem HP_LIGHT SmallLight 1.0 light "" 0.0
 // @elem NOTCH_LIGHT SmallLight 1.0 light "" 0.0
 // @elem MIX_LIGHT SmallLight 1.0 light "" 0.0
-// @elem LABEL_FM label 0.0 label "fm" 0.0 11.00 33.50
+// @elem LABEL_FM label 0.0 label "fm" 0.0 11.00 28.50
+// @elem LABEL_TRACK label 0.0 label "trk" 0.0 11.00 39.60
 // @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 30.48 38.50
-// @elem LABEL_TRACK label 0.0 label "trk" 0.0 49.96 33.50
+// @elem LABEL_BIAS label 0.0 label "bias" 0.0 49.96 28.50
+// @elem LABEL_HISS label 0.0 label "hiss" 0.0 49.96 39.60
 // @elem LABEL_RES label 0.0 label "res" 0.0 10.20 62.50
 // @elem LABEL_DRIVE label 0.0 label "drive" 0.0 23.70 62.50
 // @elem LABEL_GRIT label 0.0 label "grit" 0.0 37.20 62.50
@@ -514,9 +552,11 @@ struct VespaeWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 27.00f)), module, Vespae::FM_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 22.00f)), module, Vespae::FM_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 33.10f)), module, Vespae::TRACK_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(30.48f, 27.00f)), module, Vespae::CUTOFF_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.96f, 27.00f)), module, Vespae::TRACK_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.96f, 22.00f)), module, Vespae::BIAS_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(49.96f, 33.10f)), module, Vespae::HISS_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.20f, 54.00f)), module, Vespae::RES_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.70f, 54.00f)), module, Vespae::DRIVE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.20f, 54.00f)), module, Vespae::GRIT_PARAM));
