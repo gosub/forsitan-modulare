@@ -18,7 +18,7 @@ static void setSize(Quadrare& m, int sizeIndex) {
 }
 
 static void setBands(Quadrare& m, float g) {
-    for (int b = 0; b < kBands; ++b) m.params[Quadrare::BAND_PARAM + b].setValue(g);
+    for (int b = 0; b < kBands; ++b) m.params[Quadrare::BAND0_PARAM + b].setValue(g);
 }
 
 static void defaults(Quadrare& m) {
@@ -159,7 +159,7 @@ static void testCoeffLoopback() {
         defaults(m);
         setSize(m, 2);
         m.coeffMode = mode;
-        for (int b = 0; b < kBands; ++b) m.inputs[Quadrare::COEFF_INPUT + b].channels = 1;
+        for (int b = 0; b < kBands; ++b) m.inputs[Quadrare::COEFF0_INPUT + b].channels = 1;
         m.process(makeArgs(0));
 
         const int lat = latencyOf(m);
@@ -171,15 +171,15 @@ static void testCoeffLoopback() {
         for (int i = 0; i < 8000; ++i) {
             // Deliver last frame's COEFF OUT to COEFF IN.
             for (int b = 0; b < kBands; ++b) {
-                m.inputs[Quadrare::COEFF_INPUT + b].setChannels(w);
+                m.inputs[Quadrare::COEFF0_INPUT + b].setChannels(w);
                 for (int c = 0; c < w; ++c)
-                    m.inputs[Quadrare::COEFF_INPUT + b].setVoltage(carry[b][c], c);
+                    m.inputs[Quadrare::COEFF0_INPUT + b].setVoltage(carry[b][c], c);
             }
             m.inputs[Quadrare::AUDIO_INPUT].setVoltage(in[i]);
             m.process(makeArgs(i));
             for (int b = 0; b < kBands; ++b)
                 for (int c = 0; c < w; ++c)
-                    carry[b][c] = m.outputs[Quadrare::COEFF_OUTPUT + b].getVoltage(c);
+                    carry[b][c] = m.outputs[Quadrare::COEFF0_OUTPUT + b].getVoltage(c);
             if (i < lat + 2 * m.size) continue;
             worst = std::max(worst, (double) std::fabs(
                 m.outputs[Quadrare::AUDIO_OUTPUT].getVoltage() - in[i - lat]));
@@ -198,12 +198,12 @@ static void testOverlayReplace() {
         defaults(m);
         setSize(m, 3);          // n = 128, so 8 channels per jack
         m.coeffMode = mode;
-        m.inputs[Quadrare::COEFF_INPUT + 0].channels = 1;
+        m.inputs[Quadrare::COEFF0_INPUT].channels = 1;
         m.process(makeArgs(0));
         const int w = bandWidth(m.size);
         // Feed one channel of band 0 only.
-        m.inputs[Quadrare::COEFF_INPUT + 0].setChannels(1);
-        m.inputs[Quadrare::COEFF_INPUT + 0].setVoltage(0.f, 0);
+        m.inputs[Quadrare::COEFF0_INPUT].setChannels(1);
+        m.inputs[Quadrare::COEFF0_INPUT].setVoltage(0.f, 0);
 
         for (int i = 0; i < 6000; ++i) {
             m.inputs[Quadrare::AUDIO_INPUT].setVoltage(testSignal(i));
@@ -295,13 +295,13 @@ static void testSynthesizerMode() {
     defaults(m);
     setSize(m, 1);
     m.coeffMode = Quadrare::MODE_REPLACE;
-    for (int b = 0; b < kBands; ++b) m.inputs[Quadrare::COEFF_INPUT + b].channels = 1;
+    for (int b = 0; b < kBands; ++b) m.inputs[Quadrare::COEFF0_INPUT + b].channels = 1;
     m.process(makeArgs(0));
     const int w = bandWidth(m.size);
     for (int b = 0; b < kBands; ++b) {
-        m.inputs[Quadrare::COEFF_INPUT + b].setChannels(w);
+        m.inputs[Quadrare::COEFF0_INPUT + b].setChannels(w);
         for (int c = 0; c < w; ++c)
-            m.inputs[Quadrare::COEFF_INPUT + b].setVoltage(b == 3 ? 5.f : 0.f, c);
+            m.inputs[Quadrare::COEFF0_INPUT + b].setVoltage(b == 3 ? 5.f : 0.f, c);
     }
     Stats st;
     for (int i = 0; i < 8000; ++i) {
@@ -318,15 +318,15 @@ static void testSynthesizerMode() {
 static void testStability() {
     Quadrare m;
     defaults(m);
-    for (int b = 0; b < kBands; ++b) m.inputs[Quadrare::COEFF_INPUT + b].channels = 1;
+    for (int b = 0; b < kBands; ++b) m.inputs[Quadrare::COEFF0_INPUT + b].channels = 1;
     Stats st;
     for (int i = 0; i < 40000; ++i) {
         if (i % 2000 == 0) setSize(m, (i / 2000) % kSizeCount);
         const int w = bandWidth(m.size);
         for (int b = 0; b < kBands; ++b) {
-            m.inputs[Quadrare::COEFF_INPUT + b].setChannels(w);
+            m.inputs[Quadrare::COEFF0_INPUT + b].setChannels(w);
             for (int c = 0; c < w; ++c)
-                m.inputs[Quadrare::COEFF_INPUT + b].setVoltage(
+                m.inputs[Quadrare::COEFF0_INPUT + b].setVoltage(
                     rack::random::uniform() * 200.f - 100.f, c);
         }
         m.inputs[Quadrare::AUDIO_INPUT].setVoltage(testSignal(i));

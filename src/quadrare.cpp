@@ -42,7 +42,22 @@ using namespace quadrare;
 
 struct Quadrare : Module {
     enum ParamId {
-        ENUMS(BAND_PARAM, kBands),
+        BAND0_PARAM,
+        BAND1_PARAM,
+        BAND2_PARAM,
+        BAND3_PARAM,
+        BAND4_PARAM,
+        BAND5_PARAM,
+        BAND6_PARAM,
+        BAND7_PARAM,
+        BAND8_PARAM,
+        BAND9_PARAM,
+        BAND10_PARAM,
+        BAND11_PARAM,
+        BAND12_PARAM,
+        BAND13_PARAM,
+        BAND14_PARAM,
+        BAND15_PARAM,
         LEVEL_PARAM,
         SIZE_PARAM,
         KEEP_PARAM,
@@ -53,18 +68,64 @@ struct Quadrare : Module {
     };
     enum InputId {
         AUDIO_INPUT,
-        ENUMS(COEFF_INPUT, kBands),
+        COEFF0_INPUT,
+        COEFF1_INPUT,
+        COEFF2_INPUT,
+        COEFF3_INPUT,
+        COEFF4_INPUT,
+        COEFF5_INPUT,
+        COEFF6_INPUT,
+        COEFF7_INPUT,
+        COEFF8_INPUT,
+        COEFF9_INPUT,
+        COEFF10_INPUT,
+        COEFF11_INPUT,
+        COEFF12_INPUT,
+        COEFF13_INPUT,
+        COEFF14_INPUT,
+        COEFF15_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
         AUDIO_OUTPUT,
         RESIDUAL_OUTPUT,
         COMPONENTS_OUTPUT,
-        ENUMS(COEFF_OUTPUT, kBands),
+        COEFF0_OUTPUT,
+        COEFF1_OUTPUT,
+        COEFF2_OUTPUT,
+        COEFF3_OUTPUT,
+        COEFF4_OUTPUT,
+        COEFF5_OUTPUT,
+        COEFF6_OUTPUT,
+        COEFF7_OUTPUT,
+        COEFF8_OUTPUT,
+        COEFF9_OUTPUT,
+        COEFF10_OUTPUT,
+        COEFF11_OUTPUT,
+        COEFF12_OUTPUT,
+        COEFF13_OUTPUT,
+        COEFF14_OUTPUT,
+        COEFF15_OUTPUT,
         OUTPUTS_LEN
     };
     enum LightId {
-        ENUMS(BAND_LIGHT, kBands * 2),   // green/red pairs, in the slider handles
+        // green/red pairs, one per slider handle
+        ENUMS(BAND0_LIGHT, 2),
+        ENUMS(BAND1_LIGHT, 2),
+        ENUMS(BAND2_LIGHT, 2),
+        ENUMS(BAND3_LIGHT, 2),
+        ENUMS(BAND4_LIGHT, 2),
+        ENUMS(BAND5_LIGHT, 2),
+        ENUMS(BAND6_LIGHT, 2),
+        ENUMS(BAND7_LIGHT, 2),
+        ENUMS(BAND8_LIGHT, 2),
+        ENUMS(BAND9_LIGHT, 2),
+        ENUMS(BAND10_LIGHT, 2),
+        ENUMS(BAND11_LIGHT, 2),
+        ENUMS(BAND12_LIGHT, 2),
+        ENUMS(BAND13_LIGHT, 2),
+        ENUMS(BAND14_LIGHT, 2),
+        ENUMS(BAND15_LIGHT, 2),
         FREEZE_LIGHT,
         AUDIO_LIGHT,
         RESIDUAL_LIGHT,
@@ -134,10 +195,10 @@ struct Quadrare : Module {
     Quadrare() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         for (int b = 0; b < kBands; ++b) {
-            configParam(BAND_PARAM + b, -1.f, 1.f, 1.f,
+            configParam(BAND0_PARAM + b, -1.f, 1.f, 1.f,
                         string::f("Band %d gain", b), "%", 0.f, 100.f);
-            configInput(COEFF_INPUT + b, string::f("Band %d coefficients", b));
-            configOutput(COEFF_OUTPUT + b, string::f("Band %d coefficients", b));
+            configInput(COEFF0_INPUT + b, string::f("Band %d coefficients", b));
+            configOutput(COEFF0_OUTPUT + b, string::f("Band %d coefficients", b));
         }
         configParam(LEVEL_PARAM, 0.f, 2.f, 1.f, "Output level", "%", 0.f, 100.f);
         configSwitch(SIZE_PARAM, 0.f, (float) (kSizeCount - 1), 0.f, "Size",
@@ -260,7 +321,7 @@ struct Quadrare : Module {
         // Band gains, then the lossy stage. Both act per bin.
         std::copy(held, held + n, synth);
         for (int b = 0; b < kBands; ++b) {
-            const float g = params[BAND_PARAM + b].getValue();
+            const float g = params[BAND0_PARAM + b].getValue();
             if (g == 1.f) continue;
             const int lo = bandLo(b, n);
             for (int i = lo; i < lo + w; ++i) synth[i] *= g;
@@ -272,7 +333,7 @@ struct Quadrare : Module {
         // COEFF OUT carries what the panel shows and what gets reconstructed,
         // scaled by 1/n so a constant 5 V input reads 5 V on band 0.
         for (int b = 0; b < kBands; ++b) {
-            Output& out = outputs[COEFF_OUTPUT + b];
+            Output& out = outputs[COEFF0_OUTPUT + b];
             out.setChannels(w);
             const int lo = bandLo(b, n);
             for (int c = 0; c < w; ++c) out.setVoltage(synth[lo + c] * invN, c);
@@ -293,7 +354,7 @@ struct Quadrare : Module {
             // External values arrive *after* the band gains, so a substituted
             // channel is not multiplied by its slider: a true insert return.
             for (int b = 0; b < kBands; ++b) {
-                Input& in = inputs[COEFF_INPUT + b];
+                Input& in = inputs[COEFF0_INPUT + b];
                 if (!in.isConnected()) continue;
                 const int lo = bandLo(b, n);
                 const int chans = std::min(in.getChannels(), w);
@@ -347,8 +408,8 @@ struct Quadrare : Module {
             for (int i = lo; i < lo + w; ++i)
                 if (std::fabs(synth[i]) > std::fabs(peak)) peak = synth[i];
             const float v = peak * invN / 5.f;
-            lights[BAND_LIGHT + 2 * b + 0].setSmoothBrightness(std::max(v, 0.f), dt);
-            lights[BAND_LIGHT + 2 * b + 1].setSmoothBrightness(std::max(-v, 0.f), dt);
+            lights[BAND0_LIGHT + 2 * b + 0].setSmoothBrightness(std::max(v, 0.f), dt);
+            lights[BAND0_LIGHT + 2 * b + 1].setSmoothBrightness(std::max(-v, 0.f), dt);
         }
     }
 };
@@ -358,54 +419,170 @@ struct QuadrareWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/quadrare.svg")));
 
-        const float w = 162.56f;
-        const float x0 = 7.03f, dx = 9.90f;      // 16 columns
-        const float ySlider = 33.f, yOut = 63.f, yIn = 81.f;
-        const float yUtil = 103.f;
+// @layout:begin quadrare 162.56 128.5
+// @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
+// @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
+// @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
+// @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
+// @elem BAND0_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND0_LIGHT
+// @elem BAND1_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND1_LIGHT
+// @elem BAND2_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND2_LIGHT
+// @elem BAND3_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND3_LIGHT
+// @elem BAND4_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND4_LIGHT
+// @elem BAND5_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND5_LIGHT
+// @elem BAND6_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND6_LIGHT
+// @elem BAND7_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND7_LIGHT
+// @elem BAND8_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND8_LIGHT
+// @elem BAND9_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND9_LIGHT
+// @elem BAND10_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND10_LIGHT
+// @elem BAND11_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND11_LIGHT
+// @elem BAND12_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND12_LIGHT
+// @elem BAND13_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND13_LIGHT
+// @elem BAND14_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND14_LIGHT
+// @elem BAND15_PARAM VCVLightSlider 12.96 param "" 0.0 light=BAND15_LIGHT
+// @elem COEFF0_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF1_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF2_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF3_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF4_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF5_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF6_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF7_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF8_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF9_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF10_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF11_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF12_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF13_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF14_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF15_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem COEFF0_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF1_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF2_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF3_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF4_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF5_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF6_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF7_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF8_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF9_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF10_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF11_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF12_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF13_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF14_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem COEFF15_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem SIZE_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem KEEP_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem QUANT_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem DRYWET_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem FREEZE_PARAM VCVLightBezel 3.6 param "" 0.0 light=FREEZE_LIGHT
+// @elem COMPONENTS_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem RESIDUAL_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem AUDIO_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem RESIDUAL_LIGHT SmallLight 1.0 light "" 0.0
+// @elem AUDIO_LIGHT SmallLight 1.0 light "" 0.0
+// @elem BOX_COEFFOUT panel_box 7.0 box "" 0.0 81.28 57.50 box=156x17
+// @elem LABEL_B0 label 0.0 label "0" 0.0 8.53 43.50
+// @elem LABEL_B1 label 0.0 label "1" 0.0 18.23 43.50
+// @elem LABEL_B2 label 0.0 label "2" 0.0 27.93 43.50
+// @elem LABEL_B3 label 0.0 label "3" 0.0 37.63 43.50
+// @elem LABEL_B4 label 0.0 label "4" 0.0 47.33 43.50
+// @elem LABEL_B5 label 0.0 label "5" 0.0 57.03 43.50
+// @elem LABEL_B6 label 0.0 label "6" 0.0 66.73 43.50
+// @elem LABEL_B7 label 0.0 label "7" 0.0 76.43 43.50
+// @elem LABEL_B8 label 0.0 label "8" 0.0 86.13 43.50
+// @elem LABEL_B9 label 0.0 label "9" 0.0 95.83 43.50
+// @elem LABEL_B10 label 0.0 label "10" 0.0 105.53 43.50
+// @elem LABEL_B11 label 0.0 label "11" 0.0 115.23 43.50
+// @elem LABEL_B12 label 0.0 label "12" 0.0 124.93 43.50
+// @elem LABEL_B13 label 0.0 label "13" 0.0 134.63 43.50
+// @elem LABEL_B14 label 0.0 label "14" 0.0 144.33 43.50
+// @elem LABEL_B15 label 0.0 label "15" 0.0 154.03 43.50
+// @elem LABEL_COEFFOUT label 0.0 label "coeff out" 0.0 81.28 65.00
+// @elem LABEL_COEFFIN label 0.0 label "coeff in" 0.0 81.28 85.00
+// @elem LABEL_IN label 0.0 label "in" 0.0 8.38 108.50
+// @elem LABEL_SIZE label 0.0 label "size" 0.0 24.58 108.50
+// @elem LABEL_KEEP label 0.0 label "keep" 0.0 40.78 108.50
+// @elem LABEL_QUANT label 0.0 label "quant" 0.0 56.98 108.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 73.18 108.50
+// @elem LABEL_DRYWET label 0.0 label "dry/wet" 0.0 89.38 108.50
+// @elem LABEL_FREEZE label 0.0 label "freeze" 0.0 105.58 108.50
+// @elem LABEL_COMP label 0.0 label "comp" 0.0 121.78 108.50
+// @elem LABEL_RES label 0.0 label "res" 0.0 137.98 108.50
+// @elem LABEL_OUT label 0.0 label "out" 0.0 154.18 108.50
+// @elem BOX_COMP panel_box 7.0 box "" 0.0 121.78 102.50
+// @elem BOX_RES panel_box 7.0 box "" 0.0 137.98 102.50
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 154.18 102.50
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 81.28 122.50
 
-        addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.f))));
-        addChild(createWidget<ScrewSilver>(mm2px(Vec(w - 7.62f, 0.f))));
-        addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f))));
-        addChild(createWidget<ScrewSilver>(mm2px(Vec(w - 7.62f, 123.42f))));
-
-        for (int b = 0; b < kBands; ++b) {
-            const float x = x0 + dx * b;
-            addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(
-                mm2px(Vec(x, ySlider)), module, Quadrare::BAND_PARAM + b,
-                Quadrare::BAND_LIGHT + 2 * b));
-            addOutput(createOutputCentered<PJ301MPort>(
-                mm2px(Vec(x, yOut)), module, Quadrare::COEFF_OUTPUT + b));
-            addInput(createInputCentered<PJ301MPort>(
-                mm2px(Vec(x, yIn)), module, Quadrare::COEFF_INPUT + b));
-        }
-
-        // Ten elements across the bottom row.
-        const float u0 = 8.13f, du = 16.26f;
-        addInput(createInputCentered<PJ301MPort>(
-            mm2px(Vec(u0 + du * 0, yUtil)), module, Quadrare::AUDIO_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(u0 + du * 1, yUtil)), module, Quadrare::SIZE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(u0 + du * 2, yUtil)), module, Quadrare::KEEP_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(u0 + du * 3, yUtil)), module, Quadrare::QUANT_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(u0 + du * 4, yUtil)), module, Quadrare::LEVEL_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(
-            mm2px(Vec(u0 + du * 5, yUtil)), module, Quadrare::DRYWET_PARAM));
-        addParam(createLightParamCentered<VCVLightBezel<GreenLight>>(
-            mm2px(Vec(u0 + du * 6, yUtil)), module, Quadrare::FREEZE_PARAM,
-            Quadrare::FREEZE_LIGHT));
-        addOutput(createOutputCentered<PJ301MPort>(
-            mm2px(Vec(u0 + du * 7, yUtil)), module, Quadrare::COMPONENTS_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(
-            mm2px(Vec(u0 + du * 8, yUtil)), module, Quadrare::RESIDUAL_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(
-            mm2px(Vec(u0 + du * 9, yUtil)), module, Quadrare::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(
-            mm2px(Vec(u0 + du * 8 + 5.f, yUtil - 5.f)), module, Quadrare::RESIDUAL_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(
-            mm2px(Vec(u0 + du * 9 + 5.f, yUtil - 5.f)), module, Quadrare::AUDIO_LIGHT));
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(154.94f, 0.00f)))); // SCREW_TR
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
+        addChild(createWidget<ScrewSilver>(mm2px(Vec(154.94f, 123.42f)))); // SCREW_BR
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(8.53f, 26.00f)), module, Quadrare::BAND0_PARAM, Quadrare::BAND0_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(18.23f, 26.00f)), module, Quadrare::BAND1_PARAM, Quadrare::BAND1_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(27.93f, 26.00f)), module, Quadrare::BAND2_PARAM, Quadrare::BAND2_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(37.63f, 26.00f)), module, Quadrare::BAND3_PARAM, Quadrare::BAND3_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(47.33f, 26.00f)), module, Quadrare::BAND4_PARAM, Quadrare::BAND4_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(57.03f, 26.00f)), module, Quadrare::BAND5_PARAM, Quadrare::BAND5_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(66.73f, 26.00f)), module, Quadrare::BAND6_PARAM, Quadrare::BAND6_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(76.43f, 26.00f)), module, Quadrare::BAND7_PARAM, Quadrare::BAND7_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(86.13f, 26.00f)), module, Quadrare::BAND8_PARAM, Quadrare::BAND8_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(95.83f, 26.00f)), module, Quadrare::BAND9_PARAM, Quadrare::BAND9_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(105.53f, 26.00f)), module, Quadrare::BAND10_PARAM, Quadrare::BAND10_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(115.23f, 26.00f)), module, Quadrare::BAND11_PARAM, Quadrare::BAND11_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(124.93f, 26.00f)), module, Quadrare::BAND12_PARAM, Quadrare::BAND12_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(134.63f, 26.00f)), module, Quadrare::BAND13_PARAM, Quadrare::BAND13_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(144.33f, 26.00f)), module, Quadrare::BAND14_PARAM, Quadrare::BAND14_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(154.03f, 26.00f)), module, Quadrare::BAND15_PARAM, Quadrare::BAND15_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.38f, 100.00f)), module, Quadrare::AUDIO_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.58f, 100.00f)), module, Quadrare::SIZE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.78f, 100.00f)), module, Quadrare::KEEP_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.98f, 100.00f)), module, Quadrare::QUANT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(73.18f, 100.00f)), module, Quadrare::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(89.38f, 100.00f)), module, Quadrare::DRYWET_PARAM));
+        addParam(createLightParamCentered<VCVLightBezel<GreenLight>>(mm2px(Vec(105.58f, 100.00f)), module, Quadrare::FREEZE_PARAM, Quadrare::FREEZE_LIGHT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(121.78f, 100.00f)), module, Quadrare::COMPONENTS_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.98f, 100.00f)), module, Quadrare::RESIDUAL_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.18f, 100.00f)), module, Quadrare::AUDIO_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.53f, 54.50f)), module, Quadrare::COEFF0_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(18.23f, 54.50f)), module, Quadrare::COEFF1_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(27.93f, 54.50f)), module, Quadrare::COEFF2_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(37.63f, 54.50f)), module, Quadrare::COEFF3_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(47.33f, 54.50f)), module, Quadrare::COEFF4_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.03f, 54.50f)), module, Quadrare::COEFF5_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(66.73f, 54.50f)), module, Quadrare::COEFF6_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.43f, 54.50f)), module, Quadrare::COEFF7_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(86.13f, 54.50f)), module, Quadrare::COEFF8_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(95.83f, 54.50f)), module, Quadrare::COEFF9_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(105.53f, 54.50f)), module, Quadrare::COEFF10_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.23f, 54.50f)), module, Quadrare::COEFF11_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.93f, 54.50f)), module, Quadrare::COEFF12_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(134.63f, 54.50f)), module, Quadrare::COEFF13_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(144.33f, 54.50f)), module, Quadrare::COEFF14_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.03f, 54.50f)), module, Quadrare::COEFF15_OUTPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.53f, 74.50f)), module, Quadrare::COEFF0_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.23f, 74.50f)), module, Quadrare::COEFF1_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(27.93f, 74.50f)), module, Quadrare::COEFF2_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.63f, 74.50f)), module, Quadrare::COEFF3_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(47.33f, 74.50f)), module, Quadrare::COEFF4_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(57.03f, 74.50f)), module, Quadrare::COEFF5_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.73f, 74.50f)), module, Quadrare::COEFF6_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.43f, 74.50f)), module, Quadrare::COEFF7_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(86.13f, 74.50f)), module, Quadrare::COEFF8_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(95.83f, 74.50f)), module, Quadrare::COEFF9_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(105.53f, 74.50f)), module, Quadrare::COEFF10_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(115.23f, 74.50f)), module, Quadrare::COEFF11_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(124.93f, 74.50f)), module, Quadrare::COEFF12_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(134.63f, 74.50f)), module, Quadrare::COEFF13_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(144.33f, 74.50f)), module, Quadrare::COEFF14_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(154.03f, 74.50f)), module, Quadrare::COEFF15_INPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(142.98f, 97.50f)), module, Quadrare::RESIDUAL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(159.18f, 97.50f)), module, Quadrare::AUDIO_LIGHT));
+        // @layout:end
     }
 
     void appendContextMenu(Menu* menu) override {
