@@ -63,6 +63,7 @@ struct Quadrare : Module {
         KEEP_PARAM,
         QUANT_PARAM,
         DRYWET_PARAM,
+        ABOVE_PARAM,
         FREEZE_PARAM,
         PARAMS_LEN
     };
@@ -141,7 +142,7 @@ struct Quadrare : Module {
 
     Permutation perm;
 
-    int size = kMinSize;        // active transform size
+    int size = sizeAt(4);       // active transform size, default 256
     int idx = 0;                // position within the current block
 
     float inBlock[kMaxSize]   = {};
@@ -152,7 +153,7 @@ struct Quadrare : Module {
     float pending[kMaxSize]   = {};   // what was published at the previous boundary
     float recon[kMaxSize]     = {};   // pending, after the COEFF IN substitution
     float scratch[kMaxSize]   = {};
-    float components[kBands][kMaxSize] = {};
+    float components[kSliders][kMaxSize] = {};
 
     // Dry path, delayed to match the block latency.
     static const int kRing = 4 * kMaxSize;
@@ -194,15 +195,17 @@ struct Quadrare : Module {
 
     Quadrare() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        for (int b = 0; b < kBands; ++b) {
+        for (int b = 0; b < kSliders; ++b) {
             configParam(BAND0_PARAM + b, -1.f, 1.f, 1.f,
-                        string::f("Band %d gain", b), "%", 0.f, 100.f);
-            configInput(COEFF0_INPUT + b, string::f("Band %d coefficients", b));
-            configOutput(COEFF0_OUTPUT + b, string::f("Band %d coefficients", b));
+                        string::f("Coefficient %d gain", b), "%", 0.f, 100.f);
+            configInput(COEFF0_INPUT + b, string::f("Coefficient %d", b));
+            configOutput(COEFF0_OUTPUT + b, string::f("Coefficient %d", b));
         }
         configParam(LEVEL_PARAM, 0.f, 2.f, 1.f, "Output level", "%", 0.f, 100.f);
-        configSwitch(SIZE_PARAM, 0.f, (float) (kSizeCount - 1), 0.f, "Size",
-                     {"16", "32", "64", "128", "256"});
+        configSwitch(SIZE_PARAM, 0.f, (float) (kSizeCount - 1), 4.f, "Size",
+                     {"16", "32", "64", "128", "256", "512"});
+        configSwitch(ABOVE_PARAM, 0.f, 1.f, 0.f, "Above the window",
+                     {"Pass", "Mute"});
         configParam<KeepQuantity>(KEEP_PARAM, 0.f, 1.f, 1.f, "Keep");
         configParam<QuantQuantity>(QUANT_PARAM, 0.f, 1.f, 0.f, "Quantize");
         configParam(DRYWET_PARAM, 0.f, 1.f, 1.f, "Dry/wet", "%", 0.f, 100.f);
@@ -216,7 +219,7 @@ struct Quadrare : Module {
     }
 
     void onReset() override {
-        size = kMinSize;
+        size = sizeAt(4);
         perm.build(size);
         resetBuffers();
         freeze = false;
@@ -233,7 +236,7 @@ struct Quadrare : Module {
         std::fill(held, held + kMaxSize, 0.f);
         std::fill(pending, pending + kMaxSize, 0.f);
         std::fill(dryRing, dryRing + kRing, 0.f);
-        for (int b = 0; b < kBands; ++b)
+        for (int b = 0; b < kSliders; ++b)
             std::fill(components[b], components[b] + kMaxSize, 0.f);
     }
 
@@ -294,7 +297,7 @@ struct Quadrare : Module {
 
         // Channel counts are set at the block boundary, not per sample.
         if (wantComponents) {
-            for (int b = 0; b < kBands; ++b)
+            for (int b = 0; b < kSliders; ++b)
                 outputs[COMPONENTS_OUTPUT].setVoltage(components[b][idx] * level, b);
         }
         else {
@@ -310,7 +313,6 @@ struct Quadrare : Module {
     // Called once every `size` samples, at the block boundary.
     void computeBlock(const ProcessArgs& args) {
         const int n = size;
-        const int w = bandWidth(n);
         const float invN = 1.f / (float) n;
 
         // Analyze: forward transform, then natural -> sequency for the panel.
@@ -318,25 +320,25 @@ struct Quadrare : Module {
         fwht(natural, n);
         if (!freeze) perm.toSequency(natural, held, n);
 
-        // Band gains, then the lossy stage. Both act per bin.
+        // Slider gains: one coefficient each, the lowest 16 in sequency order.
         std::copy(held, held + n, synth);
-        for (int b = 0; b < kBands; ++b) {
-            const float g = params[BAND0_PARAM + b].getValue();
-            if (g == 1.f) continue;
-            const int lo = bandLo(b, n);
-            for (int i = lo; i < lo + w; ++i) synth[i] *= g;
-        }
+        for (int b = 0; b < kSliders && b < n; ++b)
+            synth[b] *= params[BAND0_PARAM + b].getValue();
+        // Everything above the slider window moves together: pass it through
+        // untouched, or drop it and leave a steep lowpass at the window edge.
+        // At n=16 there is nothing above the window and this does nothing.
+        if (params[ABOVE_PARAM].getValue() > 0.5f)
+            std::fill(synth + kSliders, synth + n, 0.f);
         keepLargest(synth, n, keepCount(params[KEEP_PARAM].getValue(), n), scratch);
         const float qv = params[QUANT_PARAM].getValue();
         if (qv > 0.001f) quantize(synth, n, quantLevels(qv));
 
         // COEFF OUT carries what the panel shows and what gets reconstructed,
         // scaled by 1/n so a constant 5 V input reads 5 V on band 0.
-        for (int b = 0; b < kBands; ++b) {
+        for (int b = 0; b < kSliders; ++b) {
             Output& out = outputs[COEFF0_OUTPUT + b];
-            out.setChannels(w);
-            const int lo = bandLo(b, n);
-            for (int c = 0; c < w; ++c) out.setVoltage(synth[lo + c] * invN, c);
+            out.setChannels(1);
+            out.setVoltage(synth[b] * invN);
         }
 
         // Reconstruct the vector published at the *previous* boundary, not the
@@ -353,17 +355,18 @@ struct Quadrare : Module {
             // COEFF IN is read once per block and held for its duration.
             // External values arrive *after* the band gains, so a substituted
             // channel is not multiplied by its slider: a true insert return.
-            for (int b = 0; b < kBands; ++b) {
+            bool anyDriven = false;
+            for (int b = 0; b < kSliders; ++b)
+                if (inputs[COEFF0_INPUT + b].isConnected()) anyDriven = true;
+            for (int b = 0; b < kSliders && b < n; ++b) {
                 Input& in = inputs[COEFF0_INPUT + b];
-                if (!in.isConnected()) continue;
-                const int lo = bandLo(b, n);
-                const int chans = std::min(in.getChannels(), w);
-                for (int c = 0; c < chans; ++c) {
-                    const float v = in.getVoltage(c);
-                    recon[lo + c] = std::isfinite(v) ? v * (float) n : 0.f;
+                if (in.isConnected()) {
+                    const float v = in.getVoltage();
+                    recon[b] = std::isfinite(v) ? v * (float) n : 0.f;
                 }
-                if (coeffMode == MODE_REPLACE)
-                    for (int c = chans; c < w; ++c) recon[lo + c] = 0.f;
+                else if (coeffMode == MODE_REPLACE && anyDriven) {
+                    recon[b] = 0.f;
+                }
             }
 
             // Synthesize: sequency -> natural, inverse transform, scale by 1/n.
@@ -376,17 +379,17 @@ struct Quadrare : Module {
             // partial inverse transform per band, each zeroing every bin
             // outside that band. They sum to outBlock by linearity.
             wantComponents = outputs[COMPONENTS_OUTPUT].isConnected();
-            const int compChans = wantComponents ? kBands : 1;
+            const int compChans = wantComponents ? kSliders : 1;
             if (outputs[COMPONENTS_OUTPUT].getChannels() != compChans)
                 outputs[COMPONENTS_OUTPUT].setChannels(compChans);
             if (wantComponents) {
-                for (int b = 0; b < kBands; ++b) {
-                    std::fill(scratch, scratch + n, 0.f);
-                    const int lo = bandLo(b, n);
-                    for (int i = lo; i < lo + w; ++i) scratch[i] = recon[i];
-                    perm.toNatural(scratch, components[b], n);
-                    fwht(components[b], n);
-                    scale(components[b], n, invN);
+                // Each slider owns a single coefficient, so its contribution is
+                // one Walsh function scaled: no inverse transform needed.
+                for (int b = 0; b < kSliders; ++b) {
+                    const float a = (b < n ? recon[b] : 0.f) * invN;
+                    const int h = perm.seq2nat[b];
+                    for (int t = 0; t < n; ++t)
+                        components[b][t] = a * walshSign(h, t);
                 }
             }
             haveBlock = true;
@@ -394,20 +397,16 @@ struct Quadrare : Module {
 
         std::copy(synth, synth + n, pending);
         havePending = true;
-        updateLights(args, n, w, invN);
+        updateLights(args, n, invN);
     }
 
     // One update per block rather than per sample. Each slider light shows the
     // dominant bin of its band, which carries both sign and level; at n=16 a
     // band is one bin, so it is simply the coefficient.
-    void updateLights(const ProcessArgs& args, int n, int w, float invN) {
+    void updateLights(const ProcessArgs& args, int n, float invN) {
         const float dt = args.sampleTime * n;
-        for (int b = 0; b < kBands; ++b) {
-            const int lo = bandLo(b, n);
-            float peak = 0.f;
-            for (int i = lo; i < lo + w; ++i)
-                if (std::fabs(synth[i]) > std::fabs(peak)) peak = synth[i];
-            const float v = peak * invN / 5.f;
+        for (int b = 0; b < kSliders; ++b) {
+            const float v = (b < n ? synth[b] : 0.f) * invN / 5.f;
             lights[BAND0_LIGHT + 2 * b + 0].setSmoothBrightness(std::max(v, 0.f), dt);
             lights[BAND0_LIGHT + 2 * b + 1].setSmoothBrightness(std::max(-v, 0.f), dt);
         }
@@ -478,6 +477,7 @@ struct QuadrareWidget : ModuleWidget {
 // @elem QUANT_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DRYWET_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem ABOVE_PARAM CKSS 2.3 param "" 0.0
 // @elem FREEZE_PARAM VCVLightBezel 3.6 param "" 0.0 light=FREEZE_LIGHT
 // @elem COMPONENTS_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem RESIDUAL_OUTPUT PJ301MPort 4.01 output "" 0.0
@@ -503,6 +503,7 @@ struct QuadrareWidget : ModuleWidget {
 // @elem LABEL_B15 label 0.0 label "15" 0.0 154.03 43.50
 // @elem LABEL_COEFFOUT label 0.0 label "coeff out" 0.0 81.28 65.00
 // @elem LABEL_COEFFIN label 0.0 label "coeff in" 0.0 81.28 85.00
+// @elem LABEL_ABOVE label 0.0 label "above" 0.0 17.00 94.00
 // @elem LABEL_IN label 0.0 label "in" 0.0 8.38 108.50
 // @elem LABEL_SIZE label 0.0 label "size" 0.0 24.58 108.50
 // @elem LABEL_KEEP label 0.0 label "keep" 0.0 40.78 108.50
@@ -544,6 +545,7 @@ struct QuadrareWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.98f, 100.00f)), module, Quadrare::QUANT_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(73.18f, 100.00f)), module, Quadrare::LEVEL_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(89.38f, 100.00f)), module, Quadrare::DRYWET_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(17.00f, 85.50f)), module, Quadrare::ABOVE_PARAM));
         addParam(createLightParamCentered<VCVLightBezel<GreenLight>>(mm2px(Vec(105.58f, 100.00f)), module, Quadrare::FREEZE_PARAM, Quadrare::FREEZE_LIGHT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(121.78f, 100.00f)), module, Quadrare::COMPONENTS_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.98f, 100.00f)), module, Quadrare::RESIDUAL_OUTPUT));

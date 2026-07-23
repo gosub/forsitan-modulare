@@ -10,22 +10,22 @@
 
 namespace quadrare {
 
-// 16 panel columns, one slider + COEFF OUT jack + COEFF IN jack each.
-static constexpr int kBands   = 16;
+// 16 panel columns, one slider + COEFF OUT jack + COEFF IN jack each. Each
+// column owns exactly one Walsh coefficient, the k-th in sequency order, so
+// every jack is mono at every size.
+static constexpr int kSliders = 16;
 static constexpr int kMinSize = 16;
-static constexpr int kMaxSize = 256;
-static constexpr int kSizeCount = 5;
+static constexpr int kMaxSize = 512;
+static constexpr int kSizeCount = 6;
 
-// Transform sizes. 16 bands x Rack's 16-channel poly cap puts the ceiling at
-// 256; below that every jack carries n/16 channels.
+// Transform sizes. Because only the lowest 16 coefficients are ever exposed,
+// size acts as a zoom on the low end rather than a channel-count multiplier:
+// coefficient spacing is fs/2n, so the 16 sliders span 8*fs/n. At 48 kHz that
+// is 0-24 kHz at n=16 and 0-750 Hz at n=512.
 inline int sizeAt(int i) {
-    static const int sizes[kSizeCount] = {16, 32, 64, 128, 256};
+    static const int sizes[kSizeCount] = {16, 32, 64, 128, 256, 512};
     return sizes[std::min(std::max(i, 0), kSizeCount - 1)];
 }
-
-// Bands are equal width, so a jack's channel count is the same for all 16.
-inline int bandWidth(int n) { return n / kBands; }
-inline int bandLo(int b, int n) { return b * (n / kBands); }
 
 // ── the transform ───────────────────────────────────────────────────────────
 
@@ -71,6 +71,15 @@ inline int grayToBinary(int g) {
 }
 
 inline int sequencyOf(int h, int bits) { return grayToBinary(bitReverse(h, bits)); }
+
+// Sign of the h-th natural-order Walsh function at sample t: the Hadamard
+// matrix is H[h][t] = (-1)^popcount(h & t). Used to build the per-coefficient
+// component outputs directly, instead of one inverse transform per slider.
+inline float walshSign(int h, int t) {
+    unsigned v = (unsigned) (h & t);
+    v ^= v >> 16; v ^= v >> 8; v ^= v >> 4; v ^= v >> 2; v ^= v >> 1;
+    return (v & 1u) ? -1.f : 1.f;
+}
 
 inline int log2i(int n) {
     int b = 0;
