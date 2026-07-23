@@ -19,12 +19,13 @@ into them. The infinitive is deliberate, breaking the first-person pattern of
 
 ## Panel
 
-32HP (162.56mm), 16 vertical columns, one per band. Each column is:
+32HP (162.56mm), 16 vertical columns, one per exposed coefficient. Each
+column is:
 
 ```
 VCVLightSlider<GreenRedLight>   bipolar gain, with the coefficient lit in the handle
-COEFF OUT jack                  poly, that band's bins
-COEFF IN jack                   poly, that band's bins
+COEFF OUT jack                  mono, that coefficient
+COEFF IN jack                   mono, that coefficient
 ```
 
 `VCVSlider` measures 19.8426 × 76.535 px = **6.72 × 25.92 mm**, so 16 of them
@@ -39,81 +40,102 @@ The utility and audio elements share one row near the bottom (32HP is wide
 enough that 10 elements sit at ~15mm pitch):
 
 ```
-AUDIO IN | OUT LEVEL | SIZE | KEEP | QUANT | DRY/WET | FREEZE | COMPONENTS | RESIDUAL | AUDIO OUT
+AUDIO IN | SIZE | KEEP | QUANT | LEVEL | DRY/WET | FREEZE | COMPONENTS | RESIDUAL | AUDIO OUT
 ```
 
-`panel_audit.py` does not know slider geometry yet and will need
-`VCVSlider` (6.72 × 25.92mm) added before it can check this panel.
+The **above** switch (CKSS) sits on its own at the left, under the COEFF IN
+row, since it governs everything the sliders do not reach.
 
-## Band split
+`panel_audit.py` gained `RECT_OVERRIDE` for `VCVSlider` (6.72 × 25.92mm) and
+`CKSS` (4 × 10mm), and badges gained `box=WxH` so the output row can sit on
+one full-width field instead of sixteen 14mm badges.
 
-16 bands of **equal width**: band `k` covers bins `[k*N/16, (k+1)*N/16)`, so
-every band holds `N/16` bins and every jack carries `N/16` poly channels.
+## The slider window
 
-Uniformity is a hard requirement, not an aesthetic preference. A split with
-unequal band widths (the quadratic one considered first, which bought a
-log-ish frequency spread) gives jack 0 one channel and jack 15 sixteen. That
-is invisible from the panel, and it makes the OUT jacks unmergeable with each
-other. Padding short jacks to 16 channels with zeros was also rejected: jacks
-where 15 of 16 channels do nothing are more confusing than variable width, not
-less.
+The sixteen sliders own the **lowest sixteen Walsh coefficients** outright,
+one each, in sequency order. There is no band split: slider *k* is
+coefficient *k*.
 
-The cost is that the frequency split is **linear**. Band `k` starts at
-`f_k = k * fs/32`, or `k * 1500 Hz` at 48 kHz, so slider 0 owns everything
-below 1.5 kHz and the other fifteen divide 1.5 kHz to Nyquist. This is
-top-heavy for most musical material and it is the accepted price of uniform
-poly width.
+This replaced an earlier design in which the sliders were sixteen bands
+covering the whole spectrum. That design was unplayable, and unfixably so.
+Coefficient *k* sits at `k·fs/2n`, so sixteen equal bands always divide
+0–24 kHz into 1500 Hz slices *whatever the size* — band 0 permanently owned
+everything below 1500 Hz, which is where most music lives. Larger sizes only
+subdivided within each band and could not help. Unequal (quadratic) bands
+would have fixed the distribution but forced each jack to a different poly
+width, which is invisible from the panel.
 
-One good property survives: `f_k = k * fs/32` has no `N` in it, so **the band
-frequencies do not move when SIZE changes**. Slider 5 is always about 7.5 kHz.
-SIZE changes only the resolution inside each band, the block rate, and the
-latency.
+Owning the low sixteen coefficients directly fixes both at once:
 
-At N=16 every band is exactly one bin, so the panel *is* the transform: 16
-sliders, 16 signed Walsh coefficients, one each, all jacks mono. That is the
-spec's 16-point expansion target, realized as the base case.
+- **Playable.** At n=256 the sliders are 93.8 Hz apart across 0–1500 Hz,
+  about sixteen times the low-end resolution of the band design.
+- **Every jack is mono**, at every size. The poly-width problem does not get
+  traded against, it stops existing.
 
-## SIZE
+The cost is that the sliders no longer reach above the window. Everything
+above moves together, through the **above** switch.
 
-`16 / 32 / 64 / 128 / 256`, snapped 5-position knob. 16 bands times the
-16-channel poly cap makes 256 the natural ceiling.
+## SIZE, as a zoom
 
-| N | ch per jack | block rate @48k | latency (2N) | bin spacing |
-|---|---|---|---|---|
-| 16 | 1 | 3 kHz | 0.67 ms | 1500 Hz |
-| 32 | 2 | 1.5 kHz | 1.3 ms | 750 Hz |
-| 64 | 4 | 750 Hz | 2.7 ms | 375 Hz |
-| 128 | 8 | 375 Hz | 5.3 ms | 187 Hz |
-| 256 | 16 | 187 Hz | 10.7 ms | 94 Hz |
+Because only the lowest sixteen coefficients are ever exposed, size no longer
+changes the jacks at all. It chooses how far into the low end the sliders
+zoom: coefficient spacing is `fs/2n`, so the window spans `8·fs/n`.
 
-SIZE does not change which frequencies the sliders address, only the block
-rate and the resolution within each band. That block rate is nonetheless the
-module's biggest sonic parameter: N=16 is a grit box whose FREEZE is a 3 kHz
-whistle, N=256 is a spectral processor whose FREEZE is a 187 Hz drone.
+| N | per slider @48k | window | latency (2N) |
+|---|---|---|---|
+| 16 | 1500 Hz | 0–24 kHz | 0.67 ms |
+| 32 | 750 Hz | 0–12 kHz | 1.3 ms |
+| 64 | 375 Hz | 0–6 kHz | 2.7 ms |
+| 128 | 187.5 Hz | 0–3 kHz | 5.3 ms |
+| **256** (default) | **93.8 Hz** | **0–1.5 kHz** | **10.7 ms** |
+| 512 | 46.9 Hz | 0–750 Hz | 21.3 ms |
 
-Size changes apply at the next block boundary, same rule as FREEZE. The poly
-channel count is worth printing on the panel beside the SIZE knob.
+n=16 is the degenerate case where the window is the whole spectrum and there
+is nothing above it, so the **above** switch is inert and the spec's
+transparency / mute / invert cases hold exactly. Every step down zooms
+further into the bass and doubles the latency.
 
-N=8 is dropped: 8 bins cannot fill 16 columns.
+Size changes flush the pipeline, so expect a click and up to one block of
+silence.
+
+Measured selectivity at n=256, muting one slider against a sine at that
+slider's frequency: the diagonal drops 1.8–3.3 dB while neighbours drop
+0–1.5 dB. Soft, because a sine spreads across many coefficients of a
+square-wave basis, but each slider does own its own region.
+
+## The above switch
+
+A two-position panel switch over every coefficient outside the window:
+
+- **Pass** (default): they go through untouched, so the module shapes the low
+  window and leaves the rest of the signal alone.
+- **Mute**: they are zeroed, making the module a lowpass at the window edge
+  with sixteen Walsh sliders inside it. Rejection is about 22 dB rather than
+  clean, since Walsh functions are not sinusoids.
+
+KEEP and QUANT act on **all** coefficients, not just the window, so the codec
+stages still degrade the full-range signal and the pass-through region has
+something to do.
 
 ## COEFF OUT / COEFF IN
 
-Per-band poly jacks carrying that band's bins, signed, one channel per bin,
-scaled `1/N` for volts as the spec's section 10 specifies. All 16 jacks carry
-the same number of channels, `N/16`, so they are interchangeable and mergeable.
+**Mono** jacks, one per slider, carrying that slider's signed coefficient
+scaled `1/N` for volts as the spec's section 10 specifies. Identical at every
+size, so there is no poly width to reason about at all.
 
-This is the whole point of the 16-column layout: **every coefficient is
-exposed, bit-exact, in both directions**, so none of the compromises that a
-single 8-channel poly port would have forced are needed. No level/shape
-encoding, no representative bins, no averaging, no Coefficient/Level mode
-switch. A plain OUT→IN cable is identity. Feeding COEFF IN with no audio
-present drives the IFWHT as a standalone Walsh synthesizer.
+A plain OUT→IN cable is identity. Feeding COEFF IN with no audio present
+drives the IFWHT as a standalone Walsh synthesizer.
 
 `Overlay` (default) and `Replace` from spec section 7 are kept, as a context
-menu item, now operating per channel within each band jack:
+menu item. With mono jacks they distinguish what happens to the *undriven*
+exposed coefficients once anything is patched:
 
-- Overlay: present channels external, absent channels internal.
-- Replace: present channels external, absent channels zero.
+- Overlay: a driven jack replaces its coefficient, undriven ones stay internal.
+- Replace: as soon as any jack is driven, undriven coefficients go to zero.
+  This is what makes the inverse transform usable as a standalone decoder
+  (spec 7.2).
+
+Coefficients above the window follow the **above** switch in both modes.
 
 Internal slider gains apply before the external substitution, so a replaced
 channel is not multiplied by its slider (spec 7.3 unchanged).
@@ -194,14 +216,15 @@ Worth stating plainly in `doc/quadrare.md` rather than discovering by
 surprise: modifying coefficients changes gain at the block rate, which
 generates sidebands at multiples of the block rate that fold back. That
 aliasing is the sound, not a defect. At N=16 the block rate is 3 kHz and the
-module is a grit box; at N=256 it is 187 Hz and it behaves much more like a
-spectral filter. FREEZE at N=16 is a 3 kHz whistle; at N=256 it is a 187 Hz
+module is a grit box; at N=512 it is 94 Hz and it behaves much more like a
+spectral filter. FREEZE at N=16 is a 3 kHz whistle; at N=512 it is a 94 Hz
 drone with timbre.
 
-The band split is linear, so slider 0 covers everything below 1.5 kHz. On
-bass-heavy material most of the action is on the first two or three sliders,
-and the upper columns work on air and noise. Say so in the manual rather than
-letting people discover it.
+The sliders are bipolar, so the bottom of the travel is −1 (full inversion),
+not 0. Mute is the *center*. Sliding everything down leaves the signal
+audibly unchanged, which surprised the author during play-testing. The V-shape
+was measured and confirmed intentional; the decision was to document it rather
+than add a detent. Say so prominently in the manual.
 
 ## Open items
 
