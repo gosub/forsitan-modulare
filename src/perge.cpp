@@ -1047,7 +1047,7 @@ struct PergeWidget : ModuleWidget {
 // @elem LABEL_CLOCK label 0.0 label "clock" 0.0 51.50 103.50
 // @elem LABEL_FRZGATE label 0.0 label "frz" 0.0 64.40 103.50
 // @elem LABEL_TILTGATE label 0.0 label "tilt" 0.0 77.30 103.50
-// @elem LABEL_MODE label 0.0 label "mode" 0.0 90.20 103.50
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 90.20 104.30
 // @elem LABEL_OUTL label 0.0 label "out l" 0.0 12.80 119.50
 // @elem LABEL_OUTR label 0.0 label "out r" 0.0 31.80 119.50
 // @elem LABEL_FREEZE label 0.0 label "freeze" 0.0 69.80 119.00
