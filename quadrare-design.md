@@ -47,53 +47,60 @@ AUDIO IN | OUT LEVEL | SIZE | KEEP | QUANT | DRY/WET | FREEZE | COMPONENTS | RES
 
 ## Band split
 
-16 bands. Band `k` covers bins:
+16 bands of **equal width**: band `k` covers bins `[k*N/16, (k+1)*N/16)`, so
+every band holds `N/16` bins and every jack carries `N/16` poly channels.
 
-```
-lo = round(N * (k/16)^2)
-hi = round(N * ((k+1)/16)^2)     clamped so every band holds >= 1 bin
-```
+Uniformity is a hard requirement, not an aesthetic preference. A split with
+unequal band widths (the quadratic one considered first, which bought a
+log-ish frequency spread) gives jack 0 one channel and jack 15 sixteen. That
+is invisible from the panel, and it makes the OUT jacks unmergeable with each
+other. Padding short jacks to 16 channels with zeros was also rejected: jacks
+where 15 of 16 channels do nothing are more confusing than variable width, not
+less.
 
-Quadratic edges, so band widths ramp roughly linearly (1, 2, 3, ... 16 bins at
-N=128) and the split sits between linear and logarithmic in frequency.
+The cost is that the frequency split is **linear**. Band `k` starts at
+`f_k = k * fs/32`, or `k * 1500 Hz` at 48 kHz, so slider 0 owns everything
+below 1.5 kHz and the other fifteen divide 1.5 kHz to Nyquist. This is
+top-heavy for most musical material and it is the accepted price of uniform
+poly width.
 
-Two properties fall out of this that are worth keeping:
+One good property survives: `f_k = k * fs/32` has no `N` in it, so **the band
+frequencies do not move when SIZE changes**. Slider 5 is always about 7.5 kHz.
+SIZE changes only the resolution inside each band, the block rate, and the
+latency.
 
-1. **The band frequencies do not move when SIZE changes.** Band `k` starts at
-   `f_k = (fs/2) * (k/16)^2`, with no `N` in it: the `N` in the bin edge and
-   the `N` in the bin-to-frequency conversion cancel. Turning SIZE changes how
-   finely each band is resolved, the block rate, and the latency, but not which
-   frequencies the sliders address. At 48 kHz the edges are approximately
-   0, 94, 375, 844, 1500, 2344, 3375, 4594, 6000, 7594, 9375, 11.3k, 13.5k,
-   15.8k, 18.4k, 21.1k, 24k Hz. Eight bands below 6 kHz.
-
-2. **The 16-channel poly cap lands exactly at N=128.** The widest band is
-   `N * 31/256`, which is 15.5 bins at N=128 and 31 at N=256. So the poly limit
-   and the chosen SIZE ceiling agree without a special case.
-
-At N=16 every band is clamped to exactly one bin, so the panel *is* the
-transform: 16 sliders, 16 signed Walsh coefficients, one each. That is the
-spec's 16-point expansion target, realized directly.
+At N=16 every band is exactly one bin, so the panel *is* the transform: 16
+sliders, 16 signed Walsh coefficients, one each, all jacks mono. That is the
+spec's 16-point expansion target, realized as the base case.
 
 ## SIZE
 
-`16 / 32 / 64 / 128`, snapped 4-position knob.
+`16 / 32 / 64 / 128 / 256`, snapped 5-position knob. 16 bands times the
+16-channel poly cap makes 256 the natural ceiling.
 
-| N | block rate @48k | latency | bins per band | bin spacing |
+| N | ch per jack | block rate @48k | latency | bin spacing |
 |---|---|---|---|---|
-| 16 | 3 kHz | 0.33 ms | 1 | 1500 Hz |
-| 32 | 1.5 kHz | 0.67 ms | 1–4 | 750 Hz |
-| 64 | 750 Hz | 1.3 ms | 1–8 | 375 Hz |
-| 128 | 375 Hz | 2.7 ms | 1–16 | 187 Hz |
+| 16 | 1 | 3 kHz | 0.33 ms | 1500 Hz |
+| 32 | 2 | 1.5 kHz | 0.67 ms | 750 Hz |
+| 64 | 4 | 750 Hz | 1.3 ms | 375 Hz |
+| 128 | 8 | 375 Hz | 2.7 ms | 187 Hz |
+| 256 | 16 | 187 Hz | 5.3 ms | 94 Hz |
 
-Size changes apply at the next block boundary, same rule as FREEZE.
+SIZE does not change which frequencies the sliders address, only the block
+rate and the resolution within each band. That block rate is nonetheless the
+module's biggest sonic parameter: N=16 is a grit box whose FREEZE is a 3 kHz
+whistle, N=256 is a spectral processor whose FREEZE is a 187 Hz drone.
+
+Size changes apply at the next block boundary, same rule as FREEZE. The poly
+channel count is worth printing on the panel beside the SIZE knob.
 
 N=8 is dropped: 8 bins cannot fill 16 columns.
 
 ## COEFF OUT / COEFF IN
 
 Per-band poly jacks carrying that band's bins, signed, one channel per bin,
-scaled `1/N` for volts as the spec's section 10 specifies.
+scaled `1/N` for volts as the spec's section 10 specifies. All 16 jacks carry
+the same number of channels, `N/16`, so they are interchangeable and mergeable.
 
 This is the whole point of the 16-column layout: **every coefficient is
 exposed, bit-exact, in both directions**, so none of the compromises that a
@@ -161,9 +168,14 @@ Worth stating plainly in `doc/quadrare.md` rather than discovering by
 surprise: modifying coefficients changes gain at the block rate, which
 generates sidebands at multiples of the block rate that fold back. That
 aliasing is the sound, not a defect. At N=16 the block rate is 3 kHz and the
-module is a grit box; at N=128 it is 375 Hz and it behaves much more like a
-spectral filter. FREEZE at N=16 is a 3 kHz whistle; at N=128 it is a 375 Hz
+module is a grit box; at N=256 it is 187 Hz and it behaves much more like a
+spectral filter. FREEZE at N=16 is a 3 kHz whistle; at N=256 it is a 187 Hz
 drone with timbre.
+
+The band split is linear, so slider 0 covers everything below 1.5 kHz. On
+bass-heavy material most of the action is on the first two or three sliders,
+and the upper columns work on air and noise. Say so in the manual rather than
+letting people discover it.
 
 ## Open items
 
