@@ -29,6 +29,10 @@ WIDGET_VISUALS = {
     # latching buttons with a light in them: one control, one indicator
     'VCVLightBezelLatch': {'r': 3.6,  'fill': '#444',    'stroke': '#999', 'sw': 0.4},
     'VCVLightLatch':      {'r': 3.05, 'fill': '#444',    'stroke': '#999', 'sw': 0.4},
+    'VCVLightBezel':      {'r': 3.6,  'fill': '#444',    'stroke': '#999', 'sw': 0.4},
+    # sliders are rectangular: 'r' is the half-height, see panel_audit RECT_OVERRIDE
+    'VCVSlider':          {'r': 12.96, 'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.5},
+    'VCVLightSlider':     {'r': 12.96, 'fill': '#2e2e2e', 'stroke': '#777', 'sw': 0.5},
     'PJ301MPort':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'PJ3410Port':         {'r': 4.01, 'fill': '#999',    'stroke': '#555', 'sw': 0.5},
     'TL1105':             {'r': 2.6,  'fill': '#555',    'stroke': '#999', 'sw': 0.4},
@@ -58,10 +62,13 @@ SVG_ONLY = ('label', 'logo', 'box')
 LAYOUT_HEAD_RE = re.compile(
     r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)')
 # @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  — X Y optional for SVG-only kinds
+# A box may carry `box=WxH` to override the default 14x14 badge, for panels
+# whose output row is too wide to wrap each jack in its own badge (quadrare).
 ELEM_RE = re.compile(
     r'//\s*@elem\s+(\S+)\s+(\S+)\s+([\d.]+)\s+(\w+)\s+"([^"]*)"\s*([-\d.]+)'
     r'(?:\s+([\d.]+)\s+([\d.]+))?'
-    r'(?:\s+light=(\w+))?')
+    r'(?:\s+light=(\w+))?'
+    r'(?:\s+box=([\d.]+)x([\d.]+))?')
 VEC_RE      = re.compile(r'mm2px\(Vec\(([\d.]+)f?,\s*([\d.]+)f?\)')
 ID_RE       = re.compile(r'(\w+)::(\w+)[,)]')
 SCREW_ID_RE = re.compile(r'createWidget.*mm2px.*Vec.*//\s*(\w+)')
@@ -101,6 +108,9 @@ def parse_cpp(path):
             'y': float(oy) if oy else 0.0,
             # a param that houses its own light (VCVLightBezelLatch)
             'light': g[8],
+            # explicit badge size, defaults to the standard 14x14
+            'box_w': float(g[9]) if g[9] else 14.0,
+            'box_h': float(g[10]) if g[10] else 14.0,
         }
         elem_order.append(eid)
 
@@ -317,7 +327,7 @@ def regen_svg(layout, svg_path):
     # grey panel boxes (SVG-only, drawn before labels and jacks)
     for el in elems:
         if el['kind'] == 'box':
-            bw, bh = 14.0, 14.0
+            bw, bh = el.get('box_w', 14.0), el.get('box_h', 14.0)
             bx = el['x'] - bw / 2
             by = el['y'] - bh / 2
             lines.append(
@@ -325,11 +335,12 @@ def regen_svg(layout, svg_path):
                 f'width="{bw}" height="{bh}" rx="1.5" fill="#e4e4e4"/>')
 
     # detect which labels are inside a box (→ dark text)
-    box_centers = [(e['x'], e['y']) for e in elems if e['kind'] == 'box']
+    boxes = [(e['x'], e['y'], e.get('box_w', 14.0), e.get('box_h', 14.0))
+             for e in elems if e['kind'] == 'box']
 
     def in_any_box(lx, ly):
-        return any(abs(lx - bx) < 7.5 and abs(ly - by) < 7.5
-                   for bx, by in box_centers)
+        return any(abs(lx - bx) < bw / 2 + 0.5 and abs(ly - by) < bh / 2 + 0.5
+                   for bx, by, bw, bh in boxes)
 
     # independent labels (SVG-only, freely positioned)
     for el in elems:

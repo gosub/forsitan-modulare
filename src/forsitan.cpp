@@ -30,6 +30,7 @@ void init(Plugin* p) {
 	p->addModel(modelSylla);
 	p->addModel(modelGuttur);
 	p->addModel(modelVespae);
+	p->addModel(modelQuadrare);
 	// Any other plugin initialization may go here.
 	// As an alternative, consider lazy-loading assets and lookup tables when your module is created to reduce startup times of Rack.
 }

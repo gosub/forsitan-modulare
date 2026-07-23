@@ -46,6 +46,11 @@ RADIUS_OVERRIDE = {'RoundHugeBlackKnob': 9.12, 'RoundBigBlackKnob': 7.62,
                    'RoundBlackKnob': 4.8, 'PJ301MPort': 4.01,
                    'TL1105': 2.6, 'SmallLight': 1.0, 'MediumLight': 1.5}
 
+# Widgets that are not round, as (half-width, half-height) in mm.
+# VCVSlider's background SVG is 19.8426 x 76.535 px at 75 dpi = 6.72 x 25.92 mm.
+RECT_OVERRIDE = {'VCVSlider': (3.36, 12.96), 'VCVLightSlider': (3.36, 12.96),
+                 'CKSS': (2.0, 5.0), 'CKSSThree': (2.0, 5.0)}
+
 def bbox(el):
     x, y = el['x'], el['y']
     k = el['kind']
@@ -54,9 +59,13 @@ def bbox(el):
         desc = 0.7 if any(c in DESCENDERS for c in el['label']) else 0.0
         return (x - w/2, y - 2.2, x + w/2, y + desc)
     if k == 'box':
-        return (x - 7, y - 7, x + 7, y + 7)
+        hw, hh = el.get('box_w', 14.0) / 2, el.get('box_h', 14.0) / 2
+        return (x - hw, y - hh, x + hw, y + hh)
     if k == 'logo':
         return (x - 6.25, y - 2.75, x + 6.25, y + 2.75)
+    hwhh = RECT_OVERRIDE.get(el['cpp_type'])
+    if hwhh:
+        return (x - hwhh[0], y - hwhh[1], x + hwhh[0], y + hwhh[1])
     r = RADIUS_OVERRIDE.get(el['cpp_type'], el['radius'])
     return (x - r, y - r, x + r, y + r)
 
@@ -65,6 +74,8 @@ CIRCLE_KINDS = ('param', 'input', 'output', 'light', 'screw')
 def circle(el):
     if el.get('kind') not in CIRCLE_KINDS:
         return None
+    if el.get('cpp_type') in RECT_OVERRIDE:
+        return None      # rectangular widget: fall back to its bounding box
     r = RADIUS_OVERRIDE.get(el.get('cpp_type'), el.get('radius', 1.0))
     return (el['x'], el['y'], r)
 

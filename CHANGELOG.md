@@ -5,7 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.10.1] - unreleased
+## [2.11.0] - 2026-07-23
+### Added
+  - **quadrare**, a new module: a Walsh-Hadamard codec with the
+    transform domain brought out on jacks. Audio is cut into
+    non-overlapping blocks, transformed into Walsh coefficients,
+    handed to you, and transformed back; left alone the round trip is
+    transparent to float precision and **res** sits at zero. Walsh
+    functions are square waves, so a coefficient describes the sign
+    structure of a short block rather than a frequency band, and the
+    reconstruction is stacked squares rather than sinusoids: expect
+    blockiness and grit, not a smooth EQ.
+    Sixteen bipolar sliders own the lowest sixteen coefficients
+    outright, one each, and **size** decides how far into the low end
+    that window reaches: the whole spectrum at 16 samples per block,
+    down to 0-750 Hz at 512, with 0-1500 Hz at 93.8 Hz per slider in
+    the middle. Because only sixteen coefficients are ever exposed,
+    every **coeff out** and **coeff in** jack is mono at every size.
+    Patch one straight into the other and nothing changes, exactly;
+    put a slew, a sample and hold or another quadrare in between and
+    you are processing the transform domain itself. Driving **coeff
+    in** with no audio at all turns the inverse transform into a Walsh
+    oscillator. The **above** switch passes or mutes everything
+    outside the window, which is either transparency or a lowpass at
+    the window edge. **keep** retains only the largest coefficients
+    and **quant** coarsens them onto a grid: the two lossy stages of a
+    real transform codec, both acting on the whole block, and
+    together the module at its most destroyed. **comp** breaks the
+    output into its sixteen contributions as audio, **res** carries
+    what was thrown away, and a row of buttons under the columns steps
+    each slider through +1, 0 and -1, because on a bipolar slider the
+    mute position is in the middle of the travel where a hand cannot
+    find it.
+    The module runs two blocks behind rather than one. Rack copies
+    cable voltages once per frame and steps modules in arbitrary
+    order, so a **coeff out** patched back to **coeff in** is a
+    feedback cable and cannot return a block's coefficients within
+    that same block; waiting a full block is what keeps the insert
+    exact.
+
 ### Fixed
   - **MMCCCXCIX**: the forsitan logo was 0.06 mm off the panel's
     centreline, and the **out** badge 0.2 mm off from the jack and
@@ -16,6 +54,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     the four CV inputs on its row — so the badge and its label went up
     0.35 mm together, which keeps the 1 mm text padding and leaves
     ~1.1 mm to both the screw and the jack above
+  - **perge**: the **mode** label sat 0.3 mm below its switch against
+    a 1 mm minimum. The panel audit had been modelling a 4x10 mm slide
+    switch as a radius-2.3 circle and could not see it; it now carries
+    true rectangular bounds for switches and sliders, which is what
+    turned this up
 
 ## [2.10.0] - 2026-07-23
 ### Added

@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "2.10.1",
+  "version": "2.11.0",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -11,7 +11,7 @@
   "manualUrl": "https://github.com/gosub/forsitan-modulare#forsitan-modulare",
   "sourceUrl": "https://github.com/gosub/forsitan-modulare",
   "donateUrl": "",
-  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.10.0/CHANGELOG.md",
+  "changelogUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.11.0/CHANGELOG.md",
   "modules": [
     {
       "slug": "alea",
@@ -246,6 +246,18 @@
         "Filter",
         "Distortion",
         "Hardware clone"
+      ]
+    },
+    {
+      "slug": "quadrare",
+      "name": "quadrare",
+      "description": "Patchable Walsh-Hadamard codec: audio is cut into blocks of 16 to 512 samples and transformed into Walsh coefficients. Sixteen bipolar sliders own the lowest sixteen coefficients, each with its own coefficient send and return, so the transform domain is a real insert point; size zooms that window from the whole spectrum down to 0-750 Hz. KEEP thresholds to the largest coefficients and QUANT reduces their bit depth, the two lossy stages of a transform codec. Residual and per-coefficient component outputs.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/quadrare.md",
+      "tags": [
+        "Effect",
+        "Polyphonic",
+        "Filter",
+        "Distortion"
       ]
     }
   ]
