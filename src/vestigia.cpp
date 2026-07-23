@@ -1020,8 +1020,8 @@ struct VestigiaWidget : ModuleWidget {
 // @elem LABEL_FRZ label 0.0 label "frz" 0.0 85.00 87.00
 // @elem LABEL_EVT label 0.0 label "evt" 0.0 100.00 87.00
 // @elem LABEL_CLR label 0.0 label "clr" 0.0 115.00 87.00
-// @elem LABEL_IN label 0.0 label "in" 0.0 8.00 101.50
-// @elem LABEL_INR label 0.0 label "r" 0.0 18.55 101.50
+// @elem LABEL_IN label 0.0 label "in l" 0.0 8.00 101.50
+// @elem LABEL_INR label 0.0 label "in r" 0.0 18.55 101.50
 // @elem LABEL_FRZIN label 0.0 label "frz" 0.0 29.09 101.50
 // @elem LABEL_EVTIN label 0.0 label "evt" 0.0 39.64 101.50
 // @elem LABEL_CLRIN label 0.0 label "clr" 0.0 50.18 101.50
