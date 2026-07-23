@@ -37,14 +37,19 @@ static void testVestigia() {
     }
 
     // 3) go quiet and let recall replay stored fragments for 4 s
+    m.params[Vestigia::HARMONY_PARAM].setValue(0.f);  // in-tune (octaves)
     Stats wet;
     long eventCount = 0;
+    float maxStep = 0.f, prevL = 0.f;
     dsp::SchmittTrigger evTrig;
     for (int i = 0; i < (int)(4 * SR); i++) {
         m.inputs[Vestigia::IN_L_INPUT].setVoltage(0.f);
         m.process(makeArgs(frame++));
-        wet.add(m.outputs[Vestigia::OUT_L_OUTPUT].getVoltage());
+        float l = m.outputs[Vestigia::OUT_L_OUTPUT].getVoltage();
+        wet.add(l);
         wet.add(m.outputs[Vestigia::OUT_R_OUTPUT].getVoltage());
+        maxStep = std::max(maxStep, std::fabs(l - prevL));
+        prevL = l;
         if (evTrig.process(m.outputs[Vestigia::EVENT_OUTPUT].getVoltage(), 0.1f, 1.f))
             eventCount++;
     }
@@ -52,6 +57,29 @@ static void testVestigia() {
     report("vestigia", "recall_alive", wet.rms(), wet.rms() > 0.05);
     report("vestigia", "recall_bounded", wet.peak, wet.peak <= 10.01f);
     report("vestigia", "events_fired", eventCount, eventCount > 3);
+    // click proxy: no single-sample jump anywhere near a full-scale snap
+    report("vestigia", "no_click_steps", maxStep, maxStep < 2.5f);
+
+    // pitch quantization: harmony=0 recalls only octaves (0.5/1/2x)
+    {
+        Vestigia pm;
+        int off = 0, oct = 0, bad = 0;
+        for (int k = 0; k < 400; k++) {
+            float r = pm.pitchRatio(0.f);
+            float semi = 12.f * std::log2(r);
+            float nearest = std::round(semi / 12.f) * 12.f;  // nearest octave
+            if (std::fabs(semi - nearest) < 0.01f) oct++;
+            else bad++;
+            off++;
+        }
+        report("vestigia", "harmony0_octaves", bad, bad == 0 && oct == off);
+        int spread = 0;
+        for (int k = 0; k < 400; k++) {
+            float semi = 12.f * std::log2(pm.pitchRatio(1.f));
+            if (std::fabs(semi - std::round(semi / 12.f) * 12.f) > 0.5f) spread++;
+        }
+        report("vestigia", "harmony1_spread", spread, spread > 100);
+    }
 
     // 4) hostile: sediment accumulation + low forget (high feedback) +
     // max age + smear, driven hard, must stay finite and bounded
