@@ -240,7 +240,7 @@
     {
       "slug": "vespae",
       "name": "vespae",
-      "description": "Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, built from CMOS inverters on a single unipolar supply. Simultaneous LP/BP/HP/notch, drive and a supply-headroom grit control for its asymmetric clipping, self-limiting resonance and cutoff-dependent Q.",
+      "description": "Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, built from CMOS inverters on a single unipolar supply. Simultaneous LP/BP/HP/notch outputs plus the A-124's LP-to-HP mix pot with CV, drive and a supply-headroom grit control for its asymmetric clipping, self-limiting resonance and cutoff-dependent Q.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/vespae.md",
       "tags": [
         "Filter",

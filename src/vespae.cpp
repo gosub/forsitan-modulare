@@ -18,10 +18,14 @@
 // zero-delay-feedback SVF and gain-scheduled saturators rather than a Newton
 // solve. See doc/vespae.md for what is and is not modelled.
 //
+// The hardware brings out only BP and a single LP/HP jack whose pot
+// crossfades the two. We keep the four filter nodes on their own jacks and
+// add that pot as a fifth output, with a CV input for it as on the A-124-2.
+//
 // Controls:
-//   Knobs : CUTOFF, RES, DRIVE, GRIT, FM (attenuverter), TRACK
-//   In    : IN (audio), V/OCT, FM, RES CV
-//   Out   : LP, BP, HP, NOTCH
+//   Knobs : CUTOFF, RES, DRIVE, GRIT, MIX, FM (attenuverter), TRACK
+//   In    : IN (audio), V/OCT, FM, RES CV, MIX CV
+//   Out   : LP, BP, HP, NOTCH, MIX
 //   Lights: one level LED per output
 
 #include "forsitan.hpp"
@@ -223,6 +227,7 @@ struct Vespae : Module {
         RES_PARAM,
         DRIVE_PARAM,
         GRIT_PARAM,
+        MIX_PARAM,
         FM_PARAM,
         TRACK_PARAM,
         PARAMS_LEN
@@ -232,13 +237,17 @@ struct Vespae : Module {
         VOCT_INPUT,
         FM_INPUT,
         RES_CV_INPUT,
+        MIX_CV_INPUT,
         INPUTS_LEN
     };
+    // LP..NOTCH are taken straight off the filter's nodes; MIX is the A-124's
+    // own output, a pot crossfading the LP and HP nodes.
     enum OutputId {
         LP_OUTPUT,
         HP_OUTPUT,
         BP_OUTPUT,
         NOTCH_OUTPUT,
+        MIX_OUTPUT,
         OUTPUTS_LEN
     };
     enum LightId {
@@ -246,15 +255,17 @@ struct Vespae : Module {
         HP_LIGHT,
         BP_LIGHT,
         NOTCH_LIGHT,
+        MIX_LIGHT,
         LIGHTS_LEN
     };
+    static const int kOuts = 5;
 
     vespae::Core core;
-    vespae::DCBlock dcBlock[4];
+    vespae::DCBlock dcBlock[kOuts];
     VariableOversampling<> upsampler;
-    AAFilter<4> decim[4];
-    float osOut[4][16] = {};
-    float levelEnv[4] = {};
+    AAFilter<4> decim[kOuts];
+    float osOut[kOuts][16] = {};
+    float levelEnv[kOuts] = {};
     float acX = 0.f, acY = 0.f, acR = 0.9974f;   // ~20 Hz input coupling
     uint32_t noise = 0x1234567u;
 
@@ -273,26 +284,31 @@ struct Vespae : Module {
         configParam(RES_PARAM,    0.f, 1.f, 0.3f, "Resonance", "%", 0.f, 100.f);
         configParam(DRIVE_PARAM,  0.f, 1.f, 0.5f, "Drive", " dB", 0.f, 43.2f, -21.6f);
         configParam(GRIT_PARAM,   0.f, 1.f, 0.5f, "Grit (supply headroom)", "%", 0.f, 100.f);
+        configParam(MIX_PARAM,    0.f, 1.f, 0.f,  "Mix (lowpass to highpass)", "%", 0.f, 100.f);
         configParam(FM_PARAM,    -1.f, 1.f, 0.f,  "FM amount", "%", 0.f, 100.f);
         configParam(TRACK_PARAM,  0.f, 1.f, 1.f,  "V/oct tracking", "%", 0.f, 100.f);
         configInput(AUDIO_INPUT,  "Audio");
         configInput(VOCT_INPUT,   "1V/oct cutoff");
         configInput(FM_INPUT,     "Cutoff FM");
         configInput(RES_CV_INPUT, "Resonance CV");
+        configInput(MIX_CV_INPUT, "Mix CV");
         configOutput(LP_OUTPUT,    "Lowpass");
         configOutput(HP_OUTPUT,    "Highpass");
         configOutput(BP_OUTPUT,    "Bandpass");
         configOutput(NOTCH_OUTPUT, "Notch");
+        configOutput(MIX_OUTPUT,   "Lowpass/highpass mix");
         configLight(LP_LIGHT,    "Lowpass level");
         configLight(HP_LIGHT,    "Highpass level");
         configLight(BP_LIGHT,    "Bandpass level");
         configLight(NOTCH_LIGHT, "Notch level");
+        configLight(MIX_LIGHT,   "Mix level");
         configBypass(AUDIO_INPUT, LP_OUTPUT);
+        configBypass(AUDIO_INPUT, MIX_OUTPUT);
     }
 
     void onReset() override {
         core.reset();
-        for (int i = 0; i < 4; i++) { dcBlock[i].reset(); levelEnv[i] = 0.f; }
+        for (int i = 0; i < kOuts; i++) { dcBlock[i].reset(); levelEnv[i] = 0.f; }
         acX = acY = 0.f;
         lastOsIndex = -1;
     }
@@ -322,7 +338,7 @@ struct Vespae : Module {
         if (osIndex != lastOsIndex || sr != lastSampleRate) {
             upsampler.setOversamplingIndex(osIndex);
             upsampler.reset(sr);
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < kOuts; i++) {
                 decim[i].reset(sr, 1 << osIndex);
                 dcBlock[i].setRate(sr * (1 << osIndex));
             }
@@ -351,9 +367,10 @@ struct Vespae : Module {
         if (inputs[RES_CV_INPUT].isConnected())
             res = clamp(res + inputs[RES_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
         core.setRes(res);
-        // The circuit's own damping never quite reaches zero. Over the last
-        // tenth of the knob we cancel it, so the filter tips into genuine
-        // self-oscillation — bounded, as in the hardware, by the diode clamp.
+        // The circuit's own damping never quite reaches zero, and the A-124
+        // manual is explicit that the filter cannot self-oscillate. Over the
+        // last tenth of the knob we cancel that damping anyway, so it tips
+        // into oscillation: a deliberate addition, bounded by the diode clamp.
         // A fixed excess rather than a proportional one: the circuit's own
         // damping is smallest around 400 Hz, so scaling it there would leave
         // the least push exactly where the filter is most resonant, and the
@@ -398,6 +415,17 @@ struct Vespae : Module {
         acX = raw;
         const float u = acY * driveGain * 0.2f;
 
+        // ── mix: the A-124's own output stage ───────────────────────────────
+        // A plain pot with the LP node on one end and the HP node on the
+        // other, wiper to the jack. Not just a notch at the centre: the null
+        // slides down from above the cutoff to below it as the knob turns,
+        // which is the manual's "asymmetrical / symmetrical / asymmetrical
+        // notch". Being a convex blend of two bounded nodes it cannot exceed
+        // either of them, so unlike the notch summer it needs no clipping.
+        float mix = params[MIX_PARAM].getValue();
+        if (inputs[MIX_CV_INPUT].isConnected())
+            mix = clamp(mix + inputs[MIX_CV_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
+
         // ── run the core at the oversampled rate ────────────────────────────
         upsampler.upsample(u);
         const float* osIn = upsampler.getOSBuffer();
@@ -411,9 +439,11 @@ struct Vespae : Module {
             // would hand back twice the swing of any other output
             osOut[3][k] = dcBlock[3].process(
                 vespae::railClip(core.hp + core.lp, core.roomHi, core.roomLo));
+            osOut[4][k] = dcBlock[4].process(
+                core.lp + mix * (core.hp - core.lp));
         }
 
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < kOuts; i++) {
             float y = 0.f;
             for (int k = 0; k < ratio; k++) y = decim[i].process(osOut[i][k]);
             if (!std::isfinite(y)) { y = 0.f; decim[i].reset(sr, ratio); }
@@ -440,36 +470,44 @@ struct VespaeWidget : ModuleWidget {
 // @elem RES_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DRIVE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem GRIT_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem MIX_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem VOCT_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FM_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem RES_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem MIX_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem LP_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem HP_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem BP_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem HP_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem NOTCH_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem MIX_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem LP_LIGHT SmallLight 1.0 light "" 0.0
-// @elem HP_LIGHT SmallLight 1.0 light "" 0.0
 // @elem BP_LIGHT SmallLight 1.0 light "" 0.0
+// @elem HP_LIGHT SmallLight 1.0 light "" 0.0
 // @elem NOTCH_LIGHT SmallLight 1.0 light "" 0.0
+// @elem MIX_LIGHT SmallLight 1.0 light "" 0.0
 // @elem LABEL_FM label 0.0 label "fm" 0.0 11.00 33.50
 // @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 30.48 38.50
 // @elem LABEL_TRACK label 0.0 label "trk" 0.0 49.96 33.50
-// @elem LABEL_RES label 0.0 label "res" 0.0 13.48 62.50
-// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 30.48 62.50
-// @elem LABEL_GRIT label 0.0 label "grit" 0.0 47.48 62.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 9.50 84.50
-// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 23.49 84.50
-// @elem LABEL_FMIN label 0.0 label "fm" 0.0 37.47 84.50
-// @elem LABEL_RESCV label 0.0 label "res" 0.0 51.46 84.50
-// @elem BOX_LP panel_box 7.0 box "" 0.0 16.50 95.50
-// @elem BOX_HP panel_box 7.0 box "" 0.0 44.46 95.50
-// @elem BOX_BP panel_box 7.0 box "" 0.0 16.50 111.00
-// @elem BOX_NOTCH panel_box 7.0 box "" 0.0 44.46 111.00
-// @elem LABEL_LP label 0.0 label "lp" 0.0 16.50 101.00
-// @elem LABEL_HP label 0.0 label "hp" 0.0 44.46 101.00
-// @elem LABEL_BP label 0.0 label "bp" 0.0 16.50 116.50
-// @elem LABEL_NOTCH label 0.0 label "notch" 0.0 44.46 116.50
+// @elem LABEL_RES label 0.0 label "res" 0.0 10.20 62.50
+// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 23.70 62.50
+// @elem LABEL_GRIT label 0.0 label "grit" 0.0 37.20 62.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 50.70 62.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 8.48 84.50
+// @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 19.48 84.50
+// @elem LABEL_FMIN label 0.0 label "fm" 0.0 30.48 84.50
+// @elem LABEL_RESCV label 0.0 label "res" 0.0 41.48 84.50
+// @elem LABEL_MIXCV label 0.0 label "mix" 0.0 52.48 84.50
+// @elem BOX_LP panel_box 7.0 box "" 0.0 14.98 95.50
+// @elem BOX_BP panel_box 7.0 box "" 0.0 30.48 95.50
+// @elem BOX_HP panel_box 7.0 box "" 0.0 45.98 95.50
+// @elem BOX_NOTCH panel_box 7.0 box "" 0.0 22.73 111.00
+// @elem BOX_MIX panel_box 7.0 box "" 0.0 38.23 111.00
+// @elem LABEL_LP label 0.0 label "lp" 0.0 14.98 101.00
+// @elem LABEL_BP label 0.0 label "bp" 0.0 30.48 101.00
+// @elem LABEL_HP label 0.0 label "hp" 0.0 45.98 101.00
+// @elem LABEL_NOTCH label 0.0 label "notch" 0.0 22.73 116.50
+// @elem LABEL_MIXOUT label 0.0 label "mix" 0.0 38.23 116.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 30.48 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -479,21 +517,25 @@ struct VespaeWidget : ModuleWidget {
         addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 27.00f)), module, Vespae::FM_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(30.48f, 27.00f)), module, Vespae::CUTOFF_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(49.96f, 27.00f)), module, Vespae::TRACK_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.48f, 54.00f)), module, Vespae::RES_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(30.48f, 54.00f)), module, Vespae::DRIVE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(47.48f, 54.00f)), module, Vespae::GRIT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.50f, 77.00f)), module, Vespae::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(23.49f, 77.00f)), module, Vespae::VOCT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.47f, 77.00f)), module, Vespae::FM_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.46f, 77.00f)), module, Vespae::RES_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(16.50f, 93.50f)), module, Vespae::LP_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(44.46f, 93.50f)), module, Vespae::HP_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(16.50f, 109.00f)), module, Vespae::BP_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(44.46f, 109.00f)), module, Vespae::NOTCH_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(21.50f, 90.50f)), module, Vespae::LP_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(49.46f, 90.50f)), module, Vespae::HP_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(21.50f, 106.00f)), module, Vespae::BP_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(49.46f, 106.00f)), module, Vespae::NOTCH_LIGHT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.20f, 54.00f)), module, Vespae::RES_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.70f, 54.00f)), module, Vespae::DRIVE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.20f, 54.00f)), module, Vespae::GRIT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(50.70f, 54.00f)), module, Vespae::MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.48f, 77.00f)), module, Vespae::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.48f, 77.00f)), module, Vespae::VOCT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.48f, 77.00f)), module, Vespae::FM_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.48f, 77.00f)), module, Vespae::RES_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(52.48f, 77.00f)), module, Vespae::MIX_CV_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(14.98f, 93.50f)), module, Vespae::LP_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 93.50f)), module, Vespae::BP_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(45.98f, 93.50f)), module, Vespae::HP_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(22.73f, 109.00f)), module, Vespae::NOTCH_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(38.23f, 109.00f)), module, Vespae::MIX_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(19.98f, 90.50f)), module, Vespae::LP_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(35.48f, 90.50f)), module, Vespae::BP_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(50.98f, 90.50f)), module, Vespae::HP_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(27.73f, 106.00f)), module, Vespae::NOTCH_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(43.23f, 106.00f)), module, Vespae::MIX_LIGHT));
         // @layout:end
     }
 
