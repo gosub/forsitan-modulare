@@ -45,6 +45,12 @@ AUDIO IN | SIZE | KEEP | QUANT | LEVEL | DRY/WET | ABOVE | COMPONENTS | RESIDUAL
 
 The **above** switch (CKSS) sits in the row where FREEZE used to be.
 
+A row of 16 TL1105 **zero buttons** runs under the columns, each cycling its
+slider `+1 -> 0 -> -1 -> +1`. Bipolar sliders put mute in the middle of the
+travel, which is the one position a hand cannot find reliably; the buttons
+make it a single press. This was the alternative to adding a detent, which was
+considered and rejected earlier.
+
 `panel_audit.py` gained `RECT_OVERRIDE` for `VCVSlider` (6.72 × 25.92mm) and
 `CKSS` (4 × 10mm), and badges gained `box=WxH` so the output row can sit on
 one full-width field instead of sixteen 14mm badges.

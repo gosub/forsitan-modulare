@@ -46,16 +46,36 @@ against slider position is a V, not a ramp:
      -1        -0.5    0    +0.5    +1
 ```
 
-To remove a coefficient, put its slider in the **center**.
+To remove a coefficient, put its slider in the **center**, or press the
+**zero button** under its column, which lands there exactly.
 
 One control does attenuation, muting and inversion, which is why there are no
 separate mute and invert buttons. The cost is that the off position is in the
-middle of the travel rather than at the end.
+middle of the travel rather than at the end, which is what the buttons are for.
 
 The light in each slider handle shows that coefficient: green when positive,
 red when negative, brighter as it grows. Its sign changes with the audio from
 block to block, so the light tells you how much energy is there, not whether
 you have inverted it.
+
+## The zero buttons
+
+The row of buttons under the columns exists because the useful position on a
+bipolar slider is the one in the middle, which is the hardest to hit by hand.
+Each button steps its own slider around three landmarks:
+
+```
+press once   ->   0     removed
+press again  ->  -1     full level, inverted
+press again  ->  +1     back to unity
+```
+
+From any partial position the first press lands on **0**, so a button is
+always one press from silence whatever the slider was doing. Nothing else
+moves: a button only ever touches its own column.
+
+Holding a chord and punching coefficients in and out is the fastest way to
+hear what each one is contributing.
 
 ## What the sliders reach: the window
 
@@ -97,6 +117,7 @@ instrument, not a shortcoming.
 | control | function |
 |---------|----------|
 | **0 – 15** | sixteen bipolar coefficient gains, −1 to +1, default +1. See above |
+| **zero** | one button per column, cycling that slider **+1 → 0 → −1 → +1** |
 | **above** | switch, in the bottom row: **pass** everything outside the window through, or **mute** it |
 | **size** | 16 to 512 samples per block, zooming the window as tabulated |
 | **keep** | retain only the *k* largest-magnitude coefficients, from all of them down to one |

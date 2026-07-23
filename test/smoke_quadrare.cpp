@@ -242,6 +242,44 @@ static void testOverlayReplace() {
     }
 }
 
+// The zero buttons cycle their slider through +1 -> 0 -> -1 -> +1, so the
+// centre-is-mute position is reachable without aiming for it.
+static void testZeroButtons() {
+    Quadrare m;
+    defaults(m);
+    setSize(m, 4);
+    m.process(makeArgs(0));
+    auto press = [&](int b) {
+        m.params[Quadrare::ZERO0_PARAM + b].setValue(1.f);
+        m.process(makeArgs(0));
+        m.params[Quadrare::ZERO0_PARAM + b].setValue(0.f);
+        m.process(makeArgs(0));
+    };
+    const float want[3] = {0.f, -1.f, 1.f};
+    bool ok = true;
+    for (int b = 0; b < kSliders; ++b) {
+        for (int step = 0; step < 3; ++step) {
+            press(b);
+            if (m.params[Quadrare::BAND0_PARAM + b].getValue() != want[step]) ok = false;
+        }
+    }
+    report(MOD, "zero_button_cycle", ok ? 1.0 : 0.0, ok);
+
+    // A button must move only its own slider.
+    setSliders(m, 1.f);
+    press(5);
+    bool isolated = m.params[Quadrare::BAND0_PARAM + 5].getValue() == 0.f;
+    for (int b = 0; b < kSliders; ++b)
+        if (b != 5 && m.params[Quadrare::BAND0_PARAM + b].getValue() != 1.f) isolated = false;
+    report(MOD, "zero_button_isolated", isolated ? 1.0 : 0.0, isolated);
+
+    // From a partial position it lands on zero, not on the next landmark.
+    m.params[Quadrare::BAND0_PARAM + 2].setValue(0.42f);
+    press(2);
+    const float v = m.params[Quadrare::BAND0_PARAM + 2].getValue();
+    report(MOD, "zero_button_from_partial", v, v == 0.f);
+}
+
 // KEEP and QUANT act on the whole transform, not just the window.
 static void testLossyStage() {
     Quadrare m;
@@ -302,5 +340,5 @@ static void testStability() {
 }
 
 SMOKE_MAIN(testTransparent, testGainCases, testAboveSwitch, testComponentsSum,
-           testCoeffLoopback, testOverlayReplace, testLossyStage,
+           testCoeffLoopback, testOverlayReplace, testZeroButtons, testLossyStage,
            testSynthesizerMode, testStability)

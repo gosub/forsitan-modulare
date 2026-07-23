@@ -32,6 +32,7 @@
 //   Sliders : 16 bipolar band gains (-1..+1), lit with the band coefficient
 //   Knobs   : LEVEL, SIZE, KEEP, QUANT, DRY/WET
 //   Switch  : ABOVE (pass or mute everything outside the slider window)
+//   Buttons : one per column, cycling its slider +1 -> 0 -> -1 -> +1
 //   In      : AUDIO, 16 x COEFF (poly)
 //   Out     : AUDIO, RESIDUAL, COMPONENTS (poly), 16 x COEFF (poly)
 
@@ -64,6 +65,22 @@ struct Quadrare : Module {
         QUANT_PARAM,
         DRYWET_PARAM,
         ABOVE_PARAM,
+        ZERO0_PARAM,
+        ZERO1_PARAM,
+        ZERO2_PARAM,
+        ZERO3_PARAM,
+        ZERO4_PARAM,
+        ZERO5_PARAM,
+        ZERO6_PARAM,
+        ZERO7_PARAM,
+        ZERO8_PARAM,
+        ZERO9_PARAM,
+        ZERO10_PARAM,
+        ZERO11_PARAM,
+        ZERO12_PARAM,
+        ZERO13_PARAM,
+        ZERO14_PARAM,
+        ZERO15_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -159,6 +176,7 @@ struct Quadrare : Module {
 
     bool haveBlock = false;     // false until the first block has been reconstructed
     bool havePending = false;
+    dsp::BooleanTrigger zeroTrigger[kSliders];
     int coeffMode = MODE_OVERLAY;
     bool wantComponents = false;
 
@@ -194,6 +212,7 @@ struct Quadrare : Module {
                         string::f("Coefficient %d gain", b), "%", 0.f, 100.f);
             configInput(COEFF0_INPUT + b, string::f("Coefficient %d", b));
             configOutput(COEFF0_OUTPUT + b, string::f("Coefficient %d", b));
+            configButton(ZERO0_PARAM + b, string::f("Zero coefficient %d", b));
         }
         configParam(LEVEL_PARAM, 0.f, 2.f, 1.f, "Output level", "%", 0.f, 100.f);
         configSwitch(SIZE_PARAM, 0.f, (float) (kSizeCount - 1), 4.f, "Size",
@@ -242,6 +261,15 @@ struct Quadrare : Module {
     }
 
     void process(const ProcessArgs& args) override {
+        // Zero buttons cycle their slider through the three landmarks, so the
+        // centre-is-mute position is reachable without aiming for it.
+        for (int b = 0; b < kSliders; ++b) {
+            if (!zeroTrigger[b].process(params[ZERO0_PARAM + b].getValue() > 0.5f))
+                continue;
+            const float g = params[BAND0_PARAM + b].getValue();
+            params[BAND0_PARAM + b].setValue(g == 0.f ? -1.f : g == -1.f ? 1.f : 0.f);
+        }
+
         // SIZE changes flush: the block in flight was collected at the old
         // size and its dry alignment no longer applies. Costs one block of
         // silence (0.33 ms to 5.3 ms), which is fine for a manual control.
@@ -452,6 +480,22 @@ struct QuadrareWidget : ModuleWidget {
 // @elem COEFF13_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem COEFF14_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem COEFF15_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem ZERO0_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO1_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO2_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO3_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO4_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO5_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO6_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO7_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO8_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO9_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO10_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO11_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO12_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO13_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO14_PARAM TL1105 2.6 param "" 0.0
+// @elem ZERO15_PARAM TL1105 2.6 param "" 0.0
 // @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem SIZE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem KEEP_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -464,104 +508,121 @@ struct QuadrareWidget : ModuleWidget {
 // @elem AUDIO_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem RESIDUAL_LIGHT SmallLight 1.0 light "" 0.0
 // @elem AUDIO_LIGHT SmallLight 1.0 light "" 0.0
-// @elem BOX_COEFFOUT panel_box 7.0 box "" 0.0 81.28 57.50 box=156x17
-// @elem LABEL_B0 label 0.0 label "0" 0.0 8.53 43.50
-// @elem LABEL_B1 label 0.0 label "1" 0.0 18.23 43.50
-// @elem LABEL_B2 label 0.0 label "2" 0.0 27.93 43.50
-// @elem LABEL_B3 label 0.0 label "3" 0.0 37.63 43.50
-// @elem LABEL_B4 label 0.0 label "4" 0.0 47.33 43.50
-// @elem LABEL_B5 label 0.0 label "5" 0.0 57.03 43.50
-// @elem LABEL_B6 label 0.0 label "6" 0.0 66.73 43.50
-// @elem LABEL_B7 label 0.0 label "7" 0.0 76.43 43.50
-// @elem LABEL_B8 label 0.0 label "8" 0.0 86.13 43.50
-// @elem LABEL_B9 label 0.0 label "9" 0.0 95.83 43.50
-// @elem LABEL_B10 label 0.0 label "10" 0.0 105.53 43.50
-// @elem LABEL_B11 label 0.0 label "11" 0.0 115.23 43.50
-// @elem LABEL_B12 label 0.0 label "12" 0.0 124.93 43.50
-// @elem LABEL_B13 label 0.0 label "13" 0.0 134.63 43.50
-// @elem LABEL_B14 label 0.0 label "14" 0.0 144.33 43.50
-// @elem LABEL_B15 label 0.0 label "15" 0.0 154.03 43.50
-// @elem LABEL_COEFFOUT label 0.0 label "coeff out" 0.0 81.28 65.00
-// @elem LABEL_COEFFIN label 0.0 label "coeff in" 0.0 81.28 85.00
-// @elem LABEL_IN label 0.0 label "in" 0.0 8.38 108.50
-// @elem LABEL_SIZE label 0.0 label "size" 0.0 24.58 108.50
-// @elem LABEL_KEEP label 0.0 label "keep" 0.0 40.78 108.50
-// @elem LABEL_QUANT label 0.0 label "quant" 0.0 56.98 108.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 73.18 108.50
-// @elem LABEL_DRYWET label 0.0 label "dry/wet" 0.0 89.38 108.50
-// @elem LABEL_ABOVE label 0.0 label "above" 0.0 105.58 108.50
-// @elem LABEL_COMP label 0.0 label "comp" 0.0 121.78 108.50
-// @elem LABEL_RES label 0.0 label "res" 0.0 137.98 108.50
-// @elem LABEL_OUT label 0.0 label "out" 0.0 154.18 108.50
-// @elem BOX_COMP panel_box 7.0 box "" 0.0 121.78 102.50
-// @elem BOX_RES panel_box 7.0 box "" 0.0 137.98 102.50
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 154.18 102.50
+// @elem BOX_COEFFOUT panel_box 7.0 box "" 0.0 81.28 54.50 box=156x16
+// @elem LABEL_B0 label 0.0 label "0" 0.0 8.53 41.50
+// @elem LABEL_B1 label 0.0 label "1" 0.0 18.23 41.50
+// @elem LABEL_B2 label 0.0 label "2" 0.0 27.93 41.50
+// @elem LABEL_B3 label 0.0 label "3" 0.0 37.63 41.50
+// @elem LABEL_B4 label 0.0 label "4" 0.0 47.33 41.50
+// @elem LABEL_B5 label 0.0 label "5" 0.0 57.03 41.50
+// @elem LABEL_B6 label 0.0 label "6" 0.0 66.73 41.50
+// @elem LABEL_B7 label 0.0 label "7" 0.0 76.43 41.50
+// @elem LABEL_B8 label 0.0 label "8" 0.0 86.13 41.50
+// @elem LABEL_B9 label 0.0 label "9" 0.0 95.83 41.50
+// @elem LABEL_B10 label 0.0 label "10" 0.0 105.53 41.50
+// @elem LABEL_B11 label 0.0 label "11" 0.0 115.23 41.50
+// @elem LABEL_B12 label 0.0 label "12" 0.0 124.93 41.50
+// @elem LABEL_B13 label 0.0 label "13" 0.0 134.63 41.50
+// @elem LABEL_B14 label 0.0 label "14" 0.0 144.33 41.50
+// @elem LABEL_B15 label 0.0 label "15" 0.0 154.03 41.50
+// @elem LABEL_COEFFOUT label 0.0 label "coeff out" 0.0 81.28 60.50
+// @elem LABEL_COEFFIN label 0.0 label "coeff in" 0.0 81.28 77.00
+// @elem LABEL_ZERO label 0.0 label "zero" 0.0 81.28 92.00
+// @elem LABEL_IN label 0.0 label "in" 0.0 8.38 111.50
+// @elem LABEL_SIZE label 0.0 label "size" 0.0 24.58 111.50
+// @elem LABEL_KEEP label 0.0 label "keep" 0.0 40.78 111.50
+// @elem LABEL_QUANT label 0.0 label "quant" 0.0 56.98 111.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 73.18 111.50
+// @elem LABEL_DRYWET label 0.0 label "dry/wet" 0.0 89.38 111.50
+// @elem LABEL_ABOVE label 0.0 label "above" 0.0 105.58 111.50
+// @elem LABEL_COMP label 0.0 label "comp" 0.0 121.78 111.50
+// @elem LABEL_RES label 0.0 label "res" 0.0 137.98 111.50
+// @elem LABEL_OUT label 0.0 label "out" 0.0 154.18 111.50
+// @elem BOX_COMP panel_box 7.0 box "" 0.0 121.78 105.50
+// @elem BOX_RES panel_box 7.0 box "" 0.0 137.98 105.50
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 154.18 105.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 81.28 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(154.94f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(154.94f, 123.42f)))); // SCREW_BR
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(8.53f, 26.00f)), module, Quadrare::BAND0_PARAM, Quadrare::BAND0_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(18.23f, 26.00f)), module, Quadrare::BAND1_PARAM, Quadrare::BAND1_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(27.93f, 26.00f)), module, Quadrare::BAND2_PARAM, Quadrare::BAND2_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(37.63f, 26.00f)), module, Quadrare::BAND3_PARAM, Quadrare::BAND3_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(47.33f, 26.00f)), module, Quadrare::BAND4_PARAM, Quadrare::BAND4_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(57.03f, 26.00f)), module, Quadrare::BAND5_PARAM, Quadrare::BAND5_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(66.73f, 26.00f)), module, Quadrare::BAND6_PARAM, Quadrare::BAND6_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(76.43f, 26.00f)), module, Quadrare::BAND7_PARAM, Quadrare::BAND7_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(86.13f, 26.00f)), module, Quadrare::BAND8_PARAM, Quadrare::BAND8_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(95.83f, 26.00f)), module, Quadrare::BAND9_PARAM, Quadrare::BAND9_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(105.53f, 26.00f)), module, Quadrare::BAND10_PARAM, Quadrare::BAND10_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(115.23f, 26.00f)), module, Quadrare::BAND11_PARAM, Quadrare::BAND11_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(124.93f, 26.00f)), module, Quadrare::BAND12_PARAM, Quadrare::BAND12_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(134.63f, 26.00f)), module, Quadrare::BAND13_PARAM, Quadrare::BAND13_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(144.33f, 26.00f)), module, Quadrare::BAND14_PARAM, Quadrare::BAND14_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(154.03f, 26.00f)), module, Quadrare::BAND15_PARAM, Quadrare::BAND15_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.38f, 100.00f)), module, Quadrare::AUDIO_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.58f, 100.00f)), module, Quadrare::SIZE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.78f, 100.00f)), module, Quadrare::KEEP_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.98f, 100.00f)), module, Quadrare::QUANT_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(73.18f, 100.00f)), module, Quadrare::LEVEL_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(89.38f, 100.00f)), module, Quadrare::DRYWET_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(105.58f, 100.00f)), module, Quadrare::ABOVE_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(121.78f, 100.00f)), module, Quadrare::COMPONENTS_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.98f, 100.00f)), module, Quadrare::RESIDUAL_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.18f, 100.00f)), module, Quadrare::AUDIO_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.53f, 54.50f)), module, Quadrare::COEFF0_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(18.23f, 54.50f)), module, Quadrare::COEFF1_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(27.93f, 54.50f)), module, Quadrare::COEFF2_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(37.63f, 54.50f)), module, Quadrare::COEFF3_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(47.33f, 54.50f)), module, Quadrare::COEFF4_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.03f, 54.50f)), module, Quadrare::COEFF5_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(66.73f, 54.50f)), module, Quadrare::COEFF6_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.43f, 54.50f)), module, Quadrare::COEFF7_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(86.13f, 54.50f)), module, Quadrare::COEFF8_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(95.83f, 54.50f)), module, Quadrare::COEFF9_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(105.53f, 54.50f)), module, Quadrare::COEFF10_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.23f, 54.50f)), module, Quadrare::COEFF11_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.93f, 54.50f)), module, Quadrare::COEFF12_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(134.63f, 54.50f)), module, Quadrare::COEFF13_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(144.33f, 54.50f)), module, Quadrare::COEFF14_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.03f, 54.50f)), module, Quadrare::COEFF15_OUTPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.53f, 74.50f)), module, Quadrare::COEFF0_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.23f, 74.50f)), module, Quadrare::COEFF1_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(27.93f, 74.50f)), module, Quadrare::COEFF2_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.63f, 74.50f)), module, Quadrare::COEFF3_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(47.33f, 74.50f)), module, Quadrare::COEFF4_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(57.03f, 74.50f)), module, Quadrare::COEFF5_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.73f, 74.50f)), module, Quadrare::COEFF6_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.43f, 74.50f)), module, Quadrare::COEFF7_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(86.13f, 74.50f)), module, Quadrare::COEFF8_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(95.83f, 74.50f)), module, Quadrare::COEFF9_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(105.53f, 74.50f)), module, Quadrare::COEFF10_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(115.23f, 74.50f)), module, Quadrare::COEFF11_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(124.93f, 74.50f)), module, Quadrare::COEFF12_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(134.63f, 74.50f)), module, Quadrare::COEFF13_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(144.33f, 74.50f)), module, Quadrare::COEFF14_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(154.03f, 74.50f)), module, Quadrare::COEFF15_INPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(142.98f, 97.50f)), module, Quadrare::RESIDUAL_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(159.18f, 97.50f)), module, Quadrare::AUDIO_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(8.53f, 24.00f)), module, Quadrare::BAND0_PARAM, Quadrare::BAND0_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(18.23f, 24.00f)), module, Quadrare::BAND1_PARAM, Quadrare::BAND1_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(27.93f, 24.00f)), module, Quadrare::BAND2_PARAM, Quadrare::BAND2_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(37.63f, 24.00f)), module, Quadrare::BAND3_PARAM, Quadrare::BAND3_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(47.33f, 24.00f)), module, Quadrare::BAND4_PARAM, Quadrare::BAND4_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(57.03f, 24.00f)), module, Quadrare::BAND5_PARAM, Quadrare::BAND5_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(66.73f, 24.00f)), module, Quadrare::BAND6_PARAM, Quadrare::BAND6_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(76.43f, 24.00f)), module, Quadrare::BAND7_PARAM, Quadrare::BAND7_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(86.13f, 24.00f)), module, Quadrare::BAND8_PARAM, Quadrare::BAND8_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(95.83f, 24.00f)), module, Quadrare::BAND9_PARAM, Quadrare::BAND9_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(105.53f, 24.00f)), module, Quadrare::BAND10_PARAM, Quadrare::BAND10_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(115.23f, 24.00f)), module, Quadrare::BAND11_PARAM, Quadrare::BAND11_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(124.93f, 24.00f)), module, Quadrare::BAND12_PARAM, Quadrare::BAND12_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(134.63f, 24.00f)), module, Quadrare::BAND13_PARAM, Quadrare::BAND13_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(144.33f, 24.00f)), module, Quadrare::BAND14_PARAM, Quadrare::BAND14_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<GreenRedLight>>(mm2px(Vec(154.03f, 24.00f)), module, Quadrare::BAND15_PARAM, Quadrare::BAND15_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.38f, 103.00f)), module, Quadrare::AUDIO_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.58f, 103.00f)), module, Quadrare::SIZE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(40.78f, 103.00f)), module, Quadrare::KEEP_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.98f, 103.00f)), module, Quadrare::QUANT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(73.18f, 103.00f)), module, Quadrare::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(89.38f, 103.00f)), module, Quadrare::DRYWET_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(105.58f, 103.00f)), module, Quadrare::ABOVE_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(121.78f, 103.00f)), module, Quadrare::COMPONENTS_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.98f, 103.00f)), module, Quadrare::RESIDUAL_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.18f, 103.00f)), module, Quadrare::AUDIO_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(8.53f, 52.00f)), module, Quadrare::COEFF0_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(18.23f, 52.00f)), module, Quadrare::COEFF1_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(27.93f, 52.00f)), module, Quadrare::COEFF2_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(37.63f, 52.00f)), module, Quadrare::COEFF3_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(47.33f, 52.00f)), module, Quadrare::COEFF4_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.03f, 52.00f)), module, Quadrare::COEFF5_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(66.73f, 52.00f)), module, Quadrare::COEFF6_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.43f, 52.00f)), module, Quadrare::COEFF7_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(86.13f, 52.00f)), module, Quadrare::COEFF8_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(95.83f, 52.00f)), module, Quadrare::COEFF9_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(105.53f, 52.00f)), module, Quadrare::COEFF10_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.23f, 52.00f)), module, Quadrare::COEFF11_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.93f, 52.00f)), module, Quadrare::COEFF12_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(134.63f, 52.00f)), module, Quadrare::COEFF13_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(144.33f, 52.00f)), module, Quadrare::COEFF14_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.03f, 52.00f)), module, Quadrare::COEFF15_OUTPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.53f, 68.50f)), module, Quadrare::COEFF0_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.23f, 68.50f)), module, Quadrare::COEFF1_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(27.93f, 68.50f)), module, Quadrare::COEFF2_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.63f, 68.50f)), module, Quadrare::COEFF3_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(47.33f, 68.50f)), module, Quadrare::COEFF4_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(57.03f, 68.50f)), module, Quadrare::COEFF5_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.73f, 68.50f)), module, Quadrare::COEFF6_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.43f, 68.50f)), module, Quadrare::COEFF7_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(86.13f, 68.50f)), module, Quadrare::COEFF8_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(95.83f, 68.50f)), module, Quadrare::COEFF9_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(105.53f, 68.50f)), module, Quadrare::COEFF10_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(115.23f, 68.50f)), module, Quadrare::COEFF11_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(124.93f, 68.50f)), module, Quadrare::COEFF12_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(134.63f, 68.50f)), module, Quadrare::COEFF13_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(144.33f, 68.50f)), module, Quadrare::COEFF14_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(154.03f, 68.50f)), module, Quadrare::COEFF15_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(8.53f, 84.00f)), module, Quadrare::ZERO0_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(18.23f, 84.00f)), module, Quadrare::ZERO1_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(27.93f, 84.00f)), module, Quadrare::ZERO2_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(37.63f, 84.00f)), module, Quadrare::ZERO3_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(47.33f, 84.00f)), module, Quadrare::ZERO4_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(57.03f, 84.00f)), module, Quadrare::ZERO5_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(66.73f, 84.00f)), module, Quadrare::ZERO6_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(76.43f, 84.00f)), module, Quadrare::ZERO7_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(86.13f, 84.00f)), module, Quadrare::ZERO8_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(95.83f, 84.00f)), module, Quadrare::ZERO9_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(105.53f, 84.00f)), module, Quadrare::ZERO10_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(115.23f, 84.00f)), module, Quadrare::ZERO11_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(124.93f, 84.00f)), module, Quadrare::ZERO12_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(134.63f, 84.00f)), module, Quadrare::ZERO13_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(144.33f, 84.00f)), module, Quadrare::ZERO14_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(154.03f, 84.00f)), module, Quadrare::ZERO15_PARAM));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(142.98f, 100.50f)), module, Quadrare::RESIDUAL_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(159.18f, 100.50f)), module, Quadrare::AUDIO_LIGHT));
         // @layout:end
     }
 
