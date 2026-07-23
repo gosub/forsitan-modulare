@@ -32,6 +32,7 @@ A collection of VCV Rack modules.
 | [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine synthesis families (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
 | [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters, 20 morphing factory banks (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
 | [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, dirty because it is built from CMOS inverters on a single unipolar supply — LP/BP/HP/notch at once plus the A-124's LP-to-HP mix pot, drive, grit, and bias/hiss inverter mods | [doc/vespae.md](doc/vespae.md) |
+| [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, zoomable from the whole spectrum down to 0-750 Hz, with rank-thresholding and coefficient quantization as the lossy stage | [doc/quadrare.md](doc/quadrare.md) |
 
 ## Tools
 
@@ -84,6 +85,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **sylla** | *almost Latin* — a clipped *syllaba*, syllable: haiku are counted in syllables, and sylla speaks one small sound at a time |
 | **guttur** | throat — the guttural voice, punning on Tom Mudd's Gutter Synthesis it ports |
 | **vespae** | of the wasp (genitive of *vespa*) — Chris Huggett's EDP Wasp filter |
+| **quadrare** | *to square, to make fit*: Walsh functions are square waves, and the transform squares the signal into them |
 
 ## Author
 

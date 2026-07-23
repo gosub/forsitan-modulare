@@ -70,7 +70,7 @@ static double runCompare(Quadrare& m, int sizeIndex, float expect, int frames,
     return worst;
 }
 
-// 17.1 / 17.6 — the round trip is transparent and the residual nulls, at every
+// 17.1 / 17.6: the round trip is transparent and the residual nulls, at every
 // size. Coefficients above the window pass through, so this holds throughout.
 static void testTransparent() {
     for (int s = 0; s < kSizeCount; ++s) {
@@ -150,7 +150,7 @@ static void testAboveSwitch() {
     }
 }
 
-// 17.8 — the 16 COMPONENTS channels sum to the wet signal, once everything
+// 17.8: the 16 COMPONENTS channels sum to the wet signal, once everything
 // above the window is muted (they only carry the exposed coefficients).
 static void testComponentsSum() {
     const int sizes[2] = {0, 4};
@@ -211,7 +211,7 @@ static void testCoeffLoopback() {
     }
 }
 
-// 17.9 / 17.10 — drive coefficient 0 only. Overlay leaves the other exposed
+// 17.9 / 17.10: drive coefficient 0 only. Overlay leaves the other exposed
 // coefficients internal; Replace zeroes them once anything is driven.
 static void testOverlayReplace() {
     for (int mode = 0; mode < 2; ++mode) {
@@ -242,7 +242,7 @@ static void testOverlayReplace() {
     }
 }
 
-// 17.11 — freeze holds the vector while the sliders stay live.
+// 17.11: freeze holds the vector while the sliders stay live.
 static void testFreeze() {
     Quadrare m;
     defaults(m);

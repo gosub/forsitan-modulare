@@ -59,7 +59,7 @@ coefficient *k*.
 This replaced an earlier design in which the sliders were sixteen bands
 covering the whole spectrum. That design was unplayable, and unfixably so.
 Coefficient *k* sits at `k·fs/2n`, so sixteen equal bands always divide
-0–24 kHz into 1500 Hz slices *whatever the size* — band 0 permanently owned
+0–24 kHz into 1500 Hz slices *whatever the size*: band 0 permanently owned
 everything below 1500 Hz, which is where most music lives. Larger sizes only
 subdivided within each band and could not help. Unequal (quadratic) bands
 would have fixed the distribution but forced each jack to a different poly

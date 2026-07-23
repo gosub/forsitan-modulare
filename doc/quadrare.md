@@ -119,11 +119,11 @@ instrument, not a shortcoming.
 The sliders reach sixteen coefficients. At size 256 the other 240 carry
 everything from 1500 Hz up, and this switch decides what happens to them.
 
-- **pass** — they go through untouched. The module reshapes the low window
+- **pass**: they go through untouched. The module reshapes the low window
   and leaves the rest of your signal alone. This is the default and the
   normal setting: put every slider in the center and you are left with a
   highpass at the window edge.
-- **mute** — they are zeroed, so the module becomes a lowpass at the window
+- **mute**: they are zeroed, so the module becomes a lowpass at the window
   edge with sixteen Walsh sliders inside it. Rejection is around 22 dB, not
   clean: Walsh functions are not sinusoids and a high sine leaves traces in
   low-sequency coefficients.
@@ -140,7 +140,7 @@ coefficient, not just the sixteen in the window, so they still bite when
 **keep** is rank thresholding: it keeps the *k* biggest coefficients in each
 block and throws the rest away. This is how transform compression actually
 works. Wind it down and the signal collapses onto its strongest Walsh
-components, shedding detail in a way that sounds nothing like filtering —
+components, shedding detail in a way that sounds nothing like filtering:
 sparse, blocky, oddly synthetic. It is scale-invariant, so it behaves the
 same however hard you drive the input.
 
@@ -160,8 +160,8 @@ coefficient, and **coeff in** takes it back. Every jack is **mono**, at every
 size, so there is no polyphony to reason about.
 
 Patch a **coeff out** straight into its **coeff in** and nothing changes: the
-insert is exact, to float precision. Put anything in between — a slew, a
-sample and hold, a waveshaper, an offset, another quadrare — and you are
+insert is exact, to float precision. Put anything in between (a slew, a
+sample and hold, a waveshaper, an offset, another quadrare) and you are
 processing the transform domain directly.
 
 The **context menu** decides what happens to the coefficients you *don't*
@@ -204,7 +204,7 @@ silence. It is a control to set, not to sweep.
 
 **res** is the delayed dry minus the reconstruction: what the module threw
 away. With everything at default it sits at zero. Remove a coefficient and its
-content appears there. It is a complement, not a difference signal — patch it
+content appears there. It is a complement, not a difference signal: patch it
 alongside **out** and you have the signal split in two.
 
 **comp** breaks the output into the sixteen exposed coefficients'
