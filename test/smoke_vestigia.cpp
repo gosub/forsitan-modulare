@@ -94,6 +94,53 @@ static void testVestigia() {
         cl.add(h.outputs[Vestigia::OUT_L_OUTPUT].getVoltage());
     }
     report("vestigia", "cleared_silent", cl.rms(), cl.rms() < 0.05);
+
+    // 6) sediment fold saturation stays finite and bounded when driven hard
+    Vestigia fld;
+    long f3 = 0;
+    fld.params[Vestigia::MEMMODE_PARAM].setValue(2.f);
+    fld.sedimentSatIdx = 2;      // fold
+    fld.sedimentAmtIdx = 3;      // 2.0x
+    fld.inputs[Vestigia::IN_L_INPUT].channels = 1;
+    Stats fs;
+    float pf = 0.f;
+    for (int i = 0; i < (int)(10 * SR); i++) {
+        pf += 140.f / SR; if (pf >= 1.f) pf -= 1.f;
+        fld.inputs[Vestigia::IN_L_INPUT].setVoltage(6.f * std::sin(2.f * M_PI * pf));
+        fld.process(makeArgs(f3++));
+        fs.add(fld.outputs[Vestigia::OUT_L_OUTPUT].getVoltage());
+    }
+    report("vestigia", "fold_nans", fs.nans, fs.nans == 0);
+    report("vestigia", "fold_bounded", fs.peak, fs.peak <= 10.01f);
+
+    // 7) save-memory-with-patch round-trips the buffer through JSON
+    Vestigia src;
+    long f4 = 0;
+    src.saveMemoryWithPatch = true;
+    src.inputs[Vestigia::IN_L_INPUT].channels = 1;
+    float pr = 0.f;
+    for (int i = 0; i < (int)(1.5f * SR); i++) {
+        pr += 220.f / SR; if (pr >= 1.f) pr -= 1.f;
+        src.inputs[Vestigia::IN_L_INPUT].setVoltage(4.f * std::sin(2.f * M_PI * pr));
+        src.process(makeArgs(f4++));
+    }
+    json_t* saved = src.dataToJson();
+    Vestigia dst;
+    dst.dataFromJson(saved);
+    json_decref(saved);
+    dst.params[Vestigia::MEMORY_PARAM].setValue(0.8f);
+    dst.params[Vestigia::RECALL_PARAM].setValue(0.9f);
+    dst.params[Vestigia::MODE_PARAM].setValue(2.f);
+    dst.params[Vestigia::MEMMODE_PARAM].setValue(1.f);
+    dst.params[Vestigia::MIX_PARAM].setValue(1.f);
+    dst.frozenToggle = true;   // do not overwrite the restored buffer
+    Stats rs;
+    for (int i = 0; i < (int)(3 * SR); i++) {
+        dst.process(makeArgs(i));
+        rs.add(dst.outputs[Vestigia::OUT_L_OUTPUT].getVoltage());
+    }
+    report("vestigia", "buffer_restore_nans", rs.nans, rs.nans == 0);
+    report("vestigia", "buffer_restore_alive", rs.rms(), rs.rms() > 0.02);
 }
 
 SMOKE_MAIN(testVestigia)
