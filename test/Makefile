@@ -8,7 +8,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # One smoke binary per module: `make -j` builds them in parallel and a change
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
-                guttur vespae
+                guttur vespae quadrare
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 all: draen_sweep perge_render guttur_probe vespae_probe $(SMOKE_BINS)
@@ -35,6 +35,7 @@ smoke_lustro: ../src/scando_engine.hpp
 smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
 # vespae reuses guttur's vendored ChowDSP oversampler
 smoke_guttur smoke_vespae: $(wildcard ../src/guttur/*.hpp)
+smoke_quadrare: ../src/quadrare_dsp.hpp
 
 # Run every smoke test, printing one CSV header for the lot.
 # Fails if any binary does.
