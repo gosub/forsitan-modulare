@@ -179,8 +179,8 @@ letting people discover it.
 
 ## Open items
 
-- Novelty check against the current VCV Library. `ideas.md` requires this
-  before starting and it has not been done.
+- ~~Novelty check against the current VCV Library.~~ Done 2026-07-23: no
+  Walsh–Hadamard transform module in the library.
 - QUANT absolute vs relative grid (see above).
 - `panel_audit.py` needs `VCVSlider` geometry.
 - Latin glossary row for `readme.md`.
