@@ -37,18 +37,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     is explicit that the hardware cannot do it, but the last tenth of
     the **res** travel cancels the residual damping so this one sings,
     tracking 1 V/oct and drifting flat as it gets loud.
-    Two trimpots are mods rather than emulation, both picked by
-    measurement: **bias** walks the CD4069's switching point further
-    off mid-supply so the two halves of the wave clip at different
-    levels and the rasp turns even-harmonic (even/odd harmonic ratio
-    0.07 → 2.7 driven hard, with the level moving under 2 %), and
-    **hiss** raises the inverter noise inside the loop, which does
-    nothing to a loud signal but wanders the operating point of a loop
-    that is close to oscillating (non-harmonic energy 0.4 % → 7.7 %
-    just short of self-oscillation). They act in opposite regimes on
-    purpose. Several more obvious mods measured as no-ops and were
-    dropped: backing off the diode clamp, the EDP original's 100 kΩ
-    R13, mistuned OTAs, and a lagged clamp meant to squeg.
+    Two trimpots are mods rather than emulation: **bias** walks the
+    CD4069's switching point further off mid-supply so the two halves
+    of the wave clip at different levels and the rasp turns
+    even-harmonic (even/odd harmonic ratio 0.07 → 2.7 driven hard,
+    with the level moving under 2 %), and **hiss** raises the inverter
+    noise inside the loop, which does nothing to a loud signal but
+    wanders the operating point of a loop that is close to oscillating
+    (non-harmonic energy 0.4 % → 7.7 % just short of
+    self-oscillation). They act in opposite regimes on purpose.
     Oversampling 1×–16× in the context menu, default 2×, about 1 % of
     one core. Topology, component values and nonlinearity shapes from
     Köper, Holters, Esqueda and Parker, "A Virtual Analog Model of the

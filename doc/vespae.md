@@ -104,14 +104,9 @@ long the diode clamp lets the resonance run before it bites, so a high
 
 ## bias and hiss: the two mods
 
-The trimpots on the right of **cutoff** are not on the A-124. They are the
-two things I could find that make the filter meaningfully dirtier without
-just making it louder, and they were picked by measurement rather than by
-ear-guessing — several more obvious candidates turned out to do nothing at
-all (see the notes at the end).
-
-They deliberately work in **opposite regimes**, which is why they are two
-trimpots and not one:
+The trimpots on the right of **cutoff** are not on the A-124. They push the
+filter past what the circuit does, and they work in **opposite regimes**,
+which is why they are two trimpots and not one:
 
 **bias** walks the CD4069's switching threshold further off mid-supply. The
 two halves of the waveform then clip at very different levels, and the rasp
@@ -214,14 +209,8 @@ does not make a good module:
   bandpass and the LP/HP mix; the lowpass, highpass and notch exist inside it
   but never reach a jack. They are all on the panel here, with the mix pot
   kept as well (and given a CV input, as on the A-124-2 slim version).
-- **The bias and hiss trimpots**, which are mods rather than modelling. Both
-  were chosen by measuring candidates rather than guessing, and the ones that
-  did *not* survive are worth recording, because they are the obvious things
-  to reach for: backing off the diode clamp changes the dirt not at all
-  (12.93 % → 12.94 % THD across its whole range — it only sets how loud the
-  resonance runs); swapping R13 to the EDP original's 100 kΩ is inaudible
-  here; and mistuning the two OTAs against each other does nothing measurable.
-  A lagged diode clamp, in the hope of squegging, also came out flat.
+- **The bias and hiss trimpots**, which are mods rather than modelling.
+  Neither exists on the hardware; see above for what they do.
 
 - **Self-oscillation, which the hardware does not have.** The A-124 manual
   is blunt about it: "The filter can't go into self oscillation, in contrast
