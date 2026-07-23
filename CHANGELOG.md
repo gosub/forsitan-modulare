@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.10.1] - unreleased
+### Fixed
+  - **MMCCCXCIX**: the forsitan logo was 0.06 mm off the panel's
+    centreline, and the **out** badge 0.2 mm off from the jack and
+    label it contains. Both are now where the panel grammar says, which
+    also opens the logo-to-badge gap from 1.43 mm to 1.69 mm
+  - **scando**: the **out** badge sat 0.04 mm too close to the
+    bottom-right screw. The jack could not move — it is aligned with
+    the four CV inputs on its row — so the badge and its label went up
+    0.35 mm together, which keeps the 1 mm text padding and leaves
+    ~1.1 mm to both the screw and the jack above
+
 ## [2.10.0] - 2026-07-23
 ### Added
   - **vespae**, a new module: the Wasp filter — the state-variable

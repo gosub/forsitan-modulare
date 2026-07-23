@@ -227,9 +227,9 @@ struct MMCCCXCIXWidget : ModuleWidget {
 // @elem LABEL_SEND label 0.0 label "send" 0.0 14.99 102.00
 // @elem LABEL_RETURN label 0.0 label "return" 0.0 35.23 102.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 40.34 119.10
-// @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.46 123.37
+// @elem LOGO forsitan_logo 0.0 logo "" 0.0 25.40 123.37
 // @elem BOX_SEND panel_box 7.0 box "" 0.0 14.86 95.80
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 40.14 113.10
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 40.34 113.10
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(40.64f, 0.00f)))); // SCREW_TR

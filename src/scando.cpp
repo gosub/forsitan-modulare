@@ -257,9 +257,9 @@ struct ScandoWidget : ModuleWidget {
 // @elem LABEL_MASSCV label 0.0 label "mass" 0.0 21.00 107.20
 // @elem LABEL_DAMPCV label 0.0 label "damp" 0.0 34.00 107.20
 // @elem LABEL_SHAPECV label 0.0 label "shape" 0.0 47.00 107.20
-// @elem LABEL_OUT label 0.0 label "out" 0.0 73.00 120.50
+// @elem LABEL_OUT label 0.0 label "out" 0.0 73.00 120.35
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 40.64 122.50
-// @elem BOX_OUT panel_box 7.0 box "" 0.0 73.00 114.50
+// @elem BOX_OUT panel_box 7.0 box "" 0.0 73.00 114.35
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(71.12f, 0.00f)))); // SCREW_TR
