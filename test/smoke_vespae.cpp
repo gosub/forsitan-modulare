@@ -132,7 +132,72 @@ static void testOversampling() {
     report("vespae", "os_level_spread", hi / std::max(lo, 1e-9), hi / std::max(lo, 1e-9) < 1.5);
 }
 
-// Hostile CV and knob motion at the extremes, on all four outputs.
+// The LP/HP mix pot: its ends must land exactly on the dedicated LP and HP
+// jacks, and its middle must notch at the cutoff.
+static void testMix() {
+    // Probe quietly, on purpose. A notch this deep only exists in the linear
+    // regime: once the signal is big enough to saturate the OTAs they pull
+    // the cutoff around at twice the signal frequency, the null moves with
+    // it, and the cancellation stops being anywhere near exact. That is the
+    // circuit's behaviour, not an artefact — at 1 V in, the null here is only
+    // about 30 dB deep instead of 89.
+    auto run = [](float mixKnob, int out, float f) {
+        Vespae m; long fr = 0;
+        m.params[Vespae::CUTOFF_PARAM].setValue(0.5f);   // 640 Hz
+        m.params[Vespae::RES_PARAM].setValue(0.2f);
+        m.params[Vespae::DRIVE_PARAM].setValue(0.4f);
+        m.params[Vespae::MIX_PARAM].setValue(mixKnob);
+        return feedSine(m, fr, f, 0.05f, out, 0.4, 0.4).rms();
+    };
+
+    // fully counter-clockwise is the lowpass, fully clockwise the highpass
+    double mix0 = run(0.f, Vespae::MIX_OUTPUT, 200.f);
+    double lp   = run(0.f, Vespae::LP_OUTPUT,  200.f);
+    double mix1 = run(1.f, Vespae::MIX_OUTPUT, 5000.f);
+    double hp   = run(1.f, Vespae::HP_OUTPUT,  5000.f);
+    report("vespae", "mix0_is_lp", std::fabs(mix0 - lp) / std::max(lp, 1e-9),
+           std::fabs(mix0 - lp) / std::max(lp, 1e-9) < 0.01);
+    report("vespae", "mix1_is_hp", std::fabs(mix1 - hp) / std::max(hp, 1e-9),
+           std::fabs(mix1 - hp) / std::max(hp, 1e-9) < 0.01);
+
+    // centred, the LP and HP shares cancel at the cutoff
+    double notchAtFc = run(0.5f, Vespae::MIX_OUTPUT, 640.f);
+    double passAtFc  = run(0.5f, Vespae::LP_OUTPUT,  640.f);
+    report("vespae", "mix_notches_at_fc", notchAtFc / std::max(passAtFc, 1e-9),
+           notchAtFc / std::max(passAtFc, 1e-9) < 0.01);
+    // ...and passes what is well away from it
+    double away = run(0.5f, Vespae::MIX_OUTPUT, 60.f);
+    report("vespae", "mix_passes_off_notch", away / std::max(notchAtFc, 1e-12),
+           away > 20.0 * notchAtFc);
+
+    // off-centre the null moves: at 0.25 it sits near fc*sqrt(3) = 1109 Hz,
+    // so 640 Hz is no longer nulled
+    double offCentre = run(0.25f, Vespae::MIX_OUTPUT, 640.f);
+    report("vespae", "mix_null_moves", offCentre / std::max(notchAtFc, 1e-12),
+           offCentre > 20.0 * notchAtFc);
+
+    // the crossfade is a convex blend of two bounded nodes, so it can never
+    // exceed them however hard the filter is driven
+    Vespae m; long fr = 0;
+    m.params[Vespae::CUTOFF_PARAM].setValue(0.5f);
+    m.params[Vespae::RES_PARAM].setValue(1.f);
+    m.params[Vespae::DRIVE_PARAM].setValue(1.f);
+    m.params[Vespae::MIX_PARAM].setValue(0.5f);
+    m.inputs[Vespae::MIX_CV_INPUT].channels = 1;
+    Stats s;
+    for (int i = 0; i < (int)(4 * SR); i++) {
+        float t = (float)i / SR;
+        m.inputs[Vespae::AUDIO_INPUT].channels = 1;
+        m.inputs[Vespae::AUDIO_INPUT].setVoltage(10.f * std::sin(2.f * M_PI * 90.f * t));
+        m.inputs[Vespae::MIX_CV_INPUT].setVoltage(5.f * std::sin(2.f * M_PI * 3.7f * t));
+        m.process(makeArgs(fr++));
+        s.add(m.outputs[Vespae::MIX_OUTPUT].getVoltage());
+    }
+    report("vespae", "mix_cv_nans", s.nans, s.nans == 0);
+    report("vespae", "mix_cv_peak", s.peak, s.peak < 8.f);
+}
+
+// Hostile CV and knob motion at the extremes, on all five outputs.
 static void testStress() {
     Vespae m; long fr = 0;
     m.inputs[Vespae::AUDIO_INPUT].channels = 1;
@@ -142,7 +207,7 @@ static void testStress() {
     m.params[Vespae::RES_PARAM].setValue(1.f);
     m.params[Vespae::DRIVE_PARAM].setValue(1.f);
     m.params[Vespae::FM_PARAM].setValue(1.f);
-    Stats s[4];
+    Stats s[5];
     for (int i = 0; i < (int)(12 * SR); i++) {
         float t = (float)i / SR;
         m.inputs[Vespae::AUDIO_INPUT].setVoltage(10.f * std::sin(2.f * M_PI * 137.f * t));
@@ -152,10 +217,10 @@ static void testStress() {
         m.params[Vespae::CUTOFF_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.23f * t));
         m.params[Vespae::GRIT_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.13f * t));
         m.process(makeArgs(fr++));
-        for (int o = 0; o < 4; o++) s[o].add(m.outputs[Vespae::LP_OUTPUT + o].getVoltage());
+        for (int o = 0; o < 5; o++) s[o].add(m.outputs[Vespae::LP_OUTPUT + o].getVoltage());
     }
-    const char* nm[4] = {"lp", "hp", "bp", "notch"};
-    for (int o = 0; o < 4; o++) {
+    const char* nm[5] = {"lp", "hp", "bp", "notch", "mix"};
+    for (int o = 0; o < 5; o++) {
         char name[64];
         snprintf(name, sizeof name, "stress_%s_nans", nm[o]);
         report("vespae", name, s[o].nans, s[o].nans == 0);
@@ -164,4 +229,5 @@ static void testStress() {
     }
 }
 
-SMOKE_MAIN(testSeparation, testResonance, testDrive, testOversampling, testStress)
+SMOKE_MAIN(testSeparation, testResonance, testDrive, testMix, testOversampling,
+           testStress)

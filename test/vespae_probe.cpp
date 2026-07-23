@@ -8,6 +8,7 @@
 //            which should reproduce the Wasp's Q falling as it opens
 //            (paper: Q ~ 94 at 400 Hz, ~ 6 at 10 kHz)
 //   osc    : self-oscillation frequency/level vs. the cutoff knob
+//   mix    : the LP/HP mix output — where its null sits vs. the knob
 //   thd    : harmonic distortion vs. DRIVE and vs. GRIT
 //   stress : extreme settings, checked for non-finite output and runaway
 //
@@ -190,6 +191,85 @@ static void secThd() {
     }
 }
 
+// ── the LP/HP mix output ────────────────────────────────────────────────────
+// The A-124 manual describes the knob as running "from pure low pass via
+// asymmetrical / symmetrical / asymmetrical notch to pure high pass". A
+// linear crossfade (1-m)*LP + m*HP does exactly that: the null sits at
+// fc*sqrt((1-m)/m), sliding down from above the cutoff to below it.
+static void secMix() {
+    printf("\n# mix: null frequency vs. knob, cutoff knob 0.5 (=640 Hz)\n");
+    printf("mix,f_null_predicted,f_null_measured,null_db,passband_db\n");
+    const float fc = 640.f;
+    for (float mix : {0.15f, 0.25f, 0.5f, 0.75f, 0.85f}) {
+        const float pred = fc * std::sqrt((1.f - mix) / mix);
+        if (pred > 0.4f * PROBE_SR) { printf("%.2f,-,-,-,-\n", mix); continue; }
+        double worst = 1e9, worstF = 0;
+        for (int i = -18; i <= 18; i++) {
+            float f = pred * std::pow(2.f, i / 24.f);
+            if (f < 20.f || f > 0.4f * PROBE_SR) continue;
+            Vespae m; long fr = 0;
+            m.params[Vespae::CUTOFF_PARAM].setValue(0.5f);
+            m.params[Vespae::RES_PARAM].setValue(0.2f);
+            m.params[Vespae::DRIVE_PARAM].setValue(0.5f);
+            m.params[Vespae::MIX_PARAM].setValue(mix);
+            SineResult r = driveSine(m, fr, f, 0.02f, Vespae::MIX_OUTPUT, 0.6, 0.3);
+            if (r.fundRms < worst) { worst = r.fundRms; worstF = f; }
+        }
+        // passband: well below the cutoff, where the LP share dominates
+        Vespae mp; long frp = 0;
+        mp.params[Vespae::CUTOFF_PARAM].setValue(0.5f);
+        mp.params[Vespae::RES_PARAM].setValue(0.2f);
+        mp.params[Vespae::DRIVE_PARAM].setValue(0.5f);
+        mp.params[Vespae::MIX_PARAM].setValue(mix);
+        SineResult pb = driveSine(mp, frp, 40.f, 0.02f, Vespae::MIX_OUTPUT, 0.6, 0.3);
+        const double ref = 0.02 / std::sqrt(2.0);
+        printf("%.2f,%.0f,%.0f,%.1f,%.2f\n", mix, pred, worstF,
+               20.0 * std::log10(std::max(worst, 1e-12) / ref),
+               20.0 * std::log10(std::max(pb.fundRms, 1e-12) / ref));
+    }
+
+    // A deep notch is a small-signal luxury: once the OTAs saturate they drag
+    // the cutoff around at twice the signal frequency and the null smears.
+    printf("\n# mix: notch depth at the centre vs. input level\n");
+    printf("in_vpk,null_rel_db\n");
+    for (float amp : {0.02f, 0.1f, 0.5f, 1.f, 3.f, 5.f}) {
+        Vespae mn; long frn = 0;
+        mn.params[Vespae::CUTOFF_PARAM].setValue(0.5f);
+        mn.params[Vespae::RES_PARAM].setValue(0.2f);
+        mn.params[Vespae::DRIVE_PARAM].setValue(0.4f);
+        mn.params[Vespae::MIX_PARAM].setValue(0.5f);
+        SineResult n = driveSine(mn, frn, fc, amp, Vespae::MIX_OUTPUT, 0.5, 0.4);
+        Vespae mr; long frr = 0;
+        mr.params[Vespae::CUTOFF_PARAM].setValue(0.5f);
+        mr.params[Vespae::RES_PARAM].setValue(0.2f);
+        mr.params[Vespae::DRIVE_PARAM].setValue(0.4f);
+        mr.params[Vespae::MIX_PARAM].setValue(0.5f);
+        SineResult ref = driveSine(mr, frr, fc, amp, Vespae::LP_OUTPUT, 0.5, 0.4);
+        printf("%.2f,%.1f\n", amp,
+               20.0 * std::log10(std::max(n.totalRms, 1e-12)
+                                 / std::max(ref.totalRms, 1e-12)));
+    }
+
+    printf("\n# mix endpoints vs. the dedicated LP and HP jacks (should match)\n");
+    printf("f_hz,mix0_db,lp_db,mix1_db,hp_db\n");
+    for (float f : {80.f, 320.f, 640.f, 1300.f, 5000.f}) {
+        double g[4];
+        const int outs[4] = {Vespae::MIX_OUTPUT, Vespae::LP_OUTPUT,
+                             Vespae::MIX_OUTPUT, Vespae::HP_OUTPUT};
+        const float mixv[4] = {0.f, 0.f, 1.f, 1.f};
+        for (int i = 0; i < 4; i++) {
+            Vespae m; long fr = 0;
+            m.params[Vespae::CUTOFF_PARAM].setValue(0.5f);
+            m.params[Vespae::RES_PARAM].setValue(0.2f);
+            m.params[Vespae::DRIVE_PARAM].setValue(0.5f);
+            m.params[Vespae::MIX_PARAM].setValue(mixv[i]);
+            SineResult r = driveSine(m, fr, f, 0.02f, outs[i], 0.6, 0.3);
+            g[i] = 20.0 * std::log10(std::max(r.fundRms, 1e-12) / (0.02 / std::sqrt(2.0)));
+        }
+        printf("%.0f,%.2f,%.2f,%.2f,%.2f\n", f, g[0], g[1], g[2], g[3]);
+    }
+}
+
 // ── stress ──────────────────────────────────────────────────────────────────
 static void secStress() {
     printf("\n# stress\n");
@@ -201,7 +281,7 @@ static void secStress() {
     m.params[Vespae::RES_PARAM].setValue(1.f);
     m.params[Vespae::DRIVE_PARAM].setValue(1.f);
     m.params[Vespae::FM_PARAM].setValue(1.f);
-    Stats s[4];
+    Stats s[5];
     const int n = (int)(20 * PROBE_SR);
     for (int i = 0; i < n; i++) {
         float t = (float)i / PROBE_SR;
@@ -212,11 +292,11 @@ static void secStress() {
         m.params[Vespae::CUTOFF_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.23f * t));
         m.params[Vespae::GRIT_PARAM].setValue(0.5f + 0.5f * std::sin(2.f * M_PI * 0.13f * t));
         m.process(makeArgs(fr++));
-        for (int o = 0; o < 4; o++) s[o].add(m.outputs[Vespae::LP_OUTPUT + o].getVoltage());
+        for (int o = 0; o < 5; o++) s[o].add(m.outputs[Vespae::LP_OUTPUT + o].getVoltage());
     }
-    const char* nm[4] = {"lp", "hp", "bp", "notch"};
+    const char* nm[5] = {"lp", "hp", "bp", "notch", "mix"};
     printf("out,nans,rms,peak\n");
-    for (int o = 0; o < 4; o++)
+    for (int o = 0; o < 5; o++)
         printf("%s,%ld,%.3f,%.3f\n", nm[o], s[o].nans, s[o].rms(), s[o].peak);
 }
 
@@ -231,6 +311,7 @@ int main(int argc, char** argv) {
     if (want("resp"))   secResp();
     if (want("q"))      secQ();
     if (want("osc"))    secOsc();
+    if (want("mix"))    secMix();
     if (want("thd"))    secThd();
     if (want("stress")) secStress();
     return 0;
