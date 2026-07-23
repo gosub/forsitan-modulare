@@ -31,3 +31,4 @@ extern Model* modelSylla;
 extern Model* modelGuttur;
 extern Model* modelVespae;
 extern Model* modelQuadrare;
+extern Model* modelVestigia;

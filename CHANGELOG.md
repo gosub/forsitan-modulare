@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.12.0] - 2026-07-23
+### Added
+  - **vestigia**, a new module: a stereo memory effect built from the
+    *Vestigium* design document. An endless tape loop is continuously
+    rewritten under one of three memory modes — **oblivion** (the
+    present replaces the past), **remanence** (it rewrites but leaves a
+    30% trace) and **sediment** (it accumulates through soft saturation
+    and a DC blocker). A parallel block-based activity map, with
+    hysteretic per-block gating, tracks where meaningful sound actually
+    lives, so the recollection engine only ever recalls regions
+    containing audio, never silence. Three recollection modes decide
+    *when* fragments return: **listen** (event-centered, transient
+    triggered, recent), **breathe** (rate follows the input envelope
+    and density) and **dream** (recall rises as the input falls quiet,
+    older and reversed and longer). Two playback heads replay the
+    stored audio; each memory deteriorates a little more every time it
+    returns. Macro controls for memory horizon (50 ms – 16 s), recall
+    rate, age (band/rate/bit/jitter degradation), smear (all-pass
+    diffusion), forget (feedback persistence) and temper (instability),
+    plus per-recollection direction, equal-power mix and output. CV for
+    memory/recall/age/smear; freeze, event and clear with their
+    gate/trigger inputs; event, envelope and chaos outputs; and a linear
+    tape display of stored energy, the write head and recall flashes.
+    The feedback path is bounded by soft saturation, DC blocking and
+    non-finite guards. The audio buffer is not saved with the patch;
+    only the random seed is, so behavior is reproducible across a
+    reload. 22 HP. First release covers the design document's MVP: two
+    heads, eight region descriptors, 16 s horizon, no external clock,
+    no per-voice polyphony.
+
 ## [2.11.0] - 2026-07-23
 ### Added
   - **quadrare**, a new module: a Walsh-Hadamard codec with the
