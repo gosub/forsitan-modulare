@@ -94,6 +94,14 @@ Each macro knob is a coordinated bundle rather than a single parameter:
   drift, per-recollection variation. Zero is stable and near-deterministic.
 - **direction** — the probability of reverse versus forward playback,
   chosen fresh per recollection (not a crossfade).
+- **harmony** — how the pitch of each recalled fragment relates to the
+  source. Playback is pitch-quantized rather than freely detuned: fully
+  down, fragments return only at unison and octaves, so they stay in tune
+  with the source; turning it up widens the interval pool through fifths
+  and fourths, thirds, and on toward the full chromatic set; near the top
+  a continuous detune is layered on for a deliberately inharmonic,
+  out-of-tune drift. **temper** still adds a small wow on top, but no
+  longer throws the pitch off its grid.
 - **mix** — equal-power dry/wet.
 - **out** — final output level, unity at 12 o'clock.
 

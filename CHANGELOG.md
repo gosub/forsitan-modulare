@@ -20,12 +20,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     triggered, recent), **breathe** (rate follows the input envelope
     and density) and **dream** (recall rises as the input falls quiet,
     older and reversed and longer). Two playback heads replay the
-    stored audio; each memory deteriorates a little more every time it
-    returns. Macro controls for memory horizon (50 ms – 16 s), recall
-    rate, age (band/rate/bit/jitter degradation), smear (all-pass
-    diffusion), forget (feedback persistence) and temper (instability),
-    plus per-recollection direction, equal-power mix and output. CV for
-    memory/recall/age/smear; freeze, event and clear with their
+    stored audio (up to four in High quality); each memory deteriorates
+    a little more every time it returns. Macro controls for memory
+    horizon, recall rate, age (band/rate/bit/jitter degradation), smear
+    (all-pass diffusion), forget (feedback persistence) and temper
+    (instability), plus per-recollection direction and a **harmony**
+    control that pitch-quantizes recalled fragments from consonant
+    (unison and octaves, locked in tune with the source) through fifths
+    and thirds up to a fully inharmonic detune, and equal-power mix and
+    output. Playback is anti-click throughout: pitch is quantized rather
+    than freely detuned, heads are never stolen mid-note, dropouts and
+    fades ramp, the nearest-neighbour interpolation only appears at high
+    age, and recall stays a guard band behind the write head. CV for
+    all seven macros; freeze, event and clear with their
     gate/trigger inputs; event, envelope and chaos outputs; and a linear
     tape display of stored energy, the write head and recall flashes.
     The feedback path is bounded by soft saturation, DC blocking and
