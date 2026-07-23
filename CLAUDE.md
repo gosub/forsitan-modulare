@@ -72,7 +72,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | imber | generative rain (Haiku-inspired: 8 players on a 2D field, drunk clocks, morphing clock/FX constellations, procedural sample bank) | 182.88mm (36HP) |
 | sylla | random sample generator/player (imber's generator library as a standalone voice, 9 families) | 40.64mm (8HP) |
 | guttur | chaotic resonator drone (Gutter Synthesis port: Duffing oscillator coupled through 2x24 resonant bandpass filters, 20 morphing factory banks) | 121.92mm (24HP) |
-| vespae | Wasp filter (EDP Wasp / Doepfer A-124 emulation: CMOS-inverter SVF on a unipolar supply, simultaneous LP/BP/HP/notch + the A-124 LP-to-HP mix pot with CV, drive + supply-headroom grit) | 60.96mm (12HP) |
+| vespae | Wasp filter (EDP Wasp / Doepfer A-124 emulation: CMOS-inverter SVF on a unipolar supply, simultaneous LP/BP/HP/notch + the A-124 LP-to-HP mix pot with CV, drive + supply-headroom grit, bias/hiss mod trimpots) | 60.96mm (12HP) |
 
 ## limen module
 

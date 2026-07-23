@@ -27,12 +27,17 @@ highpass nodes.
 | control | function |
 |---------|----------|
 | **cutoff** | 20 Hz – 20 kHz |
-| **fm** | attenuverter for the **fm** input (±1 V/oct at the extremes) |
-| **trk** | how much the **v/oct** input moves the cutoff, 0–100 % |
 | **res** | resonance. The last tenth of the travel tips it into self-oscillation |
 | **drive** | input level, −21.6 dB to +21.6 dB, unity at noon. This is the dirt control |
 | **grit** | supply headroom, from a roomy 12 V down to a mean 2 V |
 | **mix** | crossfades the **mix** output from pure lowpass (full left) to pure highpass (full right) |
+
+| trimpot | function |
+|---------|----------|
+| **fm** | attenuverter for the **fm** input (±1 V/oct at the extremes) |
+| **trk** | how much the **v/oct** input moves the cutoff, 0–100 % |
+| **bias** | *mod*: walks the inverter's switching point off mid-supply, so the clipping goes lopsided |
+| **hiss** | *mod*: raises the inverter noise inside the feedback loop |
 
 | jack | |
 |------|--|
@@ -96,6 +101,38 @@ Turned up, the rails close in and the tanh knee ends up above them, so the
 signal runs linear and then slams: square, buzzy, rude. It also decides how
 long the diode clamp lets the resonance run before it bites, so a high
 **grit** self-oscillates several times louder than a low one.
+
+## bias and hiss: the two mods
+
+The trimpots on the right of **cutoff** are not on the A-124. They are the
+two things I could find that make the filter meaningfully dirtier without
+just making it louder, and they were picked by measurement rather than by
+ear-guessing — several more obvious candidates turned out to do nothing at
+all (see the notes at the end).
+
+They deliberately work in **opposite regimes**, which is why they are two
+trimpots and not one:
+
+**bias** walks the CD4069's switching threshold further off mid-supply. The
+two halves of the waveform then clip at very different levels, and the rasp
+turns even-harmonic — measured at a hard-driven setting, the even/odd
+harmonic ratio goes from 0.07 to 2.7, a 37-fold shift, while the output
+level moves less than 2 %. It does **nothing** on a clean patch, because
+there is no clipping to make lopsided. Turn **drive** up first.
+
+**hiss** raises the inverter's own noise inside the feedback loop. On a
+loud signal it is inaudible — the signal swamps it. Its real job is near the
+top of **res**, where the loop is barely stable: the noise wanders the
+operating point and the filter stops being able to hold a steady note.
+Non-harmonic energy goes from 0.4 % to 7.7 % just short of self-oscillation,
+and the self-oscillation's own amplitude wobble quadruples. Fully down it is
+inaudible (7 µV), which also keeps silence silent.
+
+So: **bias** for gnarl when you are driving it hard, **hiss** for
+instability when you are sitting on the edge of resonance. Both at once,
+with **drive** and **res** up, is the nastiest the module gets — and it
+still cannot run away, because the rail clippers bound the loop structurally
+no matter where these are set.
 
 ## What the filter does that a normal SVF does not
 
@@ -177,6 +214,14 @@ does not make a good module:
   bandpass and the LP/HP mix; the lowpass, highpass and notch exist inside it
   but never reach a jack. They are all on the panel here, with the mix pot
   kept as well (and given a CV input, as on the A-124-2 slim version).
+- **The bias and hiss trimpots**, which are mods rather than modelling. Both
+  were chosen by measuring candidates rather than guessing, and the ones that
+  did *not* survive are worth recording, because they are the obvious things
+  to reach for: backing off the diode clamp changes the dirt not at all
+  (12.93 % → 12.94 % THD across its whole range — it only sets how loud the
+  resonance runs); swapping R13 to the EDP original's 100 kΩ is inaudible
+  here; and mistuning the two OTAs against each other does nothing measurable.
+  A lagged diode clamp, in the hope of squegging, also came out flat.
 
 - **Self-oscillation, which the hardware does not have.** The A-124 manual
   is blunt about it: "The filter can't go into self oscillation, in contrast

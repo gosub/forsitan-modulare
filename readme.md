@@ -31,7 +31,7 @@ A collection of VCV Rack modules.
 | [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing — drunk clocks, morphing constellations, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
 | [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine synthesis families (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
 | [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters, 20 morphing factory banks (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
-| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, dirty because it is built from CMOS inverters on a single unipolar supply — LP/BP/HP/notch at once plus the A-124's LP-to-HP mix pot, drive and grit | [doc/vespae.md](doc/vespae.md) |
+| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, dirty because it is built from CMOS inverters on a single unipolar supply — LP/BP/HP/notch at once plus the A-124's LP-to-HP mix pot, drive, grit, and bias/hiss inverter mods | [doc/vespae.md](doc/vespae.md) |
 
 ## Tools
 
