@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.10.0] - unreleased
+## [2.10.0] - 2026-07-23
 ### Added
   - **vespae**, a new module: the Wasp filter — the state-variable
     filter Chris Huggett designed for the 1978 EDP Wasp, in its
