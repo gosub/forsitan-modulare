@@ -40,11 +40,10 @@ The utility and audio elements share one row near the bottom (32HP is wide
 enough that 10 elements sit at ~15mm pitch):
 
 ```
-AUDIO IN | SIZE | KEEP | QUANT | LEVEL | DRY/WET | FREEZE | COMPONENTS | RESIDUAL | AUDIO OUT
+AUDIO IN | SIZE | KEEP | QUANT | LEVEL | DRY/WET | ABOVE | COMPONENTS | RESIDUAL | AUDIO OUT
 ```
 
-The **above** switch (CKSS) sits on its own at the left, under the COEFF IN
-row, since it governs everything the sliders do not reach.
+The **above** switch (CKSS) sits in the row where FREEZE used to be.
 
 `panel_audit.py` gained `RECT_OVERRIDE` for `VCVSlider` (6.72 × 25.92mm) and
 `CKSS` (4 × 10mm), and badges gained `box=WxH` so the output row can sit on
@@ -199,14 +198,12 @@ dropped. Defaulting to relative until there is a reason not to.
   the wet signal before output gain. With 16 bands this is 16 channels, at the
   poly limit.
 - `DRY/WET`: linear crossfade against a latency-matched dry.
-- `FREEZE`: sample-and-hold of the whole coefficient vector, applied at block
-  boundaries. Sliders stay live; COEFF IN still read every block.
 - `OUTPUT LEVEL`, 0–2, default 1. No mandatory limiter or soft clip.
 - Sequency ordering on the panel, natural order internally, separated by a
   permutation table.
 - `1/N` port scaling, non-normalized forward transform, `1/N` on the inverse.
 - Bypass connects AUDIO IN to AUDIO OUT with no block latency.
-- JSON persistence: FREEZE, Overlay/Replace, SIZE. Frozen vector not saved.
+- JSON persistence: Overlay/Replace. SIZE is a param, so Rack saves it.
 - The full test list from spec section 17, plus round-trip at several sample
   rates and a check that COMPONENTS sums to wet.
 
@@ -217,14 +214,21 @@ surprise: modifying coefficients changes gain at the block rate, which
 generates sidebands at multiples of the block rate that fold back. That
 aliasing is the sound, not a defect. At N=16 the block rate is 3 kHz and the
 module is a grit box; at N=512 it is 94 Hz and it behaves much more like a
-spectral filter. FREEZE at N=16 is a 3 kHz whistle; at N=512 it is a 94 Hz
-drone with timbre.
+spectral filter.
 
 The sliders are bipolar, so the bottom of the travel is −1 (full inversion),
 not 0. Mute is the *center*. Sliding everything down leaves the signal
 audibly unchanged, which surprised the author during play-testing. The V-shape
 was measured and confirmed intentional; the decision was to document it rather
 than add a detent. Say so prominently in the manual.
+
+## Dropped: FREEZE
+
+Cut after play-testing. Holding the coefficient vector and rebuilding from it
+produces exactly one periodic waveform at the block rate, so it was a static
+tone with no way to develop: a 3 kHz whistle at N=16, a 94 Hz drone at N=512,
+and nothing in between worth reaching for. The panel slot went to **above**,
+which earns it. Spec section 4.3 and test 17.11 no longer apply.
 
 ## Open items
 

@@ -31,7 +31,7 @@
 // Controls:
 //   Sliders : 16 bipolar band gains (-1..+1), lit with the band coefficient
 //   Knobs   : LEVEL, SIZE, KEEP, QUANT, DRY/WET
-//   Button  : FREEZE
+//   Switch  : ABOVE (pass or mute everything outside the slider window)
 //   In      : AUDIO, 16 x COEFF (poly)
 //   Out     : AUDIO, RESIDUAL, COMPONENTS (poly), 16 x COEFF (poly)
 
@@ -64,7 +64,6 @@ struct Quadrare : Module {
         QUANT_PARAM,
         DRYWET_PARAM,
         ABOVE_PARAM,
-        FREEZE_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -127,7 +126,6 @@ struct Quadrare : Module {
         ENUMS(BAND13_LIGHT, 2),
         ENUMS(BAND14_LIGHT, 2),
         ENUMS(BAND15_LIGHT, 2),
-        FREEZE_LIGHT,
         AUDIO_LIGHT,
         RESIDUAL_LIGHT,
         LIGHTS_LEN
@@ -148,7 +146,6 @@ struct Quadrare : Module {
     float inBlock[kMaxSize]   = {};
     float outBlock[kMaxSize]  = {};
     float natural[kMaxSize]   = {};
-    float held[kMaxSize]      = {};   // sequency-order coefficients, FREEZE holds these
     float synth[kMaxSize]     = {};   // analyzed, gained, and published on COEFF OUT
     float pending[kMaxSize]   = {};   // what was published at the previous boundary
     float recon[kMaxSize]     = {};   // pending, after the COEFF IN substitution
@@ -164,9 +161,6 @@ struct Quadrare : Module {
     bool havePending = false;
     int coeffMode = MODE_OVERLAY;
     bool wantComponents = false;
-
-    dsp::BooleanTrigger freezeTrigger;
-    bool freeze = false;
 
     // KEEP maps exponentially, so the musically interesting low counts are not
     // squeezed into the first few percent of travel at n=256.
@@ -209,7 +203,6 @@ struct Quadrare : Module {
         configParam<KeepQuantity>(KEEP_PARAM, 0.f, 1.f, 1.f, "Keep");
         configParam<QuantQuantity>(QUANT_PARAM, 0.f, 1.f, 0.f, "Quantize");
         configParam(DRYWET_PARAM, 0.f, 1.f, 1.f, "Dry/wet", "%", 0.f, 100.f);
-        configButton(FREEZE_PARAM, "Freeze");
         configInput(AUDIO_INPUT, "Audio");
         configOutput(AUDIO_OUTPUT, "Audio");
         configOutput(RESIDUAL_OUTPUT, "Residual (dry minus wet)");
@@ -222,7 +215,6 @@ struct Quadrare : Module {
         size = sizeAt(4);
         perm.build(size);
         resetBuffers();
-        freeze = false;
         coeffMode = MODE_OVERLAY;
     }
 
@@ -233,7 +225,6 @@ struct Quadrare : Module {
         havePending = false;
         std::fill(inBlock, inBlock + kMaxSize, 0.f);
         std::fill(outBlock, outBlock + kMaxSize, 0.f);
-        std::fill(held, held + kMaxSize, 0.f);
         std::fill(pending, pending + kMaxSize, 0.f);
         std::fill(dryRing, dryRing + kRing, 0.f);
         for (int b = 0; b < kSliders; ++b)
@@ -243,23 +234,14 @@ struct Quadrare : Module {
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "coeffMode", json_integer(coeffMode));
-        json_object_set_new(root, "freeze", json_boolean(freeze));
         return root;
     }
 
     void dataFromJson(json_t* root) override {
         if (json_t* j = json_object_get(root, "coeffMode")) coeffMode = json_integer_value(j);
-        // "freeze" is written for readability but deliberately not restored:
-        // the frozen vector itself is not saved, so loading FREEZE on would
-        // leave the module stuck emitting silence with no way to tell why.
-        freeze = false;
     }
 
     void process(const ProcessArgs& args) override {
-        if (freezeTrigger.process(params[FREEZE_PARAM].getValue() > 0.5f))
-            freeze = !freeze;
-        lights[FREEZE_LIGHT].setBrightness(freeze ? 1.f : 0.f);
-
         // SIZE changes flush: the block in flight was collected at the old
         // size and its dry alignment no longer applies. Costs one block of
         // silence (0.33 ms to 5.3 ms), which is fine for a manual control.
@@ -318,10 +300,9 @@ struct Quadrare : Module {
         // Analyze: forward transform, then natural -> sequency for the panel.
         std::copy(inBlock, inBlock + n, natural);
         fwht(natural, n);
-        if (!freeze) perm.toSequency(natural, held, n);
+        perm.toSequency(natural, synth, n);
 
         // Slider gains: one coefficient each, the lowest 16 in sequency order.
-        std::copy(held, held + n, synth);
         for (int b = 0; b < kSliders && b < n; ++b)
             synth[b] *= params[BAND0_PARAM + b].getValue();
         // Everything above the slider window moves together: pass it through
@@ -478,7 +459,6 @@ struct QuadrareWidget : ModuleWidget {
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DRYWET_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem ABOVE_PARAM CKSS 2.3 param "" 0.0
-// @elem FREEZE_PARAM VCVLightBezel 3.6 param "" 0.0 light=FREEZE_LIGHT
 // @elem COMPONENTS_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem RESIDUAL_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.01 output "" 0.0
@@ -503,14 +483,13 @@ struct QuadrareWidget : ModuleWidget {
 // @elem LABEL_B15 label 0.0 label "15" 0.0 154.03 43.50
 // @elem LABEL_COEFFOUT label 0.0 label "coeff out" 0.0 81.28 65.00
 // @elem LABEL_COEFFIN label 0.0 label "coeff in" 0.0 81.28 85.00
-// @elem LABEL_ABOVE label 0.0 label "above" 0.0 17.00 94.00
 // @elem LABEL_IN label 0.0 label "in" 0.0 8.38 108.50
 // @elem LABEL_SIZE label 0.0 label "size" 0.0 24.58 108.50
 // @elem LABEL_KEEP label 0.0 label "keep" 0.0 40.78 108.50
 // @elem LABEL_QUANT label 0.0 label "quant" 0.0 56.98 108.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 73.18 108.50
 // @elem LABEL_DRYWET label 0.0 label "dry/wet" 0.0 89.38 108.50
-// @elem LABEL_FREEZE label 0.0 label "freeze" 0.0 105.58 108.50
+// @elem LABEL_ABOVE label 0.0 label "above" 0.0 105.58 108.50
 // @elem LABEL_COMP label 0.0 label "comp" 0.0 121.78 108.50
 // @elem LABEL_RES label 0.0 label "res" 0.0 137.98 108.50
 // @elem LABEL_OUT label 0.0 label "out" 0.0 154.18 108.50
@@ -545,8 +524,7 @@ struct QuadrareWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.98f, 100.00f)), module, Quadrare::QUANT_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(73.18f, 100.00f)), module, Quadrare::LEVEL_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(89.38f, 100.00f)), module, Quadrare::DRYWET_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(17.00f, 85.50f)), module, Quadrare::ABOVE_PARAM));
-        addParam(createLightParamCentered<VCVLightBezel<GreenLight>>(mm2px(Vec(105.58f, 100.00f)), module, Quadrare::FREEZE_PARAM, Quadrare::FREEZE_LIGHT));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(105.58f, 100.00f)), module, Quadrare::ABOVE_PARAM));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(121.78f, 100.00f)), module, Quadrare::COMPONENTS_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(137.98f, 100.00f)), module, Quadrare::RESIDUAL_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(154.18f, 100.00f)), module, Quadrare::AUDIO_OUTPUT));

@@ -1,7 +1,8 @@
 // smoke_quadrare — checks for the Walsh codec.
 //
-// Covers the spec's section 17 list, the COEFF OUT -> COEFF IN loopback that
-// the two-block pipeline exists to make exact, and the `above` switch.
+// Covers the spec's section 17 list (less freeze, which the module does not
+// have), the COEFF OUT -> COEFF IN loopback that the two-block pipeline exists
+// to make exact, and the `above` switch.
 //
 // A note on sizes: the 16 sliders always own the lowest 16 coefficients, so at
 // n=16 the window is the whole spectrum and the spec's transparency / mute /
@@ -32,7 +33,6 @@ static void defaults(Quadrare& m) {
     m.params[Quadrare::KEEP_PARAM].setValue(1.f);
     m.params[Quadrare::QUANT_PARAM].setValue(0.f);
     m.params[Quadrare::DRYWET_PARAM].setValue(1.f);
-    m.params[Quadrare::FREEZE_PARAM].setValue(0.f);
 }
 
 // Content across the whole spectrum.
@@ -242,46 +242,6 @@ static void testOverlayReplace() {
     }
 }
 
-// 17.11: freeze holds the vector while the sliders stay live.
-static void testFreeze() {
-    Quadrare m;
-    defaults(m);
-    setSize(m, 2);
-    m.process(makeArgs(0));
-    for (int i = 0; i < 6000; ++i) {
-        m.inputs[Quadrare::AUDIO_INPUT].setVoltage(testSignal(i));
-        m.process(makeArgs(i));
-    }
-    m.freeze = true;
-    float snapshot[kMaxSize];
-    std::copy(m.held, m.held + m.size, snapshot);
-
-    double drift = 0.0, outPeak = 0.0;
-    for (int i = 0; i < 6000; ++i) {
-        m.inputs[Quadrare::AUDIO_INPUT].setVoltage(
-            4.f * std::sin(2.f * M_PI * 777.f * (float) i / SR));
-        m.process(makeArgs(i));
-        outPeak = std::max(outPeak, (double) std::fabs(
-            m.outputs[Quadrare::AUDIO_OUTPUT].getVoltage()));
-    }
-    for (int i = 0; i < m.size; ++i)
-        drift = std::max(drift, (double) std::fabs(m.held[i] - snapshot[i]));
-    report(MOD, "freeze_holds_vector", drift, drift < 1e-9);
-    report(MOD, "freeze_still_sounds", outPeak, outPeak > 1e-3);
-
-    // Sliders and the above switch still carve the frozen vector.
-    setSliders(m, 0.f);
-    setAbove(m, true);
-    for (int i = 0; i < 6 * m.size; ++i) m.process(makeArgs(i));
-    double mutedPeak = 0.0;
-    for (int i = 0; i < 6 * m.size; ++i) {
-        m.process(makeArgs(i));
-        mutedPeak = std::max(mutedPeak, (double) std::fabs(
-            m.outputs[Quadrare::AUDIO_OUTPUT].getVoltage()));
-    }
-    report(MOD, "freeze_sliders_live", mutedPeak, mutedPeak < 1e-4);
-}
-
 // KEEP and QUANT act on the whole transform, not just the window.
 static void testLossyStage() {
     Quadrare m;
@@ -342,5 +302,5 @@ static void testStability() {
 }
 
 SMOKE_MAIN(testTransparent, testGainCases, testAboveSwitch, testComponentsSum,
-           testCoeffLoopback, testOverlayReplace, testFreeze, testLossyStage,
+           testCoeffLoopback, testOverlayReplace, testLossyStage,
            testSynthesizerMode, testStability)

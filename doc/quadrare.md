@@ -97,13 +97,12 @@ instrument, not a shortcoming.
 | control | function |
 |---------|----------|
 | **0 – 15** | sixteen bipolar coefficient gains, −1 to +1, default +1. See above |
-| **above** | everything outside the window: **pass** it through, or **mute** it |
+| **above** | switch, in the bottom row: **pass** everything outside the window through, or **mute** it |
 | **size** | 16 to 512 samples per block, zooming the window as tabulated |
 | **keep** | retain only the *k* largest-magnitude coefficients, from all of them down to one |
 | **quant** | coarsen every coefficient to a grid, from off to 2 levels |
 | **level** | output gain, 0 to 2, unity at noon |
 | **dry/wet** | crossfade between the latency-matched dry signal and the reconstruction |
-| **freeze** | hold the current coefficient vector and keep rebuilding from it |
 
 | jack | |
 |------|--|
@@ -214,22 +213,6 @@ amplitude follows the analysis. With **above** muted they sum exactly to the
 wet signal; with **above** passing they sum to the windowed part of it. Feed
 it to pavo for a spread, or take individual channels for per-band routing.
 
-## freeze
-
-Holds the whole coefficient vector and keeps rebuilding blocks from it,
-producing a periodic waveform at the block rate. It is a sample and hold on
-the transform, applied at a block boundary so you never catch a partial
-vector.
-
-The sliders and **above** stay live under freeze, so you can carve the held
-vector after capturing it, and **coeff in** is still read every block. What it
-sounds like depends on **size**: a 3 kHz whistle at 16, a 94 Hz drone with
-harmonic content at 512.
-
-Freeze is not saved with the patch. The held vector is not stored either, so
-restoring it on would leave the module rebuilding silence with no way to tell
-why.
-
 ## Tips
 
 - Leave **size** at 256 to start. 16 is the most extreme setting, not the
@@ -247,5 +230,3 @@ why.
   time in a way no filter does.
 - Cross-patch two quadrares at the same size: take **coeff out** from one into
   the other's **coeff in** and each coefficient gets the other signal's value.
-- **freeze** plus slider moves is a whole instrument. Capture a chord, then
-  play the sixteen coefficients by hand.
