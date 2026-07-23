@@ -1,7 +1,7 @@
 {
   "slug": "forsitan",
   "name": "forsitan modulare",
-  "version": "2.9.1",
+  "version": "2.10.0",
   "license": "GPL-3.0-or-later",
   "brand": "forsitan modulare",
   "author": "Giampaolo Guiducci",
@@ -235,6 +235,17 @@
         "Drone",
         "Physical modeling",
         "Distortion"
+      ]
+    },
+    {
+      "slug": "vespae",
+      "name": "vespae",
+      "description": "Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, built from CMOS inverters on a single unipolar supply. Simultaneous LP/BP/HP/notch, drive and a supply-headroom grit control for its asymmetric clipping, self-limiting resonance and cutoff-dependent Q.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/vespae.md",
+      "tags": [
+        "Filter",
+        "Distortion",
+        "Hardware clone"
       ]
     }
   ]

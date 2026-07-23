@@ -29,3 +29,4 @@ extern Model* modelTextor;
 extern Model* modelImber;
 extern Model* modelSylla;
 extern Model* modelGuttur;
+extern Model* modelVespae;
