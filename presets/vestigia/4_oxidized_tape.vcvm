@@ -1,0 +1,51 @@
+{
+  "plugin": "forsitan",
+  "model": "vestigia",
+  "version": "2.12.0",
+  "params": [
+    {
+      "value": 0.5,
+      "id": 0
+    },
+    {
+      "value": 0.5,
+      "id": 1
+    },
+    {
+      "value": 0.8,
+      "id": 2
+    },
+    {
+      "value": 0.5,
+      "id": 3
+    },
+    {
+      "value": 0.45,
+      "id": 4
+    },
+    {
+      "value": 0.4,
+      "id": 5
+    },
+    {
+      "value": 0.3,
+      "id": 6
+    },
+    {
+      "value": 0.55,
+      "id": 7
+    },
+    {
+      "value": 0.5,
+      "id": 8
+    },
+    {
+      "value": 1.0,
+      "id": 9
+    },
+    {
+      "value": 1.0,
+      "id": 10
+    }
+  ]
+}
