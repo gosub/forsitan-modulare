@@ -5,8 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.9.1] - unreleased
+## [2.10.0] - unreleased
 ### Added
+  - **vespae**, a new module: the Wasp filter — the state-variable
+    filter Chris Huggett designed for the 1978 EDP Wasp, in its
+    Doepfer A-124 form. Built from CD4069 CMOS inverters instead of
+    op-amps and run from a single unipolar supply, both to save money,
+    and dirty for exactly those reasons: the inverters clip
+    asymmetrically about a switching threshold that is not quite
+    mid-supply, the OTAs saturate and drag the cutoff down with the
+    signal, and a diode pair across the resonance network clamps the
+    feedback once it gets loud. **lp**, **bp**, **hp** and **notch**
+    come out simultaneously. **drive** is the Wasp's own level pot
+    (unity at noon, where a ±5 V signal sits right at the rails);
+    **grit** is the supply headroom, morphing between the soft
+    tanh-dominated compression of a roomy rail and the hard slam of a
+    mean one, and deciding how long the diode clamp lets the resonance
+    run. The circuit's quirks are kept, not smoothed: maximum Q falls
+    as the filter opens (≈ 10.3 at 640 Hz, ≈ 3.9 at 10 kHz), the
+    resonance path is a frequency-dependent shelf rather than a plain
+    gain, and self-oscillation drifts flat as it gets loud.
+    Oversampling 1×–16× in the context menu, default 2×, about 1 % of
+    one core. Topology, component values and nonlinearity shapes from
+    Köper, Holters, Esqueda and Parker, "A Virtual Analog Model of the
+    EDP Wasp VCF" (DAFx-22); see doc/vespae.md for what is modelled,
+    simplified and deliberately changed
   - **tabes**: **dub**, an overdub button and gate with a **lvl**
     trimpot. The live input is added at the write head, so layers can
     be built up over the loop while the whole stack keeps decaying.

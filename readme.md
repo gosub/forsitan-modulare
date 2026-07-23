@@ -31,6 +31,7 @@ A collection of VCV Rack modules.
 | [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing — drunk clocks, morphing constellations, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
 | [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine synthesis families (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
 | [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters, 20 morphing factory banks (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
+| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, dirty because it is built from CMOS inverters on a single unipolar supply — LP/BP/HP/notch at once, drive and grit | [doc/vespae.md](doc/vespae.md) |
 
 ## Tools
 
@@ -82,6 +83,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **imber** | rain shower, downpour (a generative rain of samples, inspired by Giorgio Sancristoforo's Haiku) |
 | **sylla** | *almost Latin* — a clipped *syllaba*, syllable: haiku are counted in syllables, and sylla speaks one small sound at a time |
 | **guttur** | throat — the guttural voice, punning on Tom Mudd's Gutter Synthesis it ports |
+| **vespae** | of the wasp (genitive of *vespa*) — Chris Huggett's EDP Wasp filter |
 
 ## Author
 
