@@ -138,6 +138,7 @@ struct Vestigia : Module {
     enum ParamId {
         MEMORY_PARAM, RECALL_PARAM, AGE_PARAM, SMEAR_PARAM, FORGET_PARAM,
         TEMPER_PARAM, DIRECTION_PARAM, MIX_PARAM, OUTPUT_PARAM,
+        HARMONY_PARAM,  // 0 = consonant (unison/octaves), 1 = inharmonic
         MODE_PARAM,     // 0 listen, 1 breathe, 2 dream
         MEMMODE_PARAM,  // 0 oblivion, 1 remanence, 2 sediment
         FREEZE_PARAM, EVENT_PARAM, CLEAR_PARAM,
@@ -162,7 +163,7 @@ struct Vestigia : Module {
 
     static constexpr float kMaxSeconds = 32.f;  // allocation ceiling
     static constexpr int kMaxRegions = 16;
-    static constexpr int kMaxHeads = 2;
+    static constexpr int kMaxHeads = 4;
     static constexpr int kMaxDescriptors = 16;
     static constexpr int kCells = 120;
 
@@ -228,10 +229,12 @@ struct Vestigia : Module {
         float degrade = 0.f;
         float lpState = 0.f, holdVal = 0.f;
         int holdCnt = 0, dropCnt = 0;
+        float dropGain = 1.f, wowPhase = 0.f;
         float jitter = 0.f;
         int fragIdx = -1;
     };
     Head heads[kMaxHeads];
+    int activeHeads() const { return quality == 0 ? 2 : (quality == 2 ? 4 : 3); }
 
     // --- smear / diffusion + feedback ---
     vestigia_dsp::AllPass apL[4], apR[4];
@@ -285,6 +288,7 @@ struct Vestigia : Module {
         configParam(DIRECTION_PARAM, 0.f, 1.f, 0.f, "Reverse probability", "%", 0.f, 100.f);
         configParam(MIX_PARAM, 0.f, 1.f, 0.5f, "Dry / wet", "%", 0.f, 100.f);
         configParam(OUTPUT_PARAM, 0.f, 1.f, 0.5f, "Output level");
+        configParam(HARMONY_PARAM, 0.f, 1.f, 0.25f, "Harmony (consonant to inharmonic)", "%", 0.f, 100.f);
         configSwitch(MODE_PARAM, 0.f, 2.f, 1.f, "Recollection mode", {"Listen", "Breathe", "Dream"});
         configSwitch(MEMMODE_PARAM, 0.f, 2.f, 0.f, "Memory mode", {"Oblivion", "Remanence", "Sediment"});
         configButton(FREEZE_PARAM, "Freeze");
@@ -499,7 +503,10 @@ struct Vestigia : Module {
         for (int k = 0; k < horizonBlocks; k++) {
             const Block& b = blocks[blockIndex(oldest + k)];
             bool inHorizon = b.frame >= 0 && (frame - b.frame) <= (int64_t)(memorySec * sr) + blockLen;
-            bool on = b.active && inHorizon;
+            // keep a guard band behind the write head: the newest blocks are
+            // being (or were just) overwritten, and reading across that seam
+            // clicks, so never let a region reach them
+            bool on = b.active && inHorizon && (k < horizonBlocks - 2);
             if (on) {
                 if (runStart < 0) { runStart = k; eSum = 0; tMax = 0; zSum = 0; rn = 0; peakE = 0; peakK = k; }
                 eSum += b.energy; tMax = std::max(tMax, b.transient); zSum += b.zcr; rn++;
@@ -582,19 +589,42 @@ struct Vestigia : Module {
         return numRegions - 1;
     }
 
-    Head* freeHead() {
-        for (auto& h : heads) if (!h.active) return &h;
-        Head* best = &heads[0]; float bestRemain = 1e9f;
-        for (auto& h : heads) {
-            float remain = (float)((h.len - h.phase) / std::max(0.01, (double)h.speed));
-            if (remain < bestRemain) { bestRemain = remain; best = &h; }
+    // pitch ratio for a recollection: quantized to musical intervals whose
+    // pool widens from consonant (unison + octaves) toward inharmonic as
+    // harmony rises; near the top a continuous detune is layered on so the
+    // memories drift genuinely out of tune.
+    float pitchRatio(float harmony) {
+        // semitone pool, ordered roughly consonant -> dissonant
+        static const int POOL[16] = {0, 12, -12, 7, 5, 19, 4, 9, 3, 8, 2, 10, 6, 1, 11, -7};
+        int allowed = clamp(3 + (int)std::lround(harmony * 13.f), 3, 16);
+        int semi = POOL[(int)(rng.uniform() * allowed) % allowed];
+        float ratio = std::pow(2.f, semi / 12.f);
+        if (harmony > 0.8f) {
+            float cents = rng.bipolar() * (harmony - 0.8f) / 0.2f * 55.f;
+            ratio *= std::pow(2.f, cents / 1200.f);
         }
-        return best;
+        return ratio;
     }
 
-    bool tryRecall(int mode, float memory01, float memorySec, float ageAmt, float temper, float dirProb, float recall01) {
+    // return a free head, or one already in its release tail (stealing a head
+    // mid-note clicks); nullptr if every active head is still sounding.
+    Head* freeHead() {
+        int n = activeHeads();
+        for (int i = 0; i < n; i++) if (!heads[i].active) return &heads[i];
+        Head* best = nullptr; float bestRemain = 1e9f;
+        for (int i = 0; i < n; i++) {
+            float remain = (float)((heads[i].len - heads[i].phase) / std::max(0.01, (double)heads[i].speed));
+            if (remain < bestRemain) { bestRemain = remain; best = &heads[i]; }
+        }
+        if (best && bestRemain < best->releaseSamp) return best;  // already fading out
+        return nullptr;
+    }
+
+    bool tryRecall(int mode, float memory01, float memorySec, float ageAmt, float temper, float dirProb, float recall01, float harmony) {
         int ri = selectRegion(mode, memorySec);
         if (ri < 0) return false;
+        Head* h = freeHead();
+        if (!h) return false;  // all heads busy: skip rather than steal (clicks)
         Region& r = regions[ri];
         // region selection strategy + mode-dependent padding
         float preRoll = (mode == 0 ? 0.005f : mode == 1 ? 0.015f : 0.030f) * sr;
@@ -615,21 +645,24 @@ struct Vestigia : Module {
         if (len > bufLen - 4) len = bufLen - 4;
         base = std::fmod(base, (double)bufLen); if (base < 0) base += bufLen;
 
-        Head* h = freeHead();
         h->active = true;
         h->base = base; h->len = len; h->phase = 0.0;
         h->dir = (rng.uniform() < dirProb) ? -1 : 1;
-        float sp = 1.f + temper * rng.bipolar() * 0.5f - ageAmt * 0.1f * rng.uniform();
-        h->speed = clamp(sp, 0.25f, 2.f);
+        // pitch quantized to musical intervals; temper adds only a tiny wow
+        float ratio = pitchRatio(harmony);
+        h->speed = clamp(ratio * (1.f + temper * rng.bipolar() * 0.02f), 0.25f, 4.f);
         h->amp = 1.f;
         float pan = clamp(0.5f + temper * rng.bipolar() * 0.5f, 0.f, 1.f);
         h->panL = std::cos(pan * 0.5f * (float)M_PI) * 1.41421f;
         h->panR = std::sin(pan * 0.5f * (float)M_PI) * 1.41421f;
         h->age = 0.0;
+        // fades, clamped so short fragments never get a truncated (clicky) edge
         float fadeBase = (mode == 2) ? 0.030f : 0.012f;
-        h->attackSamp = fadeBase * sr;
-        h->releaseSamp = fadeBase * 1.6f * sr;
-        h->lpState = 0.f; h->holdVal = 0.f; h->holdCnt = 0; h->dropCnt = 0; h->jitter = 0.f;
+        float outLen = (float)(len / std::max(0.25, (double)h->speed));
+        h->attackSamp = std::min(fadeBase * sr, outLen * 0.4f);
+        h->releaseSamp = std::min(fadeBase * 1.6f * sr, outLen * 0.4f);
+        h->lpState = 0.f; h->holdVal = 0.f; h->holdCnt = 0; h->dropCnt = 0;
+        h->dropGain = 1.f; h->wowPhase = rng.uniform(); h->jitter = 0.f;
         // descriptor: bump recall count + wear, use its accumulated degradation
         int fi = findFragment(r.startPos, r.length, true);
         frags[fi].recallCount++;
@@ -652,13 +685,12 @@ struct Vestigia : Module {
         // degradation
         float smp = hi;
         if (ageAmt > 0.001f) {
-            // interpolation quality: morph Hermite -> nearest with age
-            int i0 = (int)idx;
-            float nn = 0.5f * (bufL[i0] + bufR[i0]);
-            smp = hi + (nn - hi) * ageAmt;
+            // interpolation quality only collapses toward nearest-neighbour at
+            // high age, so low/mid AGE stays smooth (no stair-step "clicks")
+            float nblend = clamp((ageAmt - 0.4f) / 0.6f, 0.f, 1.f);
+            if (nblend > 0.f) { int i0 = (int)idx; float nn = 0.5f * (bufL[i0] + bufR[i0]); smp = hi + (nn - hi) * nblend; }
             int holdN = 1 + (int)(ageAmt * ageAmt * 14.f);
-            if (h.holdCnt <= 0) { h.holdVal = smp; h.holdCnt = holdN; }
-            h.holdCnt--; smp = h.holdVal;
+            if (holdN > 1) { if (h.holdCnt <= 0) { h.holdVal = smp; h.holdCnt = holdN; } h.holdCnt--; smp = h.holdVal; }
             float bits = 16.f - ageAmt * 12.f;
             float levels = std::pow(2.f, bits);
             smp = std::round(smp * levels) / levels;
@@ -666,17 +698,23 @@ struct Vestigia : Module {
             float a = clamp(fc / sr * 6.2832f, 0.f, 1.f);
             h.lpState += a * (smp - h.lpState); smp = h.lpState;
             // dropouts at high age
-            if (h.dropCnt > 0) { h.dropCnt--; smp = 0.f; }
+            if (h.dropCnt > 0) h.dropCnt--;
             else if (ageAmt > 0.6f && rng.uniform() < (ageAmt - 0.6f) * 0.0008f)
                 h.dropCnt = (int)(rng.range(0.003f, 0.02f) * sr);
         }
+        // dropouts fade in/out (ramping, not a hard zero) to stay click-free
+        h.dropGain += ((h.dropCnt > 0 ? 0.f : 1.f) - h.dropGain) * 0.02f;
+        smp *= h.dropGain;
         float env = 1.f;
         if (h.age < h.attackSamp)
             env = 0.5f * (1.f - std::cos((float)M_PI * (float)h.age / h.attackSamp));
         double remainOut = (h.len - h.phase) / std::max(0.01, (double)h.speed);
         if (remainOut < h.releaseSamp)
             env *= 0.5f * (1.f - std::cos((float)M_PI * (float)remainOut / h.releaseSamp));
-        h.phase += h.speed; h.age += 1.0;
+        // gentle tape wow (age/temper driven), a slow ±<1% pitch waver, not detune
+        h.wowPhase += 2.5f / sr; if (h.wowPhase >= 1.f) h.wowPhase -= 1.f;
+        float wow = 1.f + std::sin(2.f * (float)M_PI * h.wowPhase) * (ageAmt * 0.4f + temper * 0.3f) * 0.008f;
+        h.phase += h.speed * wow; h.age += 1.0;
         if (h.phase >= h.len) h.active = false;
         return smp * env * h.amp;
     }
@@ -695,6 +733,7 @@ struct Vestigia : Module {
         float forget = macro(FORGET_PARAM, FORGET_CV_INPUT);
         float temper = macro(TEMPER_PARAM, TEMPER_CV_INPUT);
         float dirProb = macro(DIRECTION_PARAM, DIRECTION_CV_INPUT);
+        float harmony = params[HARMONY_PARAM].getValue();
         float mix = params[MIX_PARAM].getValue();
         float outLvl = params[OUTPUT_PARAM].getValue() * 2.f;
         int mode = (int)std::round(params[MODE_PARAM].getValue());
@@ -802,9 +841,9 @@ struct Vestigia : Module {
         if (recallAccum > 2.f) recallAccum = 2.f;
         if (mode == 0 && transient > 0.04f && autoCooldown <= 0.f && recall > 0.02f) autoEvent = true;
         if (autoEvent && autoCooldown <= 0.f) {
-            if (tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall)) autoCooldown = 0.03f;
+            if (tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony)) autoCooldown = 0.03f;
         }
-        if (forceEvent) tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall);
+        if (forceEvent) tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony);
 
         // playback heads
         float recL = 0.f, recR = 0.f; int liveHeads = 0;
@@ -938,6 +977,7 @@ struct VestigiaWidget : ModuleWidget {
 // @elem DIRECTION_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem MIX_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem OUTPUT_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem HARMONY_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem MODE_PARAM CKSSThree 2.3 param "" 0.0
 // @elem MEMMODE_PARAM CKSSThree 2.3 param "" 0.0
 // @elem FREEZE_PARAM TL1105 2.6 param "" 0.0
@@ -976,6 +1016,7 @@ struct VestigiaWidget : ModuleWidget {
 // @elem LABEL_DIR label 0.0 label "dir" 0.0 20.00 88.50
 // @elem LABEL_MIX label 0.0 label "mix" 0.0 35.00 88.50
 // @elem LABEL_OUT label 0.0 label "out" 0.0 50.00 88.50
+// @elem LABEL_HARM label 0.0 label "harm" 0.0 67.50 88.50
 // @elem LABEL_FRZ label 0.0 label "frz" 0.0 85.00 87.00
 // @elem LABEL_EVT label 0.0 label "evt" 0.0 100.00 87.00
 // @elem LABEL_CLR label 0.0 label "clr" 0.0 115.00 87.00
@@ -1018,6 +1059,7 @@ struct VestigiaWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.00f, 80.00f)), module, Vestigia::DIRECTION_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.00f, 80.00f)), module, Vestigia::MIX_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(50.00f, 80.00f)), module, Vestigia::OUTPUT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(67.50f, 80.00f)), module, Vestigia::HARMONY_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(13.00f, 44.00f)), module, Vestigia::MODE_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(119.08f, 44.00f)), module, Vestigia::MEMMODE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(85.00f, 80.00f)), module, Vestigia::FREEZE_PARAM));
