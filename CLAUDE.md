@@ -74,7 +74,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | guttur | chaotic resonator drone (Gutter Synthesis port: Duffing oscillator coupled through 2x24 resonant bandpass filters, 20 morphing factory banks) | 121.92mm (24HP) |
 | vespae | Wasp filter (EDP Wasp / Doepfer A-124 emulation: CMOS-inverter SVF on a unipolar supply, simultaneous LP/BP/HP/notch + the A-124 LP-to-HP mix pot with CV, drive + supply-headroom grit, bias/hiss mod trimpots) | 60.96mm (12HP) |
 | quadrare | patchable Walsh-Hadamard codec (16 sliders + 32 jacks onto the transform domain, size-zoomable window, keep/quant lossy stages, residual + per-coefficient component outs) | 111.76mm (22HP) |
-| vestigia | stereo memory effect (endless tape loop, oblivion/remanence/sediment memory modes, block activity map + valid-region recall, listen/breathe/dream recollection modes, age degradation, smear diffusion, protected feedback) | 111.76mm (22HP) |
+| vestigia | stereo memory effect (endless tape loop, oblivion/remanence/sediment memory modes, block activity map + descriptor pool with integrity/wear, listen/breathe/dream recollection modes, similarity weighting, age degradation, modulated diffusion + crossfeed, protected feedback; all macro CV, MEMORY OUT, full context menu, 7 factory presets) | 132.08mm (26HP) |
 
 ## limen module
 

@@ -29,11 +29,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     gate/trigger inputs; event, envelope and chaos outputs; and a linear
     tape display of stored energy, the write head and recall flashes.
     The feedback path is bounded by soft saturation, DC blocking and
-    non-finite guards. The audio buffer is not saved with the patch;
-    only the random seed is, so behavior is reproducible across a
-    reload. 22 HP. First release covers the design document's MVP: two
-    heads, eight region descriptors, 16 s horizon, no external clock,
-    no per-voice polyphony.
+    non-finite guards. Beyond the MVP it implements the design
+    document's later-version features: a memory-descriptor pool with
+    per-region integrity (decaying as the write head passes back over a
+    region) and wear-per-recollection (each replay adds permanent
+    degradation), sonic-similarity weighting in breathe mode, Hermite
+    interpolation that morphs toward nearest-neighbour with age,
+    dropouts at high age, a modulated all-pass diffusion network with
+    stereo crossfeed, cross-fed feedback, and event-centred / region /
+    sub-region selection with mode-dependent pre/post-roll padding. All
+    seven macros have CV, and a MEMORY OUT taps the recalled signal
+    pre-smear. The full context menu is present: quality (Eco/Standard/
+    High descriptor pool), buffer size (4/8/16/32 s), remanence
+    retention, sediment input amount and character (soft/tape/fold),
+    freeze behaviour, mono output, random seed with reseed, chaos-out
+    stepped/bipolar, safety toggles, and bypass/patch memory options.
+    The audio buffer is saved with the patch only when opted in;
+    otherwise just the seed persists, keeping behaviour reproducible.
+    Ships the seven factory presets from the document. 26 HP.
 
 ## [2.11.0] - 2026-07-23
 ### Added
