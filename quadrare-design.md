@@ -78,13 +78,13 @@ spec's 16-point expansion target, realized as the base case.
 `16 / 32 / 64 / 128 / 256`, snapped 5-position knob. 16 bands times the
 16-channel poly cap makes 256 the natural ceiling.
 
-| N | ch per jack | block rate @48k | latency | bin spacing |
+| N | ch per jack | block rate @48k | latency (2N) | bin spacing |
 |---|---|---|---|---|
-| 16 | 1 | 3 kHz | 0.33 ms | 1500 Hz |
-| 32 | 2 | 1.5 kHz | 0.67 ms | 750 Hz |
-| 64 | 4 | 750 Hz | 1.3 ms | 375 Hz |
-| 128 | 8 | 375 Hz | 2.7 ms | 187 Hz |
-| 256 | 16 | 187 Hz | 5.3 ms | 94 Hz |
+| 16 | 1 | 3 kHz | 0.67 ms | 1500 Hz |
+| 32 | 2 | 1.5 kHz | 1.3 ms | 750 Hz |
+| 64 | 4 | 750 Hz | 2.7 ms | 375 Hz |
+| 128 | 8 | 375 Hz | 5.3 ms | 187 Hz |
+| 256 | 16 | 187 Hz | 10.7 ms | 94 Hz |
 
 SIZE does not change which frequencies the sliders address, only the block
 rate and the resolution within each band. That block rate is nonetheless the
@@ -117,6 +117,32 @@ menu item, now operating per channel within each band jack:
 
 Internal slider gains apply before the external substitution, so a replaced
 channel is not multiplied by its slider (spec 7.3 unchanged).
+
+### Two-block pipeline
+
+Found during implementation, and it overrides the spec's section 9. Rack steps
+modules in arbitrary order and copies cable voltages once per frame, so a
+COEFF OUT → COEFF IN patch is a feedback cable and cannot deliver a block's
+coefficients back within that same block. Reading COEFF IN at the boundary
+where COEFF OUT was written would pick up a vector one block stale, and the
+"plain cable is identity" property would quietly fail: the wet path would run
+a block behind the dry, so RESIDUAL would be non-null and DRY/WET would mix
+misaligned copies.
+
+So the module analyzes at one boundary and reconstructs at the next:
+
+```
+boundary j    analyze block j -> C_j, publish C_j on COEFF OUT
+              read COEFF IN (holds C_{j-1}), substitute into C_{j-1},
+              inverse transform -> plays during block j+1
+```
+
+By the time COEFF IN is read, a full block has passed since the matching
+COEFF OUT was written, so any cable delay is long gone and the returned values
+always pair with the vector they came from. Latency is `2N` samples, constant
+whether or not anything is patched, and the dry path is delayed to match.
+`test/smoke_quadrare.cpp` verifies this with a deliberately one-frame-delayed
+loopback in both Overlay and Replace.
 
 ## KEEP and QUANT
 
