@@ -57,10 +57,10 @@ separate from the memory modes:
 At high **recall** or low **memory** the engine may extract a smaller
 sub-region from a longer phrase instead of replaying the whole thing.
 
-All three modes react to a source signal that the context menu selects —
-**dry** (the input, the default), the **mix**, or the **wet**
-recollections themselves. Listening to the wet output makes the recall
-engine self-triggering: recollections beget more recollections, a
+All three modes react to a source signal chosen by the **src** switch
+(top right) — **dry** (the input, the default), the **mix**, or the
+**wet** recollections themselves. Listening to the wet output makes the
+recall engine self-triggering: recollections beget more recollections, a
 feedback in the *timing* logic distinct from the audio feedback path.
 The recall clock is otherwise a steady rate (set by **recall** and the
 mode's coupling to that source); **temper** scatters it into irregular
@@ -97,8 +97,11 @@ Each macro knob is a coordinated bundle rather than a single parameter:
 - **smear** — turns distinct fragments into a diffuse, slowly modulated
   all-pass cloud with stereo crossfeed; from discrete repeats up to
   reverb-adjacent texture.
-- **forget** — how fast memory and feedback lose persistence. Low forget
-  lets recalled material feed back and persist; high forget drops it.
+- **forget** — memory persistence. Low forget lets stored regions keep
+  their integrity and be recalled many times; high forget makes them fade
+  (integrity decays faster as the write head passes over them) and be
+  avoided after fewer replays. (Audio feedback is now its own **fb**
+  control, below.)
 - **temper** — behavioral instability: per-fragment position/pitch jitter,
   spatial drift, and (unless switched off in the menu) a scattering of the
   recall *timing* itself — each interval stretches or squeezes by up to
@@ -120,6 +123,15 @@ Each macro knob is a coordinated bundle rather than a single parameter:
 Every continuous control has a CV input that nudges its knob (±5 V ≈
 ±half travel): the six macros and direction in the CV row, and mix,
 output and harmony as a small jack beside each of those knobs.
+
+Two more controls sit in the side margins. The **mode** and **mem**
+(memory-mode) switches are stacked on the left. On the right, the **src**
+switch picks what the recall engine listens to (dry / mix / wet), and the
+**fb** trimpot sets how much of the wet output is fed back into the
+record path — from none, through lush regeneration, up past unity into
+self-oscillation (bounded by soft saturation and a limiter). With
+**src** on wet and **fb** high, vestigia becomes a self-sustaining drone
+generator.
 
 ## Buttons, triggers and outputs
 
@@ -150,8 +162,6 @@ frozen), and the panel flashes on each recollection.
 
 ## Context menu
 
-- **Recall listens to** — dry (input) / mix / wet; the last makes recall
-  self-triggering.
 - **Temper scatters recall timing** — on by default; off keeps the recall
   clock regular.
 - **Quality** — Eco / Standard / High trades CPU for the descriptor pool

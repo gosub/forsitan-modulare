@@ -142,6 +142,8 @@ struct Vestigia : Module {
         MODE_PARAM,     // 0 listen, 1 breathe, 2 dream
         MEMMODE_PARAM,  // 0 oblivion, 1 remanence, 2 sediment
         FREEZE_PARAM, EVENT_PARAM, CLEAR_PARAM,
+        SOURCE_PARAM,   // recall listens to: 0 dry, 1 mix, 2 wet
+        FB_PARAM,       // feedback: wet back into the record path
         PARAMS_LEN
     };
     enum InputId {
@@ -275,7 +277,6 @@ struct Vestigia : Module {
     bool feedbackLimiter = true, softClip = true, preserveTails = true;
     bool bypassClearsMemory = false, saveMemoryWithPatch = false;
     bool temperTiming = true;   // temper scatters the recall clock
-    int senseSource = 0;        // 0 dry (input), 1 mix, 2 wet
 
     int numDescriptors() const { return quality == 0 ? 4 : (quality == 2 ? 16 : 8); }
     int regionCap() const { return quality == 0 ? 6 : (quality == 2 ? 16 : 10); }
@@ -288,7 +289,7 @@ struct Vestigia : Module {
         configParam(RECALL_PARAM, 0.f, 1.f, 0.35f, "Recall rate", "%", 0.f, 100.f);
         configParam(AGE_PARAM, 0.f, 1.f, 0.25f, "Age / degradation", "%", 0.f, 100.f);
         configParam(SMEAR_PARAM, 0.f, 1.f, 0.2f, "Smear", "%", 0.f, 100.f);
-        configParam(FORGET_PARAM, 0.f, 1.f, 0.4f, "Forget", "%", 0.f, 100.f);
+        configParam(FORGET_PARAM, 0.f, 1.f, 0.4f, "Forget (memory persistence)", "%", 0.f, 100.f);
         configParam(TEMPER_PARAM, 0.f, 1.f, 0.15f, "Temper (instability)", "%", 0.f, 100.f);
         configParam(DIRECTION_PARAM, 0.f, 1.f, 0.f, "Reverse probability", "%", 0.f, 100.f);
         configParam(MIX_PARAM, 0.f, 1.f, 0.5f, "Dry / wet", "%", 0.f, 100.f);
@@ -299,6 +300,9 @@ struct Vestigia : Module {
         configButton(FREEZE_PARAM, "Freeze");
         configButton(EVENT_PARAM, "Event (force recall)");
         configButton(CLEAR_PARAM, "Clear memory");
+        configSwitch(SOURCE_PARAM, 0.f, 2.f, 0.f, "Recall source",
+            {"Dry (input)", "Mix", "Wet (self-triggering)"});
+        configParam(FB_PARAM, 0.f, 1.1f, 0.3f, "Feedback (wet into record path)", "%", 0.f, 100.f);
         configInput(IN_L_INPUT, "Audio L");
         configInput(IN_R_INPUT, "Audio R (normalled from L)");
         configInput(FREEZE_INPUT, "Freeze gate");
@@ -375,7 +379,7 @@ struct Vestigia : Module {
         chaosStepped = false; chaosBipolar = true;
         feedbackLimiter = softClip = preserveTails = true;
         bypassClearsMemory = saveMemoryWithPatch = false;
-        temperTiming = true; senseSource = 0;
+        temperTiming = true;
         seed = 0x1234567u; rng.seed(seed);
         sr = 0.f;
     }
@@ -412,7 +416,6 @@ struct Vestigia : Module {
         json_object_set_new(root, "bypassClearsMemory", json_boolean(bypassClearsMemory));
         json_object_set_new(root, "saveMemoryWithPatch", json_boolean(saveMemoryWithPatch));
         json_object_set_new(root, "temperTiming", json_boolean(temperTiming));
-        json_object_set_new(root, "senseSource", json_integer(senseSource));
         if (saveMemoryWithPatch && bufLen > 0) {
             std::vector<int16_t> q(bufLen * 2);
             for (int i = 0; i < bufLen; i++) {
@@ -442,8 +445,6 @@ struct Vestigia : Module {
         getb("bypassClearsMemory", bypassClearsMemory);
         getb("saveMemoryWithPatch", saveMemoryWithPatch);
         getb("temperTiming", temperTiming);
-        geti("senseSource", senseSource);
-        senseSource = clamp(senseSource, 0, 2);
         quality = clamp(quality, 0, 2); bufferSizeIdx = clamp(bufferSizeIdx, 0, 3);
         retentionIdx = clamp(retentionIdx, 0, 3); sedimentAmtIdx = clamp(sedimentAmtIdx, 0, 3);
         sedimentSatIdx = clamp(sedimentSatIdx, 0, 2); freezeMode = clamp(freezeMode, 0, 2);
@@ -554,25 +555,27 @@ struct Vestigia : Module {
         return slot;
     }
 
-    // integrity: descriptors decay as the write head passes over them
-    void decayIntegrity(int memmode, bool frozen) {
+    // integrity: descriptors decay as the write head passes over them;
+    // forget scales how fast they fade (its "memory persistence" role)
+    void decayIntegrity(int memmode, float forget, bool frozen) {
         if (frozen) return;
         int nd = numDescriptors();
         double wp = writePos;
+        float fscale = 0.5f + forget * 1.5f;  // 0.5x..2x the base decay rate
         for (int i = 0; i < nd; i++) {
             Fragment& f = frags[i];
             if (!f.valid) continue;
             double rel = wp - f.startPos;
             if (rel < 0) rel += bufLen;
             if (rel < f.length) {
-                float d = (memmode == 0) ? 0.9990f : (memmode == 1 ? 0.99995f : 0.9997f);
-                f.integrity *= d;
+                float base = (memmode == 0) ? 0.9990f : (memmode == 1 ? 0.99995f : 0.9997f);
+                f.integrity *= 1.f - (1.f - base) * fscale;
                 if (f.integrity < 0.02f) f.valid = false;
             }
         }
     }
 
-    int selectRegion(int mode, float memorySec) {
+    int selectRegion(int mode, float memorySec, float forget) {
         if (numRegions == 0) return -1;
         float weights[kMaxRegions]; float total = 0.f;
         float inZ = clamp(inZcr, 0.f, 1.f);
@@ -593,7 +596,9 @@ struct Vestigia : Module {
             float integ = 1.f, rc = 0.f;
             int fi = findFragment(r.startPos, r.length, false);
             if (fi >= 0) { integ = 0.3f + 0.7f * frags[fi].integrity; rc = (float)frags[fi].recallCount; }
-            float wear = 1.f / (1.f + 0.35f * rc);
+            // forget strengthens the recall-count penalty: forgotten memories
+            // are avoided after fewer replays
+            float wear = 1.f / (1.f + (0.15f + forget * 0.7f) * rc);
             float w = (0.1f + r.score) * ageW * modeW * cool * integ * wear * (0.4f + 0.6f * rng.uniform());
             weights[i] = std::max(0.f, w); total += weights[i];
         }
@@ -634,8 +639,8 @@ struct Vestigia : Module {
         return nullptr;
     }
 
-    bool tryRecall(int mode, float memory01, float memorySec, float ageAmt, float temper, float dirProb, float recall01, float harmony) {
-        int ri = selectRegion(mode, memorySec);
+    bool tryRecall(int mode, float memory01, float memorySec, float ageAmt, float temper, float dirProb, float recall01, float harmony, float forget) {
+        int ri = selectRegion(mode, memorySec, forget);
         if (ri < 0) return false;
         Head* h = freeHead();
         if (!h) return false;  // all heads busy: skip rather than steal (clicks)
@@ -752,6 +757,8 @@ struct Vestigia : Module {
         float outLvl = macro(OUTPUT_PARAM, OUTPUT_CV_INPUT) * 2.f;
         int mode = (int)std::round(params[MODE_PARAM].getValue());
         int memmode = (int)std::round(params[MEMMODE_PARAM].getValue());
+        int senseSource = (int)std::round(params[SOURCE_PARAM].getValue());
+        float fb = params[FB_PARAM].getValue();
         float memorySec = 0.05f * std::pow(bufferSeconds / 0.05f, memory01);
 
         // freeze
@@ -789,13 +796,14 @@ struct Vestigia : Module {
         inPrevSign = sign;
         inZcr = clamp(inZcAccum * 40.f, 0.f, 1.f);
 
-        decayIntegrity(memmode, frozen);
+        decayIntegrity(memmode, forget, frozen);
 
         // write head
         float wL = inL, wR = inR;
         if (!frozen) {
-            float fbGain = clamp((1.f - forget) * 0.9f, 0.f, 0.95f);
-            if (feedbackLimiter) fbGain = std::min(fbGain, 0.9f);
+            // dedicated FB trimpot sets the wet-into-record feedback amount
+            float fbGain = fb;
+            if (feedbackLimiter) fbGain = std::min(fbGain, 1.f);
             float wiL = inL + fbL * fbGain;
             float wiR = inR + fbR * fbGain;
             float ret = retention();
@@ -815,6 +823,8 @@ struct Vestigia : Module {
             }
             if (!std::isfinite(wL)) wL = 0.f;
             if (!std::isfinite(wR)) wR = 0.f;
+            // headroom guard so a hot feedback loop can't run the buffer away
+            wL = clamp(wL, -2.5f, 2.5f); wR = clamp(wR, -2.5f, 2.5f);
             bufL[writePos] = wL; bufR[writePos] = wR;
         } else { wL = bufL[writePos]; wR = bufR[writePos]; }
 
@@ -865,9 +875,9 @@ struct Vestigia : Module {
         if (recallAccum > 3.f) recallAccum = 3.f;
         if (mode == 0 && transient > 0.04f && autoCooldown <= 0.f && recall > 0.02f) autoEvent = true;
         if (autoEvent && autoCooldown <= 0.f) {
-            if (tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony)) autoCooldown = 0.03f;
+            if (tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony, forget)) autoCooldown = 0.03f;
         }
-        if (forceEvent) tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony);
+        if (forceEvent) tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony, forget);
 
         // playback heads
         float recL = 0.f, recR = 0.f; int liveHeads = 0;
@@ -1012,6 +1022,8 @@ struct VestigiaWidget : ModuleWidget {
 // @elem FREEZE_PARAM TL1105 2.6 param "" 0.0
 // @elem EVENT_PARAM TL1105 2.6 param "" 0.0
 // @elem CLEAR_PARAM TL1105 2.6 param "" 0.0
+// @elem SOURCE_PARAM CKSSThree 2.3 param "" 0.0
+// @elem FB_PARAM Trimpot 3.03 param "" 0.0
 // @elem IN_L_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem IN_R_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FREEZE_INPUT PJ301MPort 4.01 input "" 0.0
@@ -1043,8 +1055,10 @@ struct VestigiaWidget : ModuleWidget {
 // @elem LABEL_SMEAR label 0.0 label "smear" 0.0 33.00 65.00
 // @elem LABEL_FORGET label 0.0 label "forget" 0.0 66.04 65.00
 // @elem LABEL_TEMPER label 0.0 label "temper" 0.0 99.08 65.00
-// @elem LABEL_MODE label 0.0 label "mode" 0.0 13.00 52.00
-// @elem LABEL_MEMMODE label 0.0 label "mem" 0.0 119.08 52.00
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 10.00 39.50
+// @elem LABEL_MEMMODE label 0.0 label "mem" 0.0 10.00 61.50
+// @elem LABEL_SOURCE label 0.0 label "src" 0.0 122.00 39.50
+// @elem LABEL_FB label 0.0 label "fb" 0.0 122.00 59.50
 // @elem LABEL_DIR label 0.0 label "dir" 0.0 16.50 84.00
 // @elem LABEL_MIX label 0.0 label "mix" 0.0 38.10 84.00
 // @elem LABEL_OUT label 0.0 label "out" 0.0 59.70 84.00
@@ -1091,8 +1105,10 @@ struct VestigiaWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(32.60f, 75.00f)), module, Vestigia::MIX_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(54.20f, 75.00f)), module, Vestigia::OUTPUT_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(75.80f, 75.00f)), module, Vestigia::HARMONY_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(13.00f, 43.00f)), module, Vestigia::MODE_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(119.08f, 43.00f)), module, Vestigia::MEMMODE_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(10.00f, 31.00f)), module, Vestigia::MODE_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(10.00f, 53.00f)), module, Vestigia::MEMMODE_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(122.00f, 31.00f)), module, Vestigia::SOURCE_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(122.00f, 53.00f)), module, Vestigia::FB_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(99.00f, 75.00f)), module, Vestigia::FREEZE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(111.00f, 75.00f)), module, Vestigia::EVENT_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(123.00f, 75.00f)), module, Vestigia::CLEAR_PARAM));
@@ -1145,8 +1161,6 @@ struct VestigiaWidget : ModuleWidget {
         menu->addChild(createIndexPtrSubmenuItem("Sediment saturation",
             {"Soft", "Tape", "Fold"}, &m->sedimentSatIdx));
         menu->addChild(new MenuSeparator);
-        menu->addChild(createIndexPtrSubmenuItem("Recall listens to",
-            {"Dry (input)", "Mix", "Wet (self-triggering)"}, &m->senseSource));
         menu->addChild(createBoolPtrMenuItem("Temper scatters recall timing", "", &m->temperTiming));
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexPtrSubmenuItem("Freeze behavior",

@@ -175,11 +175,11 @@ static void testVestigia() {
     // finite and bounded (temper timing jitter on).
     Vestigia w;
     long f5 = 0;
-    w.senseSource = 2;        // wet
+    w.params[Vestigia::SOURCE_PARAM].setValue(2.f);    // wet
     w.temperTiming = true;
     w.params[Vestigia::RECALL_PARAM].setValue(0.8f);
     w.params[Vestigia::TEMPER_PARAM].setValue(0.8f);
-    w.params[Vestigia::FORGET_PARAM].setValue(0.1f);   // long feedback persistence
+    w.params[Vestigia::FB_PARAM].setValue(1.0f);       // hot feedback
     w.params[Vestigia::MEMORY_PARAM].setValue(0.7f);
     w.params[Vestigia::MODE_PARAM].setValue(2.f);      // dream
     w.params[Vestigia::MEMMODE_PARAM].setValue(1.f);

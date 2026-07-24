@@ -23,8 +23,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     stored audio (up to four in High quality); each memory deteriorates
     a little more every time it returns. Macro controls for memory
     horizon, recall rate, age (band/rate/bit/jitter degradation), smear
-    (all-pass diffusion), forget (feedback persistence) and temper
-    (instability), plus per-recollection direction and a **harmony**
+    (all-pass diffusion), forget (memory persistence — integrity decay
+    and recall wear) and temper (instability, which also scatters the
+    recall timing), plus per-recollection direction and a **harmony**
     control that pitch-quantizes recalled fragments from consonant
     (unison and octaves, locked in tune with the source) through fifths
     and thirds up to a fully inharmonic detune, and equal-power mix and
@@ -47,7 +48,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     stereo crossfeed, cross-fed feedback, and event-centred / region /
     sub-region selection with mode-dependent pre/post-roll padding.
     Every continuous control has CV, and a MEMORY OUT taps the recalled
-    signal pre-smear. The full context menu is present: quality (Eco/Standard/
+    signal pre-smear. A **src** switch chooses what the recall engine
+    listens to (dry / mix / wet — wet is self-triggering), and an **fb**
+    trimpot feeds the wet output back into the record path up into
+    bounded self-oscillation. The full context menu is present: quality (Eco/Standard/
     High descriptor pool), buffer size (4/8/16/32 s), remanence
     retention, sediment input amount and character (soft/tape/fold),
     freeze behaviour, mono output, random seed with reseed, chaos-out
