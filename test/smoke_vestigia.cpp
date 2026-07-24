@@ -169,6 +169,37 @@ static void testVestigia() {
     }
     report("vestigia", "buffer_restore_nans", rs.nans, rs.nans == 0);
     report("vestigia", "buffer_restore_alive", rs.rms(), rs.rms() > 0.02);
+
+    // 8) "recall listens to wet" is a feedback loop in the recall engine:
+    // seed it with material, then let it self-trigger and confirm it stays
+    // finite and bounded (temper timing jitter on).
+    Vestigia w;
+    long f5 = 0;
+    w.senseSource = 2;        // wet
+    w.temperTiming = true;
+    w.params[Vestigia::RECALL_PARAM].setValue(0.8f);
+    w.params[Vestigia::TEMPER_PARAM].setValue(0.8f);
+    w.params[Vestigia::FORGET_PARAM].setValue(0.1f);   // long feedback persistence
+    w.params[Vestigia::MEMORY_PARAM].setValue(0.7f);
+    w.params[Vestigia::MODE_PARAM].setValue(2.f);      // dream
+    w.params[Vestigia::MEMMODE_PARAM].setValue(1.f);
+    w.params[Vestigia::MIX_PARAM].setValue(0.8f);
+    w.inputs[Vestigia::IN_L_INPUT].channels = 1;
+    float pw = 0.f;
+    for (int i = 0; i < (int)(2 * SR); i++) {          // seed 2 s of tone
+        pw += 300.f / SR; if (pw >= 1.f) pw -= 1.f;
+        w.inputs[Vestigia::IN_L_INPUT].setVoltage(4.f * std::sin(2.f * M_PI * pw));
+        w.process(makeArgs(f5++));
+    }
+    Stats ws;
+    for (int i = 0; i < (int)(20 * SR); i++) {         // then self-trigger
+        w.inputs[Vestigia::IN_L_INPUT].setVoltage(0.f);
+        w.process(makeArgs(f5++));
+        ws.add(w.outputs[Vestigia::OUT_L_OUTPUT].getVoltage());
+        ws.add(w.outputs[Vestigia::OUT_R_OUTPUT].getVoltage());
+    }
+    report("vestigia", "wetsense_nans", ws.nans, ws.nans == 0);
+    report("vestigia", "wetsense_bounded", ws.peak, ws.peak <= 10.01f);
 }
 
 SMOKE_MAIN(testVestigia)

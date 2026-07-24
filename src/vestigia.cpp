@@ -218,7 +218,9 @@ struct Vestigia : Module {
     };
     Fragment frags[kMaxDescriptors];
     double lastPlayedStart = -1e9;
-    float recallAccum = 0.f, autoCooldown = 0.f;
+    float recallAccum = 0.f, autoCooldown = 0.f, recallThresh = 1.f;
+    // previous-sample mix / wet, for the "recall listens to" sources
+    float senseMixMono = 0.f, senseWetMono = 0.f;
 
     struct Head {
         bool active = false;
@@ -272,6 +274,8 @@ struct Vestigia : Module {
     bool chaosStepped = false, chaosBipolar = true;
     bool feedbackLimiter = true, softClip = true, preserveTails = true;
     bool bypassClearsMemory = false, saveMemoryWithPatch = false;
+    bool temperTiming = true;   // temper scatters the recall clock
+    int senseSource = 0;        // 0 dry (input), 1 mix, 2 wet
 
     int numDescriptors() const { return quality == 0 ? 4 : (quality == 2 ? 16 : 8); }
     int regionCap() const { return quality == 0 ? 6 : (quality == 2 ? 16 : 10); }
@@ -314,7 +318,7 @@ struct Vestigia : Module {
         configOutput(OUT_R_OUTPUT, "Audio R");
         configOutput(MEMORY_OUTPUT, "Recalled memory (pre-smear)");
         configOutput(EVENT_OUTPUT, "Event (recall began)");
-        configOutput(ENV_OUTPUT, "Input envelope");
+        configOutput(ENV_OUTPUT, "Envelope of the recall source (dry/mix/wet)");
         configOutput(CHAOS_OUTPUT, "Chaos / internal state");
         configBypass(IN_L_INPUT, OUT_L_OUTPUT);
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
@@ -371,6 +375,7 @@ struct Vestigia : Module {
         chaosStepped = false; chaosBipolar = true;
         feedbackLimiter = softClip = preserveTails = true;
         bypassClearsMemory = saveMemoryWithPatch = false;
+        temperTiming = true; senseSource = 0;
         seed = 0x1234567u; rng.seed(seed);
         sr = 0.f;
     }
@@ -406,6 +411,8 @@ struct Vestigia : Module {
         json_object_set_new(root, "preserveTails", json_boolean(preserveTails));
         json_object_set_new(root, "bypassClearsMemory", json_boolean(bypassClearsMemory));
         json_object_set_new(root, "saveMemoryWithPatch", json_boolean(saveMemoryWithPatch));
+        json_object_set_new(root, "temperTiming", json_boolean(temperTiming));
+        json_object_set_new(root, "senseSource", json_integer(senseSource));
         if (saveMemoryWithPatch && bufLen > 0) {
             std::vector<int16_t> q(bufLen * 2);
             for (int i = 0; i < bufLen; i++) {
@@ -434,6 +441,9 @@ struct Vestigia : Module {
         getb("preserveTails", preserveTails);
         getb("bypassClearsMemory", bypassClearsMemory);
         getb("saveMemoryWithPatch", saveMemoryWithPatch);
+        getb("temperTiming", temperTiming);
+        geti("senseSource", senseSource);
+        senseSource = clamp(senseSource, 0, 2);
         quality = clamp(quality, 0, 2); bufferSizeIdx = clamp(bufferSizeIdx, 0, 3);
         retentionIdx = clamp(retentionIdx, 0, 3); sedimentAmtIdx = clamp(sedimentAmtIdx, 0, 3);
         sedimentSatIdx = clamp(sedimentSatIdx, 0, 2); freezeMode = clamp(freezeMode, 0, 2);
@@ -765,13 +775,16 @@ struct Vestigia : Module {
         float inR = inputs[IN_R_INPUT].isConnected() ? inputs[IN_R_INPUT].getVoltage() * 0.2f : inL;
         float inMono = 0.5f * (inL + inR);
 
-        // input analysis
-        float aMag = std::fabs(inMono);
+        // input analysis — the engine can listen to the dry input, the
+        // wet recollections, or the mix (wet/mix use the previous sample,
+        // so "wet" gives a self-triggering feedback in the recall logic)
+        float sense = (senseSource == 1) ? senseMixMono : (senseSource == 2) ? senseWetMono : inMono;
+        float aMag = std::fabs(sense);
         fastEnv += ((aMag > fastEnv) ? 0.3f : 0.02f) * (aMag - fastEnv);
         slowEnv += ((aMag > slowEnv) ? 0.01f : 0.002f) * (aMag - slowEnv);
         transient = std::max(0.f, fastEnv - slowEnv);
         refLevel += 0.0005f * (fastEnv - refLevel); refLevel = std::max(refLevel, 0.001f);
-        float sign = inMono >= 0.f ? 1.f : -1.f;
+        float sign = sense >= 0.f ? 1.f : -1.f;
         inZcAccum += (((sign != inPrevSign) ? 1.f : 0.f) - inZcAccum) * 0.001f;
         inPrevSign = sign;
         inZcr = clamp(inZcAccum * 40.f, 0.f, 1.f);
@@ -841,8 +854,15 @@ struct Vestigia : Module {
         else if (mode == 2) rate *= 0.25f + 1.75f * (1.f - envNorm);
         recallAccum += rate * dt;
         bool autoEvent = false;
-        if (recallAccum >= 1.f) { recallAccum -= 1.f; autoEvent = true; }
-        if (recallAccum > 2.f) recallAccum = 2.f;
+        // temper can scatter the event clock: each interval's threshold is
+        // re-rolled ±(temper·0.7), so gaps stretch and squeeze but the
+        // average rate is preserved (context-menu switchable)
+        if (recallAccum >= recallThresh) {
+            recallAccum -= recallThresh;
+            autoEvent = true;
+            recallThresh = temperTiming ? clamp(1.f + temper * rng.bipolar() * 0.7f, 0.25f, 1.75f) : 1.f;
+        }
+        if (recallAccum > 3.f) recallAccum = 3.f;
         if (mode == 0 && transient > 0.04f && autoCooldown <= 0.f && recall > 0.02f) autoEvent = true;
         if (autoEvent && autoCooldown <= 0.f) {
             if (tryRecall(mode, memory01, memorySec, ageAmt, temper, dirProb, recall, harmony)) autoCooldown = 0.03f;
@@ -883,8 +903,13 @@ struct Vestigia : Module {
 
         // equal-power dry/wet
         float dg = std::cos(mix * 0.5f * (float)M_PI), wg = std::sin(mix * 0.5f * (float)M_PI);
-        float outL = inL * dg + wetL * wg, outR = inR * dg + wetR * wg;
-        outL *= outLvl; outR *= outLvl;
+        float mixL = inL * dg + wetL * wg, mixR = inR * dg + wetR * wg;
+        // capture what the engine may listen to next sample (±1 domain)
+        senseMixMono = 0.5f * (mixL + mixR);
+        senseWetMono = 0.5f * (wetL + wetR);
+        if (!std::isfinite(senseMixMono)) senseMixMono = 0.f;
+        if (!std::isfinite(senseWetMono)) senseWetMono = 0.f;
+        float outL = mixL * outLvl, outR = mixR * outLvl;
         switch (monoMode) {
             case 1: outR = outL; break;
             case 2: { float m = outL + outR; outL = outR = m; } break;
@@ -1119,6 +1144,10 @@ struct VestigiaWidget : ModuleWidget {
             {"0.5x", "1.0x", "1.5x", "2.0x"}, &m->sedimentAmtIdx));
         menu->addChild(createIndexPtrSubmenuItem("Sediment saturation",
             {"Soft", "Tape", "Fold"}, &m->sedimentSatIdx));
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createIndexPtrSubmenuItem("Recall listens to",
+            {"Dry (input)", "Mix", "Wet (self-triggering)"}, &m->senseSource));
+        menu->addChild(createBoolPtrMenuItem("Temper scatters recall timing", "", &m->temperTiming));
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexPtrSubmenuItem("Freeze behavior",
             {"Gate", "Toggle", "Toggle on rising edge"}, &m->freezeMode));

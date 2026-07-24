@@ -57,6 +57,15 @@ separate from the memory modes:
 At high **recall** or low **memory** the engine may extract a smaller
 sub-region from a longer phrase instead of replaying the whole thing.
 
+All three modes react to a source signal that the context menu selects —
+**dry** (the input, the default), the **mix**, or the **wet**
+recollections themselves. Listening to the wet output makes the recall
+engine self-triggering: recollections beget more recollections, a
+feedback in the *timing* logic distinct from the audio feedback path.
+The recall clock is otherwise a steady rate (set by **recall** and the
+mode's coupling to that source); **temper** scatters it into irregular
+intervals unless you turn that off in the menu.
+
 ## The activity map and descriptors
 
 Recording and recollection are separate systems. The circular buffer says
@@ -90,8 +99,11 @@ Each macro knob is a coordinated bundle rather than a single parameter:
   reverb-adjacent texture.
 - **forget** — how fast memory and feedback lose persistence. Low forget
   lets recalled material feed back and persist; high forget drops it.
-- **temper** — behavioral instability: timing and speed jitter, spatial
-  drift, per-recollection variation. Zero is stable and near-deterministic.
+- **temper** — behavioral instability: per-fragment position/pitch jitter,
+  spatial drift, and (unless switched off in the menu) a scattering of the
+  recall *timing* itself — each interval stretches or squeezes by up to
+  ±70% of temper while the average rate is preserved, so the recollections
+  stop feeling metronomic. Zero is stable and near-deterministic.
 - **direction** — the probability of reverse versus forward playback,
   chosen fresh per recollection (not a crossfade).
 - **harmony** — how the pitch of each recalled fragment relates to the
@@ -138,6 +150,10 @@ frozen), and the panel flashes on each recollection.
 
 ## Context menu
 
+- **Recall listens to** — dry (input) / mix / wet; the last makes recall
+  self-triggering.
+- **Temper scatters recall timing** — on by default; off keeps the recall
+  clock regular.
 - **Quality** — Eco / Standard / High trades CPU for the descriptor pool
   and region count (4 / 8 / 16).
 - **Buffer size** — 4 / 8 / 16 / 32 s of memory.
