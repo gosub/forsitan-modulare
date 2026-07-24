@@ -32,7 +32,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     than freely detuned, heads are never stolen mid-note, dropouts and
     fades ramp, the nearest-neighbour interpolation only appears at high
     age, and recall stays a guard band behind the write head. CV for
-    all seven macros; freeze, event and clear with their
+    all ten continuous controls (macros, direction, mix, output,
+    harmony); freeze, event and clear with their
     gate/trigger inputs; event, envelope and chaos outputs; and a linear
     tape display of stored energy, the write head and recall flashes.
     The feedback path is bounded by soft saturation, DC blocking and
@@ -44,9 +45,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     interpolation that morphs toward nearest-neighbour with age,
     dropouts at high age, a modulated all-pass diffusion network with
     stereo crossfeed, cross-fed feedback, and event-centred / region /
-    sub-region selection with mode-dependent pre/post-roll padding. All
-    seven macros have CV, and a MEMORY OUT taps the recalled signal
-    pre-smear. The full context menu is present: quality (Eco/Standard/
+    sub-region selection with mode-dependent pre/post-roll padding.
+    Every continuous control has CV, and a MEMORY OUT taps the recalled
+    signal pre-smear. The full context menu is present: quality (Eco/Standard/
     High descriptor pool), buffer size (4/8/16/32 s), remanence
     retention, sediment input amount and character (soft/tape/fold),
     freeze behaviour, mono output, random seed with reseed, chaos-out

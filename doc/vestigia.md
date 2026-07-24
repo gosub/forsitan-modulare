@@ -105,8 +105,9 @@ Each macro knob is a coordinated bundle rather than a single parameter:
 - **mix** — equal-power dry/wet.
 - **out** — final output level, unity at 12 o'clock.
 
-Every macro (memory, recall, age, smear, forget, temper, direction) has a
-CV input; each nudges its knob (±5 V ≈ ±half travel).
+Every continuous control has a CV input that nudges its knob (±5 V ≈
+±half travel): the six macros and direction in the CV row, and mix,
+output and harmony as a small jack beside each of those knobs.
 
 ## Buttons, triggers and outputs
 

@@ -149,6 +149,7 @@ struct Vestigia : Module {
         FREEZE_INPUT, EVENT_INPUT, CLEAR_INPUT,
         MEMORY_CV_INPUT, RECALL_CV_INPUT, AGE_CV_INPUT, SMEAR_CV_INPUT,
         FORGET_CV_INPUT, TEMPER_CV_INPUT, DIRECTION_CV_INPUT,
+        MIX_CV_INPUT, OUTPUT_CV_INPUT, HARMONY_CV_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -306,6 +307,9 @@ struct Vestigia : Module {
         configInput(FORGET_CV_INPUT, "Forget CV");
         configInput(TEMPER_CV_INPUT, "Temper CV");
         configInput(DIRECTION_CV_INPUT, "Direction CV");
+        configInput(MIX_CV_INPUT, "Mix CV");
+        configInput(OUTPUT_CV_INPUT, "Output level CV");
+        configInput(HARMONY_CV_INPUT, "Harmony CV");
         configOutput(OUT_L_OUTPUT, "Audio L");
         configOutput(OUT_R_OUTPUT, "Audio R");
         configOutput(MEMORY_OUTPUT, "Recalled memory (pre-smear)");
@@ -733,9 +737,9 @@ struct Vestigia : Module {
         float forget = macro(FORGET_PARAM, FORGET_CV_INPUT);
         float temper = macro(TEMPER_PARAM, TEMPER_CV_INPUT);
         float dirProb = macro(DIRECTION_PARAM, DIRECTION_CV_INPUT);
-        float harmony = params[HARMONY_PARAM].getValue();
-        float mix = params[MIX_PARAM].getValue();
-        float outLvl = params[OUTPUT_PARAM].getValue() * 2.f;
+        float harmony = macro(HARMONY_PARAM, HARMONY_CV_INPUT);
+        float mix = macro(MIX_PARAM, MIX_CV_INPUT);
+        float outLvl = macro(OUTPUT_PARAM, OUTPUT_CV_INPUT) * 2.f;
         int mode = (int)std::round(params[MODE_PARAM].getValue());
         int memmode = (int)std::round(params[MEMMODE_PARAM].getValue());
         float memorySec = 0.05f * std::pow(bufferSeconds / 0.05f, memory01);
@@ -995,6 +999,9 @@ struct VestigiaWidget : ModuleWidget {
 // @elem FORGET_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem TEMPER_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem DIRECTION_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem MIX_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem OUTPUT_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem HARMONY_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem OUT_L_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem OUT_R_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem MEMORY_OUTPUT PJ301MPort 4.01 output "" 0.0
@@ -1005,94 +1012,96 @@ struct VestigiaWidget : ModuleWidget {
 // @elem EVENT_LIGHT SmallLight 1.0 light "" 0.0
 // @elem LEVEL_L_LIGHT SmallLight 1.0 light "" 0.0
 // @elem LEVEL_R_LIGHT SmallLight 1.0 light "" 0.0
-// @elem LABEL_MEMORY label 0.0 label "memory" 0.0 33.00 45.00
-// @elem LABEL_RECALL label 0.0 label "recall" 0.0 66.04 45.00
-// @elem LABEL_AGE label 0.0 label "age" 0.0 99.08 45.00
-// @elem LABEL_SMEAR label 0.0 label "smear" 0.0 33.00 68.00
-// @elem LABEL_FORGET label 0.0 label "forget" 0.0 66.04 68.00
-// @elem LABEL_TEMPER label 0.0 label "temper" 0.0 99.08 68.00
-// @elem LABEL_MODE label 0.0 label "mode" 0.0 13.00 53.00
-// @elem LABEL_MEMMODE label 0.0 label "mem" 0.0 119.08 53.00
-// @elem LABEL_DIR label 0.0 label "dir" 0.0 20.00 88.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 35.00 88.50
-// @elem LABEL_OUT label 0.0 label "out" 0.0 50.00 88.50
-// @elem LABEL_HARM label 0.0 label "harm" 0.0 67.50 88.50
-// @elem LABEL_FRZ label 0.0 label "frz" 0.0 85.00 87.00
-// @elem LABEL_EVT label 0.0 label "evt" 0.0 100.00 87.00
-// @elem LABEL_CLR label 0.0 label "clr" 0.0 115.00 87.00
-// @elem LABEL_IN label 0.0 label "in l" 0.0 8.00 101.50
-// @elem LABEL_INR label 0.0 label "in r" 0.0 18.55 101.50
-// @elem LABEL_FRZIN label 0.0 label "frz" 0.0 29.09 101.50
-// @elem LABEL_EVTIN label 0.0 label "evt" 0.0 39.64 101.50
-// @elem LABEL_CLRIN label 0.0 label "clr" 0.0 50.18 101.50
-// @elem LABEL_MEMCV label 0.0 label "mem" 0.0 60.73 101.50
-// @elem LABEL_RECCV label 0.0 label "rec" 0.0 71.27 101.50
-// @elem LABEL_AGECV label 0.0 label "age" 0.0 81.82 101.50
-// @elem LABEL_SMRCV label 0.0 label "smr" 0.0 92.36 101.50
-// @elem LABEL_FRGCV label 0.0 label "frg" 0.0 102.91 101.50
-// @elem LABEL_TMPCV label 0.0 label "tmp" 0.0 113.45 101.50
-// @elem LABEL_DIRCV label 0.0 label "dir" 0.0 124.00 101.50
-// @elem LABEL_OUTL label 0.0 label "L" 0.0 15.00 116.50
-// @elem LABEL_OUTR label 0.0 label "R" 0.0 36.00 116.50
-// @elem LABEL_MEMOUT label 0.0 label "mem" 0.0 57.00 116.50
-// @elem LABEL_EVTOUT label 0.0 label "evt" 0.0 78.00 116.50
-// @elem LABEL_ENVOUT label 0.0 label "env" 0.0 99.00 116.50
-// @elem LABEL_CHAOSOUT label 0.0 label "chaos" 0.0 120.00 116.50
-// @elem BOX_OUTL panel_box 7.0 box "" 0.0 15.00 111.00
-// @elem BOX_OUTR panel_box 7.0 box "" 0.0 36.00 111.00
-// @elem BOX_MEMOUT panel_box 7.0 box "" 0.0 57.00 111.00
-// @elem BOX_EVTOUT panel_box 7.0 box "" 0.0 78.00 111.00
-// @elem BOX_ENVOUT panel_box 7.0 box "" 0.0 99.00 111.00
-// @elem BOX_CHAOSOUT panel_box 7.0 box "" 0.0 120.00 111.00
+// @elem LABEL_MEMORY label 0.0 label "memory" 0.0 33.00 43.00
+// @elem LABEL_RECALL label 0.0 label "recall" 0.0 66.04 43.00
+// @elem LABEL_AGE label 0.0 label "age" 0.0 99.08 43.00
+// @elem LABEL_SMEAR label 0.0 label "smear" 0.0 33.00 65.00
+// @elem LABEL_FORGET label 0.0 label "forget" 0.0 66.04 65.00
+// @elem LABEL_TEMPER label 0.0 label "temper" 0.0 99.08 65.00
+// @elem LABEL_MODE label 0.0 label "mode" 0.0 13.00 52.00
+// @elem LABEL_MEMMODE label 0.0 label "mem" 0.0 119.08 52.00
+// @elem LABEL_DIR label 0.0 label "dir" 0.0 16.50 84.00
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 38.10 84.00
+// @elem LABEL_OUT label 0.0 label "out" 0.0 59.70 84.00
+// @elem LABEL_HARM label 0.0 label "harm" 0.0 81.30 84.00
+// @elem LABEL_FRZ label 0.0 label "frz" 0.0 99.00 82.00
+// @elem LABEL_EVT label 0.0 label "evt" 0.0 111.00 82.00
+// @elem LABEL_CLR label 0.0 label "clr" 0.0 123.00 82.00
+// @elem LABEL_MEMCV label 0.0 label "mem" 0.0 10.00 101.50
+// @elem LABEL_RECCV label 0.0 label "rec" 0.0 24.00 101.50
+// @elem LABEL_AGECV label 0.0 label "age" 0.0 38.00 101.50
+// @elem LABEL_SMRCV label 0.0 label "smr" 0.0 52.00 101.50
+// @elem LABEL_FRGCV label 0.0 label "frg" 0.0 66.00 101.50
+// @elem LABEL_TMPCV label 0.0 label "tmp" 0.0 80.00 101.50
+// @elem LABEL_FRZIN label 0.0 label "frz" 0.0 99.00 101.50
+// @elem LABEL_EVTIN label 0.0 label "evt" 0.0 111.00 101.50
+// @elem LABEL_CLRIN label 0.0 label "clr" 0.0 123.00 101.50
+// @elem LABEL_IN label 0.0 label "in l" 0.0 10.00 117.00
+// @elem LABEL_INR label 0.0 label "in r" 0.0 22.00 117.00
+// @elem LABEL_OUTL label 0.0 label "L" 0.0 40.00 117.00
+// @elem LABEL_OUTR label 0.0 label "R" 0.0 56.80 117.00
+// @elem LABEL_MEMOUT label 0.0 label "mem" 0.0 73.60 117.00
+// @elem LABEL_EVTOUT label 0.0 label "evt" 0.0 90.40 117.00
+// @elem LABEL_ENVOUT label 0.0 label "env" 0.0 107.20 117.00
+// @elem LABEL_CHAOSOUT label 0.0 label "chaos" 0.0 124.00 117.00
+// @elem BOX_OUTL panel_box 7.0 box "" 0.0 40.00 111.00
+// @elem BOX_OUTR panel_box 7.0 box "" 0.0 56.80 111.00
+// @elem BOX_MEMOUT panel_box 7.0 box "" 0.0 73.60 111.00
+// @elem BOX_EVTOUT panel_box 7.0 box "" 0.0 90.40 111.00
+// @elem BOX_ENVOUT panel_box 7.0 box "" 0.0 107.20 111.00
+// @elem BOX_CHAOSOUT panel_box 7.0 box "" 0.0 124.00 111.00
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 66.04 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(121.92f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(121.92f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(33.00f, 34.00f)), module, Vestigia::MEMORY_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(66.04f, 34.00f)), module, Vestigia::RECALL_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(99.08f, 34.00f)), module, Vestigia::AGE_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(33.00f, 57.00f)), module, Vestigia::SMEAR_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(66.04f, 57.00f)), module, Vestigia::FORGET_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(99.08f, 57.00f)), module, Vestigia::TEMPER_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.00f, 80.00f)), module, Vestigia::DIRECTION_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.00f, 80.00f)), module, Vestigia::MIX_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(50.00f, 80.00f)), module, Vestigia::OUTPUT_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(67.50f, 80.00f)), module, Vestigia::HARMONY_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(13.00f, 44.00f)), module, Vestigia::MODE_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(119.08f, 44.00f)), module, Vestigia::MEMMODE_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(85.00f, 80.00f)), module, Vestigia::FREEZE_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(100.00f, 80.00f)), module, Vestigia::EVENT_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(115.00f, 80.00f)), module, Vestigia::CLEAR_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.00f, 94.00f)), module, Vestigia::IN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.55f, 94.00f)), module, Vestigia::IN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(29.09f, 94.00f)), module, Vestigia::FREEZE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(39.64f, 94.00f)), module, Vestigia::EVENT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.18f, 94.00f)), module, Vestigia::CLEAR_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.73f, 94.00f)), module, Vestigia::MEMORY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(71.27f, 94.00f)), module, Vestigia::RECALL_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(81.82f, 94.00f)), module, Vestigia::AGE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(92.36f, 94.00f)), module, Vestigia::SMEAR_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(102.91f, 94.00f)), module, Vestigia::FORGET_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(113.45f, 94.00f)), module, Vestigia::TEMPER_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(124.00f, 94.00f)), module, Vestigia::DIRECTION_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(15.00f, 109.00f)), module, Vestigia::OUT_L_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(36.00f, 109.00f)), module, Vestigia::OUT_R_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.00f, 109.00f)), module, Vestigia::MEMORY_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(78.00f, 109.00f)), module, Vestigia::EVENT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(99.00f, 109.00f)), module, Vestigia::ENV_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(120.00f, 109.00f)), module, Vestigia::CHAOS_OUTPUT));
-        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(88.50f, 76.00f)), module, Vestigia::FREEZE_LIGHT));
-        addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(103.50f, 76.00f)), module, Vestigia::EVENT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(20.00f, 106.00f)), module, Vestigia::LEVEL_L_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(41.00f, 106.00f)), module, Vestigia::LEVEL_R_LIGHT));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(33.00f, 32.00f)), module, Vestigia::MEMORY_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(66.04f, 32.00f)), module, Vestigia::RECALL_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(99.08f, 32.00f)), module, Vestigia::AGE_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(33.00f, 54.00f)), module, Vestigia::SMEAR_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(66.04f, 54.00f)), module, Vestigia::FORGET_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(99.08f, 54.00f)), module, Vestigia::TEMPER_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 75.00f)), module, Vestigia::DIRECTION_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(32.60f, 75.00f)), module, Vestigia::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(54.20f, 75.00f)), module, Vestigia::OUTPUT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(75.80f, 75.00f)), module, Vestigia::HARMONY_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(13.00f, 43.00f)), module, Vestigia::MODE_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(119.08f, 43.00f)), module, Vestigia::MEMMODE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(99.00f, 75.00f)), module, Vestigia::FREEZE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(111.00f, 75.00f)), module, Vestigia::EVENT_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(123.00f, 75.00f)), module, Vestigia::CLEAR_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.00f, 75.00f)), module, Vestigia::DIRECTION_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.60f, 75.00f)), module, Vestigia::MIX_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.20f, 75.00f)), module, Vestigia::OUTPUT_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(86.80f, 75.00f)), module, Vestigia::HARMONY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 94.00f)), module, Vestigia::MEMORY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(24.00f, 94.00f)), module, Vestigia::RECALL_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.00f, 94.00f)), module, Vestigia::AGE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(52.00f, 94.00f)), module, Vestigia::SMEAR_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.00f, 94.00f)), module, Vestigia::FORGET_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(80.00f, 94.00f)), module, Vestigia::TEMPER_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(99.00f, 94.00f)), module, Vestigia::FREEZE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(111.00f, 94.00f)), module, Vestigia::EVENT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(123.00f, 94.00f)), module, Vestigia::CLEAR_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 109.00f)), module, Vestigia::IN_L_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.00f, 109.00f)), module, Vestigia::IN_R_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.00f, 109.00f)), module, Vestigia::OUT_L_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(56.80f, 109.00f)), module, Vestigia::OUT_R_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(73.60f, 109.00f)), module, Vestigia::MEMORY_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(90.40f, 109.00f)), module, Vestigia::EVENT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(107.20f, 109.00f)), module, Vestigia::ENV_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.00f, 109.00f)), module, Vestigia::CHAOS_OUTPUT));
+        addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(102.50f, 71.00f)), module, Vestigia::FREEZE_LIGHT));
+        addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(114.50f, 71.00f)), module, Vestigia::EVENT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.00f, 106.00f)), module, Vestigia::LEVEL_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(61.80f, 106.00f)), module, Vestigia::LEVEL_R_LIGHT));
         // @layout:end
 
         VestigiaDisplay* disp = new VestigiaDisplay;
         disp->module = module;
         disp->box.pos = mm2px(Vec(8.00f, 9.00f));
-        disp->box.size = mm2px(Vec(116.08f, 14.00f));
+        disp->box.size = mm2px(Vec(116.08f, 13.00f));
         addChild(disp);
     }
 
