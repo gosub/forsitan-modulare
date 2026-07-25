@@ -29,7 +29,7 @@ A collection of VCV Rack modules.
 | [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
 | [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
 | [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
-| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine families, in any root and scale (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
+| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from 27 selectable engines, in any root and scale (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
 | [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
 | [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124, dirty because its state-variable core is built from CMOS inverters on one unipolar supply | [doc/vespae.md](doc/vespae.md) |
 | [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, with the lossy stages of a real codec | [doc/quadrare.md](doc/quadrare.md) |

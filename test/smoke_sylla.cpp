@@ -87,7 +87,7 @@ static void testSylla() {
     // GEN must never start playback: stop the loop, regenerate, stay silent
     tap(0.02f);
     settle(0.1f);
-    m.params[Sylla::FAMILY_PARAM].setValue(8.f);   // micro
+    m.params[Sylla::FAMILY_PARAM].setValue(26.f);  // micro: a short one-shot
     size_t loopLen = regen();
     report("sylla", "gen_swaps_buffer", m.buffer.size(),
            m.buffer.size() != loopLen && m.buffer.size() < SR);
@@ -95,7 +95,7 @@ static void testSylla() {
     report("sylla", "gen_does_not_play", afterGen.rms(), afterGen.rms() < 1e-4);
 
     // back to a long drone loop for the transport tests
-    m.params[Sylla::FAMILY_PARAM].setValue(0.f);   // drone
+    m.params[Sylla::FAMILY_PARAM].setValue(0.f);   // drone pure
     regen();
 
     // one-shot + trigger: an input edge plays the window once, then stops
@@ -151,7 +151,7 @@ static void testSylla() {
     tap(0.02f);
     settle(0.3f);
     steady = maxStep(0.3f);
-    m.params[Sylla::FAMILY_PARAM].setValue(0.f);   // drone: smooth material
+    m.params[Sylla::FAMILY_PARAM].setValue(0.f);   // drone pure: smooth material
     m.params[Sylla::GEN_PARAM].setValue(1.f);
     settle(64.f / SR);
     m.params[Sylla::GEN_PARAM].setValue(0.f);
@@ -229,11 +229,11 @@ static void testSylla() {
     report("sylla", "gate_button_holds", btnHeld.rms(), btnHeld.rms() > 0.01);
     report("sylla", "gate_button_releases", btnFree.rms(), btnFree.rms() < 1e-4);
 
-    // family = random renders from the seed instead of the knob
+    // the last position rolls the weighted pool instead of naming an engine
     m.params[Sylla::GATE_PARAM].setValue(0.f);
-    m.params[Sylla::FAMILY_PARAM].setValue(9.f);   // random
+    m.params[Sylla::FAMILY_PARAM].setValue((float)imber_gen::engineCount());
     size_t prevLen = regen();
-    report("sylla", "random_family_renders", m.buffer.size(),
+    report("sylla", "random_position_renders", m.buffer.size(),
            !m.buffer.empty() && m.buffer.size() != prevLen);
 }
 
@@ -248,7 +248,8 @@ static void testSyllaState() {
         bool v2 = m.familySet == 1
                   && m.rootNote == imber_dsp::kDefaultRoot
                   && m.scaleIndex == imber_dsp::kDefaultScale
-                  && q && q->labels[2] == "Air";
+                  && q && q->labels[10] == "air vowel"
+                  && q->maxValue == (float)imber_gen::engineCount();
         report("sylla", "fresh_defaults_v2", m.familySet, v2);
     }
     {
@@ -261,7 +262,8 @@ static void testSyllaState() {
         SwitchQuantity* q = dynamic_cast<SwitchQuantity*>(
             m.paramQuantities[Sylla::FAMILY_PARAM]);
         report("sylla", "legacy_patch_falls_back_v1", m.familySet,
-               m.familySet == 0 && q && q->labels[2] == "Fragment");
+               m.familySet == 0 && q && q->labels[2] == "Fragment"
+               && q->maxValue == (float)imber_gen::FAM_COUNT);
     }
     {
         Sylla a;
@@ -296,10 +298,37 @@ static void testSyllaState() {
     report("sylla", "seed_reproduces", d1.size(), !d1.empty() && d1 == d2);
     report("sylla", "root_changes_render", up.size(),
            !up.empty() && up != d1);
-    // knob position 2 is v1 "fragment" and v2 "air", disjoint generator
-    // lists, so the same seed cannot land on the same material
-    report("sylla", "family_set_changes_render", v1.size(),
+    // knob position 2 names one engine in v2 (drone FM) and a whole family
+    // in v1 (fragment), so the same seed cannot land on the same material
+    report("sylla", "generator_set_changes_render", v1.size(),
            !v1.empty() && v1 != d1);
+
+    // The point of addressing engines rather than families: a knob position
+    // must keep producing the same engine whatever the seed. The old pool
+    // rolled a member per render, so position 0 could hand back anything
+    // from a pure stack to comb-fed noise.
+    long f2 = 0;
+    auto renderAt = [&](int pos, uint64_t seed) {
+        Sylla m;
+        m.params[Sylla::FAMILY_PARAM].setValue((float)pos);
+        m.sampleSeed = seed;
+        for (int i = 0; i < 600 && m.buffer.empty(); i++) {
+            for (int k = 0; k < 64; k++) m.process(makeArgs(f2++));
+            if (m.buffer.empty())
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return m.buffer;
+    };
+    // micro is the one engine whose buffers are milliseconds rather than
+    // seconds, so length alone identifies it across seeds
+    int micro = imber_gen::engineCount() - 1;
+    bool stable = true;
+    for (uint64_t s = 1; s <= 4 && stable; s++)
+        stable = renderAt(micro, 0x2000ull * s).size() < (size_t)(0.5f * SR);
+    report("sylla", "position_holds_its_engine", stable ? 1 : 0, stable);
+    // and a neighbouring position is a different engine entirely
+    bool neighbour = renderAt(micro - 1, 0x2000ull).size() > (size_t)SR;
+    report("sylla", "neighbour_is_another_engine", neighbour ? 1 : 0, neighbour);
 }
 
 SMOKE_MAIN(testSylla, testSyllaState)

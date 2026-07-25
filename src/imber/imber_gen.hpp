@@ -561,20 +561,27 @@ enum Family {
     FAM_KARPLUS, FAM_SKIP, FAM_MICRO, FAM_COUNT
 };
 
-// Family set v2. Same ten knob positions, reordered into one continuum
-// from bed to point (drone, pad, air, bell, pluck, phrase, dust, broken,
-// micro, random), so the knob is a gesture rather than a menu.
+// The v2 selection: one knob position per generator, not per family.
 //
-// The split between the two sustained families is the excitation, not the
-// register: drone is oscillator-fed (near-pure harmonic stacks, measured
-// spectral flatness ~1e-5), air is noise-fed (flatness 1e-4 to 1e-1).
+// Families used to be pools, and the knob rolled one of their members at
+// every GEN. That made the control dishonest, since its position did not
+// determine the sound: liking what you just got and wanting another take on
+// it was impossible, because pressing GEN moved you to a different engine.
+// So the engines are addressed directly and families survive only as what
+// they always described well, a grouping: they order the knob and they name
+// the positions ("air vowel", "bell body").
+//
+// The order runs as one continuum from bed to point, and the split between
+// the two sustained groups is the excitation, not the register: drone is
+// oscillator-fed (near-pure harmonic stacks, measured spectral flatness
+// ~1e-5), air is noise-fed (flatness 1e-4 to 1e-1).
 //
 // ambient is gone: it was a level and a register, not an excitation, which
 // is why it sounded like a mixture of its neighbours. Its three generators
-// went home to the families they were already made of (tape pad to pad,
-// wash to air, chime to bell). frag's six unrelated recipes split across
-// pluck / phrase / dust, glitch and skip merged into broken, and karplus
-// is renamed for what it sounds like instead of who invented it.
+// went home to the groups they were already made of (tape pad to pad, wash
+// to air, chime to bell). frag's six unrelated recipes split across pluck /
+// phrase / dust, glitch and skip joined as broken, and karplus is named for
+// what it sounds like instead of who invented it.
 enum Family2 {
     FAM2_DRONE, FAM2_PAD, FAM2_AIR, FAM2_BELL, FAM2_PLUCK,
     FAM2_PHRASE, FAM2_DUST, FAM2_BROKEN, FAM2_MICRO, FAM2_COUNT
@@ -610,45 +617,6 @@ inline const GenEntry* loopTable(int* count) {
         {genAmbientWash,    FAM_AMBIENT, 1.1f},
         {genAmbientTapePad, FAM_AMBIENT, 1.0f},
         {genAmbientChime,   FAM_AMBIENT, 0.9f},
-    };
-    *count = (int)(sizeof(table) / sizeof(table[0]));
-    return table;
-}
-
-// The v2 loop pool: the same 22 generators regrouped, plus the two colours
-// the library was missing. genSkip and genMicro stay out of it, exactly as
-// they stay out of imber's loop bank, because they finish themselves and
-// are one-shots rather than beds; broken and micro reach them directly.
-inline const GenEntry* loopTable2(int* count) {
-    static const GenEntry table[] = {
-        {genDronePure,      FAM2_DRONE,  1.0f},
-        {genDroneDetuned,   FAM2_DRONE,  1.0f},
-        {genDroneFm,        FAM2_DRONE,  1.0f},
-        {genDroneSub,       FAM2_DRONE,  0.7f},
-        {genDroneStretched, FAM2_DRONE,  1.1f},
-        {genPadSlow,        FAM2_PAD,    1.2f},
-        {genPadCluster,     FAM2_PAD,    0.9f},
-        {genAmbientTapePad, FAM2_PAD,    1.0f},
-        {genDroneFiltNoise, FAM2_AIR,    1.0f},
-        {genAmbientWash,    FAM2_AIR,    1.1f},
-        {genVowelDrone,     FAM2_AIR,    1.0f},
-        // noise into a comb with feedback to 0.995: pitched by the comb, but
-        // spread over hundreds of teeth, so it measures broader than either
-        // generator above. It sat in drone next to four near-pure stacks.
-        {genDroneComb,      FAM2_AIR,    0.8f},
-        {genBellClassic,    FAM2_BELL,   1.0f},
-        {genBellInharmonic, FAM2_BELL,   0.8f},
-        {genAmbientChime,   FAM2_BELL,   0.9f},
-        {genStruckBody,     FAM2_BELL,   1.0f},
-        {genKarplusPluck,   FAM2_PLUCK,  1.1f},
-        {genFragPluckDirty, FAM2_PLUCK,  1.2f},
-        {genFragMelodic,    FAM2_PHRASE, 1.1f},
-        {genFragChordStab,  FAM2_PHRASE, 0.9f},
-        {genKarplusRun,     FAM2_PHRASE, 0.7f},
-        {genFragStutter,    FAM2_PHRASE, 1.0f},
-        {genFragGranular,   FAM2_DUST,   1.1f},
-        {genFragNoiseBurst, FAM2_DUST,   1.0f},
-        {genGlitchBubbly,   FAM2_BROKEN, 0.8f},
     };
     *count = (int)(sizeof(table) / sizeof(table[0]));
     return table;
@@ -836,10 +804,70 @@ inline void genSkip(Rng& rng, float sr, std::vector<float>& b) {
     safetyClip(b);
 }
 
+// Every v2 engine, in knob order. One table serves both jobs: the knob
+// indexes it directly, and v2's "random" walks the weight column, which is
+// the distribution imber fills its bank from.
+//
+// weight 0 marks the two engines that stay out of that pool, exactly as
+// they stay out of imber's loop bank: they are self-finishing one-shots
+// rather than beds. They are still reachable, by naming them on the knob.
+struct EngineEntry {
+    GenFn fn;
+    int family;
+    float weight;      // 0 = reachable by name, never by a random roll
+    const char* name;
+    bool finished;     // generator already faded and normalized itself
+};
+
+inline const EngineEntry* engineTable(int* count) {
+    static const EngineEntry table[] = {
+        {genDronePure,      FAM2_DRONE,  1.0f, "drone pure",       false},
+        {genDroneDetuned,   FAM2_DRONE,  1.0f, "drone detuned",    false},
+        {genDroneFm,        FAM2_DRONE,  1.0f, "drone FM",         false},
+        {genDroneSub,       FAM2_DRONE,  0.7f, "drone sub",        false},
+        {genDroneStretched, FAM2_DRONE,  1.1f, "drone stretched",  false},
+        {genPadSlow,        FAM2_PAD,    1.2f, "pad slow",         false},
+        {genPadCluster,     FAM2_PAD,    0.9f, "pad cluster",      false},
+        {genAmbientTapePad, FAM2_PAD,    1.0f, "pad tape",         false},
+        {genDroneFiltNoise, FAM2_AIR,    1.0f, "air filtered",     false},
+        {genAmbientWash,    FAM2_AIR,    1.1f, "air wash",         false},
+        {genVowelDrone,     FAM2_AIR,    1.0f, "air vowel",        false},
+        // noise into a comb with feedback to 0.995: pitched by the comb, but
+        // spread over hundreds of teeth, so it measures broader than either
+        // generator above. It sat in drone next to four near-pure stacks.
+        {genDroneComb,      FAM2_AIR,    0.8f, "air comb",         false},
+        {genBellClassic,    FAM2_BELL,   1.0f, "bell classic",     false},
+        {genBellInharmonic, FAM2_BELL,   0.8f, "bell inharmonic",  false},
+        {genAmbientChime,   FAM2_BELL,   0.9f, "bell chime",       false},
+        {genStruckBody,     FAM2_BELL,   1.0f, "bell body",        false},
+        {genKarplusPluck,   FAM2_PLUCK,  1.1f, "pluck clean",      false},
+        {genFragPluckDirty, FAM2_PLUCK,  1.2f, "pluck dirty",      false},
+        {genFragMelodic,    FAM2_PHRASE, 1.1f, "phrase melody",    false},
+        {genFragChordStab,  FAM2_PHRASE, 0.9f, "phrase stab",      false},
+        {genKarplusRun,     FAM2_PHRASE, 0.7f, "phrase run",       false},
+        {genFragStutter,    FAM2_PHRASE, 1.0f, "phrase stutter",   false},
+        {genFragGranular,   FAM2_DUST,   1.1f, "dust grains",      false},
+        {genFragNoiseBurst, FAM2_DUST,   1.0f, "dust bursts",      false},
+        {genGlitchBubbly,   FAM2_BROKEN, 0.8f, "broken glitch",    false},
+        {genSkip,           FAM2_BROKEN, 0.0f, "broken skip",      true},
+        {genMicro,          FAM2_MICRO,  0.0f, "micro",            true},
+    };
+    *count = (int)(sizeof(table) / sizeof(table[0]));
+    return table;
+}
+
+inline int engineCount() {
+    int n;
+    engineTable(&n);
+    return n;
+}
+
 // -------------------------------------------------------- render fronts ---
 
-// one uniform() roll, walked down the weight column
-inline int weightedPick(const GenEntry* table, int count, Rng& rng) {
+// one uniform() roll, walked down the weight column. Templated over the row
+// type so the v1 and v2 tables share it without the v1 arithmetic changing.
+template <typename T>
+inline int weightedPick(const T* table, int count, Rng& rng) {
     float total = 0.f;
     for (int i = 0; i < count; i++)
         total += table[i].weight;
@@ -892,35 +920,27 @@ inline void renderFamily(int family, Rng& rng, float sr, std::vector<float>& b) 
 // distribution. v1's random rolled seed % 9 instead, so it weighted a
 // one-generator family as heavily as a six-generator one and handed out a
 // CD skip or a 3 ms tick 22% of the time.
-inline void renderLoop2(Rng& rng, float sr, std::vector<float>& b) {
+// one named engine, which is what the v2 knob selects
+inline void renderEngine(int engine, Rng& rng, float sr, std::vector<float>& b) {
     int count;
-    const GenEntry* table = loopTable2(&count);
-    table[weightedPick(table, count, rng)].fn(rng, sr, b);
-    finishLoop(b, rng, sr);
+    const EngineEntry* table = engineTable(&count);
+    if (engine < 0 || engine >= count)
+        engine = 0;
+    table[engine].fn(rng, sr, b);
+    if (!table[engine].finished)
+        finishLoop(b, rng, sr);
 }
 
-inline void renderFamily2(int family, Rng& rng, float sr, std::vector<float>& b) {
-    if (family == FAM2_MICRO) { genMicro(rng, sr, b); return; }
+// v2's last knob position: a weighted roll across the loop pool, which is
+// imber's own distribution. The self-finishing one-shots carry weight 0 and
+// so never come up here, exactly as they never enter imber's bank.
+inline void renderLoop2(Rng& rng, float sr, std::vector<float>& b) {
     int count;
-    const GenEntry* table = loopTable2(&count);
-    int matches[32];
-    int nm = familyMatches(table, count, family, matches, 32);
-    // broken is the one family with a self-finished member: genSkip already
-    // fades and normalizes itself, so it sits outside the loop pool and is
-    // appended here as one extra candidate
-    int extra = (family == FAM2_BROKEN) ? 1 : 0;
-    if (!nm && !extra) {
-        table[0].fn(rng, sr, b);
+    const EngineEntry* table = engineTable(&count);
+    int pick = weightedPick(table, count, rng);
+    table[pick].fn(rng, sr, b);
+    if (!table[pick].finished)
         finishLoop(b, rng, sr);
-        return;
-    }
-    int pick = rng.irange(0, nm + extra - 1);
-    if (extra && pick >= nm) {
-        genSkip(rng, sr, b);
-        return;
-    }
-    table[matches[pick]].fn(rng, sr, b);
-    finishLoop(b, rng, sr);
 }
 
 // ----------------------------------------------------------------- bank ---

@@ -218,7 +218,7 @@
     {
       "slug": "sylla",
       "name": "sylla",
-      "description": "Random sample generator and player: ever-new procedural samples, nine families, nothing from disk.",
+      "description": "Random sample generator and player: ever-new procedural samples from 27 selectable engines, nothing from disk.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.12.1/doc/sylla.md",
       "tags": [
         "Sampler",

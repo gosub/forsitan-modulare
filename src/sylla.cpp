@@ -1,15 +1,21 @@
 // sylla.cpp — VCV Rack 2 module
 // sylla (diminutive of Latin syllaba, "syllable") is the small voice of
-// the imber pair: a random sample generator and player. Pick a family
-// (drone, pad, fragment, bell, ambient, glitch, karplus, skip, micro,
-// or random, which lets the seed choose), press GEN, and a worker
-// thread renders a brand new sample from the
+// the imber pair: a random sample generator and player. Pick an engine,
+// press GEN, and a worker thread renders a brand new sample from the
 // shared procedural generator library — nothing is ever loaded from
 // disk, every sound is spoken fresh. The previous sample keeps playing
 // until the new one is ready.
 //
+// ENGINE is a rotary switch over the generators themselves, one per
+// position, grouped and named by family (drone, pad, air, bell, pluck,
+// phrase, dust, broken, micro) and ordered bed to point, with a weighted
+// random as the last stop. It used to select a family and roll one of its
+// members at every render, which made the knob dishonest: its position did
+// not determine the sound, so wanting another take on what you just heard
+// was impossible. Now GEN only changes the seed.
+//
 // Controls:
-//   Knobs : FAMILY (snap), SPEED (0.1–2x, CV adds 1 V/oct), LEN (play
+//   Knobs : ENGINE (snap), SPEED (0.1–2x, CV adds 1 V/oct), LEN (play
 //           window from the start of the buffer), LEVEL
 //   Switch: LOOP (one-shot / loop), GATE (trig / gate mode)
 //   Button: GEN (with busy LED), PLAY (a trigger and a gate source of
@@ -40,18 +46,25 @@
 // crossfade time for playhead jumps (retrigger, or a new sample landing)
 static const float SYLLA_XFADE_SEC = 0.004f;
 
-// The two family sets. Both are ten positions, so the knob keeps its range
-// and its first, second, fourth and last stops mean the same thing in each.
-// v2 is the default; v1 is kept for patches saved before it existed and for
-// anyone who prefers the original grouping.
+// v1, the 2.9 taxonomy: ten positions, each a family the render rolled a
+// member of. Kept so patches saved under it still reproduce.
 static const std::vector<std::string> SYLLA_FAMILIES_V1 = {
     "Drone", "Pad", "Fragment", "Bell", "Ambient", "Glitch",
     "Karplus", "Skip", "Micro", "Random"
 };
-static const std::vector<std::string> SYLLA_FAMILIES_V2 = {
-    "Drone", "Pad", "Air", "Bell", "Pluck",
-    "Phrase", "Dust", "Broken", "Micro", "Random"
-};
+
+// The knob is a rotary switch over the engines themselves, so its position
+// decides the sound and GEN only changes the seed. Families survive as the
+// grouping that orders and names the positions.
+static std::vector<std::string> syllaEngineLabels() {
+    std::vector<std::string> v;
+    int n;
+    const imber_gen::EngineEntry* t = imber_gen::engineTable(&n);
+    for (int i = 0; i < n; i++)
+        v.push_back(t[i].name);
+    v.push_back("Random");
+    return v;
+}
 
 struct Sylla : Module {
     enum ParamId {
@@ -132,7 +145,13 @@ struct Sylla : Module {
 
     Sylla() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configSwitch(FAMILY_PARAM, 0.f, 9.f, 0.f, "Family", SYLLA_FAMILIES_V2);
+        // The range is the wider of the two selections, always. Rack restores
+        // params before dataFromJson runs, so a v2 patch would lose its
+        // position if the knob were still narrow at load; starting wide and
+        // narrowing afterwards is safe in both directions, since a legacy
+        // value can only be 0..9.
+        configSwitch(FAMILY_PARAM, 0.f, (float)imber_gen::engineCount(), 0.f,
+                     "Engine", syllaEngineLabels());
         configButton(GEN_PARAM, "Generate a new sample");
         configButton(TRIG_PARAM, "Play / retrigger");
         configParam(SPEED_PARAM, 0.1f, 2.f, 1.f, "Speed", "x");
@@ -147,12 +166,25 @@ struct Sylla : Module {
         configOutput(EOC_OUTPUT, "End of cycle");
     }
 
-    // the knob tooltip has to name the positions of the set in force
+    // The knob is 28 engines in v2 and 10 families in v1 legacy, so both its
+    // detent count and its tooltip names follow the selection in force.
     void applyFamilyLabels() {
         SwitchQuantity* q =
             dynamic_cast<SwitchQuantity*>(paramQuantities[FAMILY_PARAM]);
-        if (q)
-            q->labels = familySet ? SYLLA_FAMILIES_V2 : SYLLA_FAMILIES_V1;
+        if (!q)
+            return;
+        if (familySet) {
+            q->labels = syllaEngineLabels();
+            q->maxValue = (float)imber_gen::engineCount();
+        }
+        else {
+            q->labels = SYLLA_FAMILIES_V1;
+            q->maxValue = (float)(imber_gen::FAM_COUNT);
+            // coming from the wider knob, park anywhere past the legacy
+            // positions on its last one rather than leaving it out of range
+            if (params[FAMILY_PARAM].getValue() > q->maxValue)
+                params[FAMILY_PARAM].setValue(q->maxValue);
+        }
     }
 
     // a setting that feeds the generators changed: rebuild this very sample
@@ -175,27 +207,27 @@ struct Sylla : Module {
         if (job)   // a render is already in flight; latest request wins later
             return;
         sampleSeed = seed;
-        int family = (int)std::round(params[FAMILY_PARAM].getValue());
+        int pos = (int)std::round(params[FAMILY_PARAM].getValue());
         int set = familySet;
         imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
         std::shared_ptr<Job> j(new Job());
         job = j;
-        std::thread([j, family, set, tune, sr, seed]() {
+        std::thread([j, pos, set, tune, sr, seed]() {
             imber_dsp::Rng rng;
             rng.seed(seed);
             rng.tune = tune;
             if (set == 0) {
                 // v1 "random" picks a family from the seed itself, so a
                 // reload from the saved seed regenerates the same sound
-                int f = family;
+                int f = pos;
                 if (f >= imber_gen::FAM_COUNT)
                     f = (int)(seed % (uint64_t)imber_gen::FAM_COUNT);
                 imber_gen::renderFamily(f, rng, sr, j->buf);
             }
-            else if (family >= imber_gen::FAM2_COUNT)
-                imber_gen::renderLoop2(rng, sr, j->buf);   // random
+            else if (pos >= imber_gen::engineCount())
+                imber_gen::renderLoop2(rng, sr, j->buf);   // the last position
             else
-                imber_gen::renderFamily2(family, rng, sr, j->buf);
+                imber_gen::renderEngine(pos, rng, sr, j->buf);
             j->done.store(true);
         }).detach();
     }
@@ -439,7 +471,7 @@ struct SyllaWidget : ModuleWidget {
 // @elem EOC_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem BUSY_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_FAMILY label 0.0 label "family" 0.0 12.60 29.50
+// @elem LABEL_FAMILY label 0.0 label "engine" 0.0 12.60 29.50
 // @elem LABEL_GEN label 0.0 label "gen" 0.0 30.00 26.00
 // @elem LABEL_SPEED label 0.0 label "speed" 0.0 12.60 49.50
 // @elem LABEL_LEN label 0.0 label "len" 0.0 28.00 49.50
@@ -482,9 +514,22 @@ struct SyllaWidget : ModuleWidget {
         Sylla* m = dynamic_cast<Sylla*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
-        menu->addChild(createIndexSubmenuItem("Family set",
-            {"v2 (drone pad air bell pluck phrase dust broken micro)",
-             "v1 legacy (drone pad fragment bell ambient glitch karplus skip micro)"},
+        // the knob has 28 detents, so offer the same list as a menu for when
+        // you know exactly which engine you want
+        if (m->familySet) {
+            menu->addChild(createIndexSubmenuItem("Engine", syllaEngineLabels(),
+                [m]() {
+                    return (int)std::round(
+                        m->params[Sylla::FAMILY_PARAM].getValue());
+                },
+                [m](int i) {
+                    m->params[Sylla::FAMILY_PARAM].setValue((float)i);
+                }));
+        }
+
+        menu->addChild(createIndexSubmenuItem("Generator selection",
+            {"engines (one per knob position)",
+             "v1 legacy families (2.9, knob rolls a member)"},
             [m]() { return m->familySet ? 0 : 1; },
             [m](int i) {
                 m->familySet = i ? 0 : 1;

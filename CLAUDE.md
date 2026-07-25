@@ -96,7 +96,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | vorax | feedback drone synthesizer (Audrey II port: self-exciting Karplus-Strong loop, reverb, degrading tape echo) | 50.8mm (10HP) |
 | textor | one-knob loop weaver (Fieldtone Weaver clone: 2s capture rewoven per knob move, 3 elements with gates) | 50.8mm (10HP) |
 | imber | generative rain (Haiku-inspired: 8 players on a 2D field, drunk clocks, morphing clock/FX constellations, procedural sample bank with selectable root/scale) | 182.88mm (36HP) |
-| sylla | random sample generator/player (imber's generator library as a standalone voice; two family sets, v2 default and v1 legacy in the menu; selectable root/scale) | 40.64mm (8HP) |
+| sylla | random sample generator/player (imber's generator library as a standalone voice; 27 engines one per knob position, v1 legacy families in the menu; selectable root/scale) | 40.64mm (8HP) |
 | guttur | chaotic resonator drone (Gutter Synthesis port: Duffing oscillator coupled through 2x24 resonant bandpass filters, 20 morphing factory banks) | 121.92mm (24HP) |
 | vespae | Wasp filter (EDP Wasp / Doepfer A-124 emulation: CMOS-inverter SVF on a unipolar supply, simultaneous LP/BP/HP/notch + the A-124 LP-to-HP mix pot with CV, drive + supply-headroom grit, bias/hiss mod trimpots) | 60.96mm (12HP) |
 | quadrare | patchable Walsh-Hadamard codec (16 sliders + 32 jacks onto the transform domain, size-zoomable window, keep/quant lossy stages, residual + per-coefficient component outs) | 162.56mm (32HP) |

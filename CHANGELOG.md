@@ -7,58 +7,57 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.12.1] - 2026-07-25
 ### Added
-  - **sylla**: a second family set, **v2**, now the default for new
-    modules. The same ten knob positions, reordered as one continuum from
-    bed to point: *drone, pad, air, bell, pluck, phrase, dust, broken,
-    micro, random*. The old *ambient* family is dissolved into the
-    families its generators were already made of (its tape pad was a pad
-    with wow instead of static detune, its wash was filtered-noise drone
-    over a quiet chord bed, its chime was the bell routine an octave up at
-    half the level), the *fragment* grab bag splits across pluck / phrase
-    / dust, *glitch* and *skip* merge into *broken*, and *karplus* is
-    renamed for what it sounds like. *random* now rolls the weighted loop
-    pool, the same distribution imber fills its bank from, instead of
-    picking a family uniformly and handing out a CD skip or a 3 ms tick
-    22% of the time. **Family set** in the context menu switches back to
-    the v1 grouping; patches saved before v2 load on v1 automatically and
-    sound exactly as they did.
-  - **sylla**: three new generators for the gaps the regrouping exposed. A
-    sustained **vowel drone** (a glottal pulse train through three
-    formants morphing between two vowels) joins *air*; a noise-excited
-    **struck body** (metal and wood mode sets, gritty attack, short dry
-    ring) joins *bell*, where every other strike was a clean additive sine
-    tail; and a **stretched-partial stack** joins *drone*, carrying eight
-    to fourteen partials at a shallow tilt, detuned off the integer series
-    so the stack beats against itself. The four older drone generators all
-    fall off as 1/h squared over three to six harmonics and read as
-    near-sines, with 2 to 7% of their power above the fundamental against
-    the new one's 35%.
-  - **imber**: selectable **root** and **scale** in the context menu, the
-    same fifteen scales sylla offers, retuning the whole bank. Changing
-    either rebuilds all 192 buffers from the same seed, so the field keeps
-    its world and only its pitch moves; the old bank keeps playing until
-    the new one lands and the sounding players crossfade onto it. The
-    tuning is a setting rather than rolled material, so it survives
-    *Ephemeral*. Patches saved without the keys rebuild their bank
-    bit-identically.
-  - **sylla**: the v2 *drone* family no longer contains the comb-fed noise
-    generator, which moved to *air*. Measured spectral flatness put it at
-    0.11 with ~650 partials next to four siblings at 1e-5 with five to
-    ten, and 25x broader than the filtered-noise generator already in
-    air: white noise into a comb with feedback to 0.995 spreads over
-    hundreds of teeth. The two sustained families now divide by
-    excitation, drone oscillator-fed and air noise-fed, rather than by
-    register.
-  - **sylla**: selectable **root** and **scale** in the context menu, from
-    the same fifteen scales the pages64 modules use. Pitch was hardcoded
-    to minor pentatonic on D, so two syllas could never sit in different
-    keys and a patch was locked to D minor forever. Chord voices follow
-    the scale (m7 on the minor modes, maj7 on major and lydian, dominant
-    7th on mixolydian and hijaz, minor-major 7th on harmonic minor). The
-    default reproduces the old hardcoded tuning exactly, so every saved
-    seed still comes back as itself. Changing root, scale or family set
-    re-renders the current seed, so what you hear is what a reload brings
-    back.
+  - **sylla**: the knob now selects the **engine**, one generator per
+    position, and is renamed from *family* to match. It used to select a
+    family and roll one of its members at every render, so the knob did not
+    determine the sound: liking what you just heard and pressing GEN for
+    another take on it usually moved you to a different engine instead. Now
+    GEN only changes the seed. 27 engines with a weighted *random* as the
+    last stop, grouped and named by family (*drone, pad, air, bell, pluck,
+    phrase, dust, broken, micro*) and ordered bed to point, so the knob is
+    still a gesture; the same list is in the context menu for when 28
+    detents is more than you want to count through.
+  - **sylla**: the generators are regrouped along with it. *ambient* is
+    gone, having been a level and a register rather than an excitation,
+    which is why it sounded like a blend of its neighbours: its tape pad
+    *was* the pad generator with wow instead of static detune, its wash
+    *was* filtered-noise drone over a quiet chord bed, its chime *was* the
+    bell routine an octave up at half the level. The *fragment* grab bag of
+    six unrelated recipes splits across pluck, phrase and dust; *glitch* and
+    *skip* join as *broken*; *karplus* is named for what it sounds like
+    rather than for who invented the algorithm. The two sustained groups
+    now divide by excitation rather than register, *drone* oscillator-fed
+    and *air* noise-fed, which is why comb-fed noise sits in air: measured
+    spectral flatness put it at 0.11 with ~650 partials, against four drone
+    siblings at 1e-5 with five to ten.
+  - **sylla**: three new engines for the gaps that exposed. A sustained
+    **vowel drone** (a glottal pulse train through three formants morphing
+    between two vowels) joins *air*; a noise-excited **struck body** (metal
+    and wood mode sets, gritty attack, short dry ring) joins *bell*, where
+    every other strike was a clean additive sine tail; and a
+    **stretched-partial stack** joins *drone*, carrying eight to fourteen
+    partials at a shallow tilt, detuned off the integer series so the stack
+    beats against itself. The four older drone generators all fall off as
+    1/h squared over three to six harmonics and read as near-sines, with 2
+    to 7% of their power above the fundamental against the new one's 35%.
+  - **sylla**: **Generator selection** in the context menu switches back to
+    the v1 family knob of 2.9, where each of ten positions rolls a member.
+    Patches saved before this load on it automatically and sound exactly as
+    they always did, since a patch stores only a seed and reproduces solely
+    under the selection that rendered it.
+  - **sylla** and **imber**: selectable **root** and **scale** in the
+    context menu, from the same fifteen scales the pages64 modules use.
+    Pitch was hardcoded to minor pentatonic on D, so two syllas could never
+    sit in different keys and a patch was locked to D minor forever. Chord
+    voices follow the scale (m7 on the minor modes, maj7 on major and
+    lydian, dominant 7th on mixolydian and hijaz, minor-major 7th on
+    harmonic minor). The default reproduces the old hardcoded tuning
+    exactly, so every saved seed still comes back as itself. On sylla,
+    changing any generator setting re-renders the current seed, so what you
+    hear is what a reload brings back; on imber it rebuilds all 192 buffers
+    from the same seed, the old bank playing until the new one lands. The
+    tuning is a setting rather than rolled material, so on imber it
+    survives *Ephemeral*.
 ### Changed
   - Every documentation URL in `plugin.json` now points at the release's
     **tag** instead of the `master-v2` branch: the plugin `manualUrl`, all
@@ -66,23 +65,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     serves whatever URLs the installed build declares, so a branch link
     showed someone running an older version the manual for whatever was on
     master that day, describing controls their build did not have.
-    `tools/release/sync_urls.py` rewrites all 26 from the `"version"`
-    field, with a `--check` mode, since hand-maintaining them is what let
-    `changelogUrl` drift.
+    `tools/release/sync_version.py` rewrites all 26 from the `"version"`
+    field and checks them against the newest `CHANGELOG.md` heading, since
+    hand-maintaining them is what let `changelogUrl` drift.
   - Module descriptions in `plugin.json` are one-line summaries again, as
     the SDK asks for. Rack shows this field as the hover tooltip in the
     module browser and does not wrap it, so the longest ones (up to 509
     characters, three sentences of feature list) stretched across the
-    screen and could not be read. Longest is now 99 characters, mean 81,
+    screen and could not be read. Longest is now 110 characters, mean 82,
     down from 509 and 182. Feature enumerations, jack lists and narrow
     asides went; what each module *is*, and whose design it ports or
     clones, stayed.
+  - **Releasing** is documented in `RELEASING.md`, replacing the stale
+    `checklist.md`, and quadrare's design notes moved from a working
+    document in the repo root into `doc/quadrare.md`.
 ### Fixed
   - **sylla**: looping no longer puts a hole in the sound once per lap.
     The playhead jumped from the window end back to the buffer start,
     landing in the 25 ms fade every generated buffer carries at both ends,
     which dropped the output to 0.2-1% of its level at every wrap: an
-    audible throb, worst on exactly the sustained families you would want
+    audible throb, worst on exactly the sustained material you would want
     to loop. Loops now run their laps past the buffer's fade-in and
     crossfade the head back in under the tail with equal-power gains, the
     way imber's read heads already did. One-shot playback still keeps both

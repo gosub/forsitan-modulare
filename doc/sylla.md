@@ -11,63 +11,72 @@ nothing at every launch. sylla exposes that generator library as a
 normal sampler voice: no files, no disk, every sound rendered fresh by
 a background thread while the previous one keeps playing.
 
-## Families
+## Engines
 
-The FAMILY knob (snap) picks which corner of the generator library the
-next GEN press draws from. The ten positions run as one continuum, from
-the most sustained to the most transient, so the knob is a gesture and
-not a menu:
+The **engine** knob is a rotary switch over the generators themselves: one
+position, one engine. Its position decides the character, and GEN only
+decides which sample of that character you get.
 
-| family | character |
-|--------|-----------|
-| **drone** | sustained oscillator cores: additive and detuned stacks, stretched-partial stacks, 2-op FM, driven sub |
-| **pad** | chordal beds: slow multi-voice chords, shimmering clusters, wowing tape pads |
-| **air** | breath and noise: resonant filtered noise, sweeping washes over faint chord beds, comb-fed noise, and vowel drones (a glottal pulse train through morphing formants) |
-| **bell** | struck resonance: additive strikes with harmonic or inharmonic partials, sparse chimes, and noise-excited metal and wood bodies |
-| **pluck** | plucked strings, clean and dirty |
-| **phrase** | figures in time: little melodies, chord stabs, note runs, stutters |
-| **dust** | particles: grain clouds and noise bursts |
-| **broken** | damaged media: CD skips (a frozen segment repeated, comb + tanh, choppy gate) and bubbly sample-and-hold tones |
-| **micro** | tiny one-shots (grains, blips, ticks, chirps, thumps), milliseconds long |
-| **random** | a weighted roll across the whole loop pool, the same distribution [imber](imber.md) fills its bank from |
+That is the whole point of the control. It used to select a *family* and
+roll one of its members at every render, which meant the knob did not
+determine the sound: if you liked what you just heard and pressed GEN for
+another take on it, you often got a different engine instead. Families
+survive as what they always described well, a grouping. They order the knob
+and they name the positions.
 
-The two sustained families divide by excitation rather than by register:
-**drone** is oscillator-fed and **air** is noise-fed. Anything whose
-source is noise lives in air, however firmly a filter or a comb pitches
-it afterwards.
+The order runs as one continuum, from the most sustained to the most
+transient, so the knob is still a gesture:
 
-All families get a light, randomized lo-fi "dirt" pass. Pitch is
-quantized to a scale table, D minor pentatonic by default; see
+| group | engines |
+|-------|---------|
+| **drone** | *pure*, *detuned*, *FM*, *sub*, *stretched* — oscillator-fed stacks, from a near-sine through 2-op FM to a stretched-partial stack that beats against itself |
+| **pad** | *slow*, *cluster*, *tape* — chordal beds, static or wowing |
+| **air** | *filtered*, *wash*, *vowel*, *comb* — noise-fed: resonant noise, sweeping washes, a glottal pulse train through morphing formants, and noise driven into a comb |
+| **bell** | *classic*, *inharmonic*, *chime*, *body* — struck: three additive sets with long tails, plus a noise-excited metal or wood body with a short dry ring |
+| **pluck** | *clean*, *dirty* — Karplus-Strong strings |
+| **phrase** | *melody*, *stab*, *run*, *stutter* — figures in time |
+| **dust** | *grains*, *bursts* — particles |
+| **broken** | *glitch*, *skip* — bubbly sample-and-hold, and CD-skip material |
+| **micro** | tiny one-shots, milliseconds long |
+| **random** | the last position: a weighted roll across the whole loop pool, the same distribution [imber](imber.md) fills its bank from |
+
+Twenty-eight positions is a lot for one knob, so the same list is in the
+right-click menu under **Engine** when you know exactly what you want.
+
+The two sustained groups divide by excitation rather than register: **drone**
+is oscillator-fed and **air** is noise-fed. Anything whose source is noise
+lives in air, however firmly a filter or a comb pitches it afterwards.
+
+All engines get a light, randomized lo-fi "dirt" pass. Pitch is quantized to
+a scale table, D minor pentatonic by default; see
 [Root and scale](#root-and-scale).
 
-### The legacy set
+### The legacy families
 
-sylla shipped in 2.9 with a different grouping, and patches store only a
-seed, so a sample reproduces solely under the taxonomy that rendered it.
-**Family set** in the context menu keeps both: *v1 legacy* is drone, pad,
-fragment, bell, ambient, glitch, karplus, skip, micro, random. Patches
-saved before v2 existed load on v1 automatically and sound exactly as
-they always did. New modules start on v2.
+sylla shipped in 2.9 with a family knob, and patches store only a seed, so a
+sample reproduces solely under the selection that rendered it.
+**Generator selection** in the context menu keeps both: *v1 legacy families*
+gives back the ten-position knob (drone, pad, fragment, bell, ambient,
+glitch, karplus, skip, micro, random), each position rolling a member as it
+used to. Patches saved before the change load on it automatically and sound
+exactly as they always did. New modules start on engines.
 
-What changed, and why:
+Besides addressing engines directly, the current selection differs from v1 in
+what it contains:
 
 - **ambient is gone.** It was a level and a register rather than an
   excitation, which is why it sounded like a blend of its neighbours: its
   tape pad *was* the pad generator with wow instead of static detune, its
   wash *was* filtered-noise drone over a quiet chord bed, its chime *was*
   the bell routine an octave up at half the level. All three moved to the
-  family they were already made of.
+  group they were already made of.
 - **fragment was a grab bag** of six unrelated recipes; it split across
   pluck, phrase and dust. Its dirty pluck is Karplus-Strong, so it sits
   with pluck now.
-- **glitch held a single generator** and skip held one more. They merged
-  into broken.
-- **karplus** is named for what it sounds like instead of for who
-  invented the algorithm.
-- **random** is weighted across the loop pool instead of rolling a family
-  uniformly, which used to weight a one-generator family as heavily as a
-  six-generator one and handed out a CD skip or a 3 ms tick 22% of the
-  time.
+- **karplus** is named for what it sounds like instead of for who invented
+  the algorithm.
+- **three engines are new**: the vowel drone, the struck body and the
+  stretched-partial stack, filling gaps the regrouping exposed.
 
 ## Root and scale
 
@@ -97,9 +106,10 @@ locked to D minor forever.
 
 ## Controls
 
-- **FAMILY** — generator family for the next render (snap knob). Every
-  position, *random* included, derives its sound from the sample's seed,
-  so a reloaded patch always comes back with the same sound.
+- **ENGINE** — which generator the next render uses (snap knob, one
+  position per engine, also in the right-click menu). Every position,
+  *random* included, derives its sound from the sample's seed, so a
+  reloaded patch always comes back with the same sound.
 - **GEN** (button + trigger input) — render a new sample. The yellow LED
   lights while the worker thread is busy; the old sample plays until the
   new one lands. Requests during a render are ignored. GEN only changes
