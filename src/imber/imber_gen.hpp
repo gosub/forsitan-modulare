@@ -936,16 +936,21 @@ static const int kBankSkips = 64;
 static const int kBankMicros = 64;
 
 // progress counts rendered buffers, 0..(loops+skips+micros); abort lets
-// the worker bail early when the module is being torn down
+// the worker bail early when the module is being torn down. tune defaults
+// to the library tuning, so omitting it reproduces every bank built before
+// the scale was selectable. It is set once: seed() only touches the RNG
+// state, so the tuning survives every reseed below.
 inline void buildBank(Bank& bank, uint64_t seed, float sr,
                       std::atomic<int>* progress,
-                      std::atomic<bool>* abort) {
+                      std::atomic<bool>* abort,
+                      const Tuning& tune = Tuning()) {
     bank.seed = seed;
     bank.sr = sr;
     bank.loops.resize(kBankLoops);
     bank.skips.resize(kBankSkips);
     bank.micros.resize(kBankMicros);
     Rng rng;
+    rng.tune = tune;
     int done = 0;
     for (int i = 0; i < kBankLoops; i++) {
         if (abort && abort->load()) return;

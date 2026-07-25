@@ -221,4 +221,87 @@ static void testImber() {
            !m.getParamQuantity(Imber::VON3_PARAM)->randomizeEnabled);
 }
 
-SMOKE_MAIN(testImber)
+// The tuning is a setting rather than rolled material, so it must survive
+// ephemeral mode, default to the library tuning on patches that predate it,
+// and rebuild the bank from the same seed when it changes.
+static void testImberTuning() {
+    {
+        Imber m;
+        report("imber", "default_tuning", m.scaleIndex,
+               m.rootNote == imber_dsp::kDefaultRoot
+               && m.scaleIndex == imber_dsp::kDefaultScale);
+    }
+    {
+        Imber m;
+        m.rootNote = 7;
+        m.scaleIndex = 0;
+        json_t* j = m.dataToJson();
+        Imber n;
+        n.dataFromJson(j);
+        json_decref(j);
+        report("imber", "tuning_round_trips", n.rootNote,
+               n.rootNote == 7 && n.scaleIndex == 0);
+        // ephemeral rerolls the bank and constellations but not the tuning
+        m.ephemeral = true;
+        json_t* j2 = m.dataToJson();
+        Imber e;
+        e.dataFromJson(j2);
+        json_decref(j2);
+        report("imber", "tuning_survives_ephemeral", e.rootNote,
+               e.rootNote == 7 && e.scaleIndex == 0);
+    }
+    {
+        Imber o;
+        json_t* j = json_object();
+        json_object_set_new(j, "bankSeed", json_integer(5));
+        o.dataFromJson(j);
+        json_decref(j);
+        report("imber", "old_patch_default_tuning", o.scaleIndex,
+               o.rootNote == imber_dsp::kDefaultRoot
+               && o.scaleIndex == imber_dsp::kDefaultScale);
+    }
+    // a retune rebuilds all 192 buffers from the same seed, and the old bank
+    // keeps playing until the new one lands
+    Imber m;
+    long frame = 0;
+    m.constRng.seed(7);
+    m.bankSeed = 7;
+    m.process(makeArgs(frame++));
+    int waitedMs = 0;
+    while (m.bankJob && !m.bankJob->done.load() && waitedMs < 60000) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        waitedMs += 20;
+    }
+    m.process(makeArgs(frame++));
+    if (!m.eng.bank) {
+        report("imber", "retune_bank_lands", 0, false);
+        return;
+    }
+    std::vector<float> before = m.eng.bank->loops[0];
+    uint64_t seedBefore = m.bankSeed;
+    for (int i = 0; i < (int)(0.5f * SR); i++) m.process(makeArgs(frame++));
+    m.rootNote = 7;
+    m.scaleIndex = 0;
+    m.bankDirty = true;
+    m.process(makeArgs(frame++));
+    report("imber", "retune_rebuilds", m.bankJob ? 1 : 0, m.bankJob != nullptr);
+    Stats during;
+    for (int i = 0; i < (int)(0.2f * SR); i++) {
+        m.process(makeArgs(frame++));
+        during.add(m.outputs[Imber::LEFT_OUTPUT].getVoltage());
+    }
+    report("imber", "retune_keeps_sounding", during.rms(),
+           during.rms() > 0.001 && during.nans == 0);
+    waitedMs = 0;
+    while (m.bankJob && !m.bankJob->done.load() && waitedMs < 60000) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        waitedMs += 20;
+    }
+    m.process(makeArgs(frame++));
+    report("imber", "retune_new_material", m.eng.bank ? 1 : 0,
+           m.eng.bank && m.eng.bank->loops[0] != before);
+    report("imber", "retune_keeps_seed", (double)m.bankSeed,
+           m.bankSeed == seedBefore);
+}
+
+SMOKE_MAIN(testImber, testImberTuning)

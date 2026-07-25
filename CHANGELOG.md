@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     fall off as 1/h squared over three to six harmonics and read as
     near-sines, with 2 to 7% of their power above the fundamental against
     the new one's 35%.
+  - **imber**: selectable **root** and **scale** in the context menu, the
+    same fifteen scales sylla offers, retuning the whole bank. Changing
+    either rebuilds all 192 buffers from the same seed, so the field keeps
+    its world and only its pitch moves; the old bank keeps playing until
+    the new one lands and the sounding players crossfade onto it. The
+    tuning is a setting rather than rolled material, so it survives
+    *Ephemeral*. Patches saved without the keys rebuild their bank
+    bit-identically.
   - **sylla**: the v2 *drone* family no longer contains the comb-fed noise
     generator, which moved to *air*. Measured spectral flatness put it at
     0.11 with ~650 partials next to four siblings at 1e-5 with five to

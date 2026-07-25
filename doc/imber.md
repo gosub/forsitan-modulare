@@ -179,8 +179,15 @@ permanence is an illusion.
 All generated at seed time from ~22 loop archetypes (drones, pads,
 bells, karplus plucks, fragments, glitch, ambients), 14 micro archetypes
 and the CD-skip chain — see [sylla](sylla.md), which plays the same
-library as a standalone voice. Every pitch snaps to one pentatonic-minor
-table on D; a randomized lo-fi pass keeps it bruised. The skip/micro
+library as a standalone voice. Every pitch snaps to one scale table,
+D minor pentatonic by default; a randomized lo-fi pass keeps it bruised.
+**Root** and **Scale** in the context menu retune the whole bank, from
+the same fifteen scales [sylla](sylla.md) offers, and the chord beds
+follow the scale you pick. Retuning rebuilds all 192 buffers from the
+same seed, so the field keeps its world and only its pitch moves; the
+old bank plays on until the new one lands, then the sounding players
+crossfade onto it. The tuning is a setting rather than rolled material,
+so it survives **Ephemeral**. The skip/micro
 taxonomy, fader ranges, urn selection, drunk timing, effect designs and
 the −1 dBFS soft limit are the reverse-engineered Haiku architecture;
 the exact partials and envelopes are imber's own, tuned by ear.

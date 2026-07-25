@@ -111,6 +111,13 @@ struct Imber : Module {
     std::atomic<int> bankProgressPct{-1};
     uint64_t bankSeed = 0;
     bool ephemeral = false;
+    // what the whole bank is pitched to. Defaults to the library tuning, so
+    // a patch saved without these keys rebuilds its bank bit-identically.
+    // Changing either rebuilds all 192 buffers from the same seed, and
+    // setBank crossfades the sounding players onto the new material.
+    int rootNote = imber_dsp::kDefaultRoot;
+    int scaleIndex = imber_dsp::kDefaultScale;
+    bool bankDirty = false;
     // 0 = original (continuous Haiku bed), 1 = sparse (clocked drops)
     int engineMode = 0;
     float sr = 0.f;
@@ -227,11 +234,12 @@ struct Imber : Module {
         if (bankJob)
             return;
         bankSeed = seed;
+        imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
         std::shared_ptr<BankJob> j(new BankJob());
         bankJob = j;
-        std::thread([j, sampleRate, seed]() {
+        std::thread([j, sampleRate, seed, tune]() {
             imber_gen::buildBank(*j->bank, seed, sampleRate,
-                                 &j->progress, &j->abort);
+                                 &j->progress, &j->abort, tune);
             j->done.store(true);
         }).detach();
     }
@@ -278,6 +286,10 @@ struct Imber : Module {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "ephemeral", json_boolean(ephemeral));
         json_object_set_new(rootJ, "engineMode", json_integer(engineMode));
+        // the tuning is a setting, not rolled material: it is saved and
+        // restored even in ephemeral mode, which rerolls everything else
+        json_object_set_new(rootJ, "root", json_integer(rootNote));
+        json_object_set_new(rootJ, "scale", json_integer(scaleIndex));
         if (!ephemeral) {
             json_object_set_new(rootJ, "bankSeed",
                                 json_integer((json_int_t)bankSeed));
@@ -307,6 +319,11 @@ struct Imber : Module {
             ephemeral = json_boolean_value(j);
         if ((j = json_object_get(rootJ, "engineMode")))
             engineMode = (int)json_integer_value(j);
+        if ((j = json_object_get(rootJ, "root")))
+            rootNote = clamp((int)json_integer_value(j), 0, 11);
+        if ((j = json_object_get(rootJ, "scale")))
+            scaleIndex = clamp((int)json_integer_value(j), 0,
+                               imber_dsp::kScaleCount - 1);
         if (ephemeral)
             return;   // roll everything fresh, as saved nothing
         if ((j = json_object_get(rootJ, "bankSeed")))
@@ -458,6 +475,11 @@ struct Imber : Module {
             uint64_t keep = bankSeed;
             eng.init(sr, constRng.next());
             bankSeed = keep;
+        }
+        // a retuning rebuilds the same seed, so the field keeps its world
+        if (bankDirty && !bankJob) {
+            bankDirty = false;
+            startBank(sr, bankSeed ? bankSeed : constRng.next());
         }
         if (!eng.bank && !bankJob)
             startBank(sr, bankSeed ? bankSeed : constRng.next());
@@ -1017,6 +1039,20 @@ struct ImberWidget : ModuleWidget {
         menu->addChild(createBoolPtrMenuItem(
             "Ephemeral (reroll bank + constellations on load)",
             "", &module->ephemeral));
+
+        std::vector<std::string> notes;
+        for (int i = 0; i < 12; i++)
+            notes.push_back(imber_dsp::noteName(i));
+        menu->addChild(createIndexSubmenuItem("Root", notes,
+            [module]() { return module->rootNote; },
+            [module](int i) { module->rootNote = i; module->bankDirty = true; }));
+
+        std::vector<std::string> scales;
+        for (int i = 0; i < imber_dsp::kScaleCount; i++)
+            scales.push_back(imber_dsp::kScales[i].name);
+        menu->addChild(createIndexSubmenuItem("Scale", scales,
+            [module]() { return module->scaleIndex; },
+            [module](int i) { module->scaleIndex = i; module->bankDirty = true; }));
     }
 };
 
