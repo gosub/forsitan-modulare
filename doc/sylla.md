@@ -79,7 +79,10 @@ What changed, and why:
   start (min 30 ms), with soft window edges.
 - **LEVEL** — output level.
 - **LOOP** switch — *loop* wraps at the window end; *one-shot* stops
-  there.
+  there. A loop wraps through a 25 ms equal-power seam and skips the
+  buffer's own fade-in on later laps, so a drone holds level instead of
+  dipping once per lap. One-shot keeps both buffer fades, where they are
+  the sample's attack and release.
 - **GATE** switch — *trigger* responds to rising edges; *gate* follows
   the level.
 - **PLAY** button — a trigger and a gate source in its own right, so the
@@ -105,7 +108,8 @@ Nothing ever cuts mid-signal. Retriggering a sounding window, and a
 freshly generated sample landing under a playing head, both hand over
 through a 4 ms crossfade: the outgoing audio keeps playing from a
 second read head while the new one comes up under it. Hammer PLAY or
-GEN as fast as you like, it stays clean.
+GEN as fast as you like, it stays clean. Loop wraps are seamed the same
+way, with 25 ms of equal-power overlap.
 
 ## Patching
 

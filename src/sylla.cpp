@@ -310,10 +310,26 @@ struct Sylla : Module {
             float win = std::max(0.03f * args.sampleRate,
                                  params[LEN_PARAM].getValue() * len);
             win = std::min(win, (float)len);
+            // Looping wraps through an equal-power seam instead of jumping.
+            // Two things stand in the way of a clean wrap: the jump itself,
+            // and the 25 ms fade every generated buffer carries at both
+            // ends, which put a hole in the sound once per lap. So a loop
+            // starts its laps past that fade-in (head) and crossfades the
+            // head back in under the tail (xf), the way imber's read heads
+            // do. One-shot keeps both buffer fades: there they are the
+            // sample's own attack and release, which is what you want.
+            float head = loop ? std::min(0.025f * args.sampleRate, 0.1f * win)
+                              : 0.f;
+            float span = win - head;
+            float xf = loop ? std::min(0.025f * args.sampleRate, span * 0.25f)
+                            : 0.f;
             if (pos >= win) {
                 eocPulse.trigger(1e-3f);
-                if (loop)
-                    pos -= win;
+                if (loop) {
+                    pos -= (span - xf);
+                    if (pos >= win)     // LEN just shrank under the playhead
+                        pos = head;
+                }
                 else {
                     // the window has been spoken; in gate mode it stays
                     // quiet until the gate falls and rises again
@@ -325,14 +341,25 @@ struct Sylla : Module {
             wantPlay = playing;
             env +=((wantPlay ? 1.f : 0.f) - env) * (1.f / (0.003f * args.sampleRate));
             if (wantPlay || env > 0.001f) {
-                int i0 = (int)pos;
-                int i1 = std::min(i0 + 1, len - 1);
-                float fr = pos - i0;
-                float smp = buffer[i0] + (buffer[i1] - buffer[i0]) * fr;
-                // window edge fades on top of the buffer's own
+                auto readAt = [&](float p) {
+                    p = imber_dsp::clampf(p, 0.f, (float)(len - 1));
+                    int i0 = (int)p;
+                    int i1 = std::min(i0 + 1, len - 1);
+                    return buffer[i0] + (buffer[i1] - buffer[i0]) * (p - i0);
+                };
+                float smp = readAt(pos);
+                float ov = pos - (win - xf);
+                if (xf >= 1.f && ov > 0.f) {
+                    float u = imber_dsp::clampf(ov / xf, 0.f, 1.f);
+                    smp = smp * std::cos(u * M_PI * 0.5f)
+                          + readAt(head + ov) * std::sin(u * M_PI * 0.5f);
+                }
+                // the first lap still opens on the buffer's own fade-in, so
+                // this only softens a mid-buffer start; the window tail fade
+                // is one-shot only, the seam covers the looping case
                 float fadeIn = std::min(1.f, pos / (0.003f * args.sampleRate));
-                float fadeOut = std::min(1.f, (win - pos)
-                                              / (0.01f * args.sampleRate));
+                float fadeOut = loop ? 1.f
+                    : std::min(1.f, (win - pos) / (0.01f * args.sampleRate));
                 out = smp * env * fadeIn * imber_dsp::clampf(fadeOut, 0.f, 1.f);
                 pos += rate;
             }
