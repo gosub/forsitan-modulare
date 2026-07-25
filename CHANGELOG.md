@@ -22,12 +22,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     22% of the time. **Family set** in the context menu switches back to
     the v1 grouping; patches saved before v2 load on v1 automatically and
     sound exactly as they did.
-  - **sylla**: two new generators for the gaps the regrouping exposed. A
+  - **sylla**: three new generators for the gaps the regrouping exposed. A
     sustained **vowel drone** (a glottal pulse train through three
-    formants morphing between two vowels) joins *air*, and a
-    noise-excited **struck body** (metal and wood mode sets, gritty
-    attack, short dry ring) joins *bell*, where every other strike was a
-    clean additive sine tail.
+    formants morphing between two vowels) joins *air*; a noise-excited
+    **struck body** (metal and wood mode sets, gritty attack, short dry
+    ring) joins *bell*, where every other strike was a clean additive sine
+    tail; and a **stretched-partial stack** joins *drone*, carrying eight
+    to fourteen partials at a shallow tilt, detuned off the integer series
+    so the stack beats against itself. The four older drone generators all
+    fall off as 1/h squared over three to six harmonics and read as
+    near-sines, with 2 to 7% of their power above the fundamental against
+    the new one's 35%.
+  - **sylla**: the v2 *drone* family no longer contains the comb-fed noise
+    generator, which moved to *air*. Measured spectral flatness put it at
+    0.11 with ~650 partials next to four siblings at 1e-5 with five to
+    ten, and 25x broader than the filtered-noise generator already in
+    air: white noise into a comb with feedback to 0.995 spreads over
+    hundreds of teeth. The two sustained families now divide by
+    excitation, drone oscillator-fed and air noise-fed, rather than by
+    register.
   - **sylla**: selectable **root** and **scale** in the context menu, from
     the same fifteen scales the pages64 modules use. Pitch was hardcoded
     to minor pentatonic on D, so two syllas could never sit in different
