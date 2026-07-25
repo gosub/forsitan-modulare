@@ -59,6 +59,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     seed still comes back as itself. Changing root, scale or family set
     re-renders the current seed, so what you hear is what a reload brings
     back.
+### Changed
+  - Module descriptions in `plugin.json` are one-line summaries again, as
+    the SDK asks for. Rack shows this field as the hover tooltip in the
+    module browser and does not wrap it, so the longest ones (up to 509
+    characters, three sentences of feature list) stretched across the
+    screen and could not be read. Longest is now 99 characters, mean 81,
+    down from 509 and 182. Feature enumerations, jack lists and narrow
+    asides went; what each module *is*, and whose design it ports or
+    clones, stayed.
 ### Fixed
   - **sylla**: looping no longer puts a hole in the sound once per lap.
     The playhead jumped from the window end back to the buffer start,

@@ -26,7 +26,7 @@
     {
       "slug": "interea",
       "name": "interea",
-      "description": "Make a chord from a V/Oct input, with quality, voicing and inversion. Harmonize option.",
+      "description": "Turns one V/oct input into a chord, with selectable quality, voicing and inversion.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/interea.md",
       "tags": [
         "Quad",
@@ -55,7 +55,7 @@
     {
       "slug": "pavo",
       "name": "pavo",
-      "description": "Spreader of polyphonic mono signals across the stereo field (Splay Ugen).",
+      "description": "Spreads a polyphonic mono signal across the stereo field (Splay UGen).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/pavo.md",
       "tags": [
         "Panning",
@@ -65,7 +65,7 @@
     {
       "slug": "limen",
       "name": "limen",
-      "description": "TCP + JSON interface for controlling VCV Rack from external tools (e.g. Emacs).",
+      "description": "TCP + JSON server for controlling Rack from external tools.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/limen.md",
       "tags": [
         "Utility"
@@ -94,7 +94,7 @@
     {
       "slug": "pellicula",
       "name": "pellicula",
-      "description": "Exploded 8-voice drum sampler: per-voice sample/pitch/decay/level with knob + CV, poly-normalled matrix, per-voice/poly/mix outs.",
+      "description": "Exploded 8-voice drum sampler: every voice's sample, pitch, decay and level on its own knob and CV.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/pellicula.md",
       "tags": [
         "Drum",
@@ -105,7 +105,7 @@
     {
       "slug": "draen",
       "name": "dr\u00e6n",
-      "description": "Drone synthesizer: two banks of 37 drone engines (dronecaster ports + hyf originals) played from fundamental (hz) and level (amp), with fading engine selection.",
+      "description": "Drone synthesizer: two banks of 37 engines, each played from just a fundamental and a level.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/draen.md",
       "tags": [
         "Oscillator",
@@ -116,7 +116,7 @@
     {
       "slug": "rete",
       "name": "rete",
-      "description": "Feedback integrator network: 8 nodes, random mixing matrix, self-oscillating chaos with per-node gain CVs.",
+      "description": "Feedback integrator network: eight leaky nodes in a random mixing matrix, self-oscillating chaos.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/rete.md",
       "tags": [
         "Oscillator",
@@ -127,7 +127,7 @@
     {
       "slug": "ululo",
       "name": "ululo",
-      "description": "Feedback guitar: six comb strings and a saturating amp in a howling loop, chord-tunable via poly V/oct.",
+      "description": "Feedback guitar: six comb strings and a saturating amp in a howling loop.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/ululo.md",
       "tags": [
         "Effect",
@@ -138,7 +138,7 @@
     {
       "slug": "tabes",
       "name": "tabes",
-      "description": "Disintegration looper: the tape loop degrades a little more on every pass (HF loss, saturation, hiss, dropouts, wow). Overdub to layer new material onto the loop while it decays (the record level doubles as the erase amount, as on tape: sound-on-sound at one end, punch-in replace at the other), loop overlap for ambient blur, an FX send/return that compounds pass over pass, and a loop-locked ramp output. Polyphonic: a poly cable records as a multi-track tape (2 channels = stereo).",
+      "description": "Disintegration looper: a tape loop that degrades a little more on every pass, with overdub.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/tabes.md",
       "tags": [
         "Sampler",
@@ -161,7 +161,7 @@
     {
       "slug": "bulla",
       "name": "bulla",
-      "description": "Rob Hordijk's Blippoo Box: two cross-modulating oscillators, two runglers and a twin-peak filter, between pattern and chaos.",
+      "description": "Rob Hordijk's Blippoo Box: cross-modulating oscillators and runglers, between pattern and chaos.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/bulla.md",
       "tags": [
         "Oscillator",
@@ -172,7 +172,7 @@
     {
       "slug": "perge",
       "name": "perge",
-      "description": "Stereo dynamic sampler and multi-effect: dynamics-gated repeats with random octave/fifth pitch, freeze, glitch, layers, lofi/crush, reverb/smear and tilt filter (AC noises CONTINUA homage).",
+      "description": "Stereo dynamic sampler and multi-effect: gated repeats, freeze, glitch (AC noises CONTINUA homage).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/perge.md",
       "tags": [
         "Sampler",
@@ -184,7 +184,7 @@
     {
       "slug": "vorax",
       "name": "vorax",
-      "description": "Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop with overdrive, filters, reverb and body delay, plus a degrading tape echo (Audrey II port).",
+      "description": "Feedback drone synthesizer: a self-exciting Karplus-Strong string (Audrey II port).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/vorax.md",
       "tags": [
         "Drone",
@@ -195,7 +195,7 @@
     {
       "slug": "textor",
       "name": "textor",
-      "description": "One-knob loop weaver: captures two seconds of audio and reweaves it into ever-new loops and textures, three elements with levels and gate outs (Fieldtone Weaver clone).",
+      "description": "One-knob loop weaver: two seconds of audio, rewoven at every turn (Fieldtone Weaver clone).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/textor.md",
       "tags": [
         "Sampler",
@@ -206,7 +206,7 @@
     {
       "slug": "imber",
       "name": "imber",
-      "description": "Generative rain: 8 sample players on a 2D field where position is routing, driven by drunk-jittered clocks and morphing clock/FX constellations; skip and micro voices, master lo-fi chain, every sound procedurally generated at seed time (inspired by Giorgio Sancristoforo's Haiku).",
+      "description": "Generative rain: eight players on a 2D field where position is routing, over a self-generated bank.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/imber.md",
       "tags": [
         "Sampler",
@@ -218,7 +218,7 @@
     {
       "slug": "sylla",
       "name": "sylla",
-      "description": "Random sample generator and player: renders ever-new procedural samples from nine synthesis families (drone, pad, air, bell, pluck, phrase, dust, broken, micro), in any root and scale, nothing loaded from disk (Haiku-inspired, imber's little voice).",
+      "description": "Random sample generator and player: ever-new procedural samples, nine families, nothing from disk.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/sylla.md",
       "tags": [
         "Sampler",
@@ -229,7 +229,7 @@
     {
       "slug": "guttur",
       "name": "guttur",
-      "description": "Chaotic resonator drone: a forced Duffing oscillator coupled through two banks of 24 resonant bandpass filters, with 20 morphing factory banks, spread scatter and a chaotic aux output (Gutter Synthesis port).",
+      "description": "Chaotic resonator drone: a Duffing oscillator through 48 resonant filters (Gutter Synthesis port).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/guttur.md",
       "tags": [
         "Drone",
@@ -240,7 +240,7 @@
     {
       "slug": "vespae",
       "name": "vespae",
-      "description": "Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, built from CMOS inverters on a single unipolar supply. Simultaneous LP/BP/HP/notch outputs plus the A-124's LP-to-HP mix pot with CV, drive and a supply-headroom grit control, and bias/hiss trimpots that mod the inverters for lopsided clipping and unstable resonance.",
+      "description": "Wasp filter: the EDP Wasp / Doepfer A-124 CMOS state-variable filter, LP/BP/HP/notch at once.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/vespae.md",
       "tags": [
         "Filter",
@@ -251,7 +251,7 @@
     {
       "slug": "quadrare",
       "name": "quadrare",
-      "description": "Patchable Walsh-Hadamard codec: audio is cut into blocks of 16 to 512 samples and transformed into Walsh coefficients. Sixteen bipolar sliders own the lowest sixteen coefficients, each with its own coefficient send and return, so the transform domain is a real insert point; size zooms that window from the whole spectrum down to 0-750 Hz. KEEP thresholds to the largest coefficients and QUANT reduces their bit depth, the two lossy stages of a transform codec. Residual and per-coefficient component outputs.",
+      "description": "Patchable Walsh-Hadamard codec: sliders and jacks reach inside the transform domain.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/quadrare.md",
       "tags": [
         "Effect",
@@ -263,7 +263,7 @@
     {
       "slug": "vestigia",
       "name": "vestigia",
-      "description": "Stereo memory effect: an endless tape loop continuously rewritten under three memory modes (oblivion replaces, remanence rewrites but leaves traces, sediment accumulates through saturation), with a block-based activity map so recall never pulls silence. Three recollection modes (listen/breathe/dream) decide when fragments return; memories degrade a little more each time. Macro controls for memory horizon, recall rate, age, smear, forget and temper, plus event and envelope outs.",
+      "description": "Stereo memory effect: a tape loop that recalls, degrades and eventually forgets.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/master-v2/doc/vestigia.md",
       "tags": [
         "Effect",
