@@ -539,6 +539,10 @@ enum Family {
 // from bed to point (drone, pad, air, bell, pluck, phrase, dust, broken,
 // micro, random), so the knob is a gesture rather than a menu.
 //
+// The split between the two sustained families is the excitation, not the
+// register: drone is oscillator-fed (near-pure harmonic stacks, measured
+// spectral flatness ~1e-5), air is noise-fed (flatness 1e-4 to 1e-1).
+//
 // ambient is gone: it was a level and a register, not an excitation, which
 // is why it sounded like a mixture of its neighbours. Its three generators
 // went home to the families they were already made of (tape pad to pad,
@@ -594,7 +598,6 @@ inline const GenEntry* loopTable2(int* count) {
         {genDronePure,      FAM2_DRONE,  1.0f},
         {genDroneDetuned,   FAM2_DRONE,  1.0f},
         {genDroneFm,        FAM2_DRONE,  1.0f},
-        {genDroneComb,      FAM2_DRONE,  0.8f},
         {genDroneSub,       FAM2_DRONE,  0.7f},
         {genPadSlow,        FAM2_PAD,    1.2f},
         {genPadCluster,     FAM2_PAD,    0.9f},
@@ -602,6 +605,10 @@ inline const GenEntry* loopTable2(int* count) {
         {genDroneFiltNoise, FAM2_AIR,    1.0f},
         {genAmbientWash,    FAM2_AIR,    1.1f},
         {genVowelDrone,     FAM2_AIR,    1.0f},
+        // noise into a comb with feedback to 0.995: pitched by the comb, but
+        // spread over hundreds of teeth, so it measures broader than either
+        // generator above. It sat in drone next to four near-pure stacks.
+        {genDroneComb,      FAM2_AIR,    0.8f},
         {genBellClassic,    FAM2_BELL,   1.0f},
         {genBellInharmonic, FAM2_BELL,   0.8f},
         {genAmbientChime,   FAM2_BELL,   0.9f},

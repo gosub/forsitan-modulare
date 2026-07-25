@@ -20,9 +20,9 @@ not a menu:
 
 | family | character |
 |--------|-----------|
-| **drone** | sustained cores: additive and detuned stacks, 2-op FM, comb-fed noise, driven sub |
+| **drone** | sustained oscillator cores: additive and detuned stacks, 2-op FM, driven sub |
 | **pad** | chordal beds: slow multi-voice chords, shimmering clusters, wowing tape pads |
-| **air** | breath and noise: resonant filtered noise, sweeping washes over faint chord beds, and vowel drones (a glottal pulse train through morphing formants) |
+| **air** | breath and noise: resonant filtered noise, sweeping washes over faint chord beds, comb-fed noise, and vowel drones (a glottal pulse train through morphing formants) |
 | **bell** | struck resonance: additive strikes with harmonic or inharmonic partials, sparse chimes, and noise-excited metal and wood bodies |
 | **pluck** | plucked strings, clean and dirty |
 | **phrase** | figures in time: little melodies, chord stabs, note runs, stutters |
@@ -30,6 +30,11 @@ not a menu:
 | **broken** | damaged media: CD skips (a frozen segment repeated, comb + tanh, choppy gate) and bubbly sample-and-hold tones |
 | **micro** | tiny one-shots (grains, blips, ticks, chirps, thumps), milliseconds long |
 | **random** | a weighted roll across the whole loop pool, the same distribution [imber](imber.md) fills its bank from |
+
+The two sustained families divide by excitation rather than by register:
+**drone** is oscillator-fed and **air** is noise-fed. Anything whose
+source is noise lives in air, however firmly a filter or a comb pitches
+it afterwards.
 
 All families get a light, randomized lo-fi "dirt" pass. Pitch is
 quantized to a scale table, D minor pentatonic by default; see
