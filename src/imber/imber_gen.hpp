@@ -502,6 +502,32 @@ inline void genVowelDrone(Rng& rng, float sr, std::vector<float>& b) {
     normalizePeak(b, 0.8f);
 }
 
+// Sustained stretched-partial stack. The four v1 drone generators all fall
+// off as 1/h squared over three to six harmonics, which puts harmonic 2
+// twelve dB down and harmonic 3 nineteen: they read as near-sines, with
+// only 2 to 7% of their power above the fundamental. This one carries
+// eight to fourteen partials at a shallower, randomized tilt, and
+// stretches or compresses them off the integer series the way a stiff
+// resonator does, so the stack beats against itself and drone gains a
+// voice with actual body. Inharmonic but sustained, so it stays clear of
+// bell, and oscillator-fed, so it stays clear of air.
+inline void genDroneStretched(Rng& rng, float sr, std::vector<float>& b) {
+    b.assign(loopLen(rng, sr), 0.f);
+    float f = pickFreq(rng, -1, 0);
+    float s = rng.range(0.96f, 1.05f);    // <1 compressed, >1 stretched
+    float tilt = rng.range(0.6f, 1.2f);   // amplitude falloff exponent
+    int np = rng.irange(8, 14);
+    for (int p = 1; p <= np; p++) {
+        float fp = f * std::pow((float)p, s);
+        if (fp > 0.45f * sr) break;
+        addPartial(b, sr, fp,
+                   0.5f / std::pow((float)p, tilt) * rng.range(0.6f, 1.f),
+                   rng.range(0.03f, 0.25f), rng.range(0.2f, 0.7f),
+                   rng.range(0.f, kTau));
+    }
+    normalizePeak(b, 0.8f);
+}
+
 // struck resonant bodies: metal-ish and wood-ish mode sets
 static const float kBodyMetal[4] = {1.f, 1.83f, 2.41f, 3.77f};
 static const float kBodyWood[4] = {1.f, 2.57f, 4.10f, 5.62f};
@@ -599,6 +625,7 @@ inline const GenEntry* loopTable2(int* count) {
         {genDroneDetuned,   FAM2_DRONE,  1.0f},
         {genDroneFm,        FAM2_DRONE,  1.0f},
         {genDroneSub,       FAM2_DRONE,  0.7f},
+        {genDroneStretched, FAM2_DRONE,  1.1f},
         {genPadSlow,        FAM2_PAD,    1.2f},
         {genPadCluster,     FAM2_PAD,    0.9f},
         {genAmbientTapePad, FAM2_PAD,    1.0f},

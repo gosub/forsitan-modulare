@@ -20,7 +20,7 @@ not a menu:
 
 | family | character |
 |--------|-----------|
-| **drone** | sustained oscillator cores: additive and detuned stacks, 2-op FM, driven sub |
+| **drone** | sustained oscillator cores: additive and detuned stacks, stretched-partial stacks, 2-op FM, driven sub |
 | **pad** | chordal beds: slow multi-voice chords, shimmering clusters, wowing tape pads |
 | **air** | breath and noise: resonant filtered noise, sweeping washes over faint chord beds, comb-fed noise, and vowel drones (a glottal pulse train through morphing formants) |
 | **bell** | struck resonance: additive strikes with harmonic or inharmonic partials, sparse chimes, and noise-excited metal and wood bodies |
