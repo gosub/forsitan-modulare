@@ -114,6 +114,11 @@ struct Sylla : Module {
     // would bring back.
     int familySet = 1;
 
+    // which engines the last knob position may roll, one bit each, all of
+    // them by default. v2 only: v1's random derives its family from the
+    // seed and is left exactly as it was.
+    uint32_t randomPool = imber_gen::kAllEngines;
+
     // what the generators pitch to. The defaults are the tuning the whole
     // library was written against, so a patch with neither key reproduces
     // its sound exactly.
@@ -194,6 +199,14 @@ struct Sylla : Module {
         pendingRender = true;
     }
 
+    // true when the knob sits on the roll rather than on a named engine,
+    // which is the only case where the pool feeds the current sample
+    bool onRandom() {
+        return familySet
+               && (int)std::round(params[FAMILY_PARAM].getValue())
+                      >= imber_gen::engineCount();
+    }
+
     // hand the currently sounding audio to the tail voice, which fades it
     // out while whatever comes next fades in
     void beginXfade(const std::vector<float>* src) {
@@ -209,10 +222,11 @@ struct Sylla : Module {
         sampleSeed = seed;
         int pos = (int)std::round(params[FAMILY_PARAM].getValue());
         int set = familySet;
+        uint32_t pool = randomPool;
         imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
         std::shared_ptr<Job> j(new Job());
         job = j;
-        std::thread([j, pos, set, tune, sr, seed]() {
+        std::thread([j, pos, set, pool, tune, sr, seed]() {
             imber_dsp::Rng rng;
             rng.seed(seed);
             rng.tune = tune;
@@ -225,7 +239,7 @@ struct Sylla : Module {
                 imber_gen::renderFamily(f, rng, sr, j->buf);
             }
             else if (pos >= imber_gen::engineCount())
-                imber_gen::renderLoop2(rng, sr, j->buf);   // the last position
+                imber_gen::renderLoop2(rng, sr, j->buf, pool);   // last position
             else
                 imber_gen::renderEngine(pos, rng, sr, j->buf);
             j->done.store(true);
@@ -242,6 +256,7 @@ struct Sylla : Module {
         pos = 0.f;
         sampleSeed = 0;
         familySet = 1;
+        randomPool = imber_gen::kAllEngines;
         rootNote = imber_dsp::kDefaultRoot;
         scaleIndex = imber_dsp::kDefaultScale;
         applyFamilyLabels();
@@ -253,6 +268,7 @@ struct Sylla : Module {
         json_object_set_new(rootJ, "sampleSeed", json_integer((json_int_t)sampleSeed));
         json_object_set_new(rootJ, "running", json_boolean(running));
         json_object_set_new(rootJ, "familySet", json_integer(familySet));
+        json_object_set_new(rootJ, "randomPool", json_integer((json_int_t)randomPool));
         json_object_set_new(rootJ, "root", json_integer(rootNote));
         json_object_set_new(rootJ, "scale", json_integer(scaleIndex));
         return rootJ;
@@ -271,6 +287,9 @@ struct Sylla : Module {
         // reproduces under the taxonomy it was rendered with
         json_t* f = json_object_get(rootJ, "familySet");
         familySet = f ? clamp((int)json_integer_value(f), 0, 1) : 0;
+        json_t* rp = json_object_get(rootJ, "randomPool");
+        if (rp)
+            randomPool = (uint32_t)json_integer_value(rp);
         json_t* rt = json_object_get(rootJ, "root");
         if (rt)
             rootNote = clamp((int)json_integer_value(rt), 0, 11);
@@ -525,6 +544,31 @@ struct SyllaWidget : ModuleWidget {
                 [m](int i) {
                     m->params[Sylla::FAMILY_PARAM].setValue((float)i);
                 }));
+        }
+
+        // which engines the last knob position may land on. Only the loop
+        // pool is eligible, so the two self-finishing one-shots are not
+        // listed: they are reachable by name and never by a roll.
+        if (m->familySet) {
+            menu->addChild(createSubmenuItem("Random pool", "", [m](Menu* sub) {
+                sub->addChild(createMenuItem("Enable all", "", [m]() {
+                    m->randomPool = imber_gen::kAllEngines;
+                    if (m->onRandom()) m->reRenderCurrent();
+                }));
+                sub->addChild(new MenuSeparator);
+                int n;
+                const imber_gen::EngineEntry* t = imber_gen::engineTable(&n);
+                for (int i = 0; i < n; i++) {
+                    if (t[i].weight <= 0.f)
+                        continue;
+                    sub->addChild(createCheckMenuItem(t[i].name, "",
+                        [m, i]() { return (m->randomPool & (1u << i)) != 0; },
+                        [m, i]() {
+                            m->randomPool ^= (1u << i);
+                            if (m->onRandom()) m->reRenderCurrent();
+                        }));
+                }
+            }));
         }
 
         menu->addChild(createIndexSubmenuItem("Generator selection",

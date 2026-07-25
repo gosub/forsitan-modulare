@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     beats against itself. The four older drone generators all fall off as
     1/h squared over three to six harmonics and read as near-sines, with 2
     to 7% of their power above the fundamental against the new one's 35%.
+  - **sylla**: **Random pool** in the context menu picks which engines the
+    *random* position may land on, all of them by default. The two
+    self-finishing one-shots are not listed, staying out of the roll as they
+    stay out of imber's bank, and disabling everything falls back to the
+    full pool rather than rendering silence. The pool feeds the seed, so
+    changing it re-renders the current sample only when the knob is on
+    *random*. v1's random is untouched: it derives its family from the seed
+    exactly as it always did.
   - **sylla**: **Generator selection** in the context menu switches back to
     the v1 family knob of 2.9, where each of ten positions rolls a member.
     Patches saved before this load on it automatically and sound exactly as

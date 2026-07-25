@@ -331,4 +331,111 @@ static void testSyllaState() {
     report("sylla", "neighbour_is_another_engine", neighbour ? 1 : 0, neighbour);
 }
 
-SMOKE_MAIN(testSylla, testSyllaState)
+// The random pool masks engines out of the last knob position. v1's random
+// derives its family from the seed and must ignore it entirely.
+static void testSyllaPool() {
+    const float SR_ = SR;
+    // identify which engine a roll produced: renderLoop2 spends one uniform()
+    // on the pick before the generator runs, so that draw has to be replayed
+    auto identify = [&](uint64_t seed, const std::vector<float>& got) {
+        int n;
+        const imber_gen::EngineEntry* t = imber_gen::engineTable(&n);
+        for (int e = 0; e < n; e++) {
+            imber_dsp::Rng rng;
+            rng.seed(seed);
+            rng.uniform();
+            std::vector<float> b;
+            t[e].fn(rng, SR_, b);
+            if (!t[e].finished) imber_gen::finishLoop(b, rng, SR_);
+            if (b == got) return e;
+        }
+        return -1;
+    };
+    // a pool of one always lands on that one
+    bool pinned = true;
+    for (int k = 0; k < 12 && pinned; k++) {
+        uint64_t seed = 0x99ull * (k + 3);
+        imber_dsp::Rng rng;
+        rng.seed(seed);
+        std::vector<float> b;
+        imber_gen::renderLoop2(rng, SR_, b, 1u << 10);
+        pinned = identify(seed, b) == 10;
+    }
+    report("sylla", "pool_of_one_pins_engine", pinned ? 1 : 0, pinned);
+    // the self-finishing one-shots are never rolled, whatever the mask
+    bool noOneShot = true;
+    for (int k = 0; k < 24 && noOneShot; k++) {
+        uint64_t seed = 0x5Aull * (k + 1);
+        imber_dsp::Rng rng;
+        rng.seed(seed);
+        std::vector<float> b;
+        imber_gen::renderLoop2(rng, SR_, b, imber_gen::kAllEngines);
+        int e = identify(seed, b);
+        int n;
+        const imber_gen::EngineEntry* t = imber_gen::engineTable(&n);
+        if (e >= 0 && t[e].weight <= 0.f) noOneShot = false;
+    }
+    report("sylla", "pool_excludes_one_shots", noOneShot ? 1 : 0, noOneShot);
+    // an empty pool falls back to everything rather than rendering silence
+    bool okEmpty = true;
+    for (int k = 0; k < 6 && okEmpty; k++) {
+        imber_dsp::Rng rng;
+        rng.seed(0xE0ull * (k + 1));
+        std::vector<float> b;
+        imber_gen::renderLoop2(rng, SR_, b, 0u);
+        okEmpty = !b.empty();
+    }
+    report("sylla", "empty_pool_falls_back", okEmpty ? 1 : 0, okEmpty);
+    // the default argument is exactly the all-enabled mask
+    bool same = true;
+    for (int k = 0; k < 8 && same; k++) {
+        uint64_t seed = 0x1234ull * (k + 1);
+        imber_dsp::Rng a, b2;
+        a.seed(seed);
+        b2.seed(seed);
+        std::vector<float> x, y;
+        imber_gen::renderLoop2(a, SR_, x);
+        imber_gen::renderLoop2(b2, SR_, y, imber_gen::kAllEngines);
+        same = x == y;
+    }
+    report("sylla", "pool_default_is_all", same ? 1 : 0, same);
+}
+
+// Switching selections changes the detent count under a value that is
+// already set, so the knob must stay in range and both sides keep working.
+static void testSyllaSwitch() {
+    Sylla m;
+    long frame = 0;
+    int nEng = imber_gen::engineCount();
+    auto maxv = [&]() {
+        return m.paramQuantities[Sylla::FAMILY_PARAM]->maxValue;
+    };
+    auto nlab = [&]() {
+        return dynamic_cast<SwitchQuantity*>(
+            m.paramQuantities[Sylla::FAMILY_PARAM])->labels.size();
+    };
+    // park on the last engine position, then drop to the narrower knob
+    m.params[Sylla::FAMILY_PARAM].setValue((float)nEng);
+    m.familySet = 0;
+    m.applyFamilyLabels();
+    bool narrowed = maxv() == (float)imber_gen::FAM_COUNT && nlab() == 10
+                    && m.params[Sylla::FAMILY_PARAM].getValue() <= maxv();
+    report("sylla", "switch_to_v1_narrows_knob", narrowed ? 1 : 0, narrowed);
+    m.familySet = 1;
+    m.applyFamilyLabels();
+    bool widened = maxv() == (float)nEng && nlab() == (size_t)nEng + 1;
+    report("sylla", "switch_to_v2_widens_knob", widened ? 1 : 0, widened);
+    // hammer it: the value must never fall outside the knob in force
+    bool stable = true;
+    for (int i = 0; i < 200 && stable; i++) {
+        m.familySet = i & 1;
+        m.applyFamilyLabels();
+        float v = m.params[Sylla::FAMILY_PARAM].getValue();
+        stable = v >= 0.f && v <= maxv()
+                 && nlab() == (m.familySet ? (size_t)nEng + 1 : (size_t)10);
+    }
+    report("sylla", "switch_repeatedly_consistent", stable ? 1 : 0, stable);
+    (void)frame;
+}
+
+SMOKE_MAIN(testSylla, testSyllaState, testSyllaPool, testSyllaSwitch)

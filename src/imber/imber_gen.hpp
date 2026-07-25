@@ -931,13 +931,44 @@ inline void renderEngine(int engine, Rng& rng, float sr, std::vector<float>& b) 
         finishLoop(b, rng, sr);
 }
 
+// every engine eligible for a random roll, i.e. everything in the loop pool
+static const uint32_t kAllEngines = 0xffffffffu;
+
 // v2's last knob position: a weighted roll across the loop pool, which is
 // imber's own distribution. The self-finishing one-shots carry weight 0 and
 // so never come up here, exactly as they never enter imber's bank.
-inline void renderLoop2(Rng& rng, float sr, std::vector<float>& b) {
+//
+// pool masks engines out of the roll by index, so the position can be
+// narrowed to the corner of the library you want to be surprised by. An
+// empty pool would leave nothing to pick, so it falls back to all of them
+// rather than rendering silence.
+inline void renderLoop2(Rng& rng, float sr, std::vector<float>& b,
+                        uint32_t pool = kAllEngines) {
     int count;
     const EngineEntry* table = engineTable(&count);
-    int pick = weightedPick(table, count, rng);
+    float total = 0.f;
+    for (int i = 0; i < count; i++)
+        if (pool & (1u << i))
+            total += table[i].weight;
+    if (total <= 0.f) {
+        pool = kAllEngines;
+        for (int i = 0; i < count; i++)
+            total += table[i].weight;
+    }
+    float roll = rng.uniform() * total;
+    int pick = -1;
+    for (int i = 0; i < count; i++) {
+        if (!(pool & (1u << i)) || table[i].weight <= 0.f)
+            continue;
+        roll -= table[i].weight;
+        if (roll <= 0.f) { pick = i; break; }
+    }
+    if (pick < 0)   // float rounding at the very top of the range
+        for (int i = count - 1; i >= 0 && pick < 0; i--)
+            if ((pool & (1u << i)) && table[i].weight > 0.f)
+                pick = i;
+    if (pick < 0)
+        pick = 0;
     table[pick].fn(rng, sr, b);
     if (!table[pick].finished)
         finishLoop(b, rng, sr);

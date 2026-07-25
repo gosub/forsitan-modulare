@@ -43,6 +43,20 @@ transient, so the knob is still a gesture:
 Twenty-eight positions is a lot for one knob, so the same list is in the
 right-click menu under **Engine** when you know exactly what you want.
 
+**Random pool** in the same menu decides which engines that last position
+may land on. Every engine starts enabled; untick the ones you do not want
+and the roll is confined to the corner of the library you are after, which
+is how you keep a self-renewing patch (EOC into GEN) surprising without
+letting it wander into material that does not belong. The two one-shots,
+*broken skip* and *micro*, are not listed: they finish themselves and stay
+out of the pool exactly as they stay out of imber's bank, so they are
+reachable by name only. Disabling everything falls back to the full pool
+rather than rendering silence.
+
+The pool is part of what the seed reproduces, so changing it re-renders the
+current sample when the knob is on *random*, and leaves it alone when the
+knob names an engine.
+
 The two sustained groups divide by excitation rather than register: **drone**
 is oscillator-fed and **air** is noise-fed. Anything whose source is noise
 lives in air, however firmly a filter or a comb pitches it afterwards.
@@ -58,7 +72,8 @@ sample reproduces solely under the selection that rendered it.
 **Generator selection** in the context menu keeps both: *v1 legacy families*
 gives back the ten-position knob (drone, pad, fragment, bell, ambient,
 glitch, karplus, skip, micro, random), each position rolling a member as it
-used to. Patches saved before the change load on it automatically and sound
+used to, and its *random* deriving its family from the seed as it always
+did, untouched by the random pool. Patches saved before the change load on it automatically and sound
 exactly as they always did. New modules start on engines.
 
 Besides addressing engines directly, the current selection differs from v1 in
