@@ -60,6 +60,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     re-renders the current seed, so what you hear is what a reload brings
     back.
 ### Changed
+  - Every documentation URL in `plugin.json` now points at the release's
+    **tag** instead of the `master-v2` branch: the plugin `manualUrl`, all
+    24 module `manualUrl`s and `changelogUrl`, 26 in all. Rack's library
+    serves whatever URLs the installed build declares, so a branch link
+    showed someone running an older version the manual for whatever was on
+    master that day, describing controls their build did not have.
+    `tools/release/sync_urls.py` rewrites all 26 from the `"version"`
+    field, with a `--check` mode, since hand-maintaining them is what let
+    `changelogUrl` drift.
   - Module descriptions in `plugin.json` are one-line summaries again, as
     the SDK asks for. Rack shows this field as the hover tooltip in the
     module browser and does not wrap it, so the longest ones (up to 509
