@@ -39,7 +39,7 @@ A collection of VCV Rack modules.
 
 | tool | description |
 |------|-------------|
-| [limen-tools](https://github.com/gosub/limen-tools) | limen CLI client (separate repo) — C and Python, prebuilt binaries on releases |
+| [limen-tools](https://github.com/gosub/limen-tools) | limen clients (separate repo) — Go CLI and MCP server, plus a Python library; prebuilt binaries on releases |
 | [tools/panel-editor/](tools/panel-editor/) | Browser-based drag-and-drop panel layout editor |
 
 ## Controlling Rack externally (limen)
