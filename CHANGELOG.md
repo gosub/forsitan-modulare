@@ -74,8 +74,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     showed someone running an older version the manual for whatever was on
     master that day, describing controls their build did not have.
     `tools/release/sync_version.py` rewrites all 26 from the `"version"`
-    field and checks them against the newest `CHANGELOG.md` heading, since
-    hand-maintaining them is what let `changelogUrl` drift.
+    field and checks them against the newest `CHANGELOG.md` heading, so they
+    are never hand-maintained.
   - Module descriptions in `plugin.json` are one-line summaries again, as
     the SDK asks for. Rack shows this field as the hover tooltip in the
     module browser and does not wrap it, so the longest ones (up to 509

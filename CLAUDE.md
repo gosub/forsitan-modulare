@@ -25,9 +25,8 @@ cutting a release. The essentials:
 
 - **Release order**: bump `"version"`, update `CHANGELOG.md`, run
   `sync_version.py`, commit, then tag *that* commit and **push the tag**.
-  Until the tag is pushed all 26 links 404 (this is why v2.10.0 through
-  v2.12.0 had a broken `changelogUrl`: they were never tagged). The tag only
-  matters once a version is published; local development needs nothing.
+  Until the tag is pushed all 26 links 404. The tag only matters once a
+  version is published; local development needs nothing.
 - After publishing, post the update comment on
   [VCVRack/library#681](https://github.com/VCVRack/library/issues/681) — the
   library builds from source, so a tag alone does not ship anything.

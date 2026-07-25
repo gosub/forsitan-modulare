@@ -89,8 +89,8 @@ git push && git push --tags
 ```
 
 The tag must be pushed. Until it is, all 26 documentation URLs 404, since
-they name it. (This is why `v2.10.0` through `v2.12.0` shipped with a broken
-`changelogUrl`: the versions were released but never tagged.)
+they name it. Nothing else depends on the tag, so local development never
+needs one.
 
 CI then verifies version against tag, builds the four platforms, creates the
 GitHub release and uploads every `.vcvplugin`. Check the release page.
