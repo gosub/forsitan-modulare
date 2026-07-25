@@ -14,26 +14,26 @@ A collection of VCV Rack modules.
 | [interea](doc/interea.md) | Chord generator from a V/Oct input, with quality, voicing and inversion | [doc/interea.md](doc/interea.md) |
 | [cumuli](doc/cumuli.md) | Accumulator with up/down gates and rates | [doc/cumuli.md](doc/cumuli.md) |
 | [deinde](doc/deinde.md) | Quad cascading addressable attack-hold envelope | [doc/deinde.md](doc/deinde.md) |
-| [pavo](doc/pavo.md) | Polyphonic stereo spreader (Splay Ugen) | [doc/pavo.md](doc/pavo.md) |
+| [pavo](doc/pavo.md) | Polyphonic stereo spreader (Splay UGen) | [doc/pavo.md](doc/pavo.md) |
 | [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack | [doc/limen.md](doc/limen.md) |
 | [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
 | [scando](doc/scando.md) | Scanned-synthesis oscillator (vibrating mass-spring string, scanned into a wavetable) | [doc/scando.md](doc/scando.md) |
-| [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level, poly-normalled | [doc/pellicula.md](doc/pellicula.md) |
-| [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and the original hyf set) played from hz + amp, with fading engine selection | [doc/draen.md](doc/draen.md) |
-| [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos with per-node gain CVs | [doc/rete.md](doc/rete.md) |
-| [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp, howling loop tunable by poly V/oct | [doc/ululo.md](doc/ululo.md) |
+| [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level | [doc/pellicula.md](doc/pellicula.md) |
+| [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and an original hyf set), played from hz + amp | [doc/draen.md](doc/draen.md) |
+| [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos | [doc/rete.md](doc/rete.md) |
+| [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp in a howling loop | [doc/ululo.md](doc/ululo.md) |
 | [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
 | [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
 | [bulla](doc/bulla.md) | Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
-| [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats with random octave/fifth pitch, freeze, glitch and layered dimension | [doc/perge.md](doc/perge.md) |
-| [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with reverb and degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
-| [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops, three elements with gate outs (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
-| [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing — drunk clocks, morphing constellations, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
-| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine synthesis families, in any root and scale (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
-| [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters, 20 morphing factory banks (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
-| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124 state-variable filter, dirty because it is built from CMOS inverters on a single unipolar supply — LP/BP/HP/notch at once plus the A-124's LP-to-HP mix pot, drive, grit, and bias/hiss inverter mods | [doc/vespae.md](doc/vespae.md) |
-| [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, zoomable from the whole spectrum down to 0-750 Hz, with rank-thresholding and coefficient quantization as the lossy stage | [doc/quadrare.md](doc/quadrare.md) |
-| [vestigia](doc/vestigia.md) | Stereo memory effect: an endless tape loop rewritten under three memory modes (oblivion/remanence/sediment), with an activity map so recall never pulls silence and three recollection modes (listen/breathe/dream) deciding when degrading fragments return | [doc/vestigia.md](doc/vestigia.md) |
+| [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats, freeze, glitch and layered dimension (AC noises CONTINUA homage) | [doc/perge.md](doc/perge.md) |
+| [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
+| [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
+| [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
+| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from nine families, in any root and scale (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
+| [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
+| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124, dirty because its state-variable core is built from CMOS inverters on one unipolar supply | [doc/vespae.md](doc/vespae.md) |
+| [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, with the lossy stages of a real codec | [doc/quadrare.md](doc/quadrare.md) |
+| [vestigia](doc/vestigia.md) | Stereo memory effect: an endless tape loop under three memory modes, with fragments that degrade each time they return | [doc/vestigia.md](doc/vestigia.md) |
 
 ## Tools
 
