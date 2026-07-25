@@ -56,7 +56,7 @@ Quickstart:
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md).
+See [CHANGELOG.md](CHANGELOG.md). Releases follow [RELEASING.md](RELEASING.md).
 
 ## About the names
 

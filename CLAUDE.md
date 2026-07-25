@@ -5,6 +5,9 @@ yellow-on-dark panels.
 
 ## Versioning
 
+**`RELEASING.md` is the authoritative release procedure** — follow it when
+cutting a release. The essentials:
+
 - **Minor version** (`2.x.0`): bump when adding a new module
 - **Patch version** (`2.x.y`): bump for fixes and enhancements to existing modules
 - Keep `plugin.json` `"version"` in sync with the git tag, and update
@@ -16,14 +19,18 @@ yellow-on-dark panels.
   hand-edit them, run:
 
   ```
-  python3 tools/release/sync_urls.py           # rewrite to v<version>
-  python3 tools/release/sync_urls.py --check   # verify, nonzero if stale
+  python3 tools/release/sync_version.py         # rewrite URLs to v<version>
+  python3 tools/release/sync_version.py --check # verify, nonzero if stale
   ```
 
 - **Release order**: bump `"version"`, update `CHANGELOG.md`, run
-  `sync_urls.py`, commit, then tag *that* commit and **push the tag**. Until
-  the tag is pushed all 26 links 404 (this is why v2.10.0 through v2.12.0 had
-  a broken `changelogUrl`: they were never tagged).
+  `sync_version.py`, commit, then tag *that* commit and **push the tag**.
+  Until the tag is pushed all 26 links 404 (this is why v2.10.0 through
+  v2.12.0 had a broken `changelogUrl`: they were never tagged). The tag only
+  matters once a version is published; local development needs nothing.
+- After publishing, post the update comment on
+  [VCVRack/library#681](https://github.com/VCVRack/library/issues/681) — the
+  library builds from source, so a tag alone does not ship anything.
 
 ## Documentation structure
 
@@ -34,7 +41,7 @@ yellow-on-dark panels.
   `doc/alea.md`, `doc/mmcccxcix.md`), linked from the readme table.
 - Each module entry in `plugin.json` has a `manualUrl` pointing to
   `https://github.com/gosub/forsitan-modulare/blob/v<version>/doc/<slug>.md`
-  (tagged, see Versioning; `tools/release/sync_urls.py` maintains them).
+  (tagged, see Versioning; `tools/release/sync_version.py` maintains them).
 - `plugin.json` module `description`s are **one-line summaries**, as the SDK
   asks (`Model.hpp`: "A one-line summary of the module's purpose"). Rack shows
   the field as the module-browser hover tooltip and does not wrap it, so a
@@ -243,9 +250,10 @@ global pip install):
   Typography above.
 - `tools/panels/` — `gen_pellicula_panel.py`, generates `res/pellicula.svg`
   (background art for the matrix panel; widgets are placed in code).
-- `tools/release/` — `sync_urls.py`, repoints every `manualUrl` /
-  `changelogUrl` in `plugin.json` at the current `"version"` tag. Run it when
-  cutting a release, or with `--check` to verify; see Versioning.
+- `tools/release/` — `sync_version.py`, repoints every `manualUrl` /
+  `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
+  against the newest `CHANGELOG.md` heading. `--check` is the tag-day gate;
+  see `RELEASING.md`.
 - `tools/patches/` — `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
   zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
   builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so
