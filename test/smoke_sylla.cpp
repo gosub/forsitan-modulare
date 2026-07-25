@@ -237,4 +237,69 @@ static void testSylla() {
            !m.buffer.empty() && m.buffer.size() != prevLen);
 }
 
-SMOKE_MAIN(testSylla)
+// The family set and the tuning are part of the save format: a patch stores
+// a seed and regenerates, so a sample only reproduces under the settings
+// that rendered it. These guard the compatibility rules.
+static void testSyllaState() {
+    {
+        Sylla m;
+        SwitchQuantity* q = dynamic_cast<SwitchQuantity*>(
+            m.paramQuantities[Sylla::FAMILY_PARAM]);
+        bool v2 = m.familySet == 1
+                  && m.rootNote == imber_dsp::kDefaultRoot
+                  && m.scaleIndex == imber_dsp::kDefaultScale
+                  && q && q->labels[2] == "Air";
+        report("sylla", "fresh_defaults_v2", m.familySet, v2);
+    }
+    {
+        // a 2.9-era patch carries no familySet key and must land on v1
+        Sylla m;
+        json_t* j = json_object();
+        json_object_set_new(j, "sampleSeed", json_integer(12345));
+        m.dataFromJson(j);
+        json_decref(j);
+        SwitchQuantity* q = dynamic_cast<SwitchQuantity*>(
+            m.paramQuantities[Sylla::FAMILY_PARAM]);
+        report("sylla", "legacy_patch_falls_back_v1", m.familySet,
+               m.familySet == 0 && q && q->labels[2] == "Fragment");
+    }
+    {
+        Sylla a;
+        a.familySet = 0; a.rootNote = 7; a.scaleIndex = 3; a.sampleSeed = 999;
+        json_t* j = a.dataToJson();
+        Sylla b;
+        b.dataFromJson(j);
+        json_decref(j);
+        bool ok = b.familySet == 0 && b.rootNote == 7 && b.scaleIndex == 3
+                  && b.sampleSeed == 999;
+        report("sylla", "state_round_trips", b.rootNote, ok);
+    }
+    // same seed and settings reproduce bit-exactly; a new root does not
+    long frame = 0;
+    auto renderWith = [&](int root, int set) {
+        Sylla m;
+        m.rootNote = root;
+        m.familySet = set;
+        m.params[Sylla::FAMILY_PARAM].setValue(2.f);
+        m.sampleSeed = 0xFEEDull;
+        for (int i = 0; i < 600 && m.buffer.empty(); i++) {
+            for (int k = 0; k < 64; k++) m.process(makeArgs(frame++));
+            if (m.buffer.empty())
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return m.buffer;
+    };
+    std::vector<float> d1 = renderWith(imber_dsp::kDefaultRoot, 1);
+    std::vector<float> d2 = renderWith(imber_dsp::kDefaultRoot, 1);
+    std::vector<float> up = renderWith(9, 1);
+    std::vector<float> v1 = renderWith(imber_dsp::kDefaultRoot, 0);
+    report("sylla", "seed_reproduces", d1.size(), !d1.empty() && d1 == d2);
+    report("sylla", "root_changes_render", up.size(),
+           !up.empty() && up != d1);
+    // knob position 2 is v1 "fragment" and v2 "air", disjoint generator
+    // lists, so the same seed cannot land on the same material
+    report("sylla", "family_set_changes_render", v1.size(),
+           !v1.empty() && v1 != d1);
+}
+
+SMOKE_MAIN(testSylla, testSyllaState)
