@@ -101,6 +101,12 @@ struct Sylla : Module {
     // would bring back.
     int familySet = 1;
 
+    // what the generators pitch to. The defaults are the tuning the whole
+    // library was written against, so a patch with neither key reproduces
+    // its sound exactly.
+    int rootNote = imber_dsp::kDefaultRoot;
+    int scaleIndex = imber_dsp::kDefaultScale;
+
     float pos = 0.f;
     bool playing = false;
     float env = 0.f;          // declick on gate stop
@@ -171,11 +177,13 @@ struct Sylla : Module {
         sampleSeed = seed;
         int family = (int)std::round(params[FAMILY_PARAM].getValue());
         int set = familySet;
+        imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
         std::shared_ptr<Job> j(new Job());
         job = j;
-        std::thread([j, family, set, sr, seed]() {
+        std::thread([j, family, set, tune, sr, seed]() {
             imber_dsp::Rng rng;
             rng.seed(seed);
+            rng.tune = tune;
             if (set == 0) {
                 // v1 "random" picks a family from the seed itself, so a
                 // reload from the saved seed regenerates the same sound
@@ -202,6 +210,8 @@ struct Sylla : Module {
         pos = 0.f;
         sampleSeed = 0;
         familySet = 1;
+        rootNote = imber_dsp::kDefaultRoot;
+        scaleIndex = imber_dsp::kDefaultScale;
         applyFamilyLabels();
         pendingRender = true;
     }
@@ -211,6 +221,8 @@ struct Sylla : Module {
         json_object_set_new(rootJ, "sampleSeed", json_integer((json_int_t)sampleSeed));
         json_object_set_new(rootJ, "running", json_boolean(running));
         json_object_set_new(rootJ, "familySet", json_integer(familySet));
+        json_object_set_new(rootJ, "root", json_integer(rootNote));
+        json_object_set_new(rootJ, "scale", json_integer(scaleIndex));
         return rootJ;
     }
 
@@ -227,6 +239,13 @@ struct Sylla : Module {
         // reproduces under the taxonomy it was rendered with
         json_t* f = json_object_get(rootJ, "familySet");
         familySet = f ? clamp((int)json_integer_value(f), 0, 1) : 0;
+        json_t* rt = json_object_get(rootJ, "root");
+        if (rt)
+            rootNote = clamp((int)json_integer_value(rt), 0, 11);
+        json_t* sc = json_object_get(rootJ, "scale");
+        if (sc)
+            scaleIndex = clamp((int)json_integer_value(sc), 0,
+                               imber_dsp::kScaleCount - 1);
         applyFamilyLabels();
     }
 
@@ -471,6 +490,20 @@ struct SyllaWidget : ModuleWidget {
                 m->familySet = i ? 0 : 1;
                 m->reRenderCurrent();
             }));
+
+        std::vector<std::string> notes;
+        for (int i = 0; i < 12; i++)
+            notes.push_back(imber_dsp::noteName(i));
+        menu->addChild(createIndexSubmenuItem("Root", notes,
+            [m]() { return m->rootNote; },
+            [m](int i) { m->rootNote = i; m->reRenderCurrent(); }));
+
+        std::vector<std::string> scales;
+        for (int i = 0; i < imber_dsp::kScaleCount; i++)
+            scales.push_back(imber_dsp::kScales[i].name);
+        menu->addChild(createIndexSubmenuItem("Scale", scales,
+            [m]() { return m->scaleIndex; },
+            [m](int i) { m->scaleIndex = i; m->reRenderCurrent(); }));
     }
 };
 

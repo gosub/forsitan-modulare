@@ -64,6 +64,32 @@ What changed, and why:
   six-generator one and handed out a CD skip or a 3 ms tick 22% of the
   time.
 
+## Root and scale
+
+Every pitch a generator reaches for is snapped to one scale table. That is
+the tonal glue: it is why random material comes out musical, why two
+syllas agree with each other, and why sylla agrees with
+[imber](imber.md). **Root** and **Scale** in the context menu choose it.
+
+The default is D minor pentatonic, the tuning the whole library was
+written against, so patches saved before the menu existed reproduce
+exactly. Fifteen scales are available, the same set and order as the
+pages64 modules use: major, natural / harmonic minor, the four remaining
+modes, major and minor pentatonic, blues, whole tone, chromatic, hijaz,
+byzantine and hirajoshi.
+
+The chord generators (pad beds, chord stabs, the vowel and wash beds)
+follow the scale too. Their four voices are the scale notes nearest an m7
+template, so the stack shifts with the scale you pick: m7 on minor
+pentatonic, natural minor, dorian, phrygian and blues, maj7 on major and
+lydian, dominant 7th on mixolydian and hijaz, minor-major 7th on harmonic
+minor.
+
+Changing root or scale re-renders the current sample from its own seed, so
+you hear the sound you had, transposed, rather than waiting for the next
+GEN. Two syllas can now sit in different keys, and a patch is no longer
+locked to D minor forever.
+
 ## Controls
 
 - **FAMILY** — generator family for the next render (snap knob). Every

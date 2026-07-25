@@ -1,6 +1,6 @@
 // imber_dsp.hpp — shared primitives for the imber/sylla pair: seeded RNG,
-// urn picker, bounded drunk walker, the one scale table everything snaps
-// to, and small DSP helpers used by the generators and the engine.
+// urn picker, bounded drunk walker, the scale table everything snaps to,
+// and small DSP helpers used by the generators and the engine.
 //
 // Pure C++11, no Rack dependencies — the offline harness compiles this
 // standalone. Everything lives in structs / inline functions so the
@@ -20,12 +20,98 @@ inline float clampf(float x, float lo, float hi) {
     return x < lo ? lo : (x > hi ? hi : x);
 }
 
+// -------------------------------------------------------------- scale ---
+
+// The tonal glue: everything the generators pitch snaps to one table, so
+// random material stays musical and two instances always agree. The table
+// is selectable per module, defaulting to minor pentatonic on D, which is
+// what the whole library was tuned against.
+//
+// Scale list and order mirror pages64's Scales.hpp. Never reorder it:
+// modules serialize the scale by index.
+struct ScaleDef {
+    const char* name;
+    int size;
+    int deg[12];
+};
+
+static const ScaleDef kScales[] = {
+    {"Major",            7, {0, 2, 4, 5, 7, 9, 11}},
+    {"Natural minor",    7, {0, 2, 3, 5, 7, 8, 10}},
+    {"Harmonic minor",   7, {0, 2, 3, 5, 7, 8, 11}},
+    {"Dorian",           7, {0, 2, 3, 5, 7, 9, 10}},
+    {"Phrygian",         7, {0, 1, 3, 5, 7, 8, 10}},
+    {"Lydian",           7, {0, 2, 4, 6, 7, 9, 11}},
+    {"Mixolydian",       7, {0, 2, 4, 5, 7, 9, 10}},
+    {"Major pentatonic", 5, {0, 2, 4, 7, 9}},
+    {"Minor pentatonic", 5, {0, 3, 5, 7, 10}},
+    {"Blues",            6, {0, 3, 5, 6, 7, 10}},
+    {"Whole tone",       6, {0, 2, 4, 6, 8, 10}},
+    {"Chromatic",       12, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}},
+    {"Hijaz",            7, {0, 1, 4, 5, 7, 8, 10}},
+    {"Byzantine",        7, {0, 1, 4, 5, 7, 8, 11}},
+    {"Hirajoshi",        5, {0, 2, 3, 7, 8}},
+};
+static const int kScaleCount = (int)(sizeof(kScales) / sizeof(kScales[0]));
+static const int kDefaultScale = 8;    // minor pentatonic
+static const int kDefaultRoot = 2;     // D, i.e. MIDI 50 with the octave below
+static const int kRootOctave = 48;     // root note = kRootOctave + 0..11
+
+inline const char* noteName(int i) {
+    static const char* names[12] = {
+        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+    };
+    return names[((i % 12) + 12) % 12];
+}
+
+// What a render is pitched to. It travels inside the Rng because the Rng is
+// already the per-render context handed to all two dozen generators, and it
+// has to be per-render rather than global: sylla's worker and imber's bank
+// builder render on their own threads.
+struct Tuning {
+    int root;            // MIDI note of the scale root
+    const int* deg;      // scale degrees, in semitones above the root
+    int nDeg;
+    int chord[4];        // the four chord-voice offsets
+    Tuning()
+        : root(kRootOctave + kDefaultRoot),
+          deg(kScales[kDefaultScale].deg),
+          nDeg(kScales[kDefaultScale].size) {
+        chord[0] = 0; chord[1] = 3; chord[2] = 7; chord[3] = 10;   // m7 stack
+    }
+};
+
+// The chord voices are the scale notes nearest an m7 template, ties going
+// upward (brighter). On the default minor pentatonic that lands exactly on
+// {0, 3, 7, 10}, so the default tuning reproduces every sound rendered
+// before the scale was selectable.
+inline Tuning makeTuning(int scaleIdx, int rootNote) {
+    static const int tmpl[4] = {0, 3, 7, 10};
+    Tuning t;
+    if (scaleIdx < 0 || scaleIdx >= kScaleCount)
+        scaleIdx = kDefaultScale;
+    t.root = kRootOctave + ((rootNote % 12) + 12) % 12;
+    t.deg = kScales[scaleIdx].deg;
+    t.nDeg = kScales[scaleIdx].size;
+    for (int v = 0; v < 4; v++) {
+        int best = t.deg[0], bd = 128;
+        for (int i = 0; i < t.nDeg; i++) {
+            int d = t.deg[i] - tmpl[v];
+            if (d < 0) d = -d;
+            if (d <= bd) { bd = d; best = t.deg[i]; }
+        }
+        t.chord[v] = best;
+    }
+    return t;
+}
+
 // ---------------------------------------------------------------- RNG ---
 
 // xorshift64* — one instance per domain (bank, constellation, timing,
 // voices) so reseeding the bank never disturbs the timing feel
 struct Rng {
     uint64_t s;
+    Tuning tune;
     Rng() : s(0x9e3779b97f4a7c15ull) {}
     void seed(uint64_t v) { s = v ? v : 0x9e3779b97f4a7c15ull; next(); next(); }
     uint64_t next() {
@@ -69,13 +155,7 @@ struct Drunk {
     }
 };
 
-// -------------------------------------------------------------- scale ---
-
-// one pentatonic-minor table on D — the tonal glue; everything the
-// generators pitch goes through here (tuned by ear, not recovered)
-static const int kScaleRoot = 50;                       // D3
-static const int kScaleDegrees[5] = {0, 3, 5, 7, 10};   // minor pentatonic
-static const int kChordDegrees[4] = {0, 3, 7, 10};      // m7 stack
+// ------------------------------------------------------------- pitches ---
 
 inline float midiToFreq(float m) {
     return 440.f * std::pow(2.f, (m - 69.f) / 12.f);
@@ -84,13 +164,14 @@ inline float midiToFreq(float m) {
 // random scale note as a frequency, octaves relative to the root octave
 inline float pickFreq(Rng& rng, int octLo, int octHi) {
     int oct = rng.irange(octLo, octHi);
-    int deg = kScaleDegrees[rng.irange(0, 4)];
-    return midiToFreq((float)(kScaleRoot + 12 * oct + deg));
+    const Tuning& t = rng.tune;
+    int deg = t.deg[rng.irange(0, t.nDeg - 1)];
+    return midiToFreq((float)(t.root + 12 * oct + deg));
 }
 
 inline float chordFreq(Rng& rng, int voice, int oct) {
-    int deg = kChordDegrees[voice & 3];
-    return midiToFreq((float)(kScaleRoot + 12 * oct + deg));
+    const Tuning& t = rng.tune;
+    return midiToFreq((float)(t.root + 12 * oct + t.chord[voice & 3]));
 }
 
 // ------------------------------------------------------------ filters ---
