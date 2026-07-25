@@ -40,6 +40,19 @@
 // crossfade time for playhead jumps (retrigger, or a new sample landing)
 static const float SYLLA_XFADE_SEC = 0.004f;
 
+// The two family sets. Both are ten positions, so the knob keeps its range
+// and its first, second, fourth and last stops mean the same thing in each.
+// v2 is the default; v1 is kept for patches saved before it existed and for
+// anyone who prefers the original grouping.
+static const std::vector<std::string> SYLLA_FAMILIES_V1 = {
+    "Drone", "Pad", "Fragment", "Bell", "Ambient", "Glitch",
+    "Karplus", "Skip", "Micro", "Random"
+};
+static const std::vector<std::string> SYLLA_FAMILIES_V2 = {
+    "Drone", "Pad", "Air", "Bell", "Pluck",
+    "Phrase", "Dust", "Broken", "Micro", "Random"
+};
+
 struct Sylla : Module {
     enum ParamId {
         FAMILY_PARAM,
@@ -81,6 +94,13 @@ struct Sylla : Module {
     std::shared_ptr<Job> job;
     uint64_t sampleSeed = 0;
 
+    // 0 = v1 (legacy, 2.9), 1 = v2. New modules get v2; a patch with no
+    // familySet key predates the choice and must stay on v1. The buffer is
+    // always seed x settings, so changing this re-renders the same seed
+    // rather than waiting for the next GEN: what you hear is what a reload
+    // would bring back.
+    int familySet = 1;
+
     float pos = 0.f;
     bool playing = false;
     float env = 0.f;          // declick on gate stop
@@ -106,9 +126,7 @@ struct Sylla : Module {
 
     Sylla() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
-        configSwitch(FAMILY_PARAM, 0.f, 9.f, 0.f, "Family",
-            {"Drone", "Pad", "Fragment", "Bell", "Ambient", "Glitch",
-             "Karplus", "Skip", "Micro", "Random"});
+        configSwitch(FAMILY_PARAM, 0.f, 9.f, 0.f, "Family", SYLLA_FAMILIES_V2);
         configButton(GEN_PARAM, "Generate a new sample");
         configButton(TRIG_PARAM, "Play / retrigger");
         configParam(SPEED_PARAM, 0.1f, 2.f, 1.f, "Speed", "x");
@@ -121,6 +139,21 @@ struct Sylla : Module {
         configInput(TRIG_INPUT, "Trigger / gate");
         configOutput(OUT_OUTPUT, "Audio");
         configOutput(EOC_OUTPUT, "End of cycle");
+    }
+
+    // the knob tooltip has to name the positions of the set in force
+    void applyFamilyLabels() {
+        SwitchQuantity* q =
+            dynamic_cast<SwitchQuantity*>(paramQuantities[FAMILY_PARAM]);
+        if (q)
+            q->labels = familySet ? SYLLA_FAMILIES_V2 : SYLLA_FAMILIES_V1;
+    }
+
+    // a setting that feeds the generators changed: rebuild this very sample
+    // from its own seed so the sound and the patch stay in agreement
+    void reRenderCurrent() {
+        applyFamilyLabels();
+        pendingRender = true;
     }
 
     // hand the currently sounding audio to the tail voice, which fades it
@@ -137,16 +170,24 @@ struct Sylla : Module {
             return;
         sampleSeed = seed;
         int family = (int)std::round(params[FAMILY_PARAM].getValue());
-        // "random" picks a family from the seed itself, so a reload from
-        // the saved seed still regenerates the very same sound
-        if (family >= imber_gen::FAM_COUNT)
-            family = (int)(seed % (uint64_t)imber_gen::FAM_COUNT);
+        int set = familySet;
         std::shared_ptr<Job> j(new Job());
         job = j;
-        std::thread([j, family, sr, seed]() {
+        std::thread([j, family, set, sr, seed]() {
             imber_dsp::Rng rng;
             rng.seed(seed);
-            imber_gen::renderFamily(family, rng, sr, j->buf);
+            if (set == 0) {
+                // v1 "random" picks a family from the seed itself, so a
+                // reload from the saved seed regenerates the same sound
+                int f = family;
+                if (f >= imber_gen::FAM_COUNT)
+                    f = (int)(seed % (uint64_t)imber_gen::FAM_COUNT);
+                imber_gen::renderFamily(f, rng, sr, j->buf);
+            }
+            else if (family >= imber_gen::FAM2_COUNT)
+                imber_gen::renderLoop2(rng, sr, j->buf);   // random
+            else
+                imber_gen::renderFamily2(family, rng, sr, j->buf);
             j->done.store(true);
         }).detach();
     }
@@ -160,6 +201,8 @@ struct Sylla : Module {
         xfade = 1.f;
         pos = 0.f;
         sampleSeed = 0;
+        familySet = 1;
+        applyFamilyLabels();
         pendingRender = true;
     }
 
@@ -167,6 +210,7 @@ struct Sylla : Module {
         json_t* rootJ = json_object();
         json_object_set_new(rootJ, "sampleSeed", json_integer((json_int_t)sampleSeed));
         json_object_set_new(rootJ, "running", json_boolean(running));
+        json_object_set_new(rootJ, "familySet", json_integer(familySet));
         return rootJ;
     }
 
@@ -179,6 +223,11 @@ struct Sylla : Module {
         json_t* r = json_object_get(rootJ, "running");
         if (r)
             running = json_boolean_value(r);
+        // no key means a patch from before the v2 set existed: its seed only
+        // reproduces under the taxonomy it was rendered with
+        json_t* f = json_object_get(rootJ, "familySet");
+        familySet = f ? clamp((int)json_integer_value(f), 0, 1) : 0;
+        applyFamilyLabels();
     }
 
     void process(const ProcessArgs& args) override {
@@ -381,6 +430,20 @@ struct SyllaWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(33.20f, 15.80f)), module, Sylla::BUSY_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(17.40f, 103.50f)), module, Sylla::LEVEL_LIGHT));
         // @layout:end
+    }
+
+    void appendContextMenu(Menu* menu) override {
+        Sylla* m = dynamic_cast<Sylla*>(module);
+        if (!m) return;
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createIndexSubmenuItem("Family set",
+            {"v2 (drone pad air bell pluck phrase dust broken micro)",
+             "v1 legacy (drone pad fragment bell ambient glitch karplus skip micro)"},
+            [m]() { return m->familySet ? 0 : 1; },
+            [m](int i) {
+                m->familySet = i ? 0 : 1;
+                m->reRenderCurrent();
+            }));
     }
 };
 

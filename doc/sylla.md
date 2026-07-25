@@ -14,30 +14,61 @@ a background thread while the previous one keeps playing.
 ## Families
 
 The FAMILY knob (snap) picks which corner of the generator library the
-next GEN press draws from:
+next GEN press draws from. The ten positions run as one continuum, from
+the most sustained to the most transient, so the knob is a gesture and
+not a menu:
 
 | family | character |
 |--------|-----------|
-| **drone** | sustained looping cores: additive/detuned stacks, 2-op FM, resonant filtered noise, sub with drive, comb-fed noise |
-| **pad** | slow multi-voice chords and shimmering clusters |
-| **fragment** | short glitchy hits: dirty plucks, stutters, grain clouds, noise bursts, chord stabs, little melodies |
-| **bell** | additive strikes, harmonic or inharmonic partial sets with exponential decays |
-| **ambient** | long and soft: filtered washes over faint chord beds, wowing tape pads, sparse chimes |
-| **glitch** | bubbly sample-and-hold tones |
-| **karplus** | Karplus-Strong plucks and runs |
-| **skip** | CD-skip material: a frozen segment repeated, comb + tanh, choppy gate |
-| **micro** | tiny one-shots (grains, blips, ticks, chirps, thumps) — milliseconds long |
-| **random** | let the sample's own seed pick the family, so every GEN is a surprise |
+| **drone** | sustained cores: additive and detuned stacks, 2-op FM, comb-fed noise, driven sub |
+| **pad** | chordal beds: slow multi-voice chords, shimmering clusters, wowing tape pads |
+| **air** | breath and noise: resonant filtered noise, sweeping washes over faint chord beds, and vowel drones (a glottal pulse train through morphing formants) |
+| **bell** | struck resonance: additive strikes with harmonic or inharmonic partials, sparse chimes, and noise-excited metal and wood bodies |
+| **pluck** | plucked strings, clean and dirty |
+| **phrase** | figures in time: little melodies, chord stabs, note runs, stutters |
+| **dust** | particles: grain clouds and noise bursts |
+| **broken** | damaged media: CD skips (a frozen segment repeated, comb + tanh, choppy gate) and bubbly sample-and-hold tones |
+| **micro** | tiny one-shots (grains, blips, ticks, chirps, thumps), milliseconds long |
+| **random** | a weighted roll across the whole loop pool, the same distribution [imber](imber.md) fills its bank from |
 
-Every pitch is quantized to one pentatonic-minor table on D — the tonal
-glue that keeps random material musical. All families get a light,
-randomized lo-fi "dirt" pass.
+All families get a light, randomized lo-fi "dirt" pass. Pitch is
+quantized to a scale table, D minor pentatonic by default; see
+[Root and scale](#root-and-scale).
+
+### The legacy set
+
+sylla shipped in 2.9 with a different grouping, and patches store only a
+seed, so a sample reproduces solely under the taxonomy that rendered it.
+**Family set** in the context menu keeps both: *v1 legacy* is drone, pad,
+fragment, bell, ambient, glitch, karplus, skip, micro, random. Patches
+saved before v2 existed load on v1 automatically and sound exactly as
+they always did. New modules start on v2.
+
+What changed, and why:
+
+- **ambient is gone.** It was a level and a register rather than an
+  excitation, which is why it sounded like a blend of its neighbours: its
+  tape pad *was* the pad generator with wow instead of static detune, its
+  wash *was* filtered-noise drone over a quiet chord bed, its chime *was*
+  the bell routine an octave up at half the level. All three moved to the
+  family they were already made of.
+- **fragment was a grab bag** of six unrelated recipes; it split across
+  pluck, phrase and dust. Its dirty pluck is Karplus-Strong, so it sits
+  with pluck now.
+- **glitch held a single generator** and skip held one more. They merged
+  into broken.
+- **karplus** is named for what it sounds like instead of for who
+  invented the algorithm.
+- **random** is weighted across the loop pool instead of rolling a family
+  uniformly, which used to weight a one-generator family as heavily as a
+  six-generator one and handed out a CD skip or a 3 ms tick 22% of the
+  time.
 
 ## Controls
 
-- **FAMILY** — generator family for the next render (snap knob). The
-  last position, *random*, derives the family from the seed, so a
-  reloaded patch still comes back with the same sound.
+- **FAMILY** — generator family for the next render (snap knob). Every
+  position, *random* included, derives its sound from the sample's seed,
+  so a reloaded patch always comes back with the same sound.
 - **GEN** (button + trigger input) — render a new sample. The yellow LED
   lights while the worker thread is busy; the old sample plays until the
   new one lands. Requests during a render are ignored. GEN only changes

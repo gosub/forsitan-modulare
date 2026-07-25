@@ -1,9 +1,13 @@
 // imber_gen.hpp — the procedural sample-bank generators. Everything the
 // engine plays is rendered from these at (re)seed time, never shipped:
 // loop buffers (drones, pads, fragments, bells, plucks, ambients,
-// glitches), micro one-shots, and CD-skip material. The taxonomy follows
-// the reverse-engineered Haiku generator families; the magic numbers are
-// tuned by ear, all pitches snap to the shared pentatonic table.
+// glitches), micro one-shots, and CD-skip material. The magic numbers are
+// tuned by ear, all pitches snap to the shared scale table.
+//
+// Two family sets group the same generators for sylla's selector: v1 (the
+// reverse-engineered Haiku taxonomy, shipped in 2.9 and frozen because
+// patches reproduce from a seed) and v2 (the default, regrouped into a
+// bed-to-point continuum and home to any new material).
 #pragma once
 #include "imber_dsp.hpp"
 #include <atomic>
@@ -62,6 +66,39 @@ inline void bellStrike(std::vector<float>& b, float sr, int start, float f0,
         float env = 1.f, ph = rng.range(0.f, kTau);
         for (int i = 0; i < n; i++) {
             b[start + i] += pa * env * std::sin(w * i + ph);
+            env *= k;
+        }
+    }
+}
+
+// noise-excited resonant body. Where bellStrike is pure additive (sines
+// only, so a clean attack), this rings a short noise burst through a bank
+// of high-Q bandpasses: the attack keeps its grit and the modes colour the
+// decay, which is what a struck object actually does. Q sets most of the
+// ring length; the envelope is only a taper on top of it.
+inline void struckBody(std::vector<float>& b, float sr, int start, float f0,
+                       const float* ratios, int nr, float decayS, float amp,
+                       Rng& rng) {
+    int n = std::min((int)b.size() - start, (int)(decayS * 4.f * sr));
+    if (n <= 0) return;
+    int bl = std::max(8, (int)(rng.range(0.002f, 0.008f) * sr));
+    std::vector<float> exc(std::min(n, bl * 3), 0.f);
+    for (size_t i = 0; i < exc.size(); i++)
+        exc[i] = rng.bipolar() * std::exp(-3.f * (float)i / bl);
+    int el = (int)exc.size();
+    for (int p = 0; p < nr; p++) {
+        float f = f0 * ratios[p];
+        if (f > 0.45f * sr) continue;
+        float q = rng.range(80.f, 400.f) / (1.f + 0.5f * p);
+        Biquad bp;
+        bp.setBp(f, q, sr);
+        float tau = decayS / (1.f + 0.8f * p);
+        float k = std::exp(-1.f / (tau * sr));
+        float env = 1.f;
+        // the constant-skirt bandpass peaks at ~Q, so divide it back out
+        float pa = amp / (1.f + p) * rng.range(0.6f, 1.f) * 8.f / q;
+        for (int i = 0; i < n; i++) {
+            b[start + i] += pa * env * bp.process(i < el ? exc[i] : 0.f);
             env *= k;
         }
     }
@@ -412,10 +449,105 @@ inline void genAmbientChime(Rng& rng, float sr, std::vector<float>& b) {
     }
 }
 
-// families exposed to sylla's selector (and used to weight imber's bank)
+// -------------------------------------------------- v2-only generators ---
+
+// three-formant vowel table (F1/F2/F3 in Hz)
+static const float kVowels[5][3] = {
+    {700.f, 1220.f, 2600.f},   // a
+    {400.f, 2000.f, 2550.f},   // e
+    {240.f, 2400.f, 2900.f},   // i
+    {400.f,  800.f, 2600.f},   // o
+    {350.f,  600.f, 2700.f},   // u
+};
+
+// sustained formant drone: the pulsar micro archetype grown up. A glottal
+// pulse train (plus breath noise and a little vibrato) through three
+// bandpass formants morphing between two vowels. This is the one colour
+// neither module had, and the reason sylla is named for a syllable.
+inline void genVowelDrone(Rng& rng, float sr, std::vector<float>& b) {
+    b.assign(loopLen(rng, sr), 0.f);
+    float f0 = pickFreq(rng, -1, 0);
+    int va = rng.irange(0, 4);
+    int vb = (va + 1 + rng.irange(0, 3)) % 5;      // never the same vowel twice
+    float morphHz = rng.range(0.05f, 0.2f);
+    float breath = rng.range(0.02f, 0.1f);
+    float vib = rng.range(0.001f, 0.006f);
+    float vibHz = rng.range(3.f, 6.f);
+    int period = std::max(4, (int)(sr / f0));
+    int gl = std::max(2, period / rng.irange(3, 8));   // glottal pulse width
+    float q[3] = {rng.range(6.f, 12.f), rng.range(8.f, 16.f), rng.range(10.f, 20.f)};
+    static const float amp[3] = {1.f, 0.5f, 0.22f};
+    Biquad fmt[3];
+    int n = (int)b.size();
+    float phase = 0.f;
+    for (int i = 0; i < n; i++) {
+        if ((i & 255) == 0) {
+            float m = 0.5f - 0.5f * std::cos(kTau * morphHz * i / sr);
+            for (int k = 0; k < 3; k++)
+                fmt[k].setBp(kVowels[va][k]
+                             + (kVowels[vb][k] - kVowels[va][k]) * m, q[k], sr);
+        }
+        float fv = f0 * (1.f + vib * std::sin(kTau * vibHz * i / sr));
+        phase += fv / sr;
+        if (phase >= 1.f) phase -= 1.f;
+        int ip = (int)(phase * period);
+        // the bandpasses reject DC, so the pulse can stay unipolar
+        float exc = (ip < gl ? 0.5f - 0.5f * std::cos(kTau * ip / gl) : 0.f)
+                    + rng.bipolar() * breath;
+        float s = 0.f;
+        for (int k = 0; k < 3; k++)
+            s += amp[k] * fmt[k].process(exc);
+        b[i] = s;
+    }
+    normalizePeak(b, 0.8f);
+}
+
+// struck resonant bodies: metal-ish and wood-ish mode sets
+static const float kBodyMetal[4] = {1.f, 1.83f, 2.41f, 3.77f};
+static const float kBodyWood[4] = {1.f, 2.57f, 4.10f, 5.62f};
+
+inline void genStruckBody(Rng& rng, float sr, std::vector<float>& b) {
+    b.assign(loopLen(rng, sr), 0.f);
+    const float* ratios = rng.chance(0.5f) ? kBodyMetal : kBodyWood;
+    int hits = rng.irange(2, 5);
+    for (int h = 0; h < hits; h++) {
+        // the first strike lands on the buffer start. The older event
+        // generators scatter every hit at random, which is why sylla's LEN
+        // window (anchored at 0) so often finds nothing but silence.
+        int start = h ? (int)(rng.uniform() * 0.8f * b.size()) : 0;
+        struckBody(b, sr, start, pickFreq(rng, 0, 2), ratios, 4,
+                   rng.range(0.3f, 1.f), 0.6f, rng);
+    }
+    normalizePeak(b, 0.8f);
+}
+
+// Family set v1, shipped in 2.9. Only sylla's selector reads the family
+// field; imber's bank is populated from the weight column alone.
+//
+// Everything below this line is part of the save format. sylla and imber
+// store a seed and regenerate, so the table's order, its length and its
+// weights all feed the picks a given seed makes: appending one generator
+// or changing one weight silently rewrites every saved patch. That is why
+// the v1 table and v1 renderFamily are frozen, and why new material lands
+// in the v2 table instead, selected per module from the context menu.
 enum Family {
     FAM_DRONE, FAM_PAD, FAM_FRAG, FAM_BELL, FAM_AMBIENT, FAM_GLITCH,
     FAM_KARPLUS, FAM_SKIP, FAM_MICRO, FAM_COUNT
+};
+
+// Family set v2. Same ten knob positions, reordered into one continuum
+// from bed to point (drone, pad, air, bell, pluck, phrase, dust, broken,
+// micro, random), so the knob is a gesture rather than a menu.
+//
+// ambient is gone: it was a level and a register, not an excitation, which
+// is why it sounded like a mixture of its neighbours. Its three generators
+// went home to the families they were already made of (tape pad to pad,
+// wash to air, chime to bell). frag's six unrelated recipes split across
+// pluck / phrase / dust, glitch and skip merged into broken, and karplus
+// is renamed for what it sounds like instead of who invented it.
+enum Family2 {
+    FAM2_DRONE, FAM2_PAD, FAM2_AIR, FAM2_BELL, FAM2_PLUCK,
+    FAM2_PHRASE, FAM2_DUST, FAM2_BROKEN, FAM2_MICRO, FAM2_COUNT
 };
 
 struct GenEntry {
@@ -448,6 +580,41 @@ inline const GenEntry* loopTable(int* count) {
         {genAmbientWash,    FAM_AMBIENT, 1.1f},
         {genAmbientTapePad, FAM_AMBIENT, 1.0f},
         {genAmbientChime,   FAM_AMBIENT, 0.9f},
+    };
+    *count = (int)(sizeof(table) / sizeof(table[0]));
+    return table;
+}
+
+// The v2 loop pool: the same 22 generators regrouped, plus the two colours
+// the library was missing. genSkip and genMicro stay out of it, exactly as
+// they stay out of imber's loop bank, because they finish themselves and
+// are one-shots rather than beds; broken and micro reach them directly.
+inline const GenEntry* loopTable2(int* count) {
+    static const GenEntry table[] = {
+        {genDronePure,      FAM2_DRONE,  1.0f},
+        {genDroneDetuned,   FAM2_DRONE,  1.0f},
+        {genDroneFm,        FAM2_DRONE,  1.0f},
+        {genDroneComb,      FAM2_DRONE,  0.8f},
+        {genDroneSub,       FAM2_DRONE,  0.7f},
+        {genPadSlow,        FAM2_PAD,    1.2f},
+        {genPadCluster,     FAM2_PAD,    0.9f},
+        {genAmbientTapePad, FAM2_PAD,    1.0f},
+        {genDroneFiltNoise, FAM2_AIR,    1.0f},
+        {genAmbientWash,    FAM2_AIR,    1.1f},
+        {genVowelDrone,     FAM2_AIR,    1.0f},
+        {genBellClassic,    FAM2_BELL,   1.0f},
+        {genBellInharmonic, FAM2_BELL,   0.8f},
+        {genAmbientChime,   FAM2_BELL,   0.9f},
+        {genStruckBody,     FAM2_BELL,   1.0f},
+        {genKarplusPluck,   FAM2_PLUCK,  1.1f},
+        {genFragPluckDirty, FAM2_PLUCK,  1.2f},
+        {genFragMelodic,    FAM2_PHRASE, 1.1f},
+        {genFragChordStab,  FAM2_PHRASE, 0.9f},
+        {genKarplusRun,     FAM2_PHRASE, 0.7f},
+        {genFragStutter,    FAM2_PHRASE, 1.0f},
+        {genFragGranular,   FAM2_DUST,   1.1f},
+        {genFragNoiseBurst, FAM2_DUST,   1.0f},
+        {genGlitchBubbly,   FAM2_BROKEN, 0.8f},
     };
     *count = (int)(sizeof(table) / sizeof(table[0]));
     return table;
@@ -637,23 +804,42 @@ inline void genSkip(Rng& rng, float sr, std::vector<float>& b) {
 
 // -------------------------------------------------------- render fronts ---
 
-inline void renderLoop(Rng& rng, float sr, std::vector<float>& b) {
-    int count;
-    const GenEntry* table = loopTable(&count);
+// one uniform() roll, walked down the weight column
+inline int weightedPick(const GenEntry* table, int count, Rng& rng) {
     float total = 0.f;
     for (int i = 0; i < count; i++)
         total += table[i].weight;
     float roll = rng.uniform() * total;
-    int pick = 0;
     for (int i = 0; i < count; i++) {
         roll -= table[i].weight;
-        if (roll <= 0.f) { pick = i; break; }
+        if (roll <= 0.f) return i;
     }
-    table[pick].fn(rng, sr, b);
+    return 0;
+}
+
+// the shared tail every loop generator gets: grunge, edge fades, level
+inline void finishLoop(std::vector<float>& b, Rng& rng, float sr) {
     dirtify(b, rng, sr, rng.range(0.f, 0.35f));
     fadeEdges(b, sr, 25.f);
     normalizePeak(b, 0.75f);
     safetyClip(b);
+}
+
+// how many candidates a family holds, and which table rows they are
+inline int familyMatches(const GenEntry* table, int count, int family,
+                         int* matches, int cap) {
+    int nm = 0;
+    for (int i = 0; i < count && nm < cap; i++)
+        if (table[i].family == family)
+            matches[nm++] = i;
+    return nm;
+}
+
+inline void renderLoop(Rng& rng, float sr, std::vector<float>& b) {
+    int count;
+    const GenEntry* table = loopTable(&count);
+    table[weightedPick(table, count, rng)].fn(rng, sr, b);
+    finishLoop(b, rng, sr);
 }
 
 inline void renderFamily(int family, Rng& rng, float sr, std::vector<float>& b) {
@@ -662,16 +848,45 @@ inline void renderFamily(int family, Rng& rng, float sr, std::vector<float>& b) 
     int count;
     const GenEntry* table = loopTable(&count);
     int matches[32];
-    int nm = 0;
-    for (int i = 0; i < count && nm < 32; i++)
-        if (table[i].family == family)
-            matches[nm++] = i;
+    int nm = familyMatches(table, count, family, matches, 32);
     int pick = nm ? matches[rng.irange(0, nm - 1)] : 0;
     table[pick].fn(rng, sr, b);
-    dirtify(b, rng, sr, rng.range(0.f, 0.35f));
-    fadeEdges(b, sr, 25.f);
-    normalizePeak(b, 0.75f);
-    safetyClip(b);
+    finishLoop(b, rng, sr);
+}
+
+// v2 random: weighted over the whole v2 loop pool, which is imber's own
+// distribution. v1's random rolled seed % 9 instead, so it weighted a
+// one-generator family as heavily as a six-generator one and handed out a
+// CD skip or a 3 ms tick 22% of the time.
+inline void renderLoop2(Rng& rng, float sr, std::vector<float>& b) {
+    int count;
+    const GenEntry* table = loopTable2(&count);
+    table[weightedPick(table, count, rng)].fn(rng, sr, b);
+    finishLoop(b, rng, sr);
+}
+
+inline void renderFamily2(int family, Rng& rng, float sr, std::vector<float>& b) {
+    if (family == FAM2_MICRO) { genMicro(rng, sr, b); return; }
+    int count;
+    const GenEntry* table = loopTable2(&count);
+    int matches[32];
+    int nm = familyMatches(table, count, family, matches, 32);
+    // broken is the one family with a self-finished member: genSkip already
+    // fades and normalizes itself, so it sits outside the loop pool and is
+    // appended here as one extra candidate
+    int extra = (family == FAM2_BROKEN) ? 1 : 0;
+    if (!nm && !extra) {
+        table[0].fn(rng, sr, b);
+        finishLoop(b, rng, sr);
+        return;
+    }
+    int pick = rng.irange(0, nm + extra - 1);
+    if (extra && pick >= nm) {
+        genSkip(rng, sr, b);
+        return;
+    }
+    table[matches[pick]].fn(rng, sr, b);
+    finishLoop(b, rng, sr);
 }
 
 // ----------------------------------------------------------------- bank ---
