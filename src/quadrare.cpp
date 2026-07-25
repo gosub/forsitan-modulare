@@ -25,8 +25,8 @@
 // latency. That block rate is the module's biggest sonic parameter: at n=16
 // it is a grit box, at n=256 much more like a spectral filter.
 //
-// See quadrare-design.md for the decisions behind all of this, and
-// doc/quadrare.md for the manual.
+// See doc/quadrare.md for the manual, and its "Design notes" section for the
+// decisions behind all of this.
 //
 // Controls:
 //   Sliders : 16 bipolar band gains (-1..+1), lit with the band coefficient

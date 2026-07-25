@@ -251,3 +251,61 @@ it to pavo for a spread, or take individual channels for per-band routing.
   time in a way no filter does.
 - Cross-patch two quadrares at the same size: take **coeff out** from one into
   the other's **coeff in** and each coefficient gets the other signal's value.
+
+## Design notes
+
+Why the module is shaped the way it is, including the roads not taken. None
+of this is needed to play it.
+
+**The sliders own the lowest sixteen coefficients, not sixteen bands.** The
+first design gave each slider a band covering a slice of the whole spectrum,
+and it was unplayable in a way no tuning could fix. Coefficient *k* sits at
+`k·fs/2n`, so sixteen equal bands always cut 0–24 kHz into 1500 Hz slices
+*whatever the size*: slider 0 permanently owned everything below 1500 Hz,
+which is where most music lives, and larger sizes only subdivided inside each
+band. Quadratic bands would have distributed them better but forced every
+jack to a different polyphonic width, which is invisible from the panel.
+Owning the low sixteen outright fixes both at once: sixteen times the low-end
+resolution at size 256, and every jack mono at every size, so the polyphony
+problem stops existing rather than being traded against. The cost is that the
+sliders no longer reach above the window, which is what **above** is for.
+
+**Bipolar sliders with zero buttons, rather than a detent.** One control
+doing attenuation, muting and inversion is worth the awkwardness of putting
+the useful position in the middle of the travel. A center detent was
+considered and rejected: it fights you when you want a value *near* zero. The
+buttons make the middle a single press instead, and can reach ±1 as well,
+which a detent cannot.
+
+**The extra block of latency is the price of an exact insert.** Analyzing at
+one boundary and reconstructing at the next costs 2·size instead of size, and
+the alternative was not free: reading **coeff in** at the same boundary that
+wrote **coeff out** picks up a vector one block stale, since Rack copies cable
+voltages once per frame. A plain patch cable would then quietly stop being an
+identity, the wet path would run a block behind the dry, **res** would never
+null and **dry/wet** would mix misaligned copies. Waiting the extra block is
+what makes those three properties hold.
+
+**quant's grid is relative to each block's peak**, which keeps it
+scale-invariant like **keep** and means neither stage cares how hard you drive
+the input. An absolute grid was the other option, and it would have made input
+level musically meaningful again, but only by reintroducing a drive control
+that a purely linear path had made redundant.
+
+**Modifying coefficients changes gain at the block rate**, which generates
+sidebands at multiples of that rate, and they fold back. The aliasing is the
+sound, not a defect: at size 16 the block rate is 3 kHz and the module is a
+grit box, while at 512 it is 94 Hz and behaves far more like a spectral
+filter. This is why size feels like a character control rather than a quality
+setting.
+
+**freeze was cut** late, after play-testing. Holding the coefficient vector
+and rebuilding from it produces exactly one periodic waveform at the block
+rate, so it was a static tone with nowhere to go: a 3 kHz whistle at size 16,
+a 94 Hz drone at 512, and nothing in between worth reaching for. Its panel
+slot went to **above**, which earns it.
+
+**comp survived a similar cull.** Sixteen channels of polyphony is a lot of
+jack for something the **coeff out** row arguably already exposes, but it
+answers a different question: what a coefficient *sounds* like, rather than
+what its value is.

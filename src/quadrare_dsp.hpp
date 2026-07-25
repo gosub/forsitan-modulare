@@ -129,7 +129,8 @@ inline void keepLargest(float* c, int n, int k, float* scratch) {
 
 // QUANT: coefficient bit reduction. The grid is scaled to the block's peak
 // coefficient, so the effect does not depend on how hard the module is
-// driven (see quadrare-design.md, "QUANT absolute vs relative grid").
+// driven, and no drive control is needed to make it useful (see the
+// "Design notes" in doc/quadrare.md).
 inline void quantize(float* c, int n, float levels) {
     if (levels <= 0.f) return;
     float peak = 0.f;
