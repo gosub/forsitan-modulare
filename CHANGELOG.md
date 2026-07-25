@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.12.1] - 2026-07-25
+### Added
+  - **sylla**: a second family set, **v2**, now the default for new
+    modules. The same ten knob positions, reordered as one continuum from
+    bed to point: *drone, pad, air, bell, pluck, phrase, dust, broken,
+    micro, random*. The old *ambient* family is dissolved into the
+    families its generators were already made of (its tape pad was a pad
+    with wow instead of static detune, its wash was filtered-noise drone
+    over a quiet chord bed, its chime was the bell routine an octave up at
+    half the level), the *fragment* grab bag splits across pluck / phrase
+    / dust, *glitch* and *skip* merge into *broken*, and *karplus* is
+    renamed for what it sounds like. *random* now rolls the weighted loop
+    pool, the same distribution imber fills its bank from, instead of
+    picking a family uniformly and handing out a CD skip or a 3 ms tick
+    22% of the time. **Family set** in the context menu switches back to
+    the v1 grouping; patches saved before v2 load on v1 automatically and
+    sound exactly as they did.
+  - **sylla**: two new generators for the gaps the regrouping exposed. A
+    sustained **vowel drone** (a glottal pulse train through three
+    formants morphing between two vowels) joins *air*, and a
+    noise-excited **struck body** (metal and wood mode sets, gritty
+    attack, short dry ring) joins *bell*, where every other strike was a
+    clean additive sine tail.
+  - **sylla**: selectable **root** and **scale** in the context menu, from
+    the same fifteen scales the pages64 modules use. Pitch was hardcoded
+    to minor pentatonic on D, so two syllas could never sit in different
+    keys and a patch was locked to D minor forever. Chord voices follow
+    the scale (m7 on the minor modes, maj7 on major and lydian, dominant
+    7th on mixolydian and hijaz, minor-major 7th on harmonic minor). The
+    default reproduces the old hardcoded tuning exactly, so every saved
+    seed still comes back as itself. Changing root, scale or family set
+    re-renders the current seed, so what you hear is what a reload brings
+    back.
+### Fixed
+  - **sylla**: looping no longer puts a hole in the sound once per lap.
+    The playhead jumped from the window end back to the buffer start,
+    landing in the 25 ms fade every generated buffer carries at both ends,
+    which dropped the output to 0.2-1% of its level at every wrap: an
+    audible throb, worst on exactly the sustained families you would want
+    to loop. Loops now run their laps past the buffer's fade-in and
+    crossfade the head back in under the tail with equal-power gains, the
+    way imber's read heads already did. One-shot playback still keeps both
+    buffer fades, where they are the sample's own attack and release.
+
 ## [2.12.0] - 2026-07-23
 ### Added
   - **vestigia**, a new module: a stereo memory effect built from the
