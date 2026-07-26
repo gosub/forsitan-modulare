@@ -122,7 +122,7 @@ def audit(path):
     W, H = data['panel_w'], data['panel_h']
     issues = []
     # title bbox
-    title_sz = 3.2 if W <= 90 else 2.8
+    title_sz = data.get('title_size') or ns['TITLE_CAP_MM']
     avail = W - 2 * 12.1
     if text_w(data['module'], title_sz) > avail:
         title_sz *= avail / text_w(data['module'], title_sz)

@@ -59,8 +59,10 @@ KIND_FILL = {
 SVG_ONLY = ('label', 'logo', 'box')
 
 # ── parse ─────────────────────────────────────────────────────────────────────
+# The optional `title=MM` overrides the default title cap height. Use it only
+# when a panel is too crowded for the standard size (see CLAUDE.md).
 LAYOUT_HEAD_RE = re.compile(
-    r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)')
+    r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)(?:\s+title=([\d.]+))?')
 # @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  — X Y optional for SVG-only kinds
 # A box may carry `box=WxH` to override the default 14x14 badge, for panels
 # whose output row is too wide to wrap each jack in its own badge (quadrare).
@@ -85,6 +87,7 @@ def parse_cpp(path):
     module_name = mh.group(1)
     panel_w     = float(mh.group(2))
     panel_h     = float(mh.group(3))
+    title_size  = float(mh.group(4)) if mh.group(4) else None
 
     block_m = re.search(
         r'(//\s*@layout:begin.*?//\s*@layout:end)', text, re.DOTALL)
@@ -140,6 +143,7 @@ def parse_cpp(path):
         'module':   module_name,
         'panel_w':  panel_w,
         'panel_h':  panel_h,
+        'title_size': title_size,
         'elements': elements,
         'widget_visuals': WIDGET_VISUALS,
         'kind_fill': KIND_FILL,
@@ -179,7 +183,11 @@ def generate_block(layout):
     m = layout['module']
     w = layout['panel_w']
     h = layout['panel_h']
-    lines = [f'// @layout:begin {m} {w} {h}']
+    ts = layout.get('title_size')
+    head = f'// @layout:begin {m} {w} {h}'
+    if ts:
+        head += f' title={ts}'
+    lines = [head]
     for e in layout['elements']:
         if e['kind'] in SVG_ONLY:
             lines.append(
@@ -211,6 +219,10 @@ def write_cpp(path, layout):
 
 
 # ── SVG regeneration (uses fonttools if available) ────────────────────────────
+# Default title cap height, in mm. Every panel uses this unless its
+# @layout:begin line overrides it with `title=`.
+TITLE_CAP_MM = 3.2
+
 FONT_PATH = os.path.expanduser(
     '~/dl/audio/ocr-a/OCR-A Regular/OCR-A Regular.otf')
 _FONT_CANDIDATES = [
@@ -311,11 +323,10 @@ def regen_svg(layout, svg_path):
         f'  <rect width="{W}" height="{H}" fill="#1a1a1a"/>',
     ]
 
-    # module name title at top; long names shrink to clear the screw zones,
-    # and very wide panels keep the smaller title (a big title dominates them).
-    # 3.2mm clears the screw zones for 5-char names on 8HP panels, so all
-    # titles render the same size (only MMCCCXCIX still shrinks)
-    title_sz = 3.2 if W <= 90 else 2.8
+    # module name title at top. TITLE_CAP_MM is the house size for every
+    # panel; a crowded panel may override it with `title=` on the @layout:begin
+    # line. Long names still shrink to clear the screw zones (MMCCCXCIX).
+    title_sz = layout.get('title_size') or TITLE_CAP_MM
     avail = W - 2 * 12.1   # panel width minus screw zones + clearance
     w = text_w(mod, title_sz)
     if w > avail:

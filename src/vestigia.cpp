@@ -1002,7 +1002,7 @@ struct VestigiaWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/vestigia.svg")));
 
-// @layout:begin vestigia 132.08 128.5
+// @layout:begin vestigia 132.08 128.5 title=2.8
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0

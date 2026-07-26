@@ -739,7 +739,7 @@ struct ImberWidget : ModuleWidget {
         display->box.size = mm2px(Vec(54.f, 48.f));
         addChild(display);
 
-// @layout:begin imber 182.88 128.5
+// @layout:begin imber 182.88 128.5 title=2.8
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
