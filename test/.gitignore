@@ -5,3 +5,4 @@ smoke_*
 !smoke_*.cpp
 !smoke_*.hpp
 vespae_probe
+antrum_probe
