@@ -104,6 +104,34 @@ as the tail develops.
   reverb, and it syncs to the patch through **clk**.
 - Depth full CW with a slow **speed** and infinite decay is the ghost
   choir: shimmer feeding a network that never lets go.
+- The manual's two patch ideas port straight over: *gated reverb* is an
+  envelope into **mix** CV (the knob then attenuates it), and *decay hell*
+  is a pressure or envelope into **decay** CV with the attenuverter open,
+  pushing an already-long tail into infinite feedback and letting it fall
+  back when you release.
+
+## Factory presets
+
+The Erbe-Verb manual's *Emulating typical reverb rooms* table, transcribed
+into eight presets (right-click → Preset). Clock positions map the usual
+way: full CCW, 12:00 at the middle of the sweep, full CW.
+
+| preset | manual's recipe |
+|--------|-----------------|
+| **coffin** | size full CCW, pre-delay full CCW, decay 9:00, absorb 9:00 (the manual's "low-cost oak"; 2:00 is the luxury lining) |
+| **room** | size 12:00, pre-delay 12:00, decay 12:00, depth 12:00, absorb 2:00 |
+| **plate** | size 1:00, pre-delay full CCW, decay 1:00, depth 12:00, absorb 10:00 |
+| **hall** | size 3:00, pre-delay 11:00, decay 1:00, depth 1:00, speed 11:00, absorb 11:00 |
+| **heaven** | size, pre-delay and decay all full CW |
+| **ambient** | size 4:00, pre-delay 11:00, decay 2:00, depth 2:00-3:00, speed 12:00-3:00 (the ranges land in the middle) |
+| **reverse** | mix full CW, size full CCW, pre-delay 3:00-full CW, decay full CCW, absorb full CCW, depth 12:00, reverse on |
+| **shimmer** | size 4:00, pre-delay 11:00, decay 2:00, depth full CW, speed 12:00-3:00 |
+
+Controls the table does not mention are left where the manual's *Getting
+started* puts them: mix at 11:00, depth centred, tilt flat, no
+attenuversion. They are starting points, not destinations - the manual is
+explicit that "many spaces in between are possible by taking any control
+out of its comfort zone".
 
 ## Differences from the hardware
 

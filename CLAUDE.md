@@ -100,7 +100,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | vespae | Wasp filter (EDP Wasp / Doepfer A-124 emulation: CMOS-inverter SVF on a unipolar supply, simultaneous LP/BP/HP/notch + the A-124 LP-to-HP mix pot with CV, drive + supply-headroom grit, bias/hiss mod trimpots) | 60.96mm (12HP) |
 | quadrare | patchable Walsh-Hadamard codec (16 sliders + 32 jacks onto the transform domain, size-zoomable window, keep/quant lossy stages, residual + per-coefficient component outs) | 162.56mm (32HP) |
 | vestigia | stereo memory effect (endless tape loop, oblivion/remanence/sediment memory modes, block activity map + descriptor pool with integrity/wear, listen/breathe/dream recollection modes, similarity weighting, age degradation, modulated diffusion + crossfeed, protected feedback; all macro CV, MEMORY OUT, full context menu, 7 factory presets) | 132.08mm (26HP) |
-| antrum | Erbe-Verb clone (4-line FDN, size 1-500ms, cyclic/ergodic/shimmer depth, absorb = diffusion+damping, reverse pre-delay, clock sync, energy CV out) | 101.6mm (20HP) |
+| antrum | Erbe-Verb clone (4-line FDN, size 1-500ms, cyclic/ergodic/shimmer depth, absorb = diffusion+damping, reverse pre-delay, clock sync, energy CV out; 8 factory presets from the hardware manual) | 101.6mm (20HP) |
 
 ## limen module
 

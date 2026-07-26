@@ -2,6 +2,11 @@
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"
+
+#include <dirent.h>
+#include <string>
+#include <vector>
+#include <algorithm>
 #include "../src/antrum.cpp"
 
 static uint32_t rngState = 0x12345678u;
@@ -205,6 +210,61 @@ static void testShimmerUnlinked() {
     report("antrum", "shimmer_unlinked_bounded", s.peak, s.peak <= 10.001f);
 }
 
+// every factory preset has to load, make sound and stay bounded. They are
+// the manual's own room settings, so this is also a check that the knob
+// ranges still mean what the presets were written against.
+static void testPresets() {
+    const char* dir = "../presets/antrum";
+    DIR* d = opendir(dir);
+    if (!d) {
+        report("antrum", "presets_dir", 0, false);
+        return;
+    }
+    std::vector<std::string> files;
+    while (dirent* e = readdir(d)) {
+        std::string n = e->d_name;
+        if (n.size() > 5 && n.compare(n.size() - 5, 5, ".vcvm") == 0)
+            files.push_back(std::string(dir) + "/" + n);
+    }
+    closedir(d);
+    std::sort(files.begin(), files.end());
+    report("antrum", "presets_found", (double)files.size(), files.size() == 8);
+
+    for (const std::string& f : files) {
+        json_error_t err;
+        json_t* root = json_load_file(f.c_str(), 0, &err);
+        std::string name = f.substr(f.rfind('/') + 1);
+        name = name.substr(0, name.size() - 5);
+        if (!root) {
+            report("antrum", ("preset_" + name).c_str(), 0, false);
+            continue;
+        }
+        Antrum m;
+        size_t i;
+        json_t* v;
+        json_t* ps = json_object_get(root, "params");
+        json_array_foreach(ps, i, v) {
+            int id = (int)json_integer_value(json_object_get(v, "id"));
+            float val = (float)json_number_value(json_object_get(v, "value"));
+            if (id >= 0 && id < Antrum::PARAMS_LEN)
+                m.params[id].setValue(val);
+        }
+        if (json_t* data = json_object_get(root, "data"))
+            m.dataFromJson(data);
+        json_decref(root);
+
+        long frame = 0;
+        Stats all;
+        run(m, frame, 1.5, true, &all);      // excite
+        Stats wet;
+        run(m, frame, 0.3, false, &wet);     // the reverb on its own
+        run(m, frame, 0.2, false, &all);
+        bool ok = all.nans == 0 && wet.nans == 0 && all.peak <= 10.001f
+                  && wet.rms() > 0.02;
+        report("antrum", ("preset_" + name).c_str(), wet.rms(), ok);
+    }
+}
+
 // clock sync: a 2 Hz clock with the pre-delay knob at noon should land on
 // one clock period of pre-delay
 static void testClockSync() {
@@ -227,4 +287,4 @@ static void testClockSync() {
 }
 
 SMOKE_MAIN(testQuiet, testDryPath, testTail, testCvOut, testZeroDecay, testInfinite,
-           testHostile, testShimmerUnlinked, testClockSync)
+           testHostile, testShimmerUnlinked, testClockSync, testPresets)
