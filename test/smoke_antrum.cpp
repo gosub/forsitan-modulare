@@ -126,6 +126,66 @@ static void testHostile() {
     report("antrum", "hostile_bounded", s.peak, s.peak <= 10.001f);
 }
 
+// unlinked shimmer: with depth at noon nothing else modulates, so the
+// octave-up voice is the only thing the menu setting can add. At full
+// shimmer it replaces the direct injection into the network, so what moves
+// is the tail's spectrum, not its level: the fundamental collapses and the
+// octave (and the octave above that, shimmer feeding on itself) takes over.
+static double binMag(const std::vector<float>& x, double freq) {
+    double re = 0.0, im = 0.0;
+    for (size_t i = 0; i < x.size(); i++) {
+        double a = 2.0 * M_PI * freq * i / SR;
+        re += x[i] * std::cos(a);
+        im += x[i] * std::sin(a);
+    }
+    return std::sqrt(re * re + im * im) / x.size();
+}
+
+// excite with a 200 Hz sine, then capture the tail
+static void tailOf(Antrum& m, long& frame, std::vector<float>& tail) {
+    for (int i = 0; i < (int)(1.5 * SR); i++) {
+        m.inputs[Antrum::LEFT_INPUT].setVoltage(
+            5.f * std::sin(2.f * M_PI * 200.f * i / SR));
+        m.process(makeArgs(frame++));
+    }
+    tail.resize((int)(0.5 * SR));
+    for (size_t i = 0; i < tail.size(); i++) {
+        m.inputs[Antrum::LEFT_INPUT].setVoltage(0.f);
+        m.process(makeArgs(frame++));
+        tail[i] = m.outputs[Antrum::LEFT_OUTPUT].getVoltage();
+    }
+}
+
+static void setShimmerCase(Antrum& m, int mode) {
+    m.params[Antrum::MIX_PARAM].setValue(1.f);
+    m.params[Antrum::DECAY_PARAM].setValue(0.9f);
+    m.params[Antrum::ABSORB_PARAM].setValue(0.34f);   // diffusion, no damping
+    m.shimmerMode = mode;
+}
+
+static void testShimmerUnlinked() {
+    long frame = 0;
+    Antrum off;
+    setShimmerCase(off, 0);          // folded into depth, depth at noon = none
+    std::vector<float> offTail;
+    tailOf(off, frame, offTail);
+
+    frame = 0;
+    Antrum on;
+    setShimmerCase(on, 4);           // unlinked at 100%, depth still at noon
+    std::vector<float> onTail;
+    tailOf(on, frame, onTail);
+
+    double offRatio = binMag(offTail, 400.) / binMag(offTail, 200.);
+    double onRatio = binMag(onTail, 400.) / binMag(onTail, 200.);
+    Stats s;
+    for (float v : onTail) s.add(v);
+    report("antrum", "shimmer_off_keeps_fundamental", offRatio, offRatio < 0.5);
+    report("antrum", "shimmer_unlinked_octave_up", onRatio, onRatio > 5.0);
+    report("antrum", "shimmer_unlinked_nans", s.nans, s.nans == 0);
+    report("antrum", "shimmer_unlinked_bounded", s.peak, s.peak <= 10.001f);
+}
+
 // clock sync: a 2 Hz clock with the pre-delay knob at noon should land on
 // one clock period of pre-delay
 static void testClockSync() {
@@ -148,4 +208,4 @@ static void testClockSync() {
 }
 
 SMOKE_MAIN(testQuiet, testDryPath, testTail, testCvOut, testInfinite, testHostile,
-           testClockSync)
+           testShimmerUnlinked, testClockSync)

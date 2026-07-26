@@ -75,6 +75,17 @@ Every knob has its own attenuverter and CV input directly below it.
 Every CV input is ±5 V for the full range of its parameter, scaled by its
 attenuverter.
 
+## Context menu
+
+| item | function |
+|------|----------|
+| **Shimmer** | *Folded into depth* (default) is the hardware behaviour: the octave-up voice rides the top fifth of the **depth** knob, so it always arrives with maximum grain scatter. *Off* keeps it out of the way entirely, and *25% / 50% / 100%* unlink it — a fixed amount of shimmer at any depth setting, including none, which is the only way to get a clean octave-up wash over an unmodulated room |
+
+At full shimmer the octave-up voice *replaces* the direct injection into
+the network: what you hear reverberating is the transposed signal, and
+because the shimmer line is fed the network output too, the octaves stack
+as the tail develops.
+
 ## Tips
 
 - The starting point for a normal reverb is size at noon, pre-delay low,
@@ -96,6 +107,9 @@ attenuverter.
 
 - Stereo in (the hardware is mono in, stereo out), and every parameter
   gets an attenuverter, not just size, depth, decay and tilt.
+- Shimmer can be unlinked from **depth** in the context menu. The
+  hardware only has it at the top of the depth range, which is the
+  default here too.
 - Clock-synced pre-delay reaches 4 s here; the hardware reaches 5.46 s.
 - No input level control: patch a VCA or use the CV inputs.
 - The internal modulation depth for ergodic grains scales with **size**

@@ -24,12 +24,17 @@
 //
 // DEPTH is bipolar: CCW is cyclic modulation (multiphase sine vibrato in the
 // delay lines), CW is ergodic modulation (grain clouds scattering the room
-// dimensions), and the last stretch CW fades in the octave-up shimmer.
+// dimensions), and the last stretch CW fades in the octave-up shimmer, the
+// way the hardware does it (the context menu can unlink shimmer instead).
 // ABSORB folds diffusion and damping into one knob, as the hardware does:
 // the first third adds diffusion, the rest closes the absorption filters.
 
 #include "forsitan.hpp"
 #include "antrum_dsp.hpp"
+
+// fixed shimmer amounts for the unlinked context-menu modes; index 0 is the
+// default, where shimmer rides the top of the DEPTH knob instead
+static const float kShimmerFixed[5] = {0.f, 0.f, 0.25f, 0.5f, 1.f};
 
 // clock sync ratios, 1/1 in the middle (Erbe-Verb manual)
 static const float kSyncRatios[15] = {
@@ -103,6 +108,12 @@ struct Antrum : Module {
 
     static constexpr int kControlDiv = 8;
 
+    // Shimmer normally rides the top of the DEPTH knob, the way the hardware
+    // does it, so the octave-up voice always comes with maximum grain
+    // scatter. Unlinking it fixes shimmer at a set amount instead, which is
+    // the only way to get a clean shimmer over an unmodulated room.
+    static const int kShimmerModes = 5;
+
     antrum_dsp::Engine engine;
     antrum_dsp::Params p;
     // size and pre-delay smooth fast enough to keep audio-rate sweeps alive;
@@ -111,6 +122,7 @@ struct Antrum : Module {
         smCyclic, smErgodic, smShimmer, smSpeed, smTilt, smMix;
     dsp::SchmittTrigger clockTrigger, buttonTrigger;
     bool reverseLatched = false;
+    int shimmerMode = 0;          // 0 = folded into depth, see kShimmerFixed
     float clockPeriod = 0.f;      // seconds between clock edges, 0 = unknown
     float clockTimer = 0.f;
     float sr = 0.f;
@@ -189,12 +201,15 @@ struct Antrum : Module {
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "reverse", json_boolean(reverseLatched));
+        json_object_set_new(root, "shimmerMode", json_integer(shimmerMode));
         return root;
     }
 
     void dataFromJson(json_t* root) override {
         json_t* j = json_object_get(root, "reverse");
         if (j) reverseLatched = json_boolean_value(j);
+        j = json_object_get(root, "shimmerMode");
+        if (j) shimmerMode = clamp((int)json_integer_value(j), 0, kShimmerModes - 1);
     }
 
     // knob + attenuverted CV, 5 V covering `span` of parameter range
@@ -249,7 +264,8 @@ struct Antrum : Module {
         float d2 = depth * depth;
         smCyclic.target = depth < 0.f ? d2 * kMaxCyclicMs : 0.f;
         smErgodic.target = depth > 0.f ? d2 * kErgodicFrac * smSize.target : 0.f;
-        smShimmer.target = clamp((depth - 0.8f) * 5.f, 0.f, 1.f);
+        smShimmer.target = shimmerMode == 0 ? clamp((depth - 0.8f) * 5.f, 0.f, 1.f)
+                                            : kShimmerFixed[shimmerMode];
 
         // ---- speed: 0.5..256 Hz, or a ratio of the clock
         t = clamp(knobCv(SPEED_PARAM, SPEED_ATT_PARAM, SPEED_CV_INPUT, 1.f), 0.f, 1.f);
@@ -447,6 +463,16 @@ struct AntrumWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(82.00f, 103.00f)), module, Antrum::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(97.60f, 103.00f)), module, Antrum::LEVEL_R_LIGHT));
         // @layout:end
+    }
+
+    void appendContextMenu(Menu* menu) override {
+        Antrum* module = getModule<Antrum>();
+
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createIndexSubmenuItem("Shimmer",
+            {"Folded into depth", "Off", "25%", "50%", "100%"},
+            [=]() { return module->shimmerMode; },
+            [=](int idx) { module->shimmerMode = idx; }));
     }
 };
 
