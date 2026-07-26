@@ -271,6 +271,17 @@
         "Reverb",
         "Sampler"
       ]
+    },
+    {
+      "slug": "antrum",
+      "name": "antrum",
+      "description": "Erbe-Verb style feedback delay network reverb: coffin to heavens, all of it modulatable.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.12.1/doc/antrum.md",
+      "tags": [
+        "Effect",
+        "Reverb",
+        "Delay"
+      ]
     }
   ]
 }
