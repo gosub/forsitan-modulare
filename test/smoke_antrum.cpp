@@ -126,6 +126,25 @@ static void testHostile() {
     report("antrum", "hostile_bounded", s.peak, s.peak <= 10.001f);
 }
 
+// decay is the loop gain only, so at 0 the network still passes one
+// diffused pass and the early reflections: short, but not silence
+static void testZeroDecay() {
+    Antrum m;
+    long frame = 0;
+    m.params[Antrum::MIX_PARAM].setValue(1.f);
+    m.params[Antrum::DECAY_PARAM].setValue(0.f);
+    Stats wet;
+    run(m, frame, 1.0, true, &wet);
+    Stats tail;
+    run(m, frame, 0.1, false, &tail);   // the single pass still has to arrive
+    run(m, frame, 0.9, false);          // the allpass diffusers ring on a while
+    Stats gone;
+    run(m, frame, 1.0, false, &gone);   // and then there is nothing left
+    report("antrum", "zero_decay_passes_signal", wet.rms(), wet.rms() > 0.5);
+    report("antrum", "zero_decay_short_tail", tail.rms(), tail.rms() > 0.05);
+    report("antrum", "zero_decay_no_sustain", gone.rms(), gone.rms() < wet.rms() * 0.001);
+}
+
 // unlinked shimmer: with depth at noon nothing else modulates, so the
 // octave-up voice is the only thing the menu setting can add. At full
 // shimmer it replaces the direct injection into the network, so what moves
@@ -207,5 +226,5 @@ static void testClockSync() {
     report("antrum", "clock_sync_predelay_ms", got, std::fabs(got - want) < 5.f);
 }
 
-SMOKE_MAIN(testQuiet, testDryPath, testTail, testCvOut, testInfinite, testHostile,
-           testShimmerUnlinked, testClockSync)
+SMOKE_MAIN(testQuiet, testDryPath, testTail, testCvOut, testZeroDecay, testInfinite,
+           testHostile, testShimmerUnlinked, testClockSync)

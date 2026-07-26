@@ -13,22 +13,24 @@ The topology follows Erbe's ICMC 2015 paper, *Building the Erbe-Verb:
 Extending the Feedback Delay Network Reverb for Modular Synthesizer Use*:
 
 ```
-in ─> pre-delay (forward or reversed) ─┐
-                                       v
-     ┌──────────── 4 delay lines ──────┴───────────┐
-     │  read plain, sine-modulated, or as grains   │
-     │             v                               │
-     │       Chebyshev saturation, driven by the   │
-     │         network's own energy                │
-     │             v                               │
-     │       unitary (Hadamard) matrix ─> DC block │
-     │             v                               │
-     │       absorb lowpass ─> allpass diffuser    │
-     │             v                               │
-     │           x decay ──────────────────────────┘
-     └─────────────────────────────────────────────┘
-                   v
-        + early reflection taps
+in ─> pre-delay (forward or reversed) ──────────────┐
+                                                    │
+     ┌── 4 delay lines ──┐                          │
+     │                   v                          │
+     │  read plain, sine-modulated, or as grains    │
+     │                   v                          │
+     │  Chebyshev saturation, driven by the         │
+     │    network's own energy                      │
+     │                   v                          │
+     │  x decay   (the gain of the loop alone)      │
+     │                   v                          v
+     │  unitary (Hadamard) matrix <──────────── (input)
+     │                   v
+     │  DC block ─> absorb lowpass
+     │                   v
+     └─ allpass diffuser
+
+     network out + early reflection taps
                    v
              tilt ─> dry/wet mix ─> l, r
 ```
@@ -54,7 +56,7 @@ Every knob has its own attenuverter and CV input directly below it.
 |------|----------|
 | **size** | 1–500 ms of network delay: coffin (full CCW), room (noon), plate, hall, heaven (full CW). Also scales the early reflections |
 | **pre-delay** | 7–500 ms before the first reflections, independent of size. Under a clock (see **clk**) it becomes a ratio of the clock instead |
-| **decay** | feedback gain, 0–120%. Past ~100% the tail stops decaying and starts feeding on itself |
+| **decay** | reflection gain, 0–120%. It sets how *long* the tail is, not how much reverb there is: the loop gain alone, never the level of the signal going in. Past ~100% the tail stops decaying and starts feeding on itself. At 0 the network still passes one diffused pass plus the early reflections, which is the gated-ambience end of the knob |
 | **absorb** | diffusion *and* damping in one knob: full CCW = no diffusion, no damping; ~10:00 = full diffusion, no damping; full CW = full diffusion, full damping (a dark, dead space) |
 | **depth** | bipolar modulation depth *and type*. Noon is no modulation. CCW is **cyclic**: a multiphase sine vibrato in the four delay lines, from subtle chorusing to extreme doppler swirl. CW is **ergodic**: raised-cosine grains scattering the room dimensions at random, granular at high depth. The last stretch CW fades in **shimmer**, an octave-up voice folded back into the network |
 | **speed** | 0.5–256 Hz, the rate of whichever modulation **depth** selected (LFO rate for cyclic, grain rate for ergodic). Under a clock it is a ratio of the clock. With depth at noon it does nothing |
@@ -115,6 +117,14 @@ as the tail develops.
 - The internal modulation depth for ergodic grains scales with **size**
   (up to half the room), which the reference implementation caps at a
   fixed few milliseconds. Cyclic vibrato keeps the small fixed depth.
+- **decay** is the loop gain only. The reference implementation applies it
+  to the delay line write, where it also attenuates the signal entering
+  the network, so decay at 0 with a full wet mix is silence and the knob
+  doubles as a hidden wet-level control. Here the gain rides the taps
+  instead, which is identical for the feedback loop (the matrix is
+  linear) but leaves the input at unity: the wet level stays put while
+  the knob shortens the tail, and the manual's own Reverse patch
+  (mix full CW, decay full CCW) makes a sound.
 
 ## Attribution
 

@@ -81,7 +81,7 @@ int main() {
     rack::random::init();
     printf("test,setting,rt60_s,density_per_s,tail_hz,l_r_corr\n");
 
-    const float decays[] = {0.3f, 0.6f, 0.9f, 1.0f};
+    const float decays[] = {0.f, 0.15f, 0.3f, 0.6f, 0.9f, 1.0f};
     for (float d : decays) {
         Antrum m;
         setKnobs(m, 0.706f, d, 0.5f, 0.f);

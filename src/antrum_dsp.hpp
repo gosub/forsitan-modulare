@@ -5,22 +5,24 @@
 // and the block layout of davemollen's dm-Reverb (GPL-3.0), the cleanest
 // public implementation of it:
 //
-//   in ─> predelay (forward / reversed) ─┐
-//                                        v
-//        ┌──────────── 4 delay lines ────┴────────────┐
-//        │  read (plain | sine vibrato | grain cloud) │
-//        │            v                               │
-//        │      saturation (3rd-degree Chebyshev,     │
-//        │        driven by the network's own RMS)    │
-//        │            v                               │
-//        │      Hadamard matrix ─> DC block           │
-//        │            v                               │
-//        │      one-pole absorb (damping)             │
-//        │            v                               │
-//        │      allpass diffuser ─> x decay ──────────┘
-//        └────────────────────────────────────────────┘
-//                     v
-//        early reflection taps + network out
+//   in ─> predelay (forward / reversed) ───────────────┐
+//                                                      │
+//        ┌── 4 delay lines ──┐                         │
+//        │                   v                         │
+//        │   read (plain | sine vibrato | grain cloud) │
+//        │                   v                         │
+//        │   saturation (3rd-degree Chebyshev,         │
+//        │     driven by the network's own RMS)        │
+//        │                   v                         │
+//        │   x decay  (the gain of the loop alone)     │
+//        │                   v                         v
+//        │   Hadamard matrix <───────────────────── (input)
+//        │                   v
+//        │   DC block ─> one-pole absorb (damping)
+//        │                   v
+//        └── allpass diffuser
+//
+//        network out + early reflection taps
 //                     v
 //              tilt filter ─> dry/wet mix
 //
@@ -537,12 +539,19 @@ struct Engine {
 
         avgZ = peak * peak * (1.f - avgB1) + avgZ * avgB1;
 
-        // ---- unitary (Hadamard) feedback matrix
+        // ---- unitary (Hadamard) feedback matrix. The decay gain rides the
+        //      taps rather than the delay line write, so it is the gain of
+        //      the loop alone and never attenuates the incoming signal: the
+        //      matrix is linear, so decay*H(sat) == H(sat*decay) and the
+        //      loop behaves identically either way.
+        float g[4];
+        for (int i = 0; i < 4; i++)
+            g[i] = sat[i] * p.decay;
         float m[4];
-        m[0] = 0.5f * (sat[0] - sat[1] - sat[2] + sat[3]);
-        m[1] = 0.5f * (sat[0] + sat[1] - sat[2] - sat[3]);
-        m[2] = 0.5f * (sat[0] - sat[1] + sat[2] - sat[3]);
-        m[3] = 0.5f * (sat[0] + sat[1] + sat[2] + sat[3]);
+        m[0] = 0.5f * (g[0] - g[1] - g[2] + g[3]);
+        m[1] = 0.5f * (g[0] + g[1] - g[2] - g[3]);
+        m[2] = 0.5f * (g[0] - g[1] + g[2] - g[3]);
+        m[3] = 0.5f * (g[0] + g[1] + g[2] + g[3]);
 
         // ---- the input (and the shimmer voice) enter the first two lines
         float shL, shR;
@@ -559,7 +568,7 @@ struct Engine {
             dcY[i] = y;
             absorbZ[i] = y * a0 + absorbZ[i] * b1;
             float d = diffuser[i].process(absorbZ[i], diffTimeMs[i], p.diffuse);
-            line[i].write(d * p.decay);
+            line[i].write(d);
         }
 
         // ---- output: network plus early reflections, level-compensated
