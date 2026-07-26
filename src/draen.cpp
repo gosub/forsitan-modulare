@@ -225,9 +225,40 @@ struct Draen : Module {
     }
 };
 
+// Engine picker, shared by the display's right-click menu and the panel menu:
+// 37 detents is a lot of knob turning when you already know which drone you
+// want. Lists the requested bank, so it follows a bank switch immediately.
+static void appendEngineItems(Menu* menu, Draen* m) {
+    int n = (int)m->banks[clamp(m->bankRequest, 0, 1)].size();
+    for (int i = 0; i < n; i++) {
+        menu->addChild(createCheckMenuItem(m->engineName(i), "",
+            [m, i]() { return m->uiSelected == i; },
+            [m, i]() { m->params[Draen::ENGINE_PARAM].setValue((float)i); }));
+    }
+}
+
 // ── engine-name display (runtime NanoVG text; panel SVG can't hold <text>) ────
 struct EngineDisplay : TransparentWidget {
     Draen* module = nullptr;
+
+    // Right-click the name to choose an engine by name. Every other button
+    // falls through to the module widget, so the display is still somewhere
+    // you can grab to drag the module around.
+    void onButton(const ButtonEvent& e) override {
+        if (!module || e.action != GLFW_PRESS
+            || e.button != GLFW_MOUSE_BUTTON_RIGHT || (e.mods & RACK_MOD_MASK))
+            return;
+        e.consume(this);
+        Menu* menu = createMenu();
+        menu->addChild(createMenuLabel("engine"));
+        // the bank lives here too: it decides which 37 names are on offer,
+        // and this menu covers the panel one while the pointer is over the display
+        menu->addChild(createIndexPtrSubmenuItem("Bank",
+            {"dræn (dronecaster ports)", "hyf (original instruments)"},
+            &module->bankRequest));
+        menu->addChild(new MenuSeparator);
+        appendEngineItems(menu, module);
+    }
 
     // dark rounded panel on the normal layer (always visible)
     void draw(const DrawArgs& args) override {
@@ -315,6 +346,8 @@ struct DraenWidget : ModuleWidget {
         Draen* m = dynamic_cast<Draen*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
+        menu->addChild(createSubmenuItem("Engine", m->engineName(m->uiSelected),
+            [m](Menu* sub) { appendEngineItems(sub, m); }));
         menu->addChild(createIndexPtrSubmenuItem("Engine bank",
             {"dr\u00e6n (dronecaster ports)", "hyf (original instruments)"}, &m->bankRequest));
         menu->addChild(createIndexPtrSubmenuItem("Hz CV input",

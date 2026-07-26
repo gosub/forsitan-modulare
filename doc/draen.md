@@ -55,8 +55,22 @@ evolving ones start somewhere new each time you select them.
 |--------|-------------|
 | **l** / **r** | Stereo output, ±5 V nominal with a gentle soft-limiter on peaks. Many engines are genuinely stereo (e.g. supersaw spreads its voices). |
 
+## Choosing an engine by name
+
+The **engine** knob has 37 detents, which is a lot of turning when you
+already know which drone you want. **Right-click the engine display** (the
+name panel under the title) for the whole bank as a list, with the current
+engine ticked; picking one moves the knob. The bank switch sits at the top
+of the same menu, since it decides which 37 names are listed. The same list
+is under **Engine** in the module's own right-click menu.
+
+Selecting from the list is exactly like turning the knob to that detent:
+the change fades in and out over the **Fade time**, and a patched **eng cv**
+still offsets on top of it.
+
 ## Context menu
 
+- **Engine** — the bank as a list, current engine ticked (see above).
 - **Engine bank** — *dræn (dronecaster ports)* or *hyf (original instruments)*;
   see [The hyf bank](#the-hyf-bank) below. Switching banks fades like an
   engine change and is saved with the patch.
