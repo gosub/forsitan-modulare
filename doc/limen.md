@@ -58,6 +58,13 @@ The server listens on `localhost:7000` by default. It handles **one client at a 
 |-----|-------------|--------|-------------|
 | `hello` | — | `{protocol, commands}` | protocol version and the list of supported commands; call first to check compatibility |
 
+The current protocol version is **2**. Version 2 added module positions
+(`pos`/`hp` in the module listings, `x`/`y` on `add_module`, `move_module`),
+`save_patch` / `save_patch_as`, and `batch`. Clients that check the version
+strictly, [limen-tools](https://github.com/gosub/limen-tools) among them, need
+their own update to talk to a protocol 2 server; the `commands` list is the
+reliable feature test for everything else.
+
 #### Plugin and model registry
 
 | cmd | extra fields | result | description |
@@ -194,6 +201,18 @@ echo '{"cmd":"set_param","id":8518972980240757,"param":0,"value":0.5}' | nc loca
 
 # list cables with module names and port names
 echo '{"cmd":"list_cables","verbose":true}' | nc localhost 7000
+
+# add a module at HP column 24 of the top row
+echo '{"cmd":"add_module","plugin":"Fundamental","model":"VCO","x":24,"y":0}' | nc localhost 7000
+
+# move a module one row down, refusing to land anywhere else
+echo '{"cmd":"move_module","id":8518972980240757,"x":24,"y":1,"mode":"strict"}' | nc localhost 7000
+
+# two modules in one round trip (one line: a request ends at the newline)
+echo '{"cmd":"batch","commands":[{"cmd":"add_module","plugin":"Fundamental","model":"VCO","x":0,"y":0},{"cmd":"add_module","plugin":"Fundamental","model":"VCF","x":10,"y":0}]}' | nc localhost 7000
+
+# save the patch under a new name
+echo '{"cmd":"save_patch_as","path":"/tmp/generated.vcv"}' | nc localhost 7000
 ```
 
 ```python

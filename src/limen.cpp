@@ -71,7 +71,8 @@ static std::string err_response(const char* msg) {
 
 // ── Protocol version ─────────────────────────────────────────────────────────
 // Bump when the wire protocol changes in a way clients must adapt to.
-static const int LIMEN_PROTOCOL_VERSION = 1;
+// 2: module positions, save_patch/save_patch_as, batch.
+static const int LIMEN_PROTOCOL_VERSION = 2;
 
 
 // ── Read-only commands (safe to call from any thread) ────────────────────────
