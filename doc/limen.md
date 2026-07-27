@@ -25,7 +25,7 @@ The port and enabled state are saved with the patch.
 
 **Live coding / generative patching** — drive patch changes from a REPL, a script, or a custom sequencer. Add and remove modules, reconnect cables, and automate parameter changes in real time without touching the Rack UI.
 
-**Patch documentation and archiving** — dump the current patch state to JSON for later analysis or archiving. `list_modules`, `list_cables`, and `list_params` together give a complete snapshot of what is patched and how it is configured.
+**Patch documentation and archiving** — dump the current patch state to JSON for later analysis or archiving. `list_modules`, `list_cables`, and `list_params` together give a complete snapshot of what is patched and how it is configured, and `save_patch_as` writes the patch itself to a `.vcv` file.
 
 ## Security
 
@@ -110,6 +110,24 @@ commands return the position it actually landed on.
 | `list_cables` | `"id": <int>` (opt.), `"verbose": true` (opt.) | `[{id, outputModule, outputPort, inputModule, inputPort, …}]` | cables in the patch; filter by module id; verbose adds `outputModuleName`, `outputPortName`, `inputModuleName`, `inputPortName` |
 | `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>` | `{id}` | connect two ports |
 | `remove_cable` | `"id": <int>` | `null` | remove a cable from the patch |
+
+#### The patch file
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `save_patch` | `"path": "<path>"` (opt.) | `{path}` | save the patch to its current file, or to `path` as a copy |
+| `save_patch_as` | `"path": "<path>"` | `{path}` | save the patch to `path` and make it the patch's file |
+
+`save_patch` with no `path` is Rack's **Save**: it writes the file the patch
+was opened from, and fails with *patch has never been saved* if there is none.
+Given a `path` it writes a copy there and leaves the current file alone.
+`save_patch_as` is Rack's **Save as**: it writes `path`, adopts it as the
+patch's file, and adds it to the recent patches. Neither prompts, and neither
+asks before overwriting: a script that saves is trusted to know where.
+
+There is no `load_patch`. Loading replaces every module in the rack, this one
+included, which would cut the connection mid-command; open patches from
+Rack's own file menu or from the command line.
 
 #### Application / view
 

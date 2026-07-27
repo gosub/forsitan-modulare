@@ -37,6 +37,7 @@
 #endif
 
 #include <jansson.h>
+#include <patch.hpp>   // not pulled in by rack.hpp; needed for save_patch
 #include <tag.hpp>
 
 
@@ -84,6 +85,7 @@ static std::string cmd_hello() {
 		"list_ports", "list_params", "get_param", "set_param",
 		"list_cables", "add_module", "remove_module", "move_module",
 		"add_cable", "remove_cable",
+		"save_patch", "save_patch_as",
 		"set_fullscreen", "zoom_to_modules", "quit",
 	};
 	json_t* cmds = json_array();
@@ -510,9 +512,10 @@ struct Limen : Module {
 		});
 	}
 
-	// Enqueue fn to execute on the main thread; block until done (≤2s timeout).
-	// Returns the JSON response string produced by fn.
-	std::string runOnMainThread(std::function<std::string()> fn) {
+	// Enqueue fn to execute on the main thread; block until done. Returns the
+	// JSON response string produced by fn. A frame is all most commands need;
+	// writing a patch file is the one that can want longer.
+	std::string runOnMainThread(std::function<std::string()> fn, int timeoutSec = 2) {
 		auto op = std::make_shared<PendingOp>();
 		op->fn = std::move(fn);
 		{
@@ -520,7 +523,7 @@ struct Limen : Module {
 			pendingOps.push_back(op);
 		}
 		std::unique_lock<std::mutex> lk(pendingMtx);
-		bool ok = pendingCv.wait_for(lk, std::chrono::seconds(2),
+		bool ok = pendingCv.wait_for(lk, std::chrono::seconds(timeoutSec),
 			[&]{ return op->done || !running.load(); });
 		if (!ok || !op->done)
 			return err_response("timeout waiting for main thread");
@@ -860,6 +863,41 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 				delete cw;
 				return ok_response(json_null());
 			});
+		}
+	}
+	else if (cmd == "save_patch" || cmd == "save_patch_as") {
+		std::string path;
+		json_t* path_j = json_object_get(req, "path");
+		if (path_j && json_is_string(path_j))
+			path = json_string_value(path_j);
+		if (cmd == "save_patch_as" && path.empty()) {
+			result = err_response("missing path");
+		} else {
+			// save_patch_as is Rack's "Save as": it writes the file and makes
+			// it the patch's path. save_patch with a path is a plain copy and
+			// leaves the current path alone.
+			bool setPath = (cmd == "save_patch_as");
+			result = limen->runOnMainThread([path, setPath]() -> std::string {
+				std::string target = path.empty() ? APP->patch->path : path;
+				if (target.empty())
+					return err_response("patch has never been saved; use save_patch_as with a path");
+				try {
+					APP->patch->save(target);
+				}
+				catch (rack::Exception& e) {
+					return err_response(e.what());
+				}
+				catch (...) {
+					return err_response("failed to save patch");
+				}
+				if (setPath) {
+					APP->patch->path = target;
+					APP->patch->pushRecentPath(target);
+				}
+				json_t* obj = json_object();
+				json_object_set_new(obj, "path", json_string(target.c_str()));
+				return ok_response(obj);
+			}, 10);
 		}
 	}
 	else if (cmd == "set_fullscreen") {
