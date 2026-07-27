@@ -53,15 +53,16 @@ than a bad release.
    python3 tools/patches/gen_patches.py      # patches/*.vcv
    ```
 
-7. **Update the images** if any panel changed. The per-module images in
-   `img/` come from Rack's own renderer, never from a manual screenshot:
+7. **Update the images** if any panel changed. Both kinds are generated,
+   never screenshotted by hand:
 
    ```
-   python3 tools/release/gen_screenshots.py          # or name the modules
+   python3 tools/release/gen_screenshots.py     # img/<module>.png, or name modules
+   python3 tools/release/gen_collection.py      # img/forsitan-modulare.png
    ```
 
-   The readme screenshot (`img/forsitan-modulare.png`) is still taken by
-   hand when the lineup changes.
+   `gen_collection.py` drives the running Rack through limen, so the plugin
+   installed for it must speak limen protocol 2.
 
 8. **Write the CHANGELOG entry.** Heading `## [<version>] - <YYYY-MM-DD>`,
    at the top, grouped `### Added` / `### Changed` / `### Fixed`. `git log`

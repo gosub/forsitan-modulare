@@ -268,21 +268,39 @@ global pip install):
 - `tools/release/` — `sync_version.py`, repoints every `manualUrl` /
   `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
   against the newest `CHANGELOG.md` heading. `--check` is the tag-day gate;
-  see `RELEASING.md`. Plus `gen_screenshots.py`, which regenerates the panel
-  images in `img/`:
+  see `RELEASING.md`. Plus two image generators, so nothing in `img/` is ever
+  made by hand:
 
-  ```
-  python3 tools/release/gen_screenshots.py            # every module
-  python3 tools/release/gen_screenshots.py alea draen # only these
-  ```
+  - `gen_screenshots.py` — the per-module panel images:
 
-  It drives Rack's own `-t <zoom>` screenshot mode against a throwaway user
-  dir holding this plugin alone (the built `plugin.so` straight out of the
-  source tree), then scales each panel to 600px tall with ImageMagick. The
-  crop is exact by construction, so panel images are never made by hand.
-  What it renders is the module-browser preview: knobs at their defaults and
-  no engine behind the panel, so displays that draw live state come out
-  empty.
+    ```
+    python3 tools/release/gen_screenshots.py            # every module
+    python3 tools/release/gen_screenshots.py alea draen # only these
+    ```
+
+    It drives Rack's own `-t <zoom>` screenshot mode against a throwaway user
+    dir holding this plugin alone (the built `plugin.so` straight out of the
+    source tree), then scales each panel to 600px tall with ImageMagick. The
+    crop is exact by construction. What it renders is the module-browser
+    preview: knobs at their defaults and no engine behind the panel, so
+    displays that draw live state come out empty.
+
+  - `gen_collection.py` — `img/forsitan-modulare.png`, the whole lineup:
+
+    ```
+    python3 tools/release/gen_collection.py --dry-run   # print the layout only
+    python3 tools/release/gen_collection.py             # lay out and capture
+    ```
+
+    It starts Rack on `patches/limen.vcv` against a throwaway user dir like
+    the above (with the tips dialog and CPU meter turned off), adds every
+    module through **limen**, measures each one's HP from the protocol,
+    splits them into rows with a dynamic program that minimises the widest
+    row, and moves them into place — the row count is whichever best matches
+    the screen's aspect ratio (three rows of ~113 HP for the 338 HP of
+    modules on a 1920x1200 screen). Then fullscreen, zoom to fit, and
+    `grim`. **It needs limen protocol 2** (`move_module`), so the installed
+    plugin must be built from a tree that has it.
 - `tools/patches/` — `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
   zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
   builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so
