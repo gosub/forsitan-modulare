@@ -87,6 +87,7 @@ static std::string cmd_hello() {
 		"add_cable", "remove_cable",
 		"save_patch", "save_patch_as",
 		"set_fullscreen", "zoom_to_modules", "quit",
+		"batch",
 	};
 	json_t* cmds = json_array();
 	for (const char* c : commands)
@@ -572,17 +573,13 @@ struct Limen : Module {
 
 // ── Command dispatch ──────────────────────────────────────────────────────────
 
-static std::string dispatch(const std::string& line, Limen* limen) {
-	json_error_t err;
-	json_t* req = json_loads(line.c_str(), 0, &err);
-	if (!req)
-		return err_response("invalid JSON");
-
+// Executes one request object, which stays owned by the caller (batch runs its
+// commands straight out of the array it was given). `depth` is 0 for a request
+// that arrived on the wire and 1 for one nested in a batch.
+static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 	json_t* cmd_j = json_object_get(req, "cmd");
-	if (!cmd_j || !json_is_string(cmd_j)) {
-		json_decref(req);
+	if (!cmd_j || !json_is_string(cmd_j))
 		return err_response("missing cmd");
-	}
 	std::string cmd = json_string_value(cmd_j);
 
 	std::string result;
@@ -926,10 +923,71 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 			return ok_response(json_null());
 		});
 	}
+	else if (cmd == "batch") {
+		// One round trip for a whole sequence. The commands still run one at a
+		// time on this thread, each hopping to the main thread if it mutates;
+		// what a batch saves is the wire traffic and the client's bookkeeping,
+		// not the frames. Nesting is refused: it would only deepen the wait.
+		json_t* cmds_j = json_object_get(req, "commands");
+		if (depth > 0) {
+			result = err_response("batch cannot be nested");
+		} else if (!cmds_j || !json_is_array(cmds_j)) {
+			result = err_response("missing commands array");
+		} else {
+			bool stopOnError = true;
+			json_t* stop_j = json_object_get(req, "stopOnError");
+			if (stop_j && json_is_boolean(stop_j))
+				stopOnError = json_boolean_value(stop_j);
+
+			json_t* results = json_array();
+			int failed = 0;
+			int stopped = -1;
+			size_t i;
+			json_t* sub;
+			json_array_foreach(cmds_j, i, sub) {
+				std::string one = json_is_object(sub)
+					? dispatch_req(sub, limen, depth + 1)
+					: err_response("command must be an object");
+				json_error_t perr;
+				json_t* one_j = json_loads(one.c_str(), 0, &perr);
+				if (!one_j)
+					one_j = json_pack("{s:b, s:s}", "ok", 0, "error", "malformed response");
+				json_t* ok_j = json_object_get(one_j, "ok");
+				bool sub_ok = ok_j && json_is_true(ok_j);
+				json_array_append_new(results, one_j);
+				if (!sub_ok) {
+					failed++;
+					if (stopOnError) {
+						stopped = (int)i;
+						break;
+					}
+				}
+			}
+
+			// The envelope succeeds whenever the batch itself was well formed;
+			// each command's own ok/error is in its entry of `results`.
+			json_t* obj = json_object();
+			json_object_set_new(obj, "count", json_integer((json_int_t)json_array_size(results)));
+			json_object_set_new(obj, "failed", json_integer(failed));
+			if (stopped >= 0)
+				json_object_set_new(obj, "stopped", json_integer(stopped));
+			json_object_set_new(obj, "results", results);
+			result = ok_response(obj);
+		}
+	}
 	else {
 		result = err_response("unknown cmd");
 	}
 
+	return result;
+}
+
+static std::string dispatch(const std::string& line, Limen* limen) {
+	json_error_t err;
+	json_t* req = json_loads(line.c_str(), 0, &err);
+	if (!req)
+		return err_response("invalid JSON");
+	std::string result = dispatch_req(req, limen, 0);
 	json_decref(req);
 	return result;
 }

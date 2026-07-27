@@ -111,6 +111,34 @@ commands return the position it actually landed on.
 | `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>` | `{id}` | connect two ports |
 | `remove_cable` | `"id": <int>` | `null` | remove a cable from the patch |
 
+#### Batching
+
+| cmd | extra fields | result | description |
+|-----|-------------|--------|-------------|
+| `batch` | `"commands": [{cmd…}, …]`, `"stopOnError": <bool>` (opt., default `true`) | `{count, failed, stopped, results}` | run a sequence of commands in one round trip |
+
+Each element of `commands` is an ordinary request object, and `results` holds
+the reply each would have got on its own, in order:
+
+```json
+{"cmd": "batch", "commands": [
+  {"cmd": "add_module", "plugin": "Fundamental", "model": "VCO", "x": 0, "y": 0},
+  {"cmd": "add_module", "plugin": "Fundamental", "model": "VCF", "x": 10, "y": 0}
+]}
+```
+
+**Partial failure.** The envelope's `ok` says only that the batch itself was
+well formed; each command's success is its own entry in `results`. `count` is
+how many ran, `failed` how many of those returned an error. With the default
+`stopOnError`, the batch stops at the first failure, `stopped` gives its index,
+and `results` is shorter than `commands` — the commands before it have already
+taken effect and are not rolled back. With `"stopOnError": false` every command
+runs and `results` always matches `commands` one for one.
+
+A batch may not contain another batch. Batching saves round trips and client
+bookkeeping, not time inside Rack: the commands still run one at a time, and
+each mutating one still waits for a frame.
+
 #### The patch file
 
 | cmd | extra fields | result | description |
