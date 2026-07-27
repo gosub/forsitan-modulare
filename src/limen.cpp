@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <functional>
 #include <memory>
@@ -81,7 +82,8 @@ static std::string cmd_hello() {
 		"hello",
 		"list_plugins", "list_models", "list_modules", "get_module", "get_module_info",
 		"list_ports", "list_params", "get_param", "set_param",
-		"list_cables", "add_module", "remove_module", "add_cable", "remove_cable",
+		"list_cables", "add_module", "remove_module", "move_module",
+		"add_cable", "remove_cable",
 		"set_fullscreen", "zoom_to_modules", "quit",
 	};
 	json_t* cmds = json_array();
@@ -121,35 +123,50 @@ static std::string cmd_list_models(const std::string& pluginFilter = "") {
 	return ok_response(arr);
 }
 
-static std::string cmd_list_modules(const std::string& pluginFilter = "") {
-	json_t* arr = json_array();
-	auto ids = APP->engine->getModuleIds();
-	for (int64_t id : ids) {
-		engine::Module* m = APP->engine->getModule(id);
-		if (!m) continue;
-		if (!pluginFilter.empty()) {
-			if (!m->model || !m->model->plugin) continue;
-			if (m->model->plugin->slug != pluginFilter) continue;
-		}
-		json_t* obj = json_object();
-		json_object_set_new(obj, "id", json_integer(id));
-		if (m->model) {
-			json_object_set_new(obj, "plugin", json_string(m->model->plugin ? m->model->plugin->slug.c_str() : ""));
-			json_object_set_new(obj, "model",  json_string(m->model->slug.c_str()));
-			json_object_set_new(obj, "name",   json_string(m->model->name.c_str()));
-		}
-		json_object_set_new(obj, "numParams",  json_integer(m->getNumParams()));
-		json_object_set_new(obj, "numInputs",  json_integer(m->getNumInputs()));
-		json_object_set_new(obj, "numOutputs", json_integer(m->getNumOutputs()));
-		json_array_append_new(arr, obj);
-	}
-	return ok_response(arr);
+// Rack grid coordinates: x counts HP columns, y counts rack rows, both
+// measured from Rack's own origin, so they are the numbers a patch layout is
+// reasoned about in. A module's grid width is its HP.
+static json_t* pos_json(app::ModuleWidget* mw) {
+	math::Vec p = mw->getGridPosition();
+	json_t* obj = json_object();
+	json_object_set_new(obj, "x", json_integer((int64_t)std::lround(p.x)));
+	json_object_set_new(obj, "y", json_integer((int64_t)std::lround(p.y)));
+	return obj;
 }
 
-static std::string cmd_get_module(int64_t id) {
-	engine::Module* m = APP->engine->getModule(id);
-	if (!m)
-		return err_response("module not found");
+// Grid position → the pixel position Rack's placement methods take. Routed
+// through setGridPosition so the mapping cannot drift from Rack's own; the
+// widget is left where it was, the caller does the real move.
+static math::Vec grid_to_pixel(app::ModuleWidget* mw, float x, float y) {
+	math::Vec saved = mw->box.pos;
+	mw->setGridPosition(math::Vec(x, y));
+	math::Vec px = mw->box.pos;
+	mw->box.pos = saved;
+	return px;
+}
+
+// Move mw to grid (x, y) under one of Rack's four placement policies.
+// Returns an error message, or nullptr on success. Main thread only.
+static const char* place_module(app::ModuleWidget* mw, float x, float y, const std::string& mode) {
+	math::Vec px = grid_to_pixel(mw, x, y);
+	if (mode == "nearest")
+		APP->scene->rack->setModulePosNearest(mw, px);
+	else if (mode == "force")
+		APP->scene->rack->setModulePosForce(mw, px);
+	else if (mode == "squeeze")
+		APP->scene->rack->setModulePosSqueeze(mw, px);
+	else if (mode == "strict") {
+		if (!APP->scene->rack->requestModulePos(mw, px))
+			return "position occupied";
+	}
+	else
+		return "unknown mode (expected nearest, force, squeeze, or strict)";
+	return nullptr;
+}
+
+// The shape list_modules and get_module both return. Reads the module widget
+// for "pos" and "hp", so it must run on the main thread.
+static json_t* module_json(int64_t id, engine::Module* m) {
 	json_t* obj = json_object();
 	json_object_set_new(obj, "id", json_integer(id));
 	if (m->model) {
@@ -160,7 +177,34 @@ static std::string cmd_get_module(int64_t id) {
 	json_object_set_new(obj, "numParams",  json_integer(m->getNumParams()));
 	json_object_set_new(obj, "numInputs",  json_integer(m->getNumInputs()));
 	json_object_set_new(obj, "numOutputs", json_integer(m->getNumOutputs()));
-	return ok_response(obj);
+	app::ModuleWidget* mw = APP->scene->rack->getModule(id);
+	if (mw) {
+		json_object_set_new(obj, "pos", pos_json(mw));
+		json_object_set_new(obj, "hp", json_integer((int64_t)std::lround(mw->getGridSize().x)));
+	}
+	return obj;
+}
+
+static std::string cmd_list_modules(const std::string& pluginFilter = "") {
+	json_t* arr = json_array();
+	auto ids = APP->engine->getModuleIds();
+	for (int64_t id : ids) {
+		engine::Module* m = APP->engine->getModule(id);
+		if (!m) continue;
+		if (!pluginFilter.empty()) {
+			if (!m->model || !m->model->plugin) continue;
+			if (m->model->plugin->slug != pluginFilter) continue;
+		}
+		json_array_append_new(arr, module_json(id, m));
+	}
+	return ok_response(arr);
+}
+
+static std::string cmd_get_module(int64_t id) {
+	engine::Module* m = APP->engine->getModule(id);
+	if (!m)
+		return err_response("module not found");
+	return ok_response(module_json(id, m));
 }
 
 // The metadata Rack shows in a module's right-click Info menu: model
@@ -553,19 +597,26 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 			filter = json_string_value(plugin_j);
 		result = cmd_list_models(filter);
 	}
+	// list_modules and get_module report module positions, which live in the
+	// widgets, so they run on the main thread like the mutations do.
 	else if (cmd == "list_modules") {
 		std::string filter;
 		json_t* plugin_j = json_object_get(req, "plugin");
 		if (plugin_j && json_is_string(plugin_j))
 			filter = json_string_value(plugin_j);
-		result = cmd_list_modules(filter);
+		result = limen->runOnMainThread([filter]() -> std::string {
+			return cmd_list_modules(filter);
+		});
 	}
 	else if (cmd == "get_module") {
 		json_t* id_j = json_object_get(req, "id");
 		if (!id_j || !json_is_integer(id_j)) {
 			result = err_response("missing id");
 		} else {
-			result = cmd_get_module(json_integer_value(id_j));
+			int64_t id = json_integer_value(id_j);
+			result = limen->runOnMainThread([id]() -> std::string {
+				return cmd_get_module(id);
+			});
 		}
 	}
 	else if (cmd == "get_module_info") {
@@ -633,13 +684,26 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 	else if (cmd == "add_module") {
 		json_t* plugin_j = json_object_get(req, "plugin");
 		json_t* model_j  = json_object_get(req, "model");
+		json_t* x_j = json_object_get(req, "x");
+		json_t* y_j = json_object_get(req, "y");
 		if (!plugin_j || !json_is_string(plugin_j) ||
 		    !model_j  || !json_is_string(model_j)) {
 			result = err_response("missing plugin or model");
+		} else if ((x_j || y_j) && !(x_j && json_is_number(x_j) && y_j && json_is_number(y_j))) {
+			result = err_response("x and y must both be numbers");
 		} else {
 			std::string plugSlug  = json_string_value(plugin_j);
 			std::string modelSlug = json_string_value(model_j);
-			result = limen->runOnMainThread([plugSlug, modelSlug]() -> std::string {
+			// Placement is optional: without x/y the module lands next to an
+			// existing one, as it did before positions were in the protocol.
+			bool placed = (x_j != nullptr);
+			float x = placed ? (float)json_number_value(x_j) : 0.f;
+			float y = placed ? (float)json_number_value(y_j) : 0.f;
+			std::string mode = "nearest";
+			json_t* mode_j = json_object_get(req, "mode");
+			if (mode_j && json_is_string(mode_j))
+				mode = json_string_value(mode_j);
+			result = limen->runOnMainThread([plugSlug, modelSlug, placed, x, y, mode]() -> std::string {
 				plugin::Plugin* plug = rack::plugin::getPlugin(plugSlug);
 				if (!plug) return err_response("plugin not found");
 				plugin::Model* mdl = plug->getModel(modelSlug);
@@ -654,19 +718,30 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 					return err_response("failed to create module widget");
 				}
 				APP->scene->rack->addModule(mw);
-				// Place next to an existing module so it appears in the visible area.
-				// Fall back to (0,0) if there are no other modules.
-				math::Vec pos = math::Vec(0, 0);
-				for (widget::Widget* w : APP->scene->rack->getModuleContainer()->children) {
-					app::ModuleWidget* existing = dynamic_cast<app::ModuleWidget*>(w);
-					if (existing && existing != mw) {
-						pos = existing->box.pos;
-						break;
+				if (placed) {
+					const char* err = place_module(mw, x, y, mode);
+					if (err) {
+						APP->scene->rack->removeModule(mw);
+						delete mw;
+						return err_response(err);
 					}
+				} else {
+					// Place next to an existing module so it appears in the visible area.
+					// Fall back to (0,0) if there are no other modules.
+					math::Vec pos = math::Vec(0, 0);
+					for (widget::Widget* w : APP->scene->rack->getModuleContainer()->children) {
+						app::ModuleWidget* existing = dynamic_cast<app::ModuleWidget*>(w);
+						if (existing && existing != mw) {
+							pos = existing->box.pos;
+							break;
+						}
+					}
+					APP->scene->rack->setModulePosNearest(mw, pos);
 				}
-				APP->scene->rack->setModulePosNearest(mw, pos);
 				json_t* obj = json_object();
 				json_object_set_new(obj, "id", json_integer(mod->id));
+				json_object_set_new(obj, "pos", pos_json(mw));
+				json_object_set_new(obj, "hp", json_integer((int64_t)std::lround(mw->getGridSize().x)));
 				return ok_response(obj);
 			});
 		}
@@ -690,6 +765,36 @@ static std::string dispatch(const std::string& line, Limen* limen) {
 				APP->scene->rack->removeModule(mw);
 				delete mw;
 				return ok_response(json_null());
+			});
+		}
+	}
+	else if (cmd == "move_module") {
+		json_t* id_j = json_object_get(req, "id");
+		json_t* x_j  = json_object_get(req, "x");
+		json_t* y_j  = json_object_get(req, "y");
+		if (!id_j || !json_is_integer(id_j) ||
+		    !x_j  || !json_is_number(x_j) ||
+		    !y_j  || !json_is_number(y_j)) {
+			result = err_response("missing id, x, or y");
+		} else {
+			int64_t id = json_integer_value(id_j);
+			float x = (float)json_number_value(x_j);
+			float y = (float)json_number_value(y_j);
+			std::string mode = "nearest";
+			json_t* mode_j = json_object_get(req, "mode");
+			if (mode_j && json_is_string(mode_j))
+				mode = json_string_value(mode_j);
+			result = limen->runOnMainThread([id, x, y, mode]() -> std::string {
+				app::ModuleWidget* mw = APP->scene->rack->getModule(id);
+				if (!mw) return err_response("module not found");
+				const char* err = place_module(mw, x, y, mode);
+				if (err) return err_response(err);
+				json_t* obj = json_object();
+				json_object_set_new(obj, "id", json_integer(id));
+				// The requested position is a request: every mode but strict
+				// may land the module somewhere else, so report where it is.
+				json_object_set_new(obj, "pos", pos_json(mw));
+				return ok_response(obj);
 			});
 		}
 	}

@@ -69,15 +69,39 @@ The server listens on `localhost:7000` by default. It handles **one client at a 
 
 | cmd | extra fields | result | description |
 |-----|-------------|--------|-------------|
-| `list_modules` | `"plugin": "<slug>"` (opt.) | `[{id, plugin, model, name, numParams, numInputs, numOutputs}]` | modules currently in the patch |
-| `get_module` | `"id": <int>` | `{id, plugin, model, name, numParams, numInputs, numOutputs}` | detail for one module |
+| `list_modules` | `"plugin": "<slug>"` (opt.) | `[{id, plugin, model, name, numParams, numInputs, numOutputs, pos: {x, y}, hp}]` | modules currently in the patch |
+| `get_module` | `"id": <int>` | `{id, plugin, model, name, numParams, numInputs, numOutputs, pos: {x, y}, hp}` | detail for one module |
 | `get_module_info` | `"id": <int>` | `{id, model: {slug, name, description, tags, manualUrl, modularGridUrl}, plugin: {slug, name, brand, version, license, author, authorUrl, pluginUrl, manualUrl, sourceUrl, donateUrl, changelogUrl}}` | the metadata Rack shows in a module's right-click Info menu |
 | `list_ports` | `"id": <int>` | `{inputs: [{id, name}], outputs: [{id, name}]}` | input and output port names |
 | `list_params` | `"id": <int>` | `[{id, value, name, min, max, unit}]` | params for a module |
 | `get_param` | `"id": <int>`, `"param": <int>` | `{id, value, name, min, max, unit}` | one parameter's current value and metadata |
 | `set_param` | `"id": <int>`, `"param": <int>`, `"value": <float>` | `null` | set a parameter value |
-| `add_module` | `"plugin": "<slug>"`, `"model": "<slug>"` | `{id}` | add a module to the patch |
+| `add_module` | `"plugin": "<slug>"`, `"model": "<slug>"`, `"x"`, `"y"`, `"mode"` (opt.) | `{id, pos: {x, y}, hp}` | add a module to the patch |
 | `remove_module` | `"id": <int>` | `null` | remove a module from the patch |
+| `move_module` | `"id": <int>`, `"x": <int>`, `"y": <int>`, `"mode"` (opt.) | `{id, pos: {x, y}}` | move a module to a grid position |
+
+##### Module positions
+
+`pos` is in **Rack grid coordinates**: `x` counts HP columns and `y` counts
+rack rows, measured from Rack's origin, the same units the rack itself snaps
+to. `hp` is the module's width in the same units, so `x + hp` is where the
+next module can start. Positions are integers; a patch built by a script can
+place a whole row with `x` running along it.
+
+`add_module` without `x`/`y` keeps the old behaviour, dropping the module next
+to an existing one. With them, it is placed where you asked.
+
+`mode` decides what happens when the target is already occupied:
+
+| mode | behaviour |
+|------|-----------|
+| `nearest` (default) | move to the closest free position, disturbing nothing else |
+| `force` | move there, pushing the row's other modules left or right |
+| `squeeze` | move there, contracting the old position and making room |
+| `strict` | fail with `position occupied` rather than move elsewhere |
+
+Only `strict` guarantees the module ends up exactly where asked, so both
+commands return the position it actually landed on.
 
 #### Cables in the patch
 
