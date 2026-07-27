@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.13.0] - 2026-07-27
+### Added
+  - **antrum**, a new module: a feedback delay network reverb built after
+    the Make Noise / SoundHack Erbe-Verb, from Tom Erbe's ICMC 2015 paper
+    *Building the Erbe-Verb: Extending the Feedback Delay Network Reverb
+    for Modular Synthesizer Use* and the hardware's manual, with the block
+    layout of davemollen's GPL-3.0 dm-Reverb. Four delay lines whose times
+    are mutually prime and scale together from one **size** control, from
+    1 to 500 ms — a coffin to the heavens without ever changing algorithm,
+    so sweeping it is a mass of coordinated doppler shifts: walls moving
+    when slow, percussive when fast, FM at audio rate. Around the loop sit
+    a unitary Hadamard matrix, an allpass diffuser and a one-pole
+    absorption filter per branch, and a 3rd-degree Chebyshev fold driven
+    by the network's own energy, so **decay** can reach 120% and sustain
+    forever while the saturation and the absorption filters decide what
+    "forever" sounds like. **absorb** folds diffusion and damping into one
+    knob as the hardware does — diffusion over the first third, then the
+    filters closing. **depth** is bipolar over modulation *type*: cyclic
+    multiphase sine vibrato counter-clockwise, ergodic grain clouds
+    scattering the room dimensions clockwise, and octave-up shimmer
+    folded into the last stretch (unlinkable from the context menu). A
+    **pre-delay** of 7 to 500 ms plays forwards or backwards, latched by
+    button or momentarily by gate, and a **clk** input snaps pre-delay and
+    modulation speed to ratios of the patch tempo. An analog tilt filter
+    model shapes the output after the loop, and the network's own energy
+    leaves as a 0-10 V CV, ready to be patched back into decay or size.
+    Every one of the eight knobs has its own attenuverter and CV input.
+    Eight factory presets transcribe the manual's *Emulating typical
+    reverb rooms* table: coffin, room, plate, hall, heaven, ambient,
+    reverse and shimmer.
+  - **draen**: right-click the engine display to pick an engine by name.
+    37 detents per bank is a lot of turning when you already know which
+    drone you want; the list shows the current bank with the active engine
+    ticked, and the bank switch rides at the top of the same menu. The
+    same list is an **Engine** submenu on the panel's own menu, matching
+    how sylla does it.
+
+### Fixed
+  - **Panel titles** are one size again. The title cap height was chosen
+    by panel width, 3.2mm up to 90mm and 2.8mm above it, which left perge,
+    guttur and quadrare wearing a smaller title than their narrower
+    siblings for no reason visible on the panel. Every panel now uses
+    3.2mm, and a panel that genuinely has no room says so on its own
+    layout line: imber, whose buttons sit 1.25mm under the title, and
+    vestigia, whose display band starts at y=9.
+
 ## [2.12.1] - 2026-07-25
 ### Added
   - **sylla**: the knob now selects the **engine**, one generator per
