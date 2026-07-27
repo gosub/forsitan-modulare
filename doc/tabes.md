@@ -1,5 +1,7 @@
 # tabes
 
+![tabes](../img/tabes.png)
+
 **Disintegration looper: a tape loop that crumbles a little more on every
 pass.**
 

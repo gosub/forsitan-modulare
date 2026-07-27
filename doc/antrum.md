@@ -1,5 +1,7 @@
 # antrum
 
+![antrum](../img/antrum.png)
+
 **Feedback delay network reverb, from a coffin to the heavens, all of it modulatable.**
 
 *antrum* is Latin for "cave, grotto". The module is built after the **Make

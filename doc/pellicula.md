@@ -1,5 +1,7 @@
 # pellicula
 
+![pellicula](../img/pellicula.png)
+
 *pellicula* is an **8-voice drum sampler** — the two-drum Erica Synths Pico
 DRUM sample-player "exploded" into eight independent voices, with a knob **and**
 a CV input for every parameter of every voice, laid out as one big control

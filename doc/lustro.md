@@ -1,5 +1,7 @@
 # lustro
 
+![lustro](../img/lustro.png)
+
 **Scanned filter: scando's vibrating string playing a filterbank instead of
 a wavetable.**
 

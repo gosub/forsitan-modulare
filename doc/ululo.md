@@ -1,5 +1,7 @@
 # ululo
 
+![ululo](../img/ululo.png)
+
 **Feedback guitar: an electric guitar held up to a screaming amplifier.**
 
 *ululo* is Latin for "I howl". The signal topology follows Nathaniel Virgo's

@@ -1,5 +1,7 @@
 # quadrare
 
+![quadrare](../img/quadrare.png)
+
 **A Walsh–Hadamard codec with the transform domain brought out on jacks.**
 
 *quadrare* is Latin for *to square, to make fit*. Walsh functions are square

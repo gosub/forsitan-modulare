@@ -1,5 +1,7 @@
 # dræn
 
+![dræn](../img/draen.png)
+
 *dræn* is a **drone synthesizer**: a bank of drone engines, each a small
 self-contained voice, played from just two controls — a fundamental (**hz**) and
 a level (**amp**) — with a third control that selects which engine is sounding.

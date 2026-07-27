@@ -1,5 +1,7 @@
 # vespae
 
+![vespae](../img/vespae.png)
+
 **The Wasp filter: a state-variable filter built out of CMOS inverters on a
 single unipolar supply, and dirty because of it.**
 

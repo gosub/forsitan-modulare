@@ -1,5 +1,7 @@
 # rete
 
+![rete](../img/rete.png)
+
 **Feedback integrator network — a self-oscillating chaotic instrument.**
 
 *rete* is Latin for "net". The module is an implementation of the *feedback

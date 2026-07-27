@@ -1,5 +1,7 @@
 # bulla
 
+![bulla](../img/bulla.png)
+
 **Rob Hordijk's Blippoo Box: the Benjolin's chaotic sibling.**
 
 *bulla* is Latin for "bubble, blip" (and the amulet Roman children wore).

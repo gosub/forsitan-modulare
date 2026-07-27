@@ -1,5 +1,7 @@
 # guttur
 
+![guttur](../img/guttur.png)
+
 **Chaotic resonator drone: a Duffing oscillator screaming through 48
 resonant filters.**
 

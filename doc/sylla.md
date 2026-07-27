@@ -1,5 +1,7 @@
 # sylla
 
+![sylla](../img/sylla.png)
+
 **Random sample generator and player: press GEN, get a sound that has
 never existed before.**
 

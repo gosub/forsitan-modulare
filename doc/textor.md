@@ -1,5 +1,7 @@
 # textor
 
+![textor](../img/textor.png)
+
 **One-knob loop weaver: two seconds of sound, endlessly rewoven, never
 the same twice.**
 

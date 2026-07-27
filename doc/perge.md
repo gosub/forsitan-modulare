@@ -1,5 +1,7 @@
 # perge
 
+![perge](../img/perge.png)
+
 **Stereo dynamic sampler and multi-effect: repeats that listen to how you
 play.**
 

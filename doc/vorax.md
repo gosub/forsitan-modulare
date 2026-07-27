@@ -1,5 +1,7 @@
 # vorax
 
+![vorax](../img/vorax.png)
+
 **Feedback drone synthesizer: a string that only sounds when you feed it.**
 
 *vorax* is Latin for "voracious, all-devouring". The module is a port of

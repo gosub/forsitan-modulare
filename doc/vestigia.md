@@ -1,5 +1,7 @@
 # vestigia
 
+![vestigia](../img/vestigia.png)
+
 **Stereo memory effect: an endless tape loop, continuously rewritten,
 that remembers meaningful fragments and returns them imperfectly.**
 

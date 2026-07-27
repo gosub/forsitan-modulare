@@ -1,5 +1,7 @@
 # imber
 
+![imber](../img/imber.png)
+
 **Generative rain: eight sample players on a field where position is
 composition, everything synthesized from nothing.**
 
