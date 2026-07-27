@@ -268,7 +268,21 @@ global pip install):
 - `tools/release/` — `sync_version.py`, repoints every `manualUrl` /
   `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
   against the newest `CHANGELOG.md` heading. `--check` is the tag-day gate;
-  see `RELEASING.md`.
+  see `RELEASING.md`. Plus `gen_screenshots.py`, which regenerates the panel
+  images in `img/`:
+
+  ```
+  python3 tools/release/gen_screenshots.py            # every module
+  python3 tools/release/gen_screenshots.py alea draen # only these
+  ```
+
+  It drives Rack's own `-t <zoom>` screenshot mode against a throwaway user
+  dir holding this plugin alone (the built `plugin.so` straight out of the
+  source tree), then scales each panel to 600px tall with ImageMagick. The
+  crop is exact by construction, so panel images are never made by hand.
+  What it renders is the module-browser preview: knobs at their defaults and
+  no engine behind the panel, so displays that draw live state come out
+  empty.
 - `tools/patches/` — `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
   zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
   builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so

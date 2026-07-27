@@ -53,8 +53,15 @@ than a bad release.
    python3 tools/patches/gen_patches.py      # patches/*.vcv
    ```
 
-7. **Update the readme screenshot** (`img/forsitan-modulare.png`) if the
-   panel lineup changed.
+7. **Update the images** if any panel changed. The per-module images in
+   `img/` come from Rack's own renderer, never from a manual screenshot:
+
+   ```
+   python3 tools/release/gen_screenshots.py          # or name the modules
+   ```
+
+   The readme screenshot (`img/forsitan-modulare.png`) is still taken by
+   hand when the lineup changes.
 
 8. **Write the CHANGELOG entry.** Heading `## [<version>] - <YYYY-MM-DD>`,
    at the top, grouped `### Added` / `### Changed` / `### Fixed`. `git log`
