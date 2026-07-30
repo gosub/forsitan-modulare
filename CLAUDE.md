@@ -90,7 +90,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | ululo | feedback guitar (six comb strings + saturating amp in a howling loop, poly V/oct retuning) | 40.64mm (8HP) |
 | tabes | disintegration looper (per-pass tape aging, overdub, splice restore, loop overlap, FX send/return) | 60.96mm (12HP) |
 | lustro | scanned filter (scando string drives the band gains of a 16-band resonant filterbank) | 50.8mm (10HP) |
-| bulla | Hordijk Blippoo Box (two cross-modulating oscillators, two runglers, twin-peak filter) | 50.8mm (10HP) |
+| bulla | inspired by Hordijk's Blippoo Box (two cross-modulating oscillators, two runglers, twin-peak filter) | 50.8mm (10HP) |
 | perge | stereo dynamic sampler and multi-effect (dynamics-gated repeats, freeze, glitch/dimension, lofi/crush, reverb/smear, tilt filter; AC noises CONTINUA homage) | 101.6mm (20HP) |
 | vorax | feedback drone synthesizer (Audrey II port: self-exciting Karplus-Strong loop, reverb, degrading tape echo) | 50.8mm (10HP) |
 | textor | one-knob loop weaver (Fieldtone Weaver clone: 2s capture rewoven per knob move, 3 elements with gates) | 50.8mm (10HP) |

@@ -161,7 +161,7 @@
     {
       "slug": "bulla",
       "name": "bulla",
-      "description": "Rob Hordijk's Blippoo Box: cross-modulating oscillators and runglers, between pattern and chaos.",
+      "description": "Inspired by Hordijk's Blippoo Box: cross-modulating oscillators and runglers, pattern and chaos.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.0/doc/bulla.md",
       "tags": [
         "Oscillator",

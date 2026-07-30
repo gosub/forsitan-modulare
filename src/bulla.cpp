@@ -1,6 +1,6 @@
 // bulla.cpp — VCV Rack 2 module
-// bulla (Latin: "bubble, blip"; also the Roman amulet) is an implementation
-// of Rob Hordijk's Blippoo Box, the Benjolin's chaotic sibling, described in
+// bulla (Latin: "bubble, blip"; also the Roman amulet) is inspired by Rob
+// Hordijk's Blippoo Box, the Benjolin's chaotic sibling, described in
 // his paper "The Blippoo Box: A Chaotic Electronic Music Instrument, Bent by
 // Design" (Leonardo Music Journal, 2009). Structure follows olaf's
 // SuperCollider realization (https://sccode.org/1-5bB), reimplemented from

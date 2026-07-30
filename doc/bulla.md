@@ -2,10 +2,10 @@
 
 ![bulla](../img/bulla.png)
 
-**Rob Hordijk's Blippoo Box: the Benjolin's chaotic sibling.**
+**Inspired by Rob Hordijk's Blippoo Box: the Benjolin's chaotic sibling.**
 
 *bulla* is Latin for "bubble, blip" (and the amulet Roman children wore).
-The module implements the Blippoo Box, described by Rob Hordijk in "The
+The module is inspired by the Blippoo Box, described by Rob Hordijk in "The
 Blippoo Box: A Chaotic Electronic Music Instrument, Bent by Design"
 (Leonardo Music Journal, 2009). The structure follows olaf's SuperCollider
 realization ([sccode.org/1-5bB](https://sccode.org/1-5bB)), reimplemented

@@ -24,7 +24,7 @@ A collection of VCV Rack modules.
 | [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp in a howling loop | [doc/ululo.md](doc/ululo.md) |
 | [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
 | [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
-| [bulla](doc/bulla.md) | Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
+| [bulla](doc/bulla.md) | Inspired by Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
 | [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats, freeze, glitch and layered dimension (AC noises CONTINUA homage) | [doc/perge.md](doc/perge.md) |
 | [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
 | [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
