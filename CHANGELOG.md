@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.13.1] - 2026-07-30
+### Added
+  - **limen** speaks **protocol version 2**. A client could add twenty
+    modules but not say where any of them went, so a generated patch landed
+    in a pile: `list_modules` and `get_module` now report each module's
+    `pos` in Rack grid coordinates and its `hp` width, `add_module` takes an
+    optional `x`/`y`, and `move_module` moves one that already exists. Both
+    placements take a `mode` for collisions (*nearest*, the default, which
+    never disturbs anything else; *force*; *squeeze*; or *strict*, which
+    refuses rather than landing somewhere else) and report the position
+    actually reached. `save_patch` and `save_patch_as` keep the result,
+    which until now needed the user to reach for Rack's file menu; loading
+    deliberately has no command, since it would replace the limen module
+    mid-request. `batch` runs an array of ordinary requests and returns
+    their replies in order, instead of a round trip per module, per cable
+    and per parameter, with `count`/`failed`/`stopped` saying how far it
+    got. Clients accept a protocol *range*, so tools built for 2 still
+    drive an older Rack, where the new commands simply answer *unknown
+    cmd*.
+  - Every module's manual page opens with a picture of its panel. Eight of
+    the twenty-five had one; the rest never did.
+  - `tools/release/gen_screenshots.py` and `tools/release/gen_collection.py`
+    generate everything in `img/`, so no image is made by hand any more.
+    The panel shots come from Rack's own renderer against a throwaway user
+    dir holding this plugin alone, cropped exactly by construction; the
+    collection shot arranges all 25 panels through limen, choosing the row
+    split that best fills the screen, then zooms to fit and grabs it.
+
+### Changed
+  - **bulla** is described as *inspired by* Rob Hordijk's Blippoo Box
+    rather than as being it. The module reimplements from scratch the
+    structure Hordijk published, by way of olaf's SuperCollider realization;
+    the old wording claimed more than that.
+
 ## [2.13.0] - 2026-07-27
 ### Added
   - **antrum**, a new module: a feedback delay network reverb built after
