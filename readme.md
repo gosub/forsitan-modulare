@@ -35,6 +35,7 @@ A collection of VCV Rack modules.
 | [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, with the lossy stages of a real codec | [doc/quadrare.md](doc/quadrare.md) |
 | [vestigia](doc/vestigia.md) | Stereo memory effect: an endless tape loop under three memory modes, with fragments that degrade each time they return | [doc/vestigia.md](doc/vestigia.md) |
 | [antrum](doc/antrum.md) | Feedback delay network reverb: a space that runs from a coffin to the heavens, every parameter voltage-controlled (Erbe-Verb clone) | [doc/antrum.md](doc/antrum.md) |
+| [cartilago](doc/cartilago.md) | Gristleizer: one LFO into a FET attenuator that never quite closes, or into a swept filter; ticks like the hardware and ring-modulates at audio rate | [doc/cartilago.md](doc/cartilago.md) |
 
 ## Tools
 
@@ -90,6 +91,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **quadrare** | *to square, to make fit*: Walsh functions are square waves, and the transform squares the signal into them |
 | **vestigia** | traces, footprints — what sound leaves behind, recalled from an endless tape loop |
 | **antrum** | cave, grotto — the resonant space, real or imagined (Tom Erbe's Erbe-Verb) |
+| **cartilago** | gristle, cartilage — Roy Gwinn's Gristleizer, by way of Throbbing Gristle |
 
 ## Author
 

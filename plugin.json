@@ -277,6 +277,20 @@
         "Reverb",
         "Delay"
       ]
+    },
+    {
+      "slug": "cartilago",
+      "name": "cartilago",
+      "description": "Gristleizer: LFO into a FET attenuator that never closes, or into a swept filter.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.1/doc/cartilago.md",
+      "tags": [
+        "Effect",
+        "Tremolo",
+        "Ring modulator",
+        "Filter",
+        "Hardware clone",
+        "Polyphonic"
+      ]
     }
   ]
 }
