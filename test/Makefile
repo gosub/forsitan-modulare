@@ -8,7 +8,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # One smoke binary per module: `make -j` builds them in parallel and a change
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
-                guttur vespae quadrare vestigia antrum
+                guttur vespae quadrare vestigia antrum tomentum
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
@@ -16,7 +16,7 @@ SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 CROSS_BINS = smoke_oom
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
-     $(SMOKE_BINS) $(CROSS_BINS)
+     tomentum_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -37,6 +37,11 @@ vespae_probe: vespae_probe.cpp smoke_harness.hpp ../src/vespae.cpp $(wildcard ..
 antrum_probe: antrum_probe.cpp smoke_harness.hpp ../src/antrum.cpp ../src/antrum_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
+# Measurement harness for the fuzz: tone stack response against the published
+# figures, diode table accuracy, gain structure. Built by `make all`.
+tomentum_probe: tomentum_probe.cpp smoke_harness.hpp ../src/tomentum.cpp ../src/tomentum_dsp.hpp $(wildcard ../src/guttur/*.hpp)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
@@ -48,8 +53,9 @@ smoke_oom: smoke_oom.cpp smoke_harness.hpp ../src/imber.cpp ../src/sylla.cpp \
 # Header-only DSP libraries the modules pull in.
 smoke_lustro: ../src/scando_engine.hpp
 smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
-# vespae reuses guttur's vendored ChowDSP oversampler
-smoke_guttur smoke_vespae: $(wildcard ../src/guttur/*.hpp)
+# vespae and tomentum reuse guttur's vendored ChowDSP oversampler
+smoke_guttur smoke_vespae smoke_tomentum: $(wildcard ../src/guttur/*.hpp)
+smoke_tomentum: ../src/tomentum_dsp.hpp
 smoke_quadrare: ../src/quadrare_dsp.hpp
 smoke_antrum: ../src/antrum_dsp.hpp
 
@@ -63,6 +69,6 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
-	      $(SMOKE_BINS) $(CROSS_BINS)
+	      tomentum_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
