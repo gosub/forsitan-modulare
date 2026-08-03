@@ -33,3 +33,4 @@ extern Model* modelVespae;
 extern Model* modelQuadrare;
 extern Model* modelVestigia;
 extern Model* modelAntrum;
+extern Model* modelTomentum;
