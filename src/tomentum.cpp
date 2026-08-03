@@ -265,7 +265,7 @@ struct TomentumWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.15f, 90.00f)), module, Tomentum::TONE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(42.65f, 90.00f)), module, Tomentum::VOLUME_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 108.00f)), module, Tomentum::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(31.64f, 15.76f)), module, Tomentum::CLIP_LIGHT));
+        addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(33.40f, 14.00f)), module, Tomentum::CLIP_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.40f, 105.00f)), module, Tomentum::AUDIO_LIGHT));
         // @layout:end
     }
