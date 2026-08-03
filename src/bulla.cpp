@@ -1,14 +1,15 @@
 // bulla.cpp — VCV Rack 2 module
 // bulla (Latin: "bubble, blip"; also the Roman amulet) is inspired by Rob
-// Hordijk's Blippoo Box, the Benjolin's chaotic sibling, described in
-// his paper "The Blippoo Box: A Chaotic Electronic Music Instrument, Bent by
-// Design" (Leonardo Music Journal, 2009). Structure follows olaf's
-// SuperCollider realization (https://sccode.org/1-5bB), reimplemented from
-// scratch.
+// Hordijk's Blippoo Box, his other chaotic instrument, a relative of his
+// Benjolin but a different circuit, described in his paper "The Blippoo Box:
+// A Chaotic Electronic Music Instrument, Bent by Design" (Leonardo Music
+// Journal, 2009). Structure follows olaf's SuperCollider realization
+// (https://sccode.org/1-5bB), reimplemented from scratch. It is not a
+// circuit emulation: see the "differences" section of doc/bulla.md.
 //
 // Two triangle oscillators cross-modulate each other and clock two
-// "runglers" (8-step shift registers, each clocked by one oscillator and fed
-// data bits by the other, with a 3-bit DAC on the newest bits). The rungler
+// "runglers" (shift registers, each clocked by one oscillator and fed data
+// bits by the other, with a 3-bit DAC on the newest bits). The rungler
 // CVs modulate the oscillators back, plus the two cutoffs of a twin-peak
 // filter (two resonant lowpasses in opposite phase, summed), which processes
 // the comparator square of the two triangles. A sample & hold (osc A
@@ -18,8 +19,9 @@
 // Controls:
 //   Knobs : FREQ A, FREQ B, RES, B>A, A>B, SH>OSC, R>A, R>B, SH>FLT,
 //           PEAK 1, PEAK 2, R>FLT
-//   In    : FREQ A CV, FREQ B CV, PEAK 1 CV, PEAK 2 CV (all 1V/oct-ish)
-//   Out   : OUT (twin-peak filter), RUNG (rungler CV, 0..10V)
+//   In    : FREQ A CV, FREQ B CV, PEAK 1 CV, PEAK 2 CV (all 1V/oct; an
+//           addition of this module, the original has no inputs)
+//   Out   : OUT (twin-peak filter), RUNG (both runglers summed, 0..10V)
 //   Light : LEVEL (output amplitude)
 
 #include "forsitan.hpp"

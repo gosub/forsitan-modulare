@@ -37,7 +37,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **bulla** is described as *inspired by* Rob Hordijk's Blippoo Box
     rather than as being it. The module reimplements from scratch the
     structure Hordijk published, by way of olaf's SuperCollider realization;
-    the old wording claimed more than that.
+    the old wording claimed more than that. The manual is also corrected on
+    three counts, reported by Dave Benham: it said there was no V/oct here
+    while listing four 1V/oct inputs (they exist, and they are an addition
+    of this module, since the Blippoo Box has no inputs at all), it called
+    the runglers 8-step shift registers when only the three newest bits ever
+    reach the DAC, and it never said the **rung** jack carries both runglers
+    summed. A new *differences from the Blippoo Box* section lists these and
+    the digital shortcuts, so nobody has to read the source to find out what
+    is and is not faithful.
 
 ## [2.13.0] - 2026-07-27
 ### Added
