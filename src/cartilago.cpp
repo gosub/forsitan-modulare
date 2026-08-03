@@ -467,11 +467,11 @@ struct CartilagoWidget : ModuleWidget {
 // @elem LABEL_DEPTHCV label 0.0 label "depth" 0.0 30.48 95.50
 // @elem LABEL_BIASCV label 0.0 label "bias" 0.0 42.78 95.50
 // @elem LABEL_MOD label 0.0 label "mod" 0.0 55.08 95.50
-// @elem LABEL_SYNC label 0.0 label "sync" 0.0 5.88 113.50
-// @elem BOX_AUDIO panel_box 7.0 box "" 0.0 26.00 108.00
-// @elem BOX_LFO panel_box 7.0 box "" 0.0 43.00 108.00
-// @elem LABEL_OUT label 0.0 label "out" 0.0 26.00 113.50
-// @elem LABEL_LFOOUT label 0.0 label "lfo" 0.0 43.00 113.50
+// @elem LABEL_SYNC label 0.0 label "sync" 0.0 18.18 113.50
+// @elem BOX_AUDIO panel_box 7.0 box "" 0.0 50.00 108.00
+// @elem BOX_LFO panel_box 7.0 box "" 0.0 34.00 108.00
+// @elem LABEL_OUT label 0.0 label "out" 0.0 50.00 113.50
+// @elem LABEL_LFOOUT label 0.0 label "lfo" 0.0 34.00 113.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 30.48 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -492,12 +492,12 @@ struct CartilagoWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.48f, 88.00f)), module, Cartilago::DEPTH_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(42.78f, 88.00f)), module, Cartilago::BIAS_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(55.08f, 88.00f)), module, Cartilago::MOD_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(5.88f, 106.00f)), module, Cartilago::SYNC_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(26.00f, 106.00f)), module, Cartilago::AUDIO_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(43.00f, 106.00f)), module, Cartilago::LFO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(36.72f, 14.76f)), module, Cartilago::RATE_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(31.00f, 103.00f)), module, Cartilago::AUDIO_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(48.00f, 103.00f)), module, Cartilago::LFO_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(18.18f, 106.00f)), module, Cartilago::SYNC_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(50.00f, 106.00f)), module, Cartilago::AUDIO_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(34.00f, 106.00f)), module, Cartilago::LFO_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(38.50f, 13.00f)), module, Cartilago::RATE_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(55.00f, 103.00f)), module, Cartilago::AUDIO_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(39.00f, 103.00f)), module, Cartilago::LFO_LIGHT));
         // @layout:end
     }
 
