@@ -282,6 +282,18 @@
         "Reverb",
         "Delay"
       ]
+    },
+    {
+      "slug": "tomentum",
+      "name": "tomentum",
+      "description": "Big Muff Pi fuzz: four transistor stages, feedback diode clipping, scooped tone stack.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.1/doc/tomentum.md",
+      "tags": [
+        "Effect",
+        "Distortion",
+        "Hardware clone",
+        "Polyphonic"
+      ]
     }
   ]
 }
