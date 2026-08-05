@@ -59,6 +59,15 @@ inline bool startDetached(const Fn& fn) {
             pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) == 0
             && pthread_attr_setschedpolicy(&attr, SCHED_OTHER) == 0
             && pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == 0;
+        // Ask for a modest stack rather than taking the default, which on
+        // glibc is whatever RLIMIT_STACK happens to be. A session that sets
+        // that limit high hands every new thread an enormous mapping it
+        // will never touch, and pthread_create fails for want of it. The
+        // render's deepest frame measures under a kilobyte.
+        size_t stackBytes = 1024 * 1024;
+        if (stackBytes < (size_t)PTHREAD_STACK_MIN)
+            stackBytes = (size_t)PTHREAD_STACK_MIN;
+        pthread_attr_setstacksize(&attr, stackBytes);
         if (ready) {
             Fn* held = NULL;
             try {
