@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.13.2] - 2026-08-05
+### Fixed
+  - **imber** could take Rack down with it while it generated its sample
+    bank, on Linux, both when the module was added from the browser and on
+    every reseed. Nothing was wrong with the render: imber and **sylla**
+    start their worker from `process()`, which is the audio callback
+    thread, and that thread is realtime under JACK or PipeWire. A new
+    thread inherits the scheduling policy of the thread that created it,
+    so the worker came up realtime too and then computed for hundreds of
+    milliseconds without ever blocking, which is exactly what the
+    realtime-time limit those audio stacks install exists to stop: the
+    kernel answers an overrun by killing the process. A full bank is 192
+    buffers and around 50 MB, well past the usual 200 ms allowance, while
+    sylla's single buffer stayed under it and so appeared to work. Both
+    modules now ask for ordinary priority for their worker instead of
+    inheriting. The render is the same work at the same speed, and it can
+    no longer be killed by, or starve, the audio thread. Reported by
+    jakulley on the [VCV community
+    forum](https://community.vcvrack.com/t/forsitan-modulare-imber-causing-crashes/26023).
+
 ## [2.13.1] - 2026-07-30
 ### Added
   - **limen** speaks **protocol version 2**. A client could add twenty
