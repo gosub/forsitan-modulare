@@ -65,6 +65,12 @@ struct FieldObj {
     float ax, ay, bx, by;   // constellation A and B
     float ex, ey;           // effective (lerped) position
     int tag;                // division or FxKind — fixed, never rerolled
+    // ex/ey are written by assignmentPass(), i.e. only once the engine has
+    // run a frame, but the panel display reads them every time it draws.
+    // Left uninitialized they were read as garbage until the first frame,
+    // and for as long as the engine is stopped.
+    FieldObj() : ax(0.5f), ay(0.5f), bx(0.5f), by(0.5f),
+                 ex(0.5f), ey(0.5f), tag(0) {}
 };
 
 struct Engine {
