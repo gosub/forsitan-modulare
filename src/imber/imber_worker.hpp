@@ -42,8 +42,14 @@ inline void* trampoline(void* arg) {
 // Run fn on a fresh detached thread at ordinary (non-realtime) priority.
 // Falls back to a plain std::thread wherever the explicit request cannot
 // be made, which is no worse than what it replaces.
+//
+// Returns false if no thread could be started, and never throws: the
+// caller is the audio thread, and starting a thread is a resource request
+// like any other. std::thread reports failure by throwing, and under a
+// jack client's mlockall a failed pthread_create took Rack down with
+// "terminate called after throwing an instance of 'std::system_error'".
 template <typename Fn>
-inline void startDetached(const Fn& fn) {
+inline bool startDetached(const Fn& fn) {
 #ifdef IMBER_WORKER_POSIX
     pthread_attr_t attr;
     if (pthread_attr_init(&attr) == 0) {
@@ -54,18 +60,31 @@ inline void startDetached(const Fn& fn) {
             && pthread_attr_setschedpolicy(&attr, SCHED_OTHER) == 0
             && pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) == 0;
         if (ready) {
-            Fn* held = new Fn(fn);
+            Fn* held = NULL;
+            try {
+                held = new Fn(fn);
+            }
+            catch (...) {
+                pthread_attr_destroy(&attr);
+                return false;
+            }
             pthread_t th;
             if (pthread_create(&th, &attr, &trampoline<Fn>, held) == 0) {
                 pthread_attr_destroy(&attr);
-                return;
+                return true;
             }
             delete held;
         }
         pthread_attr_destroy(&attr);
     }
 #endif
-    std::thread(fn).detach();
+    try {
+        std::thread(fn).detach();
+        return true;
+    }
+    catch (...) {
+        return false;
+    }
 }
 
 } // namespace imber_worker

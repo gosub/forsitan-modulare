@@ -100,8 +100,9 @@ struct Sylla : Module {
     // which both sides hold via shared_ptr, so teardown is always safe
     struct Job {
         std::atomic<bool> done;
+        std::atomic<bool> failed;
         std::vector<float> buf;
-        Job() : done(false) {}
+        Job() : done(false), failed(false) {}
     };
 
     std::vector<float> buffer;
@@ -134,6 +135,8 @@ struct Sylla : Module {
     dsp::BooleanTrigger genButton, trigButton;
     dsp::PulseGenerator eocPulse;
     bool pendingRender = false;
+    // a render was refused (out of memory); do not retry until asked
+    bool renderFailed = false;
     bool running = true;      // loop + trigger mode: the run latch
     bool oneShotDone = false; // one-shot + gate mode: window already spoken
 
@@ -225,12 +228,23 @@ struct Sylla : Module {
         int set = familySet;
         uint32_t pool = randomPool;
         imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
-        std::shared_ptr<Job> j(new Job());
-        job = j;
+        // nothing here may throw: this runs on the audio thread, where an
+        // escaping exception terminates Rack. A refused render keeps the
+        // sample that is already loaded.
+        std::shared_ptr<Job> j;
+        try {
+            j.reset(new Job());
+        }
+        catch (const std::exception& e) {
+            renderFailed = true;
+            WARN("sylla: cannot allocate a render job (%s)", e.what());
+            return;
+        }
         // startDetached, not std::thread: this runs on the audio thread and
         // the worker must not inherit its realtime policy, or RLIMIT_RTTIME
         // kills Rack partway through a slow render. See imber_worker.hpp.
-        imber_worker::startDetached([j, pos, set, pool, tune, sr, seed]() {
+        bool started = imber_worker::startDetached([j, pos, set, pool, tune, sr, seed]() {
+          try {
             imber_dsp::Rng rng;
             rng.seed(seed);
             rng.tune = tune;
@@ -246,8 +260,19 @@ struct Sylla : Module {
                 imber_gen::renderLoop2(rng, sr, j->buf, pool);   // last position
             else
                 imber_gen::renderEngine(pos, rng, sr, j->buf);
-            j->done.store(true);
+          }
+          catch (...) {
+            j->buf.clear();       // never install a half-rendered sample
+            j->failed.store(true);
+          }
+          j->done.store(true);
         });
+        if (!started) {
+            renderFailed = true;
+            WARN("sylla: cannot start the render worker");
+            return;
+        }
+        job = j;
     }
 
     void onReset() override {
@@ -306,29 +331,38 @@ struct Sylla : Module {
 
     void process(const ProcessArgs& args) override {
         // first sample ever, or a reload: regenerate from the saved seed
-        if (buffer.empty() && !job && !pendingRender)
+        if (buffer.empty() && !job && !pendingRender && !renderFailed)
             pendingRender = true;
         if (pendingRender && !job) {
             pendingRender = false;
+            renderFailed = false;   // an explicit request asks for a retry
             startRender(args.sampleRate,
                         sampleSeed ? sampleSeed : (uint64_t)random::u64());
         }
 
         bool genHit = genButton.process(params[GEN_PARAM].getValue() > 0.5f);
         genHit |= genTrig.process(inputs[GEN_INPUT].getVoltage(), 0.1f, 1.f);
-        if (genHit && !job)
+        if (genHit && !job) {
+            renderFailed = false;
             startRender(args.sampleRate, (uint64_t)random::u64());
+        }
 
         // collect a finished render (vector swaps, no allocation here).
         // The outgoing sample is parked in tailBuf so the crossfade can
         // keep reading it after the new one takes its place.
         if (job && job->done.load()) {
-            tailBuf.swap(buffer);
-            buffer.swap(job->buf);
+            if (job->failed.load()) {
+                renderFailed = true;
+                WARN("sylla: sample render ran out of memory");
+            }
+            else {
+                tailBuf.swap(buffer);
+                buffer.swap(job->buf);
+                beginXfade(&tailBuf);
+                if (pos >= (float)buffer.size())
+                    pos = 0.f;
+            }
             job.reset();
-            beginXfade(&tailBuf);
-            if (pos >= (float)buffer.size())
-                pos = 0.f;
         }
         lights[BUSY_LIGHT].setBrightness(job ? 1.f : 0.f);
 

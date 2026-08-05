@@ -11,7 +11,12 @@ SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
-all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe $(SMOKE_BINS)
+# Cross-module harnesses, run by `check` alongside the per-module ones.
+# smoke_oom drives imber and sylla against a render they cannot allocate.
+CROSS_BINS = smoke_oom
+
+all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
+     $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -35,6 +40,11 @@ antrum_probe: antrum_probe.cpp smoke_harness.hpp ../src/antrum.cpp ../src/antrum
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
+# Not one module's harness: it exercises both users of src/imber/.
+smoke_oom: smoke_oom.cpp smoke_harness.hpp ../src/imber.cpp ../src/sylla.cpp \
+           $(wildcard ../src/imber/*.hpp)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
 # Header-only DSP libraries the modules pull in.
 smoke_lustro: ../src/scando_engine.hpp
 smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
@@ -45,13 +55,14 @@ smoke_antrum: ../src/antrum_dsp.hpp
 
 # Run every smoke test, printing one CSV header for the lot.
 # Fails if any binary does.
-check: $(SMOKE_BINS)
+check: $(SMOKE_BINS) $(CROSS_BINS)
 	@echo "module,check,value,pass"; \
 	rc=0; \
-	for t in $(SMOKE_BINS); do ./$$t --no-header || rc=1; done; \
+	for t in $(SMOKE_BINS) $(CROSS_BINS); do ./$$t --no-header || rc=1; done; \
 	exit $$rc
 
 clean:
-	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe $(SMOKE_BINS)
+	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
+	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean

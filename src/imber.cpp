@@ -99,9 +99,10 @@ struct Imber : Module {
     struct BankJob {
         std::atomic<bool> done;
         std::atomic<bool> abort;
+        std::atomic<bool> failed;
         std::atomic<int> progress;
         std::shared_ptr<imber_gen::Bank> bank;
-        BankJob() : done(false), abort(false), progress(0),
+        BankJob() : done(false), abort(false), failed(false), progress(0),
                     bank(new imber_gen::Bank()) {}
     };
 
@@ -119,6 +120,8 @@ struct Imber : Module {
     int rootNote = imber_dsp::kDefaultRoot;
     int scaleIndex = imber_dsp::kDefaultScale;
     bool bankDirty = false;
+    // a render was refused (out of memory); do not retry until asked
+    bool bankFailed = false;
     // 0 = original (continuous Haiku bed), 1 = sparse (clocked drops)
     int engineMode = 0;
     float sr = 0.f;
@@ -231,21 +234,48 @@ struct Imber : Module {
             bankJob->abort.store(true);
     }
 
+    // A bank is 192 buffers and around 50 MB, and this is called from the
+    // audio thread. Under a jack client's mlockall every one of those
+    // allocations is locked memory that can be refused, so nothing here may
+    // throw: an exception escaping process() terminates Rack with nothing
+    // written to the log. A refused render leaves the old bank playing and
+    // sets bankFailed, which stops it retrying on the very next sample;
+    // RESEED and a retune clear the flag and try again.
     void startBank(float sampleRate, uint64_t seed) {
         if (bankJob)
             return;
         bankSeed = seed;
         imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
-        std::shared_ptr<BankJob> j(new BankJob());
-        bankJob = j;
+        std::shared_ptr<BankJob> j;
+        try {
+            j.reset(new BankJob());
+        }
+        catch (const std::exception& e) {
+            bankFailed = true;
+            WARN("imber: cannot allocate a sample bank (%s)", e.what());
+            return;
+        }
         // startDetached, not std::thread: this runs on the audio thread,
         // and a worker that inherited its realtime policy gets killed by
         // RLIMIT_RTTIME partway through the render. See imber_worker.hpp.
-        imber_worker::startDetached([j, sampleRate, seed, tune]() {
-            imber_gen::buildBank(*j->bank, seed, sampleRate,
-                                 &j->progress, &j->abort, tune);
+        bool started = imber_worker::startDetached([j, sampleRate, seed, tune]() {
+            try {
+                imber_gen::buildBank(*j->bank, seed, sampleRate,
+                                     &j->progress, &j->abort, tune);
+            }
+            catch (...) {
+                // out of memory partway through: the partial bank is never
+                // installed, so the module keeps whatever it was playing
+                j->failed.store(true);
+            }
             j->done.store(true);
         });
+        if (!started) {
+            bankFailed = true;
+            WARN("imber: cannot start the sample bank worker");
+            return;
+        }
+        bankJob = j;
     }
 
     void spreadPlayers() {
@@ -368,8 +398,10 @@ struct Imber : Module {
             | rndTrig.process(inputs[RND_INPUT].getVoltage(), 0.1f, 1.f))
             bigRandom();
         if (reseedBtn.process(params[RESEED_PARAM].getValue() > 0.5f)
-            | reseedTrig.process(inputs[RESEED_INPUT].getVoltage(), 0.1f, 1.f))
+            | reseedTrig.process(inputs[RESEED_INPUT].getVoltage(), 0.1f, 1.f)) {
+            bankFailed = false;   // asking again is asking to retry
             startBank(sr, constRng.next());
+        }
         if (clrBtn.process(params[CLR_PARAM].getValue() > 0.5f))
             spreadPlayers();
         for (int i = 0; i < kPlayers; i++)
@@ -483,13 +515,20 @@ struct Imber : Module {
         // a retuning rebuilds the same seed, so the field keeps its world
         if (bankDirty && !bankJob) {
             bankDirty = false;
+            bankFailed = false;   // an explicit retune asks for a retry
             startBank(sr, bankSeed ? bankSeed : constRng.next());
         }
-        if (!eng.bank && !bankJob)
+        if (!eng.bank && !bankJob && !bankFailed)
             startBank(sr, bankSeed ? bankSeed : constRng.next());
         if (bankJob && bankJob->done.load()) {
-            eng.setBank(bankJob->bank);
-            bankSeed = bankJob->bank->seed;
+            if (bankJob->failed.load()) {
+                bankFailed = true;
+                WARN("imber: sample bank render ran out of memory");
+            }
+            else {
+                eng.setBank(bankJob->bank);
+                bankSeed = bankJob->bank->seed;
+            }
             bankJob.reset();
         }
         if (bankJob) {
