@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.13.3] - 2026-08-05
+### Fixed
+  - **imber** crashing Rack while it generates its sample bank, on Linux,
+    which 2.13.2 addressed only in part. A thread running at realtime
+    priority may burn only so much CPU between blocking system calls, and
+    the kernel enforces that with a signal that kills the process without
+    printing anything: no error, no stack trace, a log that stops
+    mid-line. The reporter's desktop session sets the allowance to 200 ms
+    and a bank costs around 390 ms of solid CPU, so it never finished.
+    2.13.2 stopped the render inheriting the audio thread's realtime
+    priority, which is the right fix and remains in place; this release
+    adds the belt to those braces. The render now pauses briefly between
+    buffers, which restarts the kernel's count and leaves about 2 ms of
+    realtime CPU against that 200 ms allowance however the thread came
+    up. A whole bank takes the same time it always did.
+  - **imber** and **sylla** no longer take Rack down when a render cannot
+    be allocated. Both start their worker from the audio thread, and both
+    let a failure to allocate memory or to start a thread escape as an
+    exception, which terminates the host rather than the module. A
+    refused render now leaves whatever was already playing alone, says so
+    in the log, and waits to be asked again rather than retrying on the
+    next sample.
+  - **imber** drew its clock and FX markers from uninitialized memory
+    until the engine had run a frame, so they scattered at random for an
+    instant when the module was added, and stayed scattered for as long
+    as the engine was stopped.
+
 ## [2.13.2] - 2026-08-05
 ### Fixed
   - **imber** could take Rack down with it while it generated its sample
