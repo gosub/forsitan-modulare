@@ -4,6 +4,55 @@
 #include "smoke_harness.hpp"
 #include "../src/imber.cpp"
 
+#if defined(__linux__)
+#include <pthread.h>
+#include <sched.h>
+#endif
+
+// The bank worker is started from process(), i.e. from the audio thread,
+// which is SCHED_FIFO under JACK/PipeWire. A worker that inherits that
+// policy runs a 400 ms render at realtime priority and is killed by the
+// 200 ms RLIMIT_RTTIME that RTKit installs, taking Rack with it. This is
+// the crash reported on Ubuntu 24.04 (community thread 26023).
+//
+// Realtime priority needs privileges the test cannot assume, so it checks
+// the inheritance itself from SCHED_BATCH, which any user may set and, like
+// SCHED_FIFO, may be left again: whatever the caller's policy, the worker
+// must come up SCHED_OTHER. (SCHED_IDLE would not do: leaving it is a
+// promotion, so it needs CAP_SYS_NICE, while leaving SCHED_FIFO does not.)
+static void testWorkerScheduling() {
+#if defined(__linux__)
+    static std::atomic<int> workerPolicy(-2);
+    static std::atomic<bool> workerRan(false);
+    static std::atomic<int> callerPolicy(-2);
+    std::thread caller([]() {
+        sched_param sp;
+        std::memset(&sp, 0, sizeof(sp));
+        if (pthread_setschedparam(pthread_self(), SCHED_BATCH, &sp) != 0)
+            return;   // leaves callerPolicy at -2: reported as skipped
+        int pol;
+        pthread_getschedparam(pthread_self(), &pol, &sp);
+        callerPolicy.store(pol);
+        imber_worker::startDetached([]() {
+            int p;
+            sched_param s;
+            pthread_getschedparam(pthread_self(), &p, &s);
+            workerPolicy.store(p);
+            workerRan.store(true);
+        });
+    });
+    caller.join();
+    for (int i = 0; i < 500 && !workerRan.load(); i++)
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    if (callerPolicy.load() != SCHED_BATCH) {
+        report("imber", "worker_not_realtime", -1, true);   // could not set up
+        return;
+    }
+    report("imber", "worker_not_realtime", workerPolicy.load(),
+           workerRan.load() && workerPolicy.load() == SCHED_OTHER);
+#endif
+}
+
 static void testImber() {
     Imber m;
     long frame = 0;
@@ -304,4 +353,4 @@ static void testImberTuning() {
            m.bankSeed == seedBefore);
 }
 
-SMOKE_MAIN(testImber, testImberTuning)
+SMOKE_MAIN(testWorkerScheduling, testImber, testImberTuning)

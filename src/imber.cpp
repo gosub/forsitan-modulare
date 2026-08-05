@@ -40,6 +40,7 @@
 
 #include "forsitan.hpp"
 #include "imber/imber_engine.hpp"
+#include "imber/imber_worker.hpp"
 #include <thread>
 #include <atomic>
 #include <memory>
@@ -237,11 +238,14 @@ struct Imber : Module {
         imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
         std::shared_ptr<BankJob> j(new BankJob());
         bankJob = j;
-        std::thread([j, sampleRate, seed, tune]() {
+        // startDetached, not std::thread: this runs on the audio thread,
+        // and a worker that inherited its realtime policy gets killed by
+        // RLIMIT_RTTIME partway through the render. See imber_worker.hpp.
+        imber_worker::startDetached([j, sampleRate, seed, tune]() {
             imber_gen::buildBank(*j->bank, seed, sampleRate,
                                  &j->progress, &j->abort, tune);
             j->done.store(true);
-        }).detach();
+        });
     }
 
     void spreadPlayers() {

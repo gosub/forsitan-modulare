@@ -39,6 +39,7 @@
 
 #include "forsitan.hpp"
 #include "imber/imber_gen.hpp"
+#include "imber/imber_worker.hpp"
 #include <thread>
 #include <atomic>
 #include <memory>
@@ -226,7 +227,10 @@ struct Sylla : Module {
         imber_dsp::Tuning tune = imber_dsp::makeTuning(scaleIndex, rootNote);
         std::shared_ptr<Job> j(new Job());
         job = j;
-        std::thread([j, pos, set, pool, tune, sr, seed]() {
+        // startDetached, not std::thread: this runs on the audio thread and
+        // the worker must not inherit its realtime policy, or RLIMIT_RTTIME
+        // kills Rack partway through a slow render. See imber_worker.hpp.
+        imber_worker::startDetached([j, pos, set, pool, tune, sr, seed]() {
             imber_dsp::Rng rng;
             rng.seed(seed);
             rng.tune = tune;
@@ -243,7 +247,7 @@ struct Sylla : Module {
             else
                 imber_gen::renderEngine(pos, rng, sr, j->buf);
             j->done.store(true);
-        }).detach();
+        });
     }
 
     void onReset() override {
