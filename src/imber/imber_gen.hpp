@@ -11,6 +11,9 @@
 #pragma once
 #include "imber_dsp.hpp"
 #include <atomic>
+#if defined(__linux__)
+#include <time.h>
+#endif
 
 namespace imber_gen {
 
@@ -986,6 +989,26 @@ static const int kBankLoops = 64;
 static const int kBankSkips = 64;
 static const int kBankMicros = 64;
 
+// A thread running at realtime priority may burn only RLIMIT_RTTIME
+// microseconds of CPU between blocking system calls, and the kernel
+// enforces that with SIGXCPU, which kills the host process without
+// printing anything. A desktop session that sets the limit to 200 ms
+// (as the reporter's did) is well under the ~390 ms a bank costs.
+//
+// The render should never be at realtime priority at all: imber_worker
+// asks for SCHED_OTHER. But that request has a fallback that inherits
+// the caller's priority, and the caller is the audio thread, so this
+// makes the limit unreachable either way. The counter restarts on every
+// blocking call, and one per buffer costs a few ms across a whole bank.
+inline void rtTimeoutRelief() {
+#if defined(__linux__)
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 1000;   // 1 us asked for; the kernel rounds it up
+    nanosleep(&ts, NULL);
+#endif
+}
+
 // progress counts rendered buffers, 0..(loops+skips+micros); abort lets
 // the worker bail early when the module is being torn down. tune defaults
 // to the library tuning, so omitting it reproduces every bank built before
@@ -1005,18 +1028,21 @@ inline void buildBank(Bank& bank, uint64_t seed, float sr,
     int done = 0;
     for (int i = 0; i < kBankLoops; i++) {
         if (abort && abort->load()) return;
+        rtTimeoutRelief();
         rng.seed(seed ^ (0x1000ull + i) * 0x9e3779b97f4a7c15ull);
         renderLoop(rng, sr, bank.loops[i]);
         if (progress) progress->store(++done);
     }
     for (int i = 0; i < kBankSkips; i++) {
         if (abort && abort->load()) return;
+        rtTimeoutRelief();
         rng.seed(seed ^ (0x2000ull + i) * 0x9e3779b97f4a7c15ull);
         genSkip(rng, sr, bank.skips[i]);
         if (progress) progress->store(++done);
     }
     for (int i = 0; i < kBankMicros; i++) {
         if (abort && abort->load()) return;
+        rtTimeoutRelief();
         rng.seed(seed ^ (0x3000ull + i) * 0x9e3779b97f4a7c15ull);
         genMicro(rng, sr, bank.micros[i]);
         if (progress) progress->store(++done);
