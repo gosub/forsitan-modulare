@@ -54,7 +54,7 @@ Every knob has its own attenuverter and CV input directly below it.
 
 | control | function |
 |---------|----------|
-| **mode** | **skin** — plain additive, each oscillator one non-interacting mode of a drum: tonal sounds, snares, stabs. **liquid** — skin plus a pitch envelope on every oscillator, for the extra kick. **metal** — the oscillators modulate each other, as two 3-operator phase-modulation stacks: noisy, alien, cymbals |
+| **mode** | **skin** — plain additive, each oscillator one non-interacting mode of a drum: tonal sounds, snares, stabs. **liquid** — skin plus a pitch envelope on every oscillator, for the extra kick. **metal** — the oscillators modulate each other, as two 3-operator phase-modulation stacks: noisy, alien, cymbals. **harm** sets the modulation index here rather than partial levels, from a light index at full CCW to six radians at full CW, the four modulators staggered across the knob |
 | **range** | octave offset: **bass** +0, **alto** +2, **treble** +4 |
 | **cv** (left) | mode CV. When patched it **overrides the switch**, splitting 0–5 V in three (below 1.67 V skin, below 3.33 V liquid, above metal) |
 | **cv** (right) | range CV, the same three-way split |
@@ -142,7 +142,10 @@ these are ours and are marked `(soft)` in `src/tundo_dsp.hpp`:
   going muffled. Neither is documented anywhere.
 - The **metal** routing: Alia's manual says "a pair of 3-operator
   phase-modulated oscillators", and which operator feeds which, and how
-  **harm** maps to modulation index, is ours. Stack A carries ratio 1 and
+  **harm** maps to modulation index, is ours. That mapping has its own
+  staging and its own floor, deliberately: an index of zero would leave a
+  bare carrier, and two bare carriers at ratios 1 and 2 cannot be told
+  apart from **skin**. Stack A carries ratio 1 and
   is modulated by ratios 3 and 5; stack B carries ratio 2 and is modulated
   by 4 and 6, so **spread** keeps retuning everything.
 - The loudness compensation law. The manual says compensation happens; how

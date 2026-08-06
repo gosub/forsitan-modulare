@@ -258,6 +258,35 @@ static void testFold() {
     report("tundo", "fold_within_cap", worstPeak, worstPeak <= 5.0001);
 }
 
+// Skin and Metal have to be different sounds at every HARM setting, the
+// default very much included. While Metal's modulation index shared Skin's
+// amplitude staging the two modes rendered bit-identical output everywhere
+// below kHarmAmpStart, which is nearly half the knob: an operator amplitude
+// of zero is a legitimate Skin partial, but an index of zero is a bare
+// carrier, and two bare carriers at ratios 1 and 2 are exactly Skin.
+static void testSkinVsMetal() {
+    double worst = 1e9;
+    for (int k = 0; k <= 4; k++) {
+        Buf out[2];
+        for (int j = 0; j < 2; j++) {
+            Tundo m;
+            defaults(m);
+            m.params[Tundo::MODE_PARAM].setValue(j == 0 ? 0.f : 2.f);
+            m.params[Tundo::HARM_PARAM].setValue(k / 4.f);
+            m.params[Tundo::DECAY_PARAM].setValue(0.6f);
+            out[j] = strike(m, 0.2);
+        }
+        double num = 0.0, den = 0.0;
+        for (size_t i = 0; i < out[0].size(); i++) {
+            double d = (double)out[0][i] - out[1][i];
+            num += d * d;
+            den += (double)out[0][i] * out[0][i];
+        }
+        worst = std::min(worst, den > 0.0 ? std::sqrt(num / den) : 0.0);
+    }
+    report("tundo", "skin_metal_differ", worst, worst > 0.15);
+}
+
 // every mode sounds, and Liquid starts above its own steady pitch
 static void testModes() {
     for (int mo = 0; mo < 3; mo++) {
@@ -435,5 +464,5 @@ static void testCpu() {
 }
 
 SMOKE_MAIN(testSilence, testHit, testRetrigger, testPitch, testSpread,
-           testHarmStaging, testFold, testModes, testRateModes, testFreeRun,
-           testSwitchCv, testHostile, testCpu)
+           testHarmStaging, testFold, testSkinVsMetal, testModes, testRateModes,
+           testFreeRun, testSwitchCv, testHostile, testCpu)
