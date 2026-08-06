@@ -64,12 +64,12 @@ constexpr int   kMaxFoldStages = 32;
 // oscillators"; the routing and the index mapping are ours (soft).
 constexpr float kMetalIndex = 6.f;        // radians at HARM full
 
-// Output stage. The engine works at nominal unit amplitude, but a sum of
-// partials never uses the full crest the folder does, so a fixed makeup gain
-// brings an unfolded hit up and a soft knee catches a folded one: the module's
-// output then honours its Vpp setting whatever the patch. (soft)
-constexpr float kOutputGain = 1.35f;
-constexpr float kSoftKnee = 0.7f;
+// Output stage. The engine works at nominal unit amplitude; the knee sits
+// high enough that a plain hit passes almost untouched and only a folded
+// crest or the pulse train leans on it, so the module honours its Vpp
+// setting without colouring the clean end of the knobs. (soft)
+constexpr float kOutputGain = 1.05f;
+constexpr float kSoftKnee = 0.85f;
 constexpr float kCeiling = 0.98f;         // headroom for the DC blocker
 
 constexpr float kBaseHz = 32.703f;        // C1 at pitch 0 V
