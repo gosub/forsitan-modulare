@@ -277,6 +277,17 @@
         "Reverb",
         "Delay"
       ]
+    },
+    {
+      "slug": "tundo",
+      "name": "tundo",
+      "description": "Digital drum voice: six additive oscillators, morphing waves, prime spread, infinite folder.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.3/doc/tundo.md",
+      "tags": [
+        "Drum",
+        "Oscillator",
+        "Synth Voice"
+      ]
     }
   ]
 }
