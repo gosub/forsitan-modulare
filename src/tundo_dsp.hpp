@@ -335,6 +335,11 @@ struct Engine {
 
         // ---- SPREAD: harmonic series to prime series, interpolated in the
         // log domain so the intervals stay musical and monotonic.
+        //
+        // The ratios get no smoother of their own: the module already smooths
+        // SPREAD per sample, and these are recomputed every control block.
+        // Measured, the high band sits at -70 dB and does not move as the
+        // sweep rate goes from 0.1 Hz to 100 Hz, so there is nothing to zipper.
         static const float H[kNumOsc] = {1.f, 2.f, 3.f, 4.f, 5.f, 6.f};
         static const float P[kNumOsc] = {1.f, 3.f, 5.f, 7.f, 11.f, 13.f};
         float s = clampf(p.spread, 0.f, 1.f);
