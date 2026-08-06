@@ -77,6 +77,14 @@ constexpr float kOutputGain = 1.05f;
 constexpr float kSoftKnee = 0.85f;
 constexpr float kCeiling = 0.98f;         // headroom for the DC blocker
 
+// Noise colour. The burst is a sample-and-hold and its refresh rate is what
+// makes it bright or dark: 64x the fundamental, so it tracks the pitch, but
+// never slower than kNoiseMinHz. Without that floor the bottom of the range
+// refreshes at 2 kHz, which puts the whole burst under about 1 kHz and leaves
+// a low snare with no crack in it. (the floor is soft)
+constexpr float kNoiseRatio = 64.f;
+constexpr float kNoiseMinHz = 8000.f;
+
 constexpr float kBaseHz = 32.703f;        // C1 at pitch 0 V
 constexpr float kMinF0 = 8.f, kMaxF0 = 12000.f;
 constexpr float kMinRate = 8000.f, kMaxRate = 192000.f;
@@ -307,11 +315,19 @@ struct Engine {
     // changes, not the waveform. Measured over an eight-octave sweep (five
     // changes of multiple) the worst sample step at a change is 0.13 V against
     // 3.35 V for the signal's own worst step. It is inaudible.
+    // Noise is decimated by octave, so its colour tracks the pitch, held to
+    // kNoiseMinHz at the bottom of the range. See the constants.
+    void setNoiseHold(float internalRate) {
+        int hold = std::max(1, (int)std::lround(mult / kNoiseRatio));
+        int cap = std::max(1, (int)(internalRate / kNoiseMinHz));
+        noiseHold = std::min(hold, cap);
+    }
+
     void updateRate(const Params& p) {
         if (p.cleanRate) {
             rate = 4.f * hostSr;
             mult = rate / std::max(p.f0, kMinF0);
-            noiseHold = std::max(1, (int)std::lround(mult / 64.f));
+            setNoiseHold(rate);
             return;
         }
         float f0 = clampf(p.f0, kMinF0, kMaxF0);
@@ -320,8 +336,7 @@ struct Engine {
             float m = std::exp2(std::round(std::log2(target / f0)));
             mult = clampf(m, kMinMult, kMaxMult);
             multF0 = f0;
-            // noise is decimated by octave, so its colour tracks the pitch
-            noiseHold = std::max(1, (int)std::lround(mult / 64.f));
+            setNoiseHold(f0 * mult);
         }
         rate = clampf(f0 * mult, kMinRate, kMaxRate);
     }
