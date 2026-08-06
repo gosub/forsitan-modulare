@@ -8,14 +8,14 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # One smoke binary per module: `make -j` builds them in parallel and a change
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
-                guttur vespae quadrare vestigia antrum
+                guttur vespae quadrare vestigia antrum tundo
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
 # smoke_oom drives imber and sylla against a render they cannot allocate.
 CROSS_BINS = smoke_oom
 
-all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
+all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe tundo_probe \
      $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
@@ -37,6 +37,12 @@ vespae_probe: vespae_probe.cpp smoke_harness.hpp ../src/vespae.cpp $(wildcard ..
 antrum_probe: antrum_probe.cpp smoke_harness.hpp ../src/antrum.cpp ../src/antrum_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
+# Measurement harness for the drum voice: level and decay against the knob,
+# harm staging, spread ratios, fold energy, pitch tracking, per-mode survey and
+# a CPU figure. `--wav <dir>` dumps the five target sounds instead.
+tundo_probe: tundo_probe.cpp smoke_harness.hpp ../src/tundo.cpp ../src/tundo_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
@@ -52,6 +58,7 @@ smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
 smoke_guttur smoke_vespae: $(wildcard ../src/guttur/*.hpp)
 smoke_quadrare: ../src/quadrare_dsp.hpp
 smoke_antrum: ../src/antrum_dsp.hpp
+smoke_tundo: ../src/tundo_dsp.hpp
 
 # Run every smoke test, printing one CSV header for the lot.
 # Fails if any binary does.
@@ -63,6 +70,7 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
+	      tundo_probe \
 	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
