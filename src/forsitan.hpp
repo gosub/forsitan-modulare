@@ -34,3 +34,4 @@ extern Model* modelQuadrare;
 extern Model* modelVestigia;
 extern Model* modelAntrum;
 extern Model* modelCaligo;
+extern Model* modelTomentum;
