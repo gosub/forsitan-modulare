@@ -13,7 +13,7 @@
 //                       |
 //   noise (LCG, held) --+
 //                       v
-//                 sum -> x attackEnv -> folder -> x finalEnv -> out
+//                 sum -> x attackEnv x finalEnv -> folder -> out
 //                                       (threshold reflection,        |
 //                                        amplitude compensation,      +-> env
 //                                        pulse train at the top)
@@ -463,22 +463,31 @@ struct Engine {
             }
             // Loudness compensation. The sum is normalized by the gain of the
             // partials that are *currently* alive, not by the static gain sum:
-            // that hands the folder a signal of roughly constant amplitude, so
-            // the fold depth stops depending on where in the decay we are, and
-            // the final envelope below is then the only envelope heard. HARM
-            // changes timbre rather than level, which is what the manual means
-            // by "compensation for loudness occurs".
+            // HARM then changes timbre rather than level, which is what the
+            // manual means by "compensation for loudness occurs", and the
+            // envelope applied below is the only envelope heard.
             acc *= 1.f / std::max(live, 1e-3f);
         }
 
         acc += p.noiseAmt * noiseEnv * nextNoise();
 
-        // ---- attack envelope on the sum
-        float x = acc * attEnv;
+        // ---- the envelopes, applied *before* the folder, so they scale its
+        // drive: a hit starts deep in the fold and unwinds as it decays. The
+        // stage count falling with level is what makes the folder answer the
+        // envelope; normalizing the sum above and enveloping it here keeps
+        // the two jobs separate. The max, not the sum, for the final
+        // envelope: a sum changes shape with HARM in exactly the way that
+        // would undo the compensation.
+        float fe = 0.f;
+        for (int i = 0; i < kNumOsc; i++)
+            fe = std::max(fe, gain[i] * env[i]);
+        finalEnv = fe;
+        float x = acc * attEnv * fe;
 
         // ---- infinifolder: reflect about the threshold as many times as the
-        // level demands, then divide by the threshold to compensate. The stage
-        // count rising with level is what makes the folder answer the envelope.
+        // level demands, then divide by the threshold to compensate. The
+        // division holds the folded crest at unity and lifts the unfolded
+        // tail with it, so FOLD adds sustain the way a fuzz pedal does.
         float T = foldThresh;
         float y = x;
         int stages = 0;
@@ -490,7 +499,8 @@ struct Engine {
         y /= T;
 
         // ---- pulse train at the top of the knob: an exponentially decaying
-        // impulse fired at every local extremum of the folded signal
+        // impulse fired at every local extremum of the folded signal, its mix
+        // scaled by the envelope so the train dies with the hit
         float diff = y - prevY;
         if (diff * prevDiff < 0.f)
             pulse = prevDiff > 0.f ? 1.f : -1.f;
@@ -498,18 +508,9 @@ struct Engine {
         prevY = y;
         if (p.fold > kFoldPulseSpan) {
             float mix = (p.fold - kFoldPulseSpan) / (1.f - kFoldPulseSpan);
-            y += mix * kFoldPulseMix * pulse;
+            y += mix * kFoldPulseMix * pulse * fe;
         }
         pulse *= pulseCoef;
-
-        // ---- final envelope, restoring the dynamics the folder flattens.
-        // The max, not the sum: a sum changes shape with HARM in exactly the
-        // way that would undo the compensation.
-        float fe = 0.f;
-        for (int i = 0; i < kNumOsc; i++)
-            fe = std::max(fe, gain[i] * env[i]);
-        finalEnv = fe;
-        y *= fe;
 
         // ---- advance the envelopes
         for (int i = 0; i < kNumOsc; i++) env[i] *= envCoef[i];

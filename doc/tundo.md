@@ -20,7 +20,7 @@ builds the hit.
                      │
  noise (LCG, held) ──┤
                      v
-              Σ ─> × attack env ─> infinifolder ─> × final env ─> audio
+              Σ ─> × attack env × final env ─> infinifolder ─> audio
                                    (threshold reflection,        │
                                     amplitude compensation,      └─> env
                                     pulse train at the top)
@@ -61,7 +61,7 @@ Every knob has its own attenuverter and CV input directly below it.
 | **trig** | strike, Schmitt-triggered at 1.5 V rising. There is no legato: a retrigger restarts every envelope from zero, as the hardware does |
 | **hit** | button, strikes the voice by hand; it ORs into **trig** and lights its LED |
 | **audio** | the voice. ±5 V by default, see *Output level* |
-| **env** | the voice's own final envelope, 0–10 V — the envelope actually applied after the folder, so it follows **harm** and **decay** and not just the trigger |
+| **env** | the voice's own final envelope, 0–10 V — the envelope actually driving the folder, so it follows **harm** and **decay** and not just the trigger |
 
 ## Context menu
 
@@ -140,8 +140,10 @@ these are ours and are marked `(soft)` in `src/tundo_dsp.hpp`:
   by 4 and 6, so **spread** keeps retuning everything.
 - The loudness compensation law. The manual says compensation happens; how
   is ours. The partial sum is normalized by the gain of the partials
-  *currently alive*, which hands the folder a signal of roughly constant
-  amplitude, so the final envelope is the only envelope you hear.
+  *currently alive*, so **harm** changes timbre rather than level, and the
+  envelope is applied once, *before* the folder: a hit starts deep in the
+  fold and unwinds as it decays, and the folder's 1/threshold makeup means
+  **fold** adds sustain the way a fuzz pedal does.
 - A strike resets the partial phases to the waveform's crest rather than
   its zero crossing. That step is the analog pop the manual puts at the
   centre of **attack**, and without it a short decay at low pitch is
