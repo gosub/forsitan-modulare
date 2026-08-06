@@ -277,6 +277,17 @@
         "Reverb",
         "Delay"
       ]
+    },
+    {
+      "slug": "caligo",
+      "name": "caligo",
+      "description": "Greyhole: a long modulated echo inside a nested allpass diffuser, with a patchable loop.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.3/doc/caligo.md",
+      "tags": [
+        "Effect",
+        "Delay",
+        "Reverb"
+      ]
     }
   ]
 }
