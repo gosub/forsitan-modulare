@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.14.0] - 2026-08-06
+### Added
+  - **caligo**, a 24 HP port of **Greyhole**, Julian Parker's 2013 algorithm
+    from the DEIND project (named after the Eventide effect of a similar
+    name). Greyhole is filed under "reverb" and that is the wrong shelf: it
+    is a long modulated echo with a dense allpass diffusion network sitting
+    in the *forward* path of its feedback loop, so each pass is scattered by
+    the whole network again and every repeat comes back smeared further than
+    the last. Three cascaded four-deep nested allpass stages, 24 fractional
+    delay lines on prime lengths indexed by size, with the diffusion
+    coefficient alternating sign across the stages.
+
+    The engine is written from the published algorithm rather than translated
+    from either upstream, and is verified against a Faust build of
+    `re.greyhole`: with the test impulse placed after the reference's own
+    parameter smoothers settle, the first diffuser pass is sample-identical,
+    and over four seconds of tail across four parameter sets the RMS envelope
+    and the spectral tilt both track the reference within 0.6 dB.
+
+    Ten knobs, each with its own attenuverter and CV input: **time**,
+    **size**, **diff**, **feedback**, **damp**, **mod**, **rate**, **mix**,
+    plus two the original does not have. **spin** is Greyhole's own
+    channel-rotator angle, hardcoded to pi/2 upstream, brought out to a knob:
+    full CCW gives two independent mono echoes, full CW the original's hard
+    interleave at every one of the twelve levels. **drift** walks **size**
+    with a slow bounded random walk, so the whole scattering pattern wanders.
+    **frz** freezes the loop and **sct** reseeds the scattering constants,
+    both with a gate/trigger input, and the seed is saved in the patch.
+
+    The feedback loop comes out to **snd l/r** and **rtn l/r**, normalled
+    through when unpatched: whatever is patched in there colours every repeat
+    and compounds pass by pass.
+
+    Departures from the original, all off by default or neutral at its
+    settings, so the **greyhole** preset is the reference algorithm: the
+    delay reaches 16 s instead of a Faust buffer's 1.486 s and has an
+    optional pitch-bending tape mode; the prime delay lengths are rescaled by
+    SR/44100 so the diffuser keeps its duration across sample rates (measured
+    at 70.56-70.57 ms of diffuser latency at 44.1, 48, 96 and 192 kHz, where
+    a naive port halves it between 48 and 96); the loop gains a soft
+    saturator, bit-exact below +/-5 V, and a DC blocker, so feedback past
+    unity is bounded rather than undefined; and the dissolve crossfade scales
+    with the delay time. Seven factory presets. Clock sync on antrum's ratio
+    table. ~1% of one core.
+
 ## [2.13.3] - 2026-08-05
 ### Fixed
   - **imber** crashing Rack while it generates its sample bank, on Linux,

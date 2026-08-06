@@ -13,7 +13,7 @@ cutting a release. The essentials:
 - Keep `plugin.json` `"version"` in sync with the git tag, and update
   `CHANGELOG.md`
 - Every documentation URL in `plugin.json` (`manualUrl` at plugin level, one
-  per module, and `changelogUrl`, 26 in all) points at the **version's tag**,
+  per module, and `changelogUrl`, 28 in all) points at the **version's tag**,
   never a branch: the library serves whatever the installed build declares, so
   a branch URL shows a 2.9.0 user the manual for today's master. Never
   hand-edit them, run:
