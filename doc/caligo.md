@@ -27,7 +27,7 @@ in ─┬──> (+) ──> diffuser stage 0   (4-deep nested allpass, g = +dif
     │     │            v
     │     │      long delay  (crossfading, or tape)
     │     │            v
-    │     │      snd l / snd r  ->  rtn l / rtn r
+    │     │      snd L / snd R  ->  rtn L / rtn R
     │     │            v
     │     └───── x feedback ─> saturator ─> DC block
     │
@@ -81,12 +81,12 @@ for the full range of the parameter, scaled by the attenuverter.
 
 | jack | function |
 |------|----------|
-| **in l / in r** | stereo audio in; **in r** is normalled to **in l** for mono use |
+| **in L / in R** | stereo audio in; **in R** is normalled to **in L** for mono use |
 | **clk** | clock input. While patched, **time** snaps to ratios of the clock (1/12, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 1/1, 3/2, 2, 3, 4, 6, 8, 12 — 1/1 at noon, the same table antrum uses). A ratio change takes effect on the next clock edge, so it lands on the beat rather than mid-bar |
 | **frz** | freeze gate: high freezes, releasing it thaws. Overrides the button while high |
 | **sct** | scatter trigger: a rising edge reseeds |
-| **snd l / snd r** | the feedback loop send, tapped after the long delay and before the feedback gain |
-| **rtn l / rtn r** | the feedback loop return. Unpatched, each channel's send is fed straight through and the module behaves exactly as if the jacks were not there. **rtn r** is normalled to **rtn l** |
+| **snd L / snd R** | the feedback loop send, tapped after the long delay and before the feedback gain |
+| **rtn L / rtn R** | the feedback loop return. Unpatched, each channel's send is fed straight through and the module behaves exactly as if the jacks were not there. **rtn R** is normalled to **rtn L** |
 | **l / r** | stereo output, with a level LED on each |
 
 ### The send/return break
