@@ -50,7 +50,7 @@ constexpr float kHarmDecayStart = 0.25f;  // partial 3 starts extending decay
 constexpr float kHarmAmpStart   = 0.45f;  // ...and amplitude, later
 constexpr float kHarmStagger    = 0.30f;  // spread of the four across the knob
 constexpr float kHarmRamp       = 0.25f;  // width of one partial's ramp
-constexpr float kHarmFloor      = 0.15f;  // residual amplitude/decay at HARM 0
+constexpr float kHarmFloor      = 0.15f;  // residual decay length at HARM 0
 constexpr float kSpectralTilt   = 0.7f;   // partial i amplitude x i^-tilt
 
 // Folder. The reflection and the amplitude compensation are the manual's; the
@@ -372,8 +372,12 @@ struct Engine {
             float st = (float)(i - 2) / 3.f;
             float uD = smoothstep((h - (kHarmDecayStart + kHarmStagger * st)) / kHarmRamp);
             float uA = smoothstep((h - (kHarmAmpStart + kHarmStagger * st)) / kHarmRamp);
+            // the floor is for the *decay* staging only: a partial that has
+            // not been faded in yet is silent, so HARM fully CCW really is
+            // the manual's single tone (and, in Metal, an unmodulated
+            // carrier), not a shelf of residue under it
             dmul[i] = kHarmFloor + (1.f - kHarmFloor) * uD;
-            stage[i] = kHarmFloor + (1.f - kHarmFloor) * uA;
+            stage[i] = uA;
             gain[i] = stage[i] * std::pow((float)(i + 1), -kSpectralTilt);
         }
         // ---- envelopes, in coefficients at the internal rate
