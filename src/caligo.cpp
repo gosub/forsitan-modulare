@@ -534,13 +534,13 @@ struct CaligoWidget : ModuleWidget {
 // @elem SND_R_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem RTN_L_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem RTN_R_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem CLK_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FRZ_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FRZ_PARAM TL1105 2.6 param "" 0.0
 // @elem SCT_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem SCT_PARAM TL1105 2.6 param "" 0.0
 // @elem IN_L_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem IN_R_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem CLK_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem OUT_L_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem OUT_R_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem FRZ_LIGHT SmallLight 1.0 light "" 0.0
@@ -560,13 +560,13 @@ struct CaligoWidget : ModuleWidget {
 // @elem LABEL_DRIFT label 0.0 label "drift" 0.0 109.00 63.50
 // @elem LABEL_SND_L label 0.0 label "snd L" 0.0 16.00 95.50
 // @elem LABEL_SND_R label 0.0 label "snd R" 0.0 32.00 95.50
-// @elem LABEL_RTN_L label 0.0 label "rtn L" 0.0 48.50 95.50
-// @elem LABEL_RTN_R label 0.0 label "rtn R" 0.0 60.50 95.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 72.00 95.50
-// @elem LABEL_FRZ label 0.0 label "frz" 0.0 87.25 95.50
-// @elem LABEL_SCT label 0.0 label "sct" 0.0 106.75 95.50
+// @elem LABEL_RTN_L label 0.0 label "rtn L" 0.0 50.00 95.50
+// @elem LABEL_RTN_R label 0.0 label "rtn R" 0.0 62.00 95.50
+// @elem LABEL_FRZ label 0.0 label "frz" 0.0 82.25 95.50
+// @elem LABEL_SCT label 0.0 label "sct" 0.0 104.25 95.50
 // @elem LABEL_IN_L label 0.0 label "in L" 0.0 16.00 114.50
 // @elem LABEL_IN_R label 0.0 label "in R" 0.0 32.00 114.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 61.00 114.50
 // @elem LABEL_L label 0.0 label "L" 0.0 90.00 114.50
 // @elem LABEL_R label 0.0 label "R" 0.0 106.00 114.50
 // @elem BOX_SND_L panel_box 7.0 box "" 0.0 16.00 90.00
@@ -611,20 +611,20 @@ struct CaligoWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(113.50f, 70.00f)), module, Caligo::DRIFT_CV_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(16.00f, 88.00f)), module, Caligo::SND_L_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(32.00f, 88.00f)), module, Caligo::SND_R_OUTPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(48.50f, 88.00f)), module, Caligo::RTN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 88.00f)), module, Caligo::RTN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 88.00f)), module, Caligo::CLK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(83.00f, 88.00f)), module, Caligo::FRZ_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(91.50f, 88.00f)), module, Caligo::FRZ_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(102.50f, 88.00f)), module, Caligo::SCT_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(111.00f, 88.00f)), module, Caligo::SCT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.00f, 88.00f)), module, Caligo::RTN_L_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(62.00f, 88.00f)), module, Caligo::RTN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(78.00f, 88.00f)), module, Caligo::FRZ_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(86.50f, 88.00f)), module, Caligo::FRZ_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.00f, 88.00f)), module, Caligo::SCT_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(108.50f, 88.00f)), module, Caligo::SCT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.00f, 107.00f)), module, Caligo::IN_L_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.00f, 107.00f)), module, Caligo::IN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 107.00f)), module, Caligo::CLK_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(90.00f, 107.00f)), module, Caligo::OUT_L_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(106.00f, 107.00f)), module, Caligo::OUT_R_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(94.50f, 85.00f)), module, Caligo::FRZ_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(114.00f, 85.00f)), module, Caligo::SCT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(41.30f, 50.70f)), module, Caligo::RATE_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(90.00f, 84.50f)), module, Caligo::FRZ_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(112.00f, 84.50f)), module, Caligo::SCT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.50f, 49.50f)), module, Caligo::RATE_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(95.00f, 104.00f)), module, Caligo::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(111.00f, 104.00f)), module, Caligo::LEVEL_R_LIGHT));
         // @layout:end
