@@ -67,7 +67,20 @@ constexpr int   kMaxFoldStages = 32;
 
 // Metal. Alia's manual says "a pair of 3-operator phase-modulated
 // oscillators"; the routing and the index mapping are ours (soft).
+//
+// The index gets its own staging rather than borrowing the amplitude staging
+// above, and that is not a refinement: an operator's amplitude may legitimately
+// be zero, but an index of zero leaves a plain carrier, and two plain carriers
+// at ratios 1 and 2 *is* Skin. Sharing the staging made the two modes produce
+// bit-identical output everywhere below kHarmAmpStart, the default included.
+// The floor is what keeps Metal a mode at the bottom of the knob.
 constexpr float kMetalIndex = 6.f;        // radians at HARM full
+constexpr float kMetalFloor = 0.25f;      // fraction of that at HARM 0
+// staggered so the last modulator reaches full index exactly at the top of
+// the knob: with a narrower spread the mode saturates by three quarters and
+// the rest of the travel does nothing
+constexpr float kMetalStagger = 0.25f;    // spread of the four modulators
+constexpr float kMetalRamp = 0.75f;       // width of one modulator's ramp
 
 // Output stage. The engine works at nominal unit amplitude; the knee sits
 // high enough that a plain hit passes almost untouched and only a folded
@@ -204,7 +217,8 @@ struct Engine {
     float phase[kNumOsc] = {};
     float ratio[kNumOsc] = {1.f, 2.f, 3.f, 4.f, 5.f, 6.f};
     float gain[kNumOsc] = {};
-    float stage[kNumOsc] = {};   // gain before the spectral tilt: the FM index
+    float stage[kNumOsc] = {};   // gain before the spectral tilt
+    float fmIndex[kNumOsc] = {}; // Metal's modulation index, 0..1 of kMetalIndex
     float dmul[kNumOsc] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
     float env[kNumOsc] = {};
     float envCoef[kNumOsc] = {};
@@ -394,11 +408,14 @@ struct Engine {
             float uA = smoothstep((h - (kHarmAmpStart + kHarmStagger * st)) / kHarmRamp);
             // the floor is for the *decay* staging only: a partial that has
             // not been faded in yet is silent, so HARM fully CCW really is
-            // the manual's single tone (and, in Metal, an unmodulated
-            // carrier), not a shelf of residue under it
+            // the manual's single tone, not a shelf of residue under it
             dmul[i] = kHarmFloor + (1.f - kHarmFloor) * uD;
             stage[i] = uA;
             gain[i] = stage[i] * std::pow((float)(i + 1), -kSpectralTilt);
+            // Metal's index, staged across the whole knob and floored: see
+            // kMetalFloor for why it cannot share the amplitude staging
+            float uM = smoothstep((h - kMetalStagger * st) / kMetalRamp);
+            fmIndex[i] = kMetalFloor + (1.f - kMetalFloor) * uM;
         }
         // ---- envelopes, in coefficients at the internal rate
         float D = std::max(p.decayMs, 0.5f) * 0.001f;
@@ -445,7 +462,8 @@ struct Engine {
             // by ratios 3 and 5; stack B carries ratio 2 and is modulated by
             // ratios 4 and 6 — so SPREAD still retunes everything, and HARM
             // still fades the second voice in. HARM drives the modulation
-            // index here the way it drives partial level in Skin.
+            // index here (fmIndex, its own staging) the way it drives partial
+            // level in Skin.
             float dt[kNumOsc];
             for (int i = 0; i < kNumOsc; i++) {
                 dt[i] = base * ratio[i];
@@ -453,15 +471,15 @@ struct Engine {
             }
             const float inv2pi = 1.f / (2.f * (float)M_PI);
             float a2 = morphWave(phase[4], p.morph, dt[4], blep)
-                     * kMetalIndex * stage[4] * env[4];
+                     * kMetalIndex * fmIndex[4] * env[4];
             float a1 = morphWave(wrapPhase(phase[2] + a2 * inv2pi), p.morph, dt[2], blep)
-                     * kMetalIndex * stage[2] * env[2];
+                     * kMetalIndex * fmIndex[2] * env[2];
             float cA = morphWave(wrapPhase(phase[0] + a1 * inv2pi), p.morph, dt[0], blep)
                      * gain[0] * env[0];
             float b2 = morphWave(phase[5], p.morph, dt[5], blep)
-                     * kMetalIndex * stage[5] * env[5];
+                     * kMetalIndex * fmIndex[5] * env[5];
             float b1 = morphWave(wrapPhase(phase[3] + b2 * inv2pi), p.morph, dt[3], blep)
-                     * kMetalIndex * stage[3] * env[3];
+                     * kMetalIndex * fmIndex[3] * env[3];
             float cB = morphWave(wrapPhase(phase[1] + b1 * inv2pi), p.morph, dt[1], blep)
                      * gain[1] * env[1];
             // normalized by the live carrier gain, exactly as Skin normalizes
