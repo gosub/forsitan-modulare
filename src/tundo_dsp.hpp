@@ -220,6 +220,8 @@ struct Engine {
     // --- output DC blocker
     float dcX = 0.f, dcY = 0.f, dcR = 0.9987f;
 
+    bool holdActive = false;      // free-run armed on the previous control block
+
     void init(float sampleRate) {
         hostSr = sampleRate > 0.f ? sampleRate : 48000.f;
         rate = 2.f * hostSr;
@@ -242,6 +244,7 @@ struct Engine {
         pulse = prevY = prevDiff = 0.f;
         lastStages = 0;
         lpS1 = lpS2 = 0.f;
+        holdActive = false;
         dcX = dcY = 0.f;
         dcR = 1.f - 2.f * (float)M_PI * 10.f / hostSr;
         setupDecimator();
@@ -314,6 +317,15 @@ struct Engine {
 
     void updateControls(const Params& p) {
         updateRate(p);
+
+        // Arming free-run opens the envelopes on the spot, so the drone starts
+        // without waiting for a trigger — BIM's free-running mode is an
+        // oscillator, not a very long decay you still have to strike.
+        if (p.hold && !holdActive) {
+            for (int i = 0; i < kNumOsc; i++) env[i] = 1.f;
+            attEnv = 1.f;
+        }
+        holdActive = p.hold;
 
         // ---- SPREAD: harmonic series to prime series, interpolated in the
         // log domain so the intervals stay musical and monotonic.
