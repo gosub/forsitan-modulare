@@ -210,15 +210,22 @@ static void testHarmStaging() {
     report("tundo", "harm_level_spread_db", spread, spread < 3.0);
 }
 
-// FOLD adds high-order energy and never breaks the level cap
+// FOLD is two mechanisms in series and each gets its own check. The first
+// three quarters lower the reflection threshold, which brightens the hit
+// steadily. The top quarter crossfades in the pulse train, which replaces a
+// dense fold with a sparse tuned one: brighter still, but peakier and lower
+// in RMS rather than louder. They hand over at kFoldPulseSpan, and the metric
+// is not monotonic across that seam.
 static void testFold() {
     double prevHi = -1.0;
     bool monotonic = true;
     double worstPeak = 0.0;
+    double hiPulseLo = 0.0, hiPulseHi = 0.0, rmsPulseLo = 0.0, rmsPulseHi = 0.0;
     for (int k = 0; k <= 10; k++) {
+        float fold = k / 10.f;
         Tundo m;
         defaults(m);
-        m.params[Tundo::FOLD_PARAM].setValue(k / 10.f);
+        m.params[Tundo::FOLD_PARAM].setValue(fold);
         m.params[Tundo::DECAY_PARAM].setValue(0.6f);
         Buf x = strike(m, 0.3);
         // high-order energy without an FFT: energy in the sample difference,
@@ -233,15 +240,21 @@ static void testFold() {
             all += (double)x[i] * x[i];
         }
         double frac = all > 0.0 ? hi / all : 0.0;
-        // tolerances: the absolute epsilon rides over jitter at the unfolded
-        // floor (frac near 3e-4), and the 10% slack covers the seam at 3/4 of
-        // the knob where the threshold bottoms out and the pulse train takes
-        // over. A regression that halves the brightness still trips.
-        if (frac < prevHi * 0.9 - 1e-4) monotonic = false;
-        prevHi = frac;
+        double rms = std::sqrt(all / std::max<size_t>(x.size(), 1));
+        if (fold <= tundo_dsp::kFoldPulseSpan) {
+            if (frac < prevHi * 0.98) monotonic = false;
+            prevHi = frac;
+        }
+        if (k == 8) { hiPulseLo = frac; rmsPulseLo = rms; }
+        if (k == 10) { hiPulseHi = frac; rmsPulseHi = rms; }
         worstPeak = std::max(worstPeak, peakOf(x));
     }
     report("tundo", "fold_brightens", prevHi, monotonic);
+    // and the pulse train, across the top quarter: brighter and thinner
+    report("tundo", "fold_pulse_brightens", hiPulseHi / hiPulseLo,
+           hiPulseHi > hiPulseLo * 1.1);
+    report("tundo", "fold_pulse_thins", rmsPulseHi / rmsPulseLo,
+           rmsPulseHi < rmsPulseLo * 0.8);
     report("tundo", "fold_within_cap", worstPeak, worstPeak <= 5.0001);
 }
 
