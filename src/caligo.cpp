@@ -445,8 +445,8 @@ struct Caligo : Module {
 
         // ---- the feedback loop break. Unpatched, each channel's return is
         //      its own send from the previous sample, which is the one sample
-        //      of loop latency the algorithm has anyway. rtn r falls back to
-        //      rtn l when only the left is patched.
+        //      of loop latency the algorithm has anyway. rtn R falls back to
+        //      rtn L when only the left is patched.
         bool pl = inputs[RTN_L_INPUT].isConnected();
         bool pr = inputs[RTN_R_INPUT].isConnected();
         float rtnL = pl ? inputs[RTN_L_INPUT].getVoltage() * 0.2f : prevSndL;
@@ -506,14 +506,14 @@ struct CaligoWidget : ModuleWidget {
 // @elem FEEDBACK_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem DAMP_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem TIME_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem SIZE_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem DIFF_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem FEEDBACK_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem DAMP_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem TIME_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem SIZE_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem SIZE_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem DIFF_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem DIFF_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem FEEDBACK_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem FEEDBACK_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem DAMP_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem DAMP_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem MOD_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem RATE_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -521,26 +521,26 @@ struct CaligoWidget : ModuleWidget {
 // @elem SPIN_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DRIFT_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem MOD_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem RATE_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem MIX_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem SPIN_ATT_PARAM Trimpot 3.03 param "" 0.0
-// @elem DRIFT_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem MOD_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem RATE_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem RATE_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem MIX_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem MIX_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem SPIN_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem SPIN_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem DRIFT_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem DRIFT_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem SND_L_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem SND_R_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem IN_L_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem IN_R_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem RTN_L_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem RTN_R_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem CLK_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FRZ_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FRZ_PARAM TL1105 2.6 param "" 0.0
 // @elem SCT_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem SCT_PARAM TL1105 2.6 param "" 0.0
-// @elem RTN_L_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem RTN_R_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem IN_L_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem IN_R_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem OUT_L_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem OUT_R_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem FRZ_LIGHT SmallLight 1.0 light "" 0.0
@@ -548,85 +548,85 @@ struct CaligoWidget : ModuleWidget {
 // @elem RATE_LIGHT SmallLight 1.0 light "" 0.0
 // @elem LEVEL_L_LIGHT SmallLight 1.0 light "" 0.0
 // @elem LEVEL_R_LIGHT SmallLight 1.0 light "" 0.0
-// @elem LABEL_TIME label 0.0 label "time" 0.0 13.00 31.50
-// @elem LABEL_SIZE label 0.0 label "size" 0.0 37.00 31.50
-// @elem LABEL_DIFF label 0.0 label "diff" 0.0 61.00 31.50
-// @elem LABEL_FEEDBACK label 0.0 label "feedback" 0.0 85.00 31.50
-// @elem LABEL_DAMP label 0.0 label "damp" 0.0 109.00 31.50
-// @elem LABEL_MOD label 0.0 label "mod" 0.0 13.00 64.50
-// @elem LABEL_RATE label 0.0 label "rate" 0.0 37.00 64.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 61.00 64.50
-// @elem LABEL_SPIN label 0.0 label "spin" 0.0 85.00 64.50
-// @elem LABEL_DRIFT label 0.0 label "drift" 0.0 109.00 64.50
-// @elem LABEL_SND_L label 0.0 label "snd l" 0.0 17.00 97.50
-// @elem LABEL_SND_R label 0.0 label "snd r" 0.0 33.00 97.50
-// @elem LABEL_IN_L label 0.0 label "in l" 0.0 50.00 97.50
-// @elem LABEL_IN_R label 0.0 label "in r" 0.0 61.00 97.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 72.00 97.50
-// @elem LABEL_FRZ label 0.0 label "frz" 0.0 89.25 97.50
-// @elem LABEL_SCT label 0.0 label "sct" 0.0 108.75 97.50
-// @elem LABEL_RTN_L label 0.0 label "rtn l" 0.0 17.00 115.00
-// @elem LABEL_RTN_R label 0.0 label "rtn r" 0.0 33.00 115.00
-// @elem LABEL_L label 0.0 label "L" 0.0 89.00 115.00
-// @elem LABEL_R label 0.0 label "R" 0.0 105.00 115.00
-// @elem BOX_SND_L panel_box 7.0 box "" 0.0 17.00 92.00
-// @elem BOX_SND_R panel_box 7.0 box "" 0.0 33.00 92.00
-// @elem BOX_OUT_L panel_box 7.0 box "" 0.0 89.00 109.50
-// @elem BOX_OUT_R panel_box 7.0 box "" 0.0 105.00 109.50
+// @elem LABEL_TIME label 0.0 label "time" 0.0 13.00 32.50
+// @elem LABEL_SIZE label 0.0 label "size" 0.0 37.00 32.50
+// @elem LABEL_DIFF label 0.0 label "diff" 0.0 61.00 32.50
+// @elem LABEL_FEEDBACK label 0.0 label "feedback" 0.0 85.00 32.50
+// @elem LABEL_DAMP label 0.0 label "damp" 0.0 109.00 32.50
+// @elem LABEL_MOD label 0.0 label "mod" 0.0 13.00 63.50
+// @elem LABEL_RATE label 0.0 label "rate" 0.0 37.00 63.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 61.00 63.50
+// @elem LABEL_SPIN label 0.0 label "spin" 0.0 85.00 63.50
+// @elem LABEL_DRIFT label 0.0 label "drift" 0.0 109.00 63.50
+// @elem LABEL_SND_L label 0.0 label "snd L" 0.0 16.00 95.50
+// @elem LABEL_SND_R label 0.0 label "snd R" 0.0 32.00 95.50
+// @elem LABEL_RTN_L label 0.0 label "rtn L" 0.0 48.50 95.50
+// @elem LABEL_RTN_R label 0.0 label "rtn R" 0.0 60.50 95.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 72.00 95.50
+// @elem LABEL_FRZ label 0.0 label "frz" 0.0 87.25 95.50
+// @elem LABEL_SCT label 0.0 label "sct" 0.0 106.75 95.50
+// @elem LABEL_IN_L label 0.0 label "in L" 0.0 16.00 114.50
+// @elem LABEL_IN_R label 0.0 label "in R" 0.0 32.00 114.50
+// @elem LABEL_L label 0.0 label "L" 0.0 90.00 114.50
+// @elem LABEL_R label 0.0 label "R" 0.0 106.00 114.50
+// @elem BOX_SND_L panel_box 7.0 box "" 0.0 16.00 90.00
+// @elem BOX_SND_R panel_box 7.0 box "" 0.0 32.00 90.00
+// @elem BOX_OUT_L panel_box 7.0 box "" 0.0 90.00 109.00
+// @elem BOX_OUT_R panel_box 7.0 box "" 0.0 106.00 109.00
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 60.96 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(114.30f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(114.30f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(13.00f, 20.00f)), module, Caligo::TIME_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(37.00f, 20.00f)), module, Caligo::SIZE_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(61.00f, 20.00f)), module, Caligo::DIFF_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(85.00f, 20.00f)), module, Caligo::FEEDBACK_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(109.00f, 20.00f)), module, Caligo::DAMP_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(13.00f, 36.50f)), module, Caligo::TIME_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(37.00f, 36.50f)), module, Caligo::SIZE_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(61.00f, 36.50f)), module, Caligo::DIFF_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(85.00f, 36.50f)), module, Caligo::FEEDBACK_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(109.00f, 36.50f)), module, Caligo::DAMP_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.00f, 45.50f)), module, Caligo::TIME_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.00f, 45.50f)), module, Caligo::SIZE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 45.50f)), module, Caligo::DIFF_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(85.00f, 45.50f)), module, Caligo::FEEDBACK_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(109.00f, 45.50f)), module, Caligo::DAMP_CV_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 56.00f)), module, Caligo::MOD_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.00f, 56.00f)), module, Caligo::RATE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.00f, 56.00f)), module, Caligo::MIX_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(85.00f, 56.00f)), module, Caligo::SPIN_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(109.00f, 56.00f)), module, Caligo::DRIFT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(13.00f, 70.00f)), module, Caligo::MOD_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(37.00f, 70.00f)), module, Caligo::RATE_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(61.00f, 70.00f)), module, Caligo::MIX_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(85.00f, 70.00f)), module, Caligo::SPIN_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(109.00f, 70.00f)), module, Caligo::DRIFT_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.00f, 79.00f)), module, Caligo::MOD_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.00f, 79.00f)), module, Caligo::RATE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 79.00f)), module, Caligo::MIX_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(85.00f, 79.00f)), module, Caligo::SPIN_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(109.00f, 79.00f)), module, Caligo::DRIFT_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(17.00f, 90.00f)), module, Caligo::SND_L_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(33.00f, 90.00f)), module, Caligo::SND_R_OUTPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(50.00f, 90.00f)), module, Caligo::IN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 90.00f)), module, Caligo::IN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 90.00f)), module, Caligo::CLK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(85.00f, 90.00f)), module, Caligo::FRZ_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(93.50f, 90.00f)), module, Caligo::FRZ_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(104.50f, 90.00f)), module, Caligo::SCT_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(113.00f, 90.00f)), module, Caligo::SCT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 107.50f)), module, Caligo::RTN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.00f, 107.50f)), module, Caligo::RTN_R_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(89.00f, 107.50f)), module, Caligo::OUT_L_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(105.00f, 107.50f)), module, Caligo::OUT_R_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(96.50f, 87.00f)), module, Caligo::FRZ_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(116.00f, 87.00f)), module, Caligo::SCT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(41.30f, 51.70f)), module, Caligo::RATE_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(94.00f, 104.50f)), module, Caligo::LEVEL_L_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(110.00f, 104.50f)), module, Caligo::LEVEL_R_LIGHT));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(13.00f, 21.00f)), module, Caligo::TIME_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(37.00f, 21.00f)), module, Caligo::SIZE_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(61.00f, 21.00f)), module, Caligo::DIFF_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(85.00f, 21.00f)), module, Caligo::FEEDBACK_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(109.00f, 21.00f)), module, Caligo::DAMP_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(8.00f, 39.00f)), module, Caligo::TIME_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.50f, 39.00f)), module, Caligo::TIME_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(32.00f, 39.00f)), module, Caligo::SIZE_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.50f, 39.00f)), module, Caligo::SIZE_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.00f, 39.00f)), module, Caligo::DIFF_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.50f, 39.00f)), module, Caligo::DIFF_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(80.00f, 39.00f)), module, Caligo::FEEDBACK_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(89.50f, 39.00f)), module, Caligo::FEEDBACK_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(104.00f, 39.00f)), module, Caligo::DAMP_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(113.50f, 39.00f)), module, Caligo::DAMP_CV_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 55.00f)), module, Caligo::MOD_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.00f, 55.00f)), module, Caligo::RATE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.00f, 55.00f)), module, Caligo::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(85.00f, 55.00f)), module, Caligo::SPIN_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(109.00f, 55.00f)), module, Caligo::DRIFT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(8.00f, 70.00f)), module, Caligo::MOD_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.50f, 70.00f)), module, Caligo::MOD_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(32.00f, 70.00f)), module, Caligo::RATE_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.50f, 70.00f)), module, Caligo::RATE_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.00f, 70.00f)), module, Caligo::MIX_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.50f, 70.00f)), module, Caligo::MIX_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(80.00f, 70.00f)), module, Caligo::SPIN_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(89.50f, 70.00f)), module, Caligo::SPIN_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(104.00f, 70.00f)), module, Caligo::DRIFT_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(113.50f, 70.00f)), module, Caligo::DRIFT_CV_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(16.00f, 88.00f)), module, Caligo::SND_L_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(32.00f, 88.00f)), module, Caligo::SND_R_OUTPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(48.50f, 88.00f)), module, Caligo::RTN_L_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 88.00f)), module, Caligo::RTN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 88.00f)), module, Caligo::CLK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(83.00f, 88.00f)), module, Caligo::FRZ_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(91.50f, 88.00f)), module, Caligo::FRZ_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(102.50f, 88.00f)), module, Caligo::SCT_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(111.00f, 88.00f)), module, Caligo::SCT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.00f, 107.00f)), module, Caligo::IN_L_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.00f, 107.00f)), module, Caligo::IN_R_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(90.00f, 107.00f)), module, Caligo::OUT_L_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(106.00f, 107.00f)), module, Caligo::OUT_R_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(94.50f, 85.00f)), module, Caligo::FRZ_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(114.00f, 85.00f)), module, Caligo::SCT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(41.30f, 50.70f)), module, Caligo::RATE_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(95.00f, 104.00f)), module, Caligo::LEVEL_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(111.00f, 104.00f)), module, Caligo::LEVEL_R_LIGHT));
         // @layout:end
     }
 
