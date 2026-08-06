@@ -56,12 +56,14 @@ static const float kRon = 20.f;
 // where the FET is both conducting and seeing a real voltage.
 static const float kHalfDrain = 0.6f;
 // Gate-drain capacitance times the load, in seconds: the control edge appears
-// at the output scaled by tau * d(control)/dt.
-static const float kFeedTau = 1.5e-5f;
+// at the output scaled by tau * d(control)/dt. Sized so a full pulse edge
+// lands the tick near -25 dB of full scale: a thump that keeps time under the
+// tremolo, not a click that competes with it.
+static const float kFeedTau = 3e-6f;
 // The gate drive is band-limited by the circuit around it. This is what makes
 // the pulse setting thump instead of click, and it is also what stops the
 // feedthrough term from growing without bound at audio-rate modulation.
-static const float kGateHz = 4500.f;
+static const float kGateHz = 2000.f;
 
 // ── cheap saturator, as in vespae ───────────────────────────────────────────
 static inline float ftanh(float x) {

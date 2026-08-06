@@ -124,9 +124,10 @@ static void testFeedthrough() {
         return s;
     };
     Stats on = run(true, 2.f), off = run(false, 2.f);
-    report("cartilago", "feed_on_ticks", on.peak, on.peak > 0.5);
+    // present but modest: a thump under the audio, not a signal of its own
+    report("cartilago", "feed_on_ticks", on.peak, on.peak > 0.05);
     report("cartilago", "feed_off_silent", off.peak, off.peak < 1e-4);
-    report("cartilago", "feed_bounded", on.peak, on.peak < 10.f);
+    report("cartilago", "feed_bounded", on.peak, on.peak < 1.f);
     // the gate one-pole caps dV/dt, so audio-rate modulation cannot make the
     // tick grow without bound
     Stats fast = run(true, 9.f);                            // 512 Hz
