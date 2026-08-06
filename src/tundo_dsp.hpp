@@ -441,7 +441,12 @@ struct Engine {
                      * kMetalIndex * stage[3] * env[3];
             float cB = morphWave(wrapPhase(phase[1] + b1 * inv2pi), p.morph, dt[1], blep)
                      * gain[1] * env[1];
-            acc = 0.5f * (cA + cB);
+            // normalized by the live carrier gain, exactly as Skin normalizes
+            // its sum below: without this the mode decays as the *square* of
+            // the envelope (the carriers fade, then the final envelope fades
+            // the result again) and sits several dB under the other two
+            float live = gain[0] * env[0] + gain[1] * env[1];
+            acc = (cA + cB) / std::max(live, 1e-3f);
         }
         else {
             acc = 0.f;
