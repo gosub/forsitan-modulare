@@ -214,6 +214,74 @@ static void testScatter() {
            a.scatterSeed == b.scatterSeed && a.scatterSeed != 0);
 }
 
+// Moving `size` must not add broadband noise. The network is linear, so with a
+// sine in and only size changing the output has to stay near the input's band;
+// any HF energy is interpolation artifact. This is the regression test for two
+// bugs that made sweeping size (and drift, which sweeps it for you) crackle:
+// an allpass-interpolated delay line, discontinuous every time a glide crossed
+// an integer, and a float32 glide that stalled short of its target and parked
+// all 24 lengths off-integer for ever.
+static void testSizeMoveIsQuiet() {
+    auto hfOf = [](int mode) {          // 0 static, 1 sweep, 2 drift
+        Caligo m;
+        setWet(m);
+        m.params[Caligo::MOD_PARAM].setValue(0.f);
+        m.params[Caligo::FEEDBACK_PARAM].setValue(0.9f);
+        if (mode == 2) m.params[Caligo::DRIFT_PARAM].setValue(1.f);
+        long frame = 0;
+        double hp[4] = {0, 0, 0, 0};
+        const double a = std::exp(-2.0 * M_PI * 5000.0 / SR);
+        double eTot = 0, eHf = 0;
+        for (int i = 0; i < (int)(20.0 * SR); i++) {
+            float t = (float)i / SR;
+            if (mode == 1)      // size 0.8..2.0 at 0.1 Hz, in knob terms
+                m.params[Caligo::SIZE_PARAM].setValue(
+                    0.226f + 0.215f * (1.f - std::cos(2.f * M_PI * 0.1f * t)));
+            m.inputs[Caligo::IN_L_INPUT].setVoltage(
+                2.f * std::sin(2.0 * M_PI * 200.0 * i / SR));
+            m.process(makeArgs(frame++));
+            double x = m.outputs[Caligo::OUT_L_OUTPUT].getVoltage();
+            double y = x;
+            for (int k = 0; k < 4; k++) { hp[k] = y * (1 - a) + hp[k] * a; y -= hp[k]; }
+            if (t > 3.f) { eTot += x * x; eHf += y * y; }
+        }
+        return 10.0 * std::log10((eHf + 1e-30) / (eTot + 1e-30));
+    };
+    double stat = hfOf(0), sweep = hfOf(1), drift = hfOf(2);
+    report("caligo", "size_static_hf_dBr", stat, stat < -70.0);
+    report("caligo", "size_sweep_hf_dBr", sweep, sweep < -70.0);
+    report("caligo", "size_drift_hf_dBr", drift, drift < -70.0);
+}
+
+// The lengths must actually arrive on their integers, and from the first
+// control block: the glide is primed at its target the way the original's
+// smooth_init is, so a patch does not load with 24 lines gliding in.
+static void testGlideConverges() {
+    for (float sizeKnob : {0.f, 1.f / 3.f, 1.f}) {
+        Caligo m;
+        setWet(m);
+        m.params[Caligo::SIZE_PARAM].setValue(sizeKnob);
+        long frame = 0;
+        for (int i = 0; i < (int)(0.5 * SR); i++) {
+            m.inputs[Caligo::IN_L_INPUT].setVoltage(noise());
+            m.process(makeArgs(frame++));
+        }
+        int off = 0;
+        double worst = 0.0;
+        for (int i = 0; i < caligo_dsp::kStages; i++)
+            for (int j = 0; j < caligo_dsp::kNest; j++)
+                for (float d : {m.engine.level[i][j].dL, m.engine.level[i][j].dR}) {
+                    double f = d - std::floor(d);
+                    if (f > 0.5) f = 1.0 - f;
+                    if (f > 1e-7) off++;
+                    worst = std::max(worst, f);
+                }
+        char name[64];
+        std::snprintf(name, sizeof(name), "glide_exact_at_size_knob_%.2f", sizeKnob);
+        report("caligo", name, worst, off == 0);
+    }
+}
+
 // tape mode Doppler-shifts instead of dissolving: sweeping the time knob has
 // to stay bounded and clean in both modes
 static void testTimeModes() {
@@ -416,6 +484,7 @@ static void testPresets() {
     }
 }
 
-SMOKE_MAIN(testQuiet, testDryPath, testTail, testPlainDelay, testSpin, testFreeze,
-           testScatter, testTimeModes, testRunaway, testLoopBreakTransparent,
-           testClockSync, testHostile, testPresets)
+SMOKE_MAIN(testQuiet, testDryPath, testTail, testPlainDelay, testSpin,
+           testSizeMoveIsQuiet, testGlideConverges, testFreeze, testScatter,
+           testTimeModes, testRunaway, testLoopBreakTransparent, testClockSync,
+           testHostile, testPresets)

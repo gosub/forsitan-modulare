@@ -240,6 +240,25 @@ struct Caligo : Module {
         clockTimer = 0.f;
         syncTimeSec = 0.f;
         prevSndL = prevSndR = 0.f;
+        // The setup() calls above only exist for their coefficients: start
+        // every smoother at what the knobs actually say. Otherwise a patch
+        // loads with eleven parameters ramping in from the factory defaults,
+        // and — the reason this matters rather than being tidiness — the engine
+        // primes its 24 delay lengths from the *first* size it is handed, so a
+        // smoother still sitting on 1.0 would have it prime the wrong room and
+        // then glide for three seconds.
+        updateControls();
+        smTime.current = smTime.target;
+        smSize.current = smSize.target;
+        smDiff.current = smDiff.target;
+        smFeedback.current = smFeedback.target;
+        smDamp.current = smDamp.target;
+        smMod.current = smMod.target;
+        smRate.current = smRate.target;
+        smMix.current = smMix.target;
+        smSpin.current = smSpin.target;
+        smDrift.current = smDrift.target;
+        smFreeze.current = smFreeze.target;
     }
 
     void onReset() override {

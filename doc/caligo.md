@@ -175,7 +175,7 @@ Right-click → Preset.
 | **cathedral** | size 3, diff high, damping up, 1.2 s at 100% feedback |
 | **tape ghost** | tape mode, 700 ms, deep slow modulation, 95% feedback. Sweep **time** and it bends |
 | **two rooms** | spin at zero, size 0.6: dual-mono, wide, metallic |
-| **frozen** | freeze latched with drift up, fully wet |
+| **frozen** | the setup for freezing: 100% feedback, drift up, fully wet. A preset can carry knob positions but not the sound already circulating, so this one does not arrive with **frz** latched — get something into the loop, then press it |
 | **comb** | 12 ms at 110% feedback with diff low: the resonator end of the knob |
 
 ## Differences from the original
@@ -210,6 +210,20 @@ settings, so preset 1 is the reference algorithm.
 - **The dissolve crossfade scales with the delay time** (a quarter of it,
   bounded to 5–250 ms) rather than sitting at a fixed 0.5 s. At 16 s a fixed
   crossfade takes forever to settle and at 10 ms it is unusable.
+- **The diffuser's fractional delay is Hermite, not the original's
+  first-order allpass.** This is the one place a faithful port could not be
+  kept. `de.fdelay1a` carries filter state, and both the state and the
+  coefficient are wrong the instant the length moves: it picks an integer tap
+  and an allpass coefficient from the remainder, so every time a glide takes a
+  length across an integer the tap steps, the coefficient jumps, and the
+  filter's state belongs to the tap it just left. The total delay stays
+  continuous; the signal does not. With 24 lines gliding at once it is
+  broadband crackle, and it is audible in the reference too — sweeping size
+  0.8→2.0 at 0.1 Hz with a 200 Hz sine in, a Faust build of `re.greyhole` puts
+  25 dB more energy above 5 kHz than the same thing standing still. Hermite
+  has no state, is smooth in the length, and is *exact* whenever the delay is
+  an integer, which is where these lengths rest. So at rest it is bit-identical
+  to the original, and while size moves it is 66 dB quieter above 5 kHz.
 - **`diff` stops at 0.95 radians**, not the raw slider's 0.99. Four nested
   levels want the margin.
 - **The scattering constants can be reseeded**, and the seed is saved in the

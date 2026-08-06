@@ -38,7 +38,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     through when unpatched: whatever is patched in there colours every repeat
     and compounds pass by pass.
 
-    Departures from the original, all off by default or neutral at its
+    One departure is not optional. The diffuser's fractional delay is Hermite
+    rather than the original's first-order allpass, because the allpass
+    version crackles whenever a length moves: it takes an integer tap and a
+    coefficient from the remainder, so each time a glide crosses an integer
+    the tap steps, the coefficient jumps, and the filter's state belongs to
+    the tap it just left. That is audible in the reference too - sweeping size
+    0.8 to 2.0 at 0.1 Hz with a 200 Hz sine in, a Faust build of `re.greyhole`
+    puts 25 dB more energy above 5 kHz than the same thing standing still.
+    Hermite is exact at integer delays, which is where these lengths rest, so
+    at rest it is bit-identical to the original, and while size moves it is
+    66 dB quieter above 5 kHz.
+
+    The remaining departures are off by default or neutral at the original's
     settings, so the **greyhole** preset is the reference algorithm: the
     delay reaches 16 s instead of a Faust buffer's 1.486 s and has an
     optional pitch-bending tape mode; the prime delay lengths are rescaled by
@@ -48,7 +60,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     saturator, bit-exact below +/-5 V, and a DC blocker, so feedback past
     unity is bounded rather than undefined; and the dissolve crossfade scales
     with the delay time. Seven factory presets. Clock sync on antrum's ratio
-    table. ~1% of one core.
+    table. ~1.3% of one core.
 
 ## [2.13.3] - 2026-08-05
 ### Fixed

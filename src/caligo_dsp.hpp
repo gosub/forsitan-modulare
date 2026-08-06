@@ -44,6 +44,11 @@
 //   - the prime delay lengths are rescaled by SR/44100 and rounded, so the
 //     diffuser keeps its *time* constants across sample rates (the original
 //     specifies samples, and so halves in duration from 48 to 96 kHz);
+//   - the diffuser's fractional delay is Hermite, not `de.fdelay1a`'s
+//     first-order allpass, because the allpass version crackles whenever the
+//     length moves (see FDelayC). Bit-identical at rest, where the lengths sit
+//     on integers; different only while size is gliding, and there it is 66 dB
+//     quieter above 5 kHz than the reference is;
 //   - the scattering constants can be reseeded (scatter);
 //   - size can be walked by a slow bounded random walk (drift).
 //
@@ -238,49 +243,85 @@ struct DCBlock {
 // `default` instead of 0, so the delay lengths do not ramp up from nothing
 // at startup. Ticked at control rate.
 struct Glide {
-    float y = 0.f, b1 = 0.f;
+    // The accumulator is double, and that is not fussiness. A float32 one-pole
+    // stops converging as soon as (1 - b1) * |y - target| falls below half an
+    // ulp of target: the product rounds back to where it started and the value
+    // parks there for ever. At a 226-sample delay and b1 = 0.9999 that stall
+    // point is 0.076 samples, so the longest diffuser lines never actually
+    // reach their integer length. Allpass interpolation did not care -- it has
+    // unity magnitude at any fraction -- but the Hermite interpolator does, and
+    // 24 lines each permanently 0.076 off cost 4 dB and most of the treble at
+    // the resonator end of the time knob.
+    double y = 0.0;
+    float b1 = 0.f;
     void init(float b1_, float initial) { b1 = b1_; y = initial; }
     inline float tick(float target) {
-        y = target + (y - target) * b1;
-        return y;
+        y = (double)target + (y - (double)target) * (double)b1;
+        // and land exactly on the integer, so the resting state is bit-for-bit
+        // what the reference computes
+        if (std::fabs(y - (double)target) < 1e-3) y = target;
+        return (float)y;
     }
 };
 
 // -------------------------------------------------- fractional delay lines
 
-// de.fdelay1a — first-order allpass interpolated fractional delay, the
-// diffuser's delay element. The allpass fraction is kept in [0.5, 1.5) so
-// its coefficient stays small and well conditioned.
-struct FDelay1a {
+// The diffuser's delay element. The original uses `de.fdelay1a`, a first-order
+// allpass interpolated fractional delay, and that is the one place a faithful
+// port could not be kept.
+//
+// Allpass interpolation carries state, and both the state and the coefficient
+// are wrong the instant the length moves: `de.fdelay1a` picks an integer tap
+// `int(d - 0.5)` and an allpass coefficient `(1-f)/(1+f)` from the remainder,
+// so every time a glide takes the length across an integer the tap steps, the
+// coefficient jumps from -0.2 to +0.33, and the filter's state belongs to the
+// tap it just left. The total delay stays continuous; the signal does not.
+// With 24 of these gliding at once it is broadband crackle, and it is audible
+// in the reference too: sweeping size 0.8..2.0 at 0.1 Hz with a 200 Hz sine
+// in, a Faust build of re.greyhole puts 25 dB more energy above 5 kHz than the
+// same thing standing still.
+//
+// So: 4-point Hermite instead, which is a pure function of the delay with no
+// state, continuous and C1 in the length, and — the part that matters —
+// *exact* whenever the delay is an integer. The lengths here rest on integers
+// (a rescaled prime), so at rest this is bit-identical to the allpass version
+// and to the reference. It only differs while the length is moving, and there
+// it differs by not crackling.
+struct FDelayC {
     std::vector<float> buf;
     size_t mask = 0, wp = 0;
-    float maxD = 1.f, s = 0.f;
+    float maxD = 1.f;
 
     void init(size_t frames) {
-        size_t p = nextPow2(frames);
+        size_t p = nextPow2(frames + 4);
         buf.assign(p, 0.f);
         mask = p - 1;
-        maxD = (float)(p - 3);
+        maxD = (float)(p - 4);
         clear();
     }
 
     void clear() {
         std::fill(buf.begin(), buf.end(), 0.f);
         wp = 0;
-        s = 0.f;
     }
 
     inline float process(float x, float d) {
         buf[wp] = x;
         wp = (wp + 1) & mask;
-        d = clampf(d, 1.f, maxD);
-        int i = (int)(d - 0.5f);              // d >= 1, so this is floor()
-        float f = d - (float)i;               // [0.5, 1.5)
-        float h = (1.f - f) / (1.f + f);
-        float xi = buf[(wp - 1 - (size_t)i) & mask];
-        float y = h * xi + s;
-        s = xi - h * y;
-        return y;
+        d = clampf(d, 2.f, maxD);
+        int i = (int)d;
+        float f = d - (float)i;
+        size_t base = wp - 1 - (size_t)i;
+        float ym1 = buf[(base + 1) & mask];      // delay i-1
+        float y0 = buf[base & mask];             // delay i
+        float y1 = buf[(base - 1) & mask];       // delay i+1
+        float y2 = buf[(base - 2) & mask];       // delay i+2
+        float c = 0.5f * (y1 - ym1);
+        float v = y0 - y1;
+        float w = c + v;
+        float a = w + v + 0.5f * (y2 - y0);
+        float b = w + a;
+        return ((a * f - b) * f + c) * f + y0;
     }
 };
 
@@ -451,11 +492,12 @@ struct Drift {
 // The rotation is energy preserving whatever g is, which is why the original
 // gets away with stacking four of them.
 struct Level {
-    FDelay1a lineL, lineR;
+    FDelayC lineL, lineR;
     Glide glideL, glideR;
     float vL = 0.f, vR = 0.f;      // v[n-1]: the `~` feedback and the `mem`
     int scaleL = 0, scaleR = 0;    // prime-table index scales
     float dL = 1.f, dR = 1.f;      // current glided lengths, in samples
+    float tL = 1.f, tR = 1.f;      // targets, from the control-rate lookup
 
     void clear() {
         lineL.clear();
@@ -510,6 +552,10 @@ struct Engine {
     float mixDry = 0.707f, mixWet = 0.707f, mixLast = -1.f;
     float glideB1 = 0.f;
     float sizeEff = 1.f;
+    // the glide starts *at* its target rather than sliding in from the
+    // size-1.0 length, which is what the original's smooth_init(s, default)
+    // does: without it a patch loads 3 s dark while 24 lengths glide in
+    bool glidePrimed = false;
     uint32_t seed = 0;
 
     // ------------------------------------------------------------ structure
@@ -587,7 +633,8 @@ struct Engine {
         ctlDt = (float)kCoefUpdate / sr;
         dampExp = 44100.f / sr;
         modDepthScale = (sr / 44100.f) * kModDepthSamples;
-        glideB1 = std::exp(-ctlDt / kGlideTau);
+        // the glide runs per sample, so its coefficient is per sample too
+        glideB1 = std::exp(-1.f / (kGlideTau * sr));
 
         // primes rescaled to this sample rate and rounded: what matters
         // acoustically is that the 24 lengths stay mutually incommensurate,
@@ -606,8 +653,8 @@ struct Engine {
                 size_t nR = (size_t)lengthAt(maxScale(i, j, 1), kSizeCeil) + 8;
                 L.lineL.init(nL);
                 L.lineR.init(nR);
-                L.dL = (float)std::max(lengthAt(L.scaleL, 1.f) - 1, 1);
-                L.dR = (float)std::max(lengthAt(L.scaleR, 1.f) - 1, 1);
+                L.dL = L.tL = (float)std::max(lengthAt(L.scaleL, 1.f) - 1, 1);
+                L.dR = L.tR = (float)std::max(lengthAt(L.scaleR, 1.f) - 1, 1);
                 L.glideL.init(glideB1, L.dL);
                 L.glideR.init(glideB1, L.dR);
             }
@@ -645,6 +692,7 @@ struct Engine {
         longR.clear();
         dcL.clear();
         dcR.clear();
+        glidePrimed = false;
         dampZL = dampZR = 0.f;
         fbL = fbR = 0.f;
         lfoPhase = 0.f;
@@ -686,7 +734,11 @@ struct Engine {
             dampA0 = 1.f - dampB1;
         }
 
-        // size, walked by drift, then the prime-table lookup per line
+        // size, walked by drift, then the prime-table lookup per line. Only
+        // the lookup is at control rate: the glide itself runs per sample in
+        // process(), because a length that steps every 16 samples steps 16
+        // times as far each time, and every step is a discontinuity the
+        // interpolator has to smooth over.
         float d = p.drift > 0.f ? drift.tick(ctlDt) : 0.f;
         sizeEff = clampf(p.size * (1.f + 0.5f * p.drift * d), kMinSize, kSizeCeil);
         for (int i = 0; i < kStages; i++) {
@@ -694,12 +746,17 @@ struct Engine {
                 Level& L = level[i][j];
                 // the original subtracts 1: the explicit one-sample delays in
                 // the forward and feedback paths put it back
-                float tL = (float)std::max(lengthAt(L.scaleL, sizeEff) - 1, 1);
-                float tR = (float)std::max(lengthAt(L.scaleR, sizeEff) - 1, 1);
-                L.dL = L.glideL.tick(tL);
-                L.dR = L.glideR.tick(tR);
+                L.tL = (float)std::max(lengthAt(L.scaleL, sizeEff) - 1, 1);
+                L.tR = (float)std::max(lengthAt(L.scaleR, sizeEff) - 1, 1);
+                if (!glidePrimed) {
+                    L.dL = L.tL;
+                    L.dR = L.tR;
+                    L.glideL.y = L.tL;
+                    L.glideR.y = L.tR;
+                }
             }
         }
+        glidePrimed = true;
     }
 
     // ------------------------------------------------------------- per sample
@@ -734,6 +791,16 @@ struct Engine {
         float fb = clampf(p.feedback, 0.f, kMaxFeedback);
         fb += (1.f - fb) * fz;
         float inGain = p.freezeOpenInput ? 1.f : 1.f - fz;
+
+        // glide the 24 delay lengths toward their targets, one sample at a
+        // time. 48 multiply-adds, and it buys a length that never steps.
+        for (int i = 0; i < kStages; i++) {
+            for (int j = 0; j < kNest; j++) {
+                Level& L = level[i][j];
+                L.dL = L.glideL.tick(L.tL);
+                L.dR = L.glideR.tick(L.tR);
+            }
+        }
 
         float gL = dcL.process(softSat(rtnL * fb));
         float gR = dcR.process(softSat(rtnR * fb));
