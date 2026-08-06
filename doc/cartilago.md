@@ -89,7 +89,9 @@ which we have a number for, so cartilago uses a cube, giving roughly
 −26, −19, −11, −2 dB across the four quarters of the control.
 
 The filter mode is a zero-delay-feedback state-variable filter, bandpass by
-default, swept by the same control over 45 Hz – 3.8 kHz.
+default, swept by the same control over 45 Hz – 3.8 kHz. The saturator after
+it doubles as the resonance limiter, and its drive follows the **drive**
+knob: back the knob off and the filter cleans up, push it and it fuzzes.
 
 ## Aliasing
 
