@@ -58,6 +58,11 @@ constexpr float kSpectralTilt   = 0.7f;   // partial i amplitude x i^-tilt
 constexpr float kFoldMinThresh = 0.06f;   // threshold at the top of the fold range
 constexpr float kFoldPulseMix  = 0.6f;
 constexpr float kFoldPulseSpan = 0.75f;   // knob above this mixes in the pulses
+// one pulse decays in 1/kFoldPulseDecay of a fundamental cycle. The detector
+// fires between two and twelve times a cycle depending on HARM, so this has
+// to be well inside the shortest of those gaps or the pulses run together
+// into a buzz instead of reading as a train.
+constexpr float kFoldPulseDecay = 16.f;
 constexpr int   kMaxFoldStages = 32;
 
 // Metal. Alia's manual says "a pair of 3-operator phase-modulated
@@ -210,7 +215,7 @@ struct Engine {
     // --- folder
     float foldThresh = 1.f;
     float pulse = 0.f, pulseCoef = 0.f;
-    float prevY = 0.f, prevDiff = 0.f;
+    float prevTonal = 0.f, prevDiff = 0.f;
     int lastStages = 0;       // fold stages used by the most recent sample
 
     // --- clean-mode decimation filter (2nd-order Butterworth at 0.45 * hostSr)
@@ -241,7 +246,7 @@ struct Engine {
         attEnv = noiseEnv = pitchEnv = finalEnv = 0.f;
         noiseCount = 0;
         noiseHold = 1;
-        pulse = prevY = prevDiff = 0.f;
+        pulse = prevTonal = prevDiff = 0.f;
         lastStages = 0;
         lpS1 = lpS2 = 0.f;
         holdActive = false;
@@ -394,8 +399,7 @@ struct Engine {
         attCoef = std::exp(-1.f / (tauA * rate));
         noiseCoef = std::exp(-1.f / (clampf(D * 0.125f, 0.003f, 0.06f) * rate));
         pitchCoef = std::exp(-1.f / (clampf(D * 0.125f, 0.003f, 0.2f) * rate));
-        // a quarter of a cycle, so a fold pulse never smears past the period
-        pulseCoef = std::exp(-4.f * clampf(p.f0, kMinF0, kMaxF0) / rate);
+        pulseCoef = std::exp(-kFoldPulseDecay * clampf(p.f0, kMinF0, kMaxF0) / rate);
 
         // ---- FOLD: the first three quarters set the reflection threshold
         float t = std::min(clampf(p.fold, 0.f, 1.f) / kFoldPulseSpan, 1.f);
@@ -473,6 +477,10 @@ struct Engine {
             acc *= 1.f / std::max(live, 1e-3f);
         }
 
+        // the tonal sum on its own, before the noise burst and the envelopes:
+        // the fold pulse train fires from this, see below
+        float tonal = acc;
+
         acc += p.noiseAmt * noiseEnv * nextNoise();
 
         // ---- the envelopes, applied *before* the folder, so they scale its
@@ -503,16 +511,33 @@ struct Engine {
         y /= T;
 
         // ---- pulse train at the top of the knob: an exponentially decaying
-        // impulse fired at every local extremum of the folded signal, its mix
-        // scaled by the envelope so the train dies with the hit
-        float diff = y - prevY;
+        // impulse fired at every local extremum, its mix scaled by the
+        // envelope so the train dies with the hit.
+        //
+        // Fired from the tonal sum rather than from the folded output. The
+        // folded output is made of corners by construction — a crest folded
+        // eight times is eight slope reversals — so firing from it retriggered
+        // the pulse some thirty times a cycle against a quarter-cycle decay.
+        // It never decayed: the "train" was a solid buzz whose density
+        // followed the fold depth. The tonal sum reverses twice a cycle for a
+        // simple waveform and a dozen times at full HARM, always locked to the
+        // fundamental, so the pulses stay distinct and tuned. Taken pre-noise
+        // and pre-envelope, so a noise burst cannot machine-gun the detector
+        // and a fast decay cannot flatten the extrema out of existence.
+        float diff = tonal - prevTonal;
         if (diff * prevDiff < 0.f)
             pulse = prevDiff > 0.f ? 1.f : -1.f;
         if (diff != 0.f) prevDiff = diff;
-        prevY = y;
+        prevTonal = tonal;
+        // Mixed in, not added on top. At the top of the knob the folded signal
+        // is already at the output ceiling, so a pulse summed into it is
+        // simply eaten by the soft knee: measured, the whole top quarter came
+        // out at a pinned 4.90 V peak whatever the pulse did. Crossfading is
+        // also what "a pulse train is mixed in" says.
         if (p.fold > kFoldPulseSpan) {
-            float mix = (p.fold - kFoldPulseSpan) / (1.f - kFoldPulseSpan);
-            y += mix * kFoldPulseMix * pulse * fe;
+            float mix = (p.fold - kFoldPulseSpan) / (1.f - kFoldPulseSpan)
+                      * kFoldPulseMix;
+            y = y * (1.f - mix) + mix * pulse * fe;
         }
         pulse *= pulseCoef;
 

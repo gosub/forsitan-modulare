@@ -46,7 +46,7 @@ Every knob has its own attenuverter and CV input directly below it.
 | **harm** | how much spectrum there is. Full CCW is one oscillator. The first quarter fades in a second tone; the rest of the turn extends first the *decays* and then the *amplitudes* of the remaining four partials, staggered, so the sound thickens from the bottom up |
 | **spread** | the intervals between the partials, from the harmonic series (1 2 3 4 5 6) at full CCW to the prime series (1 3 5 7 11 13) at full CW, interpolated in the log domain. Harmonic is a pitched drum; prime is a bell or a gong; between them is a continuous inharmonic warp |
 | **morph** | the waveform every oscillator uses: sine → triangle → saw → square, in three equal thirds of the knob |
-| **fold** | the first three quarters lower the folder's reflection threshold, from no folding to eight-odd reflections on a peak. The top quarter mixes in a train of decaying pulses fired at every peak and trough of the folded wave — the buzzsaw at the end of the knob |
+| **fold** | the first three quarters lower the folder's reflection threshold, from no folding to eight-odd reflections on a peak. The top quarter crossfades in a train of decaying pulses, one fired at every peak and trough of the tonal sum, so the train is locked to the note and **harm** sets how dense it is: two clicks a cycle with one partial, a dozen with six. It replaces the dense fold rather than piling on top of it, so the end of the knob is peakier and thinner, not louder |
 | **attack** | one knob, two halves. From full CCW to noon it mixes in a burst of pitch-tracking noise, loudest at full CCW. Noon is the classic analog pop, a 0.5 ms attack with no noise. From noon to full CW the attack stretches exponentially to 2 s |
 | **decay** | 5 ms to 4 s, exponential, for all oscillators together — **harm** decides how much of that each partial gets. With *Free-run* armed in the context menu, full CW holds the envelopes open and tundo becomes an oscillator |
 
@@ -130,9 +130,13 @@ these are ours and are marked `(soft)` in `src/tundo_dsp.hpp`:
 - The **harm** staging constants. The manual gives the order — second tone
   in the first quarter, then decays, then amplitudes — and nothing else.
   The thresholds, ramp widths and the `i^-0.7` spectral tilt are invented.
-- The **fold** pulse amplitude and time constant. "An exponentially
-  decaying pulse at the local minima and maxima" fixes the mechanism, not
-  the shape.
+- The **fold** pulse amplitude, time constant, and which signal's minima
+  and maxima fire it. "An exponentially decaying pulse at the local minima
+  and maxima" fixes the mechanism, not the shape, and not the source: the
+  folded output is made of corners by construction, so firing from it gives
+  a solid buzz whose density follows the fold depth rather than a train. It
+  fires from the tonal sum instead, and each pulse decays in a sixteenth of
+  a cycle, which is short enough to stay clear of the next one.
 - The **metal** routing: Alia's manual says "a pair of 3-operator
   phase-modulated oscillators", and which operator feeds which, and how
   **harm** maps to modulation index, is ours. Stack A carries ratio 1 and
