@@ -101,6 +101,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | quadrare | patchable Walsh-Hadamard codec (16 sliders + 32 jacks onto the transform domain, size-zoomable window, keep/quant lossy stages, residual + per-coefficient component outs) | 162.56mm (32HP) |
 | vestigia | stereo memory effect (endless tape loop, oblivion/remanence/sediment memory modes, block activity map + descriptor pool with integrity/wear, listen/breathe/dream recollection modes, similarity weighting, age degradation, modulated diffusion + crossfeed, protected feedback; all macro CV, MEMORY OUT, full context menu, 7 factory presets) | 132.08mm (26HP) |
 | antrum | Erbe-Verb clone (4-line FDN, size 1-500ms, cyclic/ergodic/shimmer depth, absorb = diffusion+damping, reverse pre-delay, clock sync, energy CV out; 8 factory presets from the hardware manual) | 101.6mm (20HP) |
+| caligo | Greyhole port (long modulated echo inside 3x4-deep nested allpass diffusers, 24 delay lines on prime lengths; spin = the rotator angle, drift, scatter, freeze, dissolve/tape, patchable feedback loop; 7 factory presets) | 121.92mm (24HP) |
 
 ## limen module
 
