@@ -198,10 +198,14 @@ def temp_user_dir():
     os.makedirs(plugins)
     os.symlink(REPO, os.path.join(plugins, "forsitan"))
     # A first-run Rack greets you with the tips dialog, and would draw the CPU
-    # meter over the top-right module. Neither belongs in the picture.
+    # meter over the top-right module. Neither belongs in the picture. Nor does
+    # a parameter tooltip: the capture happens wherever the pointer happens to
+    # be resting, and if that is over a control Rack draws its tooltip on top
+    # of the panels.
     with open(os.path.join(userdir, "settings.json"), "w") as f:
         json.dump({"showTipsOnLaunch": False,
                    "cpuMeter": False,
+                   "tooltips": False,
                    "autoCheckUpdates": False}, f)
     return userdir
 
