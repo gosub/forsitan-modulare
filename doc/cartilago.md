@@ -78,7 +78,7 @@ the audio path. This is a real and well-known FET-VCA artefact, and on the
 Gristleizer it is a feature: on the pulse setting, with nothing patched into
 the input, the module clicks in time. The size of the tick is `tau · dV/dt`,
 so it grows with rate and depth, and the finite bandwidth of the gate drive
-(4.5 kHz here) is what bounds it and turns a click into a thump. Turn it off
+(2 kHz here) is what bounds it and turns a click into a thump. Turn it off
 in the context menu if you want a quiet module.
 
 The control-to-gate law is the one thing shaped by taste rather than by the
