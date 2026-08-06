@@ -1,0 +1,103 @@
+{
+  "plugin": "forsitan",
+  "model": "caligo",
+  "version": "2.14.0",
+  "params": [
+    {
+      "value": 0.02471,
+      "id": 0
+    },
+    {
+      "value": 0.33333,
+      "id": 1
+    },
+    {
+      "value": 0.1426,
+      "id": 2
+    },
+    {
+      "value": 1.1,
+      "id": 3
+    },
+    {
+      "value": 0.15152,
+      "id": 4
+    },
+    {
+      "value": 0.0,
+      "id": 5
+    },
+    {
+      "value": 0.74102,
+      "id": 6
+    },
+    {
+      "value": 0.5,
+      "id": 7
+    },
+    {
+      "value": 1.0,
+      "id": 8
+    },
+    {
+      "value": 0.0,
+      "id": 9
+    },
+    {
+      "value": 0.0,
+      "id": 10
+    },
+    {
+      "value": 0.0,
+      "id": 11
+    },
+    {
+      "value": 0.0,
+      "id": 12
+    },
+    {
+      "value": 0.0,
+      "id": 13
+    },
+    {
+      "value": 0.0,
+      "id": 14
+    },
+    {
+      "value": 0.0,
+      "id": 15
+    },
+    {
+      "value": 0.0,
+      "id": 16
+    },
+    {
+      "value": 0.0,
+      "id": 17
+    },
+    {
+      "value": 0.0,
+      "id": 18
+    },
+    {
+      "value": 0.0,
+      "id": 19
+    },
+    {
+      "value": 0.0,
+      "id": 20
+    },
+    {
+      "value": 0.0,
+      "id": 21
+    }
+  ],
+  "data": {
+    "freeze": false,
+    "tape": false,
+    "clockSyncRate": false,
+    "freezeBypassDamp": true,
+    "freezeOpenInput": false,
+    "scatterSeed": 0
+  }
+}
