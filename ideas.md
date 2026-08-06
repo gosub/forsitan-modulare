@@ -214,13 +214,24 @@ Blukac Endless Processor, Ewan Bristow's spectral plugins, three Chase Bliss
 pedals). Sorted best to worst *within this section*; the S-numbering is
 independent of the list above.
 
-**Novelty was NOT checked against the VCV Library for any of these.** Do that
-before starting, the way the July list was checked.
-
 Everything from S1 to S6 shares one FFT/phase-vocoder core, so they are not
 independent bets: build the core once, then each module is a different
 transform between the same analysis and resynthesis stages. Forsitan has no
 spectral module today, every one of the 25 is time domain.
+
+**Novelty checked against the VCV Library 2026-08-06.** Per-entry verdicts
+below. The S-numbers are stable IDs, not the ranking; after the check the
+order is **S1, S3, S4, S5, then S2, S6, S7 demoted**.
+
+The incumbent to know about is **Frequency Domain**, a 9-module plugin
+entirely devoted to FFT and resynthesis work: Morphology (spectral morpher),
+Delayed Reaction (spectral delay), Freudian Slip (resynthesising sampler),
+Harmonic Convergence (resynthesis engine), plus granular and wavetable
+modules. The spectral corner is not empty, it has a specialist. Also relevant
+across several entries: **Tonecarver Blur** (open source,
+github.com/Tonecarver/tcRackModules), **Chaotic Instruments FFTF**, **DanT
+Kapow**, and the Clouds ports (Audible Instruments Texture Synthesizer,
+Sanguine Mutants Nebulae / Etesia / Fluctus).
 
 ### S0. the spectral core (prerequisite, not a module)
 
@@ -263,6 +274,15 @@ drone at 10x to 100x.
   is infinity. Decide before drawing two panels.
 - Name candidates: aevum (eternity), protraho, traho. Avoid tendo, too close
   to tundo.
+- **Library check: CLEAR, and the best-evidenced of the batch.** `paulstretch`
+  returns 0 modules. `stretch` returns exactly one, KRT "T", an unrelated
+  pitched-time-stretch sync delay. Better than an absence: there is
+  *demonstrated demand with no native answer*. The community thread "Using
+  Paulxstretch in VCV Rack" has people trying to load the PaulXStretch VST
+  through Host-fx (and failing to get Host to see it), and the standing advice
+  elsewhere is "use Clouds in time-stretcher mode", which is a granular
+  approximation, not the phase-randomised FFT technique.
+  https://community.vcvrack.com/t/using-paulxstretch-in-vcv-rack/16146
 
 ### S2. blukac endless processor clone
 
@@ -280,6 +300,19 @@ clickless endless stream, stack five layers per channel. Memory 100ms to 3s.
   freeze with layer stacking. Be deliberate about that on the panel or it
   reads as perge's freeze in 8HP.
 - See S1: possibly the same module.
+- **Library check: OCCUPIED. Demoted from second place, do not build as
+  specified.** Chaotic Instruments **FFTF** is "FFT spectral freeze: captures
+  the incoming spectrum and sustains it as a frozen pad", which is this
+  module's core function almost verbatim. Tonecarver **Blur** has a Freeze
+  control on top of its frame buffer. The Clouds ports cover the granular
+  freeze angle. And perge already freezes in-house. That is three external
+  modules plus self-competition.
+  What survives the check is *only* the part FFTF does not do: **five
+  stackable layers per channel**, dual channel, where each new capture sustains
+  on top of the still-sounding earlier ones. That is the actual Blukac idea and
+  it is genuinely absent from the library. But it is a thin differentiator to
+  hang a module on. Build it only if the layering *is* the design, not as a
+  freeze module that also layers.
 
 ### S3. cribrum — tonal / noise separation
 
@@ -293,6 +326,16 @@ Two outputs.
 - Nothing in the Rack library appears to do this. Tool-nobody-has, which is
   what forsitan does well.
 - This is the strongest argument for the small-modules fork in S0.
+- **Library check: CLEAR, the cleanest gap found.** `partials` returns only
+  docB OscA1, an additive *oscillator* (256 partials), which is synthesis and
+  not analysis. `transient` returns transient *shaping* (Ambivalent
+  Instruments GroupDelay) and transient *detection* (SignalFunctionSet Phase),
+  nothing that decomposes a signal into sinusoids plus residual. No SMS
+  anywhere in the library. Nearest neighbour is DanT **Kapow**, an additive
+  resynthesis voice, but it works from offline analysis and is an instrument,
+  not a real-time splitter.
+- Caveat on the clean gap: nobody doing it may mean nobody wants it. Weaker
+  evidence than S1's demonstrated demand, which is why S1 still ranks first.
 
 ### S4. spectral scale quantiser
 
@@ -304,6 +347,13 @@ scale, resynthesise. Speech, noise and cymbals come out harmonised.
 - **imber and sylla already have the root/scale infrastructure** in
   `src/imber/`: free code and a consistent UX across three modules.
 - Name candidates: consono, concino.
+- **Library check: CLEAR.** `harmonizer` returns only CV-domain and
+  voice-domain work: Ahornberg Harmonizer (harmonic/subharmonic CV generator),
+  Chinenual Tintinnabulator (Arvo Pärt style, a quantizer), Shortwav Korupt
+  (PLL harmonizer + fuzz). Closest is gregsbrain **xVox**, "a 4 voice
+  quantizing pitch shifter", but that quantizes whole shifted voices, not
+  individual partials. Snapping every partial of one signal to a scale is not
+  done.
 
 ### S5. frequency stretching (Ewan Bristow inspired)
 
@@ -326,6 +376,12 @@ fixed fundamental is the whole "fundamental-aware" part.
   plugins away, works entirely in an open-source ecosystem), and `strings` the
   binary for `#X obj` / `#N canvas` in case the plugdata wrapper embedded the
   patch as a text resource rather than compiling through hvcc.
+- **Library check: the transform is CLEAR, the neighbourhood is populated.**
+  No module warps partials by harmonic number with a fixed fundamental.
+  But Frequency Domain **Morphology** (spectral morpher) and **Harmonic
+  Convergence** (resynthesis engine) sit right next door, as does **Freudian
+  Slip** (resynthesising sampler) and DanT **Kapow**. Novel transform, crowded
+  street. Weigh that against S5 already being the weakest musically of S1-S5.
 
 ### S6. spectral blur — a reverb different in kind
 
@@ -337,8 +393,23 @@ frequency-dependent infinite tails.
   be worth building; a frequency-domain one is.
 - Per-bin delay offsets fall out of the same structure, so "highs arrive late"
   and randomised per-bin smear are modes, not separate modules.
-- Name candidates: vapor, diffundo. Not nebula (Qu-bit Nebulae collision), and
-  note caligo already means fog in this collection.
+- Name candidates: vapor, diffundo. Not nebula, which now collides twice:
+  Qu-bit's hardware and Sanguine Mutants' Clouds port are both called Nebulae.
+  Note caligo already means fog in this collection.
+- **Library check: OCCUPIED. Drop, or narrow hard.** Tonecarver **Blur** is
+  this module, and done well: a history buffer of up to 10s / 10000 FFT
+  frames, a position read head interpolating between frames, frame-drop
+  probability, freeze, and a "blur" control that picks bins randomly from
+  frames either side of the playback position. It is built from Jean-François
+  Charles's 2008 Computer Music Journal paper on spectral processing in
+  Max/MSP + Jitter, which is the canonical source for this whole technique,
+  and it is open source. Frequency Domain **Delayed Reaction** separately
+  covers the per-bin delay idea.
+  The S6 pitch (per-bin decay times, i.e. a frequency-domain reverb with
+  per-bin RT60) is *technically* a different mechanism from a frame buffer,
+  but the musical outcome overlaps heavily. Only worth pursuing if a prototype
+  demonstrably does not sound like Blur, and the honest prior is that it will.
+  Read the Charles paper before deciding anything here.
 
 ### S7. skrewell-inspired chaos (no spectral core needed)
 
@@ -357,6 +428,16 @@ guttur family.
   work.
 - Not a self-contained sound generator in the Reaktor sense: it runs
   continuously with no gate/pitch input.
+- **Library check: no clone exists, but the neighbourhood is saturated and we
+  are already in it twice. Demoted.** `chaos` returns 36 modules. No Skrewell
+  clone, and Reaktor users say there is nothing like it outside Reaktor
+  (the suggested nearest thing is Metaphysical Function), so the specific gap
+  is real. Against that: HetrickCV alone ships five chaos generators,
+  and **Venom Vlippoo Box** is a Blippoo Box emulation competing directly with
+  our own bulla. Forsitan already occupies this corner with bulla, rete and
+  guttur. The binding constraint is self-competition, not the library.
+  This was already the July list's finding ("chaos attractors: saturated
+  corners of the library"), now reconfirmed.
 
 ## Considered and dropped
 
