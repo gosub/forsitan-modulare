@@ -62,6 +62,47 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     with the delay time. Seven factory presets. Clock sync on antrum's ratio
     table. ~1.3% of one core.
 
+  - **tomentum**, a 10 HP model of the four-transistor **Big Muff Pi**, the
+    USA V3 of 1976-77: a 16.7 dB input booster, two common-emitter stages at
+    23 and 25 dB clipped by antiparallel silicon diodes in their
+    collector-base feedback, the passive two-branch tone network, and a 13 dB
+    recovery stage to make back what that network takes. Circuit values and
+    stage figures follow ElectroSmash's analysis of the USA V3. Polyphonic,
+    one pedal per channel, with the DSP core in `tomentum_dsp.hpp` and no
+    Rack in it.
+
+    Two parts are solved rather than approximated, and both are audible.
+
+    The tone stack is the whole loaded passive network as a single biquad
+    from a nodal analysis: the 39k/10n bass leg, the 3.9n/22k treble leg, the
+    100k pot between them, the driving stage's 15k source impedance and the
+    volume pot's 100k load. The usual shortcut, a lowpass and a highpass
+    mixed by the knob, cannot move the notch, and moving is what this network
+    does: 1111 Hz with the pot centred, 276 Hz at full treble. Into an ideal
+    source and a light load the same expression gives 7.4 dB insertion loss
+    and -14.2 dB at 1042 Hz, against the published 7 dB and -13.5 dB at
+    1 kHz.
+
+    The clipper is the exact static solution of `v + Rf*Id(v) = w`. The 1 uF
+    cap in series with each diode pair is a DC block and nothing more, its
+    corner across 470k being a third of a hertz, so the stage is memoryless
+    and the curve solves once into a table instead of being Newton-iterated
+    per sample: 4096 points on a companded sqrt index, within 0.01 mV of a
+    bisection solve, costing a sqrt and a lerp at run time. The shape is the
+    point. 0.18 V out at 0.25 V in, 0.29 V at 1 V, 0.35 V at 3 V: it keeps
+    compressing instead of flattening, which is where the sustain comes from.
+
+    Added, and marked as such on the panel and in the manual: an input
+    **gain** trim, because Rack's nominal +/-5 V is some 25 dB hotter than
+    the pickup this was voiced for and a fuzz whose character is *where* its
+    gain structure lands should not be fed that silently; a **bias** trim for
+    the starved, gated, lopsided sound; a **mids** control, the tone-bypass
+    mod, filling the scoop rather than denting it; CV on the three real
+    controls; a diode menu (silicon 1N4148, germanium, LED, lifted); 1x to
+    16x oversampling, default 4x. No historical-revision presets: the
+    variants differ within a single named era, and this model cannot honestly
+    claim one.
+
 ## [2.13.3] - 2026-08-05
 ### Fixed
   - **imber** crashing Rack while it generates its sample bank, on Linux,
