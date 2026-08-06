@@ -93,7 +93,7 @@
     }
   ],
   "data": {
-    "freeze": true,
+    "freeze": false,
     "tape": false,
     "clockSyncRate": false,
     "freezeBypassDamp": true,
