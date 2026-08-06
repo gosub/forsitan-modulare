@@ -233,9 +233,11 @@ static void testFold() {
             all += (double)x[i] * x[i];
         }
         double frac = all > 0.0 ? hi / all : 0.0;
-        // the absolute epsilon rides over jitter at the unfolded floor, where
-        // frac sits near 3e-4 and a relative criterion is meaningless
-        if (frac < prevHi * 0.98 - 1e-4) monotonic = false;
+        // tolerances: the absolute epsilon rides over jitter at the unfolded
+        // floor (frac near 3e-4), and the 10% slack covers the seam at 3/4 of
+        // the knob where the threshold bottoms out and the pulse train takes
+        // over. A regression that halves the brightness still trips.
+        if (frac < prevHi * 0.9 - 1e-4) monotonic = false;
         prevHi = frac;
         worstPeak = std::max(worstPeak, peakOf(x));
     }
