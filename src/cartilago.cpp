@@ -377,6 +377,14 @@ struct Cartilago : Module {
         const bool vcf = params[MODE_PARAM].getValue() > 0.5f;
         const float drive = dsp::exp2_taylor5(
             10.f * params[DRIVE_PARAM].getValue() - 5.f);       // 1/32 .. 32
+        // The filter's output saturator doubles as the resonance limiter. Its
+        // drive follows the DRIVE knob so backing the knob off cleans the
+        // filter up instead of leaving a fixed fuzz in the path; below unity
+        // the small-signal gain is normalized back, so quiet is not also dull.
+        const float post = 0.8f * std::pow(drive, 0.7f);
+        // the 1.4 pays back the filter's own passband loss (input stage plus
+        // 1/k at the default resonance), so the two modes sit at similar level
+        const float postNorm = 1.4f / std::min(post, 1.f);
         const float level = params[LEVEL_PARAM].getValue();
         const float res = params[RES_PARAM].getValue();
         const float kres = 2.f - 1.96f * res;
@@ -403,7 +411,7 @@ struct Cartilago : Module {
                                            20.f, 0.45f * fsOs);
                     const float g = std::min(std::tan((float)M_PI * fc / fsOs), 4.f);
                     y = voices[c].vcf(x, g, kres, lowpassMode);
-                    y = cartilago::ftanh(2.2f * y);
+                    y = cartilago::ftanh(post * y) * postNorm;
                 }
                 y += feedAmt * feedBuf[k];
                 buf[k] = voices[c].dc.process(y);
