@@ -31,7 +31,7 @@ equilibrium.
 | **leak** | integrator leak. Left: leaky/thin, fast decay. Right: nearly pure integration, heavy sustained lows |
 | **scale** | matrix drive, 1×–1000× (exponential). The single most powerful knob: it pushes the loop from silence through tones into saturated chaos |
 | **in lvl** | level of the **in** jack into the network |
-| **in** | external audio/CV excitation, injected into all nodes (alternating sign). Try an impulse train or a drum loop |
+| **in** | external audio/CV excitation, injected into all nodes (alternating sign). Try an impulse train or a drum loop — see the tips |
 | **rnd** button / **trig** | re-roll the mixing matrix (new random seed). This is "next patch, please": every seed is a different instrument |
 | **L / R** | the eight nodes spread across the stereo field, equal-power |
 | **poly** | all eight node outputs as an 8-channel polyphonic signal (±5V per node) — feed it to pavo, a poly VCA, a poly filter... |
@@ -43,6 +43,18 @@ the way it was saved.
 
 - Modulate the **G** inputs with slow LFOs (Ho's own recommendation): the
   network drifts between behaviors instead of jumping.
+- **Drive it with a pulse train.** Patch a square oscillator around 100 Hz
+  with the pulse width wound right down into **in**, then bring **in lvl**
+  up slowly. This is the experiment Ho's post ends on, and it is the best
+  thing you can do to the module: the drive's pitch and its harmonics grow
+  into the output while the network's own oscillation keeps running
+  underneath, so the two work against each other instead of one replacing
+  the other. The clippers bound the loop, so driving harder does not make
+  it louder — it changes what is in there. Modulate the **G** inputs at the
+  same time for the whole patch.
+- A seed that barely speaks is not a dead seed: a driven pulse train wakes
+  it up where **scale** alone only makes it harsh. Try that before pressing
+  **rnd**.
 - **scale** low + **leak** high gives slow, bassy, breathing drones;
   **scale** high turns the same seed into harsh digital noise.
 - The 8 poly channels are eight *different* mixes of the same organism:
