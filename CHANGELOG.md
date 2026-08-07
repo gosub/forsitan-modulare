@@ -156,6 +156,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     attenuator and one filter per channel, one LFO for all of them, as it is
     one modulator in one box.
 
+### Fixed
+  - **sylla**'s GEN light answering almost none of the presses it acted on.
+    A sample renders in 0.01 to 15 ms and the light was on for exactly as
+    long as the render, so every one of the 27 engines finished inside a
+    single 60 Hz video frame and the interface usually looked after the
+    light was already back off. It now stays lit for 120 ms, from wherever
+    a render starts, so a press blinks once and a run of them reads as a
+    steady busy.
+  - **sylla** dropping a GEN that arrived while the worker was still
+    rendering the previous sample. Since a render is milliseconds long this
+    only bit a fast clock into GEN IN, where it silently ate triggers. The
+    last one is now held and started as soon as the worker is free: late
+    rather than lost.
+
 ## [2.13.3] - 2026-08-05
 ### Fixed
   - **imber** crashing Rack while it generates its sample bank, on Linux,
