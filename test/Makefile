@@ -13,7 +13,9 @@ SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
 # smoke_oom drives imber and sylla against a render they cannot allocate.
-CROSS_BINS = smoke_oom
+# tundo_invariants is property-based rather than per-point: it randomizes and
+# sweeps the whole control space and asserts invariants over it.
+CROSS_BINS = smoke_oom tundo_invariants
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe tundo_probe \
      $(SMOKE_BINS) $(CROSS_BINS)
@@ -41,6 +43,12 @@ antrum_probe: antrum_probe.cpp smoke_harness.hpp ../src/antrum.cpp ../src/antrum
 # harm staging, spread ratios, fold energy, pitch tracking, per-mode survey and
 # a CPU figure. `--wav <dir>` dumps the five target sounds instead.
 tundo_probe: tundo_probe.cpp smoke_harness.hpp ../src/tundo.cpp ../src/tundo_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Property-based harness for the drum voice: safety, level, pitch,
+# distinctness, continuity and modulation invariants, checked over randomized
+# and swept patches. `--seed N` reproduces a run, `--long` sweeps 8x as many.
+tundo_invariants: tundo_invariants.cpp smoke_harness.hpp ../src/tundo.cpp ../src/tundo_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
