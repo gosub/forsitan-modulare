@@ -47,6 +47,9 @@
 // crossfade time for playhead jumps (retrigger, or a new sample landing)
 static const float SYLLA_XFADE_SEC = 0.004f;
 
+// minimum time the GEN light stays on, well over one video frame
+static const float SYLLA_BUSY_MIN_SEC = 0.12f;
+
 // v1, the 2.9 taxonomy: ten positions, each a family the render rolled a
 // member of. Kept so patches saved under it still reproduce.
 static const std::vector<std::string> SYLLA_FAMILIES_V1 = {
@@ -134,6 +137,11 @@ struct Sylla : Module {
     dsp::SchmittTrigger genTrig, playTrig;
     dsp::BooleanTrigger genButton, trigButton;
     dsp::PulseGenerator eocPulse;
+    // A sample renders in 0.01 to 15 ms, so a busy light tied straight to
+    // the job is on for less than one video frame and the UI samples it
+    // back at zero: most presses show nothing at all. Hold it on for a
+    // minimum time instead, so every GEN is seen.
+    dsp::PulseGenerator busyPulse;
     bool pendingRender = false;
     // a render was refused (out of memory); do not retry until asked
     bool renderFailed = false;
@@ -273,6 +281,7 @@ struct Sylla : Module {
             return;
         }
         job = j;
+        busyPulse.trigger(SYLLA_BUSY_MIN_SEC);
     }
 
     void onReset() override {
@@ -364,7 +373,8 @@ struct Sylla : Module {
             }
             job.reset();
         }
-        lights[BUSY_LIGHT].setBrightness(job ? 1.f : 0.f);
+        bool busyHold = busyPulse.process(args.sampleTime);
+        lights[BUSY_LIGHT].setBrightness((job || busyHold) ? 1.f : 0.f);
 
         bool loop = params[LOOP_PARAM].getValue() > 0.5f;
         bool gateMode = params[GATE_PARAM].getValue() > 0.5f;
