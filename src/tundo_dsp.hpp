@@ -305,19 +305,55 @@ struct Engine {
     // hardware's behaviour, and resetting the phases is what makes the pop
     // repeat identically. In free-run the partials are already sustaining, so
     // a strike only re-runs the attack.
-    void trigger(bool hold) {
+    //
+    // The phases are set so that every partial reaches its crest at the
+    // moment the attack envelope does. With a fast attack that is the trigger
+    // itself, and this reduces to starting at the crest: the step is the
+    // "classic analog pop" the manual puts at the centre of ATTACK, and it is
+    // what keeps a short decay from being inaudible at low pitch, where a
+    // quarter cycle outlasts the whole envelope.
+    //
+    // It has to follow the attack, though, and not just sit at the crest.
+    // Once the attack is comparable to half a period the crest has long gone
+    // by the time the envelope arrives, and a rising envelope meeting a
+    // falling waveform cancels: measured at C1, sweeping ATTACK took the peak
+    // 4.83, 4.82, 2.98, 1.16, 4.70 V, a 12 dB notch sitting in the middle of
+    // the knob with full level either side of it.
+    void trigger(const Params& p) {
         attEnv = 0.f;
         noiseEnv = 1.f;
         pitchEnv = 1.f;
         pulse = 0.f;
-        if (hold) return;
+        if (p.hold) return;
+
+        // where the one-pole attack effectively crests, in seconds
+        const float tc = 0.77f * std::max(p.attackMs, 0.f) * 0.001f;
+        const float f0 = clampf(p.f0, kMinF0, kMaxF0);
+        // Cycles the *fundamental* covers before then. Liquid bends the pitch
+        // over exactly this stretch, so integrate rather than assume f0: a
+        // couple of dozen steps, once per strike.
+        double cycles;
+        if (p.mode == kLiquid && tc > 0.f) {
+            const float tauP = clampf(p.decayMs * 0.001f * 0.125f, 0.003f, 0.2f);
+            const int steps = 32;
+            const double dt = (double)tc / steps;
+            cycles = 0.0;
+            for (int s = 0; s < steps; s++) {
+                double t = (s + 0.5) * dt;
+                cycles += (double)f0 * std::exp2((double)p.liquidOct
+                                                 * std::exp(-t / tauP)) * dt;
+            }
+        }
+        else {
+            cycles = (double)f0 * tc;
+        }
+
         for (int i = 0; i < kNumOsc; i++) {
             env[i] = 1.f;
-            // start at the crest, not the zero crossing: the step is the
-            // "classic analog pop" the manual puts at the centre of ATTACK,
-            // and it is what keeps a short decay from being inaudible at low
-            // pitch, where a quarter cycle outlasts the whole envelope
-            phase[i] = 0.25f;
+            // fmod in double: at a long attack and a high ratio this is
+            // thousands of cycles, and the fractional part is the whole point
+            double off = std::fmod(cycles * (double)ratio[i], 1.0);
+            phase[i] = wrapPhase(0.25f - (float)off);
         }
     }
 
