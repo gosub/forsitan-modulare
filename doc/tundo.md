@@ -20,7 +20,7 @@ builds the hit.
                      │
  noise (LCG, held) ──┤
                      v
-              Σ ─> × attack env × final env ─> infinifolder ─> audio
+              Σ ─> × (attack env × decay env) ─> infinifolder ─> audio
                                    (threshold reflection,        │
                                     amplitude compensation,      └─> env
                                     pulse train at the top)
@@ -47,7 +47,7 @@ Every knob has its own attenuverter and CV input directly below it.
 | **spread** | the intervals between the partials, from the harmonic series (1 2 3 4 5 6) at full CCW to the prime series (1 3 5 7 11 13) at full CW, interpolated in the log domain. Harmonic is a pitched drum; prime is a bell or a gong; between them is a continuous inharmonic warp. **The fundamental never moves**: the first entry of both series is 1, so this is a timbre control, not a tuning one. The prime end genuinely has an ambiguous pitch, the way a bell does, but that is the spectrum and not a transposition |
 | **morph** | the waveform every oscillator uses: sine → triangle → saw → square, in three equal thirds of the knob |
 | **fold** | the first three quarters lower the folder's reflection threshold, from no folding to eight-odd reflections on a peak. The top quarter crossfades in a train of decaying pulses, one fired at every peak and trough of the tonal sum, so the train is locked to the note and **harm** sets how dense it is: two clicks a cycle with one partial, a dozen with six. It replaces the dense fold rather than piling on top of it, so the end of the knob is peakier and thinner, not louder |
-| **attack** | one knob, two halves. From full CCW to noon it mixes in a burst of noise, loudest at full CCW. The noise tracks the pitch, so it darkens as you play lower, but only down to a floor: in **bass** range it would otherwise sit entirely below 1 kHz and a low snare would have no crack left. Noon is the classic analog pop, a 0.5 ms attack with no noise. From noon to full CW the attack stretches exponentially to 2 s |
+| **attack** | one knob, two halves. From full CCW to noon it mixes in a burst of noise, loudest at full CCW. The noise tracks the pitch, so it darkens as you play lower, but only down to a floor: in **bass** range it would otherwise sit entirely below 1 kHz and a low snare would have no crack left. Noon is the classic analog pop, a 0.5 ms attack with no noise. From noon to full CW the attack stretches exponentially to 2 s, and the decay waits for it: the hit swells, then falls, so a slow attack still sounds at full level however short **decay** is |
 | **decay** | 5 ms to 4 s, exponential, for all oscillators together — **harm** decides how much of that each partial gets. With *Free-run* armed in the context menu, full CW holds the envelopes open and tundo becomes an oscillator |
 
 ## Switches, button, inputs and outputs
@@ -61,7 +61,7 @@ Every knob has its own attenuverter and CV input directly below it.
 | **trig** | strike, Schmitt-triggered at 1.5 V rising. There is no legato: a retrigger restarts every envelope from zero, as the hardware does |
 | **hit** | button, strikes the voice by hand; it ORs into **trig** and lights its LED |
 | **audio** | the voice. ±5 V by default, see *Output level* |
-| **env** | the voice's own final envelope, 0–10 V — the envelope actually driving the folder, so it follows **harm** and **decay** and not just the trigger |
+| **env** | the voice's own envelope, 0–10 V — the whole of what drives the folder, attack and decay together, so it follows **harm**, **attack** and **decay** and not just the trigger |
 
 ## Context menu
 
