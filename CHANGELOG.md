@@ -127,6 +127,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     unison, free-run at full decay, the Liquid pitch depth and the output
     swing. 14HP.
 
+  - **cartilago**, a 12 HP modulator in the manner of the **Gristleizer**,
+    Roy Gwinn's 1975 Electronics Today International design, by way of the
+    Chris Carter modifications that made it a Throbbing Gristle sound. One
+    LFO of four shapes, with **shape** sliding the triangle's peak from a
+    falling ramp to a rising one and setting the pulse's duty, driving
+    either a FET attenuator or a resonant filter.
+
+    The attenuator is a JFET in a shunt divider rather than a multiplier,
+    and everything interesting follows from that. It never closes: gain
+    bottoms out around -26 dB, so the troughs of a tremolo keep a thin dirty
+    signal alive. It distorts most in the middle of the sweep, where the
+    channel is both conducting and seeing a real drain swing, measured at
+    -23 dB of second harmonic there against -37 dB shut. And it ticks,
+    because gate-drain capacitance injects the control edge into the audio
+    path: on the pulse setting with nothing patched in, the module clicks in
+    time. All three are kept; the tick can be turned off in the menu.
+
+    **depth** runs to 125 % so the control flattens against its ends, and
+    **v/oct** takes the LFO into the audio band, where the attenuator
+    becomes a ragged ring modulator. That is the case a naive build fails,
+    so the shapes are polyBLEP/polyBLAMP band-limited and the signal path
+    oversampled, 2x by default: at a 1.2 kHz LFO that is -22 dB of alias
+    energy raw against -36 dB band-limited and oversampled. The filter mode
+    is a ZDF state-variable, bandpass by default and lowpass from the menu,
+    swept 45 Hz to 3.8 kHz by the same control, whose saturator doubles as
+    the resonance limiter and follows the **drive** knob. Polyphonic: one
+    attenuator and one filter per channel, one LFO for all of them, as it is
+    one modulator in one box.
+
 ## [2.13.3] - 2026-08-05
 ### Fixed
   - **imber** crashing Rack while it generates its sample bank, on Linux,
