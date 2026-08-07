@@ -438,4 +438,65 @@ static void testSyllaSwitch() {
     (void)frame;
 }
 
-SMOKE_MAIN(testSylla, testSyllaState, testSyllaPool, testSyllaSwitch)
+// A sample renders in 0.01 to 15 ms, inside a single 60 Hz video frame, so a
+// busy light tied straight to the job is sampled back at zero and most GENs
+// show nothing at all. It has to stay lit for longer than a frame.
+static void testSyllaBusyLight() {
+    Sylla m;
+    long frame = 0;
+    auto step = [&]() { m.process(makeArgs(frame++)); };
+    auto settle = [&](float secs) {
+        for (long i = 0; i < (long)(secs * SR); i++) step();
+    };
+    auto lightOn = [&]() {
+        return m.lights[Sylla::BUSY_LIGHT].getBrightness() > 0.5f;
+    };
+    // The harness runs audio far faster than wall time, so a worker that
+    // takes 11 ms of wall time would appear to take seconds of audio time.
+    // Idle means: the render landed and no audio is being clocked past it.
+    auto waitIdle = [&]() {
+        for (int i = 0; i < 3000 && (m.job || m.buffer.empty()); i++) {
+            settle(64.f / SR);
+            if (m.job)
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    };
+    waitIdle();
+    settle(1.f);
+    report("sylla", "busy_light_rests_off", lightOn() ? 1 : 0, !lightOn());
+
+    // Press GEN, let the worker finish while the audio clock stands still,
+    // then measure. The render costs almost no audio time that way, which is
+    // the worst case for a light that is only on while the job is in flight
+    // — and the honest model of a real Rack, where 11 ms of render passes
+    // under a UI that only looks every 16.7 ms.
+    auto measure = [&](bool viaInput) {
+        if (viaInput) m.inputs[Sylla::GEN_INPUT].setVoltage(10.f);
+        else          m.params[Sylla::GEN_PARAM].setValue(1.f);
+        step();
+        if (viaInput) m.inputs[Sylla::GEN_INPUT].setVoltage(0.f);
+        else          m.params[Sylla::GEN_PARAM].setValue(0.f);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        long on = 0;
+        for (long i = 0; i < (long)(2.f * SR); i++) {
+            step();
+            if (lightOn())
+                on++;
+            else if (on > 0)
+                break;
+        }
+        waitIdle();
+        settle(0.5f);
+        return on / SR;
+    };
+    double byButton = measure(false);
+    double byInput  = measure(true);
+    // one frame at 60 Hz is 16.7 ms; ask for six of them
+    report("sylla", "busy_light_button_s", byButton, byButton >= 0.1);
+    report("sylla", "busy_light_input_s", byInput, byInput >= 0.1);
+
+    (void)frame;
+}
+
+SMOKE_MAIN(testSylla, testSyllaState, testSyllaPool, testSyllaSwitch,
+           testSyllaBusyLight)
