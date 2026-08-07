@@ -379,11 +379,15 @@ struct Engine {
         float s = clampf(p.spread, 0.f, 1.f);
         if (p.extendedSpread) {
             // k < 0 compresses the series towards a slightly detuned unison,
-            // the fat region the harmonic-only law cannot reach
+            // the fat region the harmonic-only law cannot reach. The detune
+            // is indexed from partial 2 and faded out as the compression
+            // does, so the fundamental stays exactly in tune (it used to sit
+            // 3.5 cents sharp across this whole half of the knob, and snap
+            // back at the midpoint) and the two halves meet continuously.
             float k = s * 2.f - 1.f;
             for (int i = 0; i < kNumOsc; i++) {
                 if (k < 0.f)
-                    ratio[i] = std::pow(H[i], 1.f + k) * (1.f + 0.002f * (i + 1));
+                    ratio[i] = std::pow(H[i], 1.f + k) * (1.f - 0.002f * i * k);
                 else
                     ratio[i] = std::exp((1.f - k) * std::log(H[i]) + k * std::log(P[i]));
             }
