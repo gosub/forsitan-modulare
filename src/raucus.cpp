@@ -1,13 +1,13 @@
-// tomentum.cpp — VCV Rack 2 module
-// tomentum (Latin: "the stuffing of a cushion, flock, wool padding") is a
+// raucus.cpp — VCV Rack 2 module
+// raucus (Latin: "the stuffing of a cushion, flock, wool padding") is a
 // block-level model of the four-transistor Electro-Harmonix Big Muff Pi,
 // USA V3, the 1976-77 circuit: an input booster, two common-emitter stages
 // clipped by antiparallel silicon diodes in their collector-base feedback,
 // the passive two-branch tone network, and a recovery stage.
 //
-// The DSP core is in tomentum_dsp.hpp and knows nothing about Rack. Circuit
+// The DSP core is in raucus_dsp.hpp and knows nothing about Rack. Circuit
 // values and the measured stage gains come from ElectroSmash's analysis of
-// the V3; see doc/tomentum.md for what is and is not modelled.
+// the V3; see doc/raucus.md for what is and is not modelled.
 //
 // Two things here are not the block model the usual write-ups describe:
 //
@@ -34,11 +34,11 @@
 //   Lights: clipping indicator, output level
 
 #include "forsitan.hpp"
-#include "tomentum_dsp.hpp"
+#include "raucus_dsp.hpp"
 // the ChowDSP variable oversampler already vendored for guttur
 #include "guttur/VariableOversampling.hpp"
 
-struct Tomentum : Module {
+struct Raucus : Module {
     enum ParamId {
         GAIN_PARAM,
         SUSTAIN_PARAM,
@@ -67,14 +67,14 @@ struct Tomentum : Module {
 
     static const int kMaxChannels = 16;
 
-    tomentum::Voice voices[kMaxChannels];
+    raucus::Voice voices[kMaxChannels];
     // The pedal's output coupling capacitor sits after the volume pot, and so
     // does this: the voice's own blocker is upstream of the makeup gain and
     // the soft ceiling below, and a ceiling compresses an asymmetric waveform
     // asymmetrically. That turns a signal with no offset into one with a
     // couple of hundred millivolts of it, and nothing downstream of the
     // voice was removing it.
-    tomentum::DCBlock outDc[kMaxChannels];
+    raucus::DCBlock outDc[kMaxChannels];
     VariableOversampling<> upsampler[kMaxChannels];
     // Smoothed controls, per channel because their CV may be polyphonic.
     float sustainZ[kMaxChannels] = {}, toneZ[kMaxChannels] = {}, volumeZ[kMaxChannels] = {};
@@ -85,9 +85,9 @@ struct Tomentum : Module {
     int osIndex = 2;                     // 2^osIndex, default 4x
     int lastOsIndex = -1;
     float lastSampleRate = 0.f;
-    int diode = tomentum::DIODE_SILICON;
+    int diode = raucus::DIODE_SILICON;
 
-    Tomentum() {
+    Raucus() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         // Volts at the pedal's input for a 5 V Rack signal. A guitar delivers
         // a couple of hundred millivolts, which is where the circuit was
@@ -107,7 +107,7 @@ struct Tomentum : Module {
         configLight(AUDIO_LIGHT, "Output level");
         configBypass(AUDIO_INPUT, AUDIO_OUTPUT);
         // Build the diode tables now rather than on the first process() call.
-        tomentum::diodeTables();
+        raucus::diodeTables();
     }
 
     void onReset() override {
@@ -134,7 +134,7 @@ struct Tomentum : Module {
         if (json_t* j = json_object_get(root, "oversampling"))
             osIndex = clamp((int)json_integer_value(j), 0, 4);
         if (json_t* j = json_object_get(root, "diode"))
-            diode = clamp((int)json_integer_value(j), 0, (int)tomentum::DIODE_LIFTED);
+            diode = clamp((int)json_integer_value(j), 0, (int)raucus::DIODE_LIFTED);
         lastOsIndex = -1;
     }
 
@@ -158,8 +158,8 @@ struct Tomentum : Module {
         const float fsOs = sr * (float)ratio;
         const float inLevel = 0.01f * std::pow(300.f, params[GAIN_PARAM].getValue());
         const float bias = params[BIAS_PARAM].getValue() * 0.15f;   // volts at the stage
-        const tomentum::DiodeTable* table =
-            (diode == tomentum::DIODE_LIFTED) ? nullptr : &tomentum::diodeTables()[diode];
+        const raucus::DiodeTable* table =
+            (diode == raucus::DIODE_LIFTED) ? nullptr : &raucus::diodeTables()[diode];
 
         // 10 ms on the three pedal controls, so a swept CV or a dragged knob
         // does not step the tone stack's coefficients.
@@ -170,7 +170,7 @@ struct Tomentum : Module {
 
         float peak = 0.f, clipAmt = 0.f;
         for (int c = 0; c < channels; c++) {
-            tomentum::Voice::Params p;
+            raucus::Voice::Params p;
             const float sustain = clamp(params[SUSTAIN_PARAM].getValue()
                 + inputs[SUSTAIN_INPUT].getPolyVoltage(c) * 0.1f, 0.f, 1.f);
             const float tone = clamp(params[TONE_PARAM].getValue()
@@ -220,7 +220,7 @@ struct Tomentum : Module {
             // removes. Without that headroom the shifted signal meets the
             // hard clamp, and a hard clamp on an asymmetric waveform puts
             // the offset straight back.
-            y = outDc[c].process(tomentum::railClip(12.f * y, 4.8f, 4.8f));
+            y = outDc[c].process(raucus::railClip(12.f * y, 4.8f, 4.8f));
             y = clamp(y, -10.f, 10.f);
             outputs[AUDIO_OUTPUT].setVoltage(y, c);
             peak = std::max(peak, std::fabs(y));
@@ -234,12 +234,12 @@ struct Tomentum : Module {
     }
 };
 
-struct TomentumWidget : ModuleWidget {
-    TomentumWidget(Tomentum* module) {
+struct RaucusWidget : ModuleWidget {
+    RaucusWidget(Raucus* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/tomentum.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/raucus.svg")));
 
-// @layout:begin tomentum 50.8 128.5
+// @layout:begin raucus 50.8 128.5
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
@@ -275,24 +275,24 @@ struct TomentumWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(43.18f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(43.18f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(9.00f, 22.00f)), module, Tomentum::GAIN_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(25.40f, 22.00f)), module, Tomentum::SUSTAIN_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(41.80f, 22.00f)), module, Tomentum::BIAS_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(15.00f, 50.00f)), module, Tomentum::TONE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.80f, 50.00f)), module, Tomentum::MIDS_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 70.00f)), module, Tomentum::VOLUME_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.15f, 90.00f)), module, Tomentum::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.65f, 90.00f)), module, Tomentum::SUSTAIN_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.15f, 90.00f)), module, Tomentum::TONE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(42.65f, 90.00f)), module, Tomentum::VOLUME_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 108.00f)), module, Tomentum::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(33.40f, 14.00f)), module, Tomentum::CLIP_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.40f, 105.00f)), module, Tomentum::AUDIO_LIGHT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(9.00f, 22.00f)), module, Raucus::GAIN_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(25.40f, 22.00f)), module, Raucus::SUSTAIN_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(41.80f, 22.00f)), module, Raucus::BIAS_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(15.00f, 50.00f)), module, Raucus::TONE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.80f, 50.00f)), module, Raucus::MIDS_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 70.00f)), module, Raucus::VOLUME_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.15f, 90.00f)), module, Raucus::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.65f, 90.00f)), module, Raucus::SUSTAIN_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.15f, 90.00f)), module, Raucus::TONE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(42.65f, 90.00f)), module, Raucus::VOLUME_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.40f, 108.00f)), module, Raucus::AUDIO_OUTPUT));
+        addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(33.40f, 14.00f)), module, Raucus::CLIP_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.40f, 105.00f)), module, Raucus::AUDIO_LIGHT));
         // @layout:end
     }
 
     void appendContextMenu(Menu* menu) override {
-        Tomentum* m = dynamic_cast<Tomentum*>(module);
+        Raucus* m = dynamic_cast<Raucus*>(module);
         if (!m) return;
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexSubmenuItem("Clipping diodes",
@@ -307,4 +307,4 @@ struct TomentumWidget : ModuleWidget {
     }
 };
 
-Model* modelTomentum = createModel<Tomentum, TomentumWidget>("tomentum");
+Model* modelRaucus = createModel<Raucus, RaucusWidget>("raucus");

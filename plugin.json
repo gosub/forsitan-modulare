@@ -290,10 +290,10 @@
       ]
     },
     {
-      "slug": "tomentum",
-      "name": "tomentum",
+      "slug": "raucus",
+      "name": "raucus",
       "description": "Big Muff Pi fuzz: four transistor stages, feedback diode clipping, scooped tone stack.",
-      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/tomentum.md",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/raucus.md",
       "tags": [
         "Effect",
         "Distortion",

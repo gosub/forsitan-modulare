@@ -1,18 +1,18 @@
-// tomentum_dsp.hpp — the four-stage transistor fuzz, free of Rack headers so
-// test/tomentum_probe can measure it directly.
+// raucus_dsp.hpp — the four-stage transistor fuzz, free of Rack headers so
+// test/raucus_probe can measure it directly.
 //
 // Circuit values follow ElectroSmash's analysis of the USA V3 Big Muff Pi
 // (https://www.electrosmash.com/big-muff-pi-analysis): four common-emitter
 // stages, the middle two clipped by antiparallel silicon diodes in their
 // collector-base feedback, with the passive tone network between the third
-// and fourth. See doc/tomentum.md for what is and is not modelled.
+// and fourth. See doc/raucus.md for what is and is not modelled.
 
 #pragma once
 
 #include <algorithm>
 #include <cmath>
 
-namespace tomentum {
+namespace raucus {
 
 static const float kPi = 3.14159265358979323846f;
 
@@ -315,4 +315,4 @@ struct Voice {
     }
 };
 
-} // namespace tomentum
+} // namespace raucus

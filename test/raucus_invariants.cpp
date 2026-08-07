@@ -1,9 +1,9 @@
-// tomentum_invariants — property-based checks for the Big Muff Pi model.
+// raucus_invariants — property-based checks for the Big Muff Pi model.
 //
-// smoke_tomentum checks fixed points; tomentum_probe measures the tone stack
+// smoke_raucus checks fixed points; raucus_probe measures the tone stack
 // and the clipper. This harness checks properties that must hold *everywhere*,
 // by randomizing and sweeping the whole control space and asserting invariants
-// over it. tomentum is a distortion, so most of what is worth asserting is
+// over it. raucus is a distortion, so most of what is worth asserting is
 // about what it does to a signal: how the level answers the knobs, where the
 // tone stack puts its notch, and how much of what comes out was never a
 // harmonic of what went in.
@@ -50,7 +50,7 @@
 #include <complex>
 #include <cstdlib>
 
-#include "../src/tomentum.cpp"
+#include "../src/raucus.cpp"
 
 typedef std::vector<float> Buf;
 
@@ -96,13 +96,13 @@ static void describe(const Patch& p, char* out, size_t n) {
              p.diode, p.osIndex);
 }
 
-static void apply(Tomentum& m, const Patch& p) {
-    m.params[Tomentum::GAIN_PARAM].setValue(p.gain);
-    m.params[Tomentum::SUSTAIN_PARAM].setValue(p.sustain);
-    m.params[Tomentum::BIAS_PARAM].setValue(p.bias);
-    m.params[Tomentum::TONE_PARAM].setValue(p.tone);
-    m.params[Tomentum::MIDS_PARAM].setValue(p.mids);
-    m.params[Tomentum::VOLUME_PARAM].setValue(p.volume);
+static void apply(Raucus& m, const Patch& p) {
+    m.params[Raucus::GAIN_PARAM].setValue(p.gain);
+    m.params[Raucus::SUSTAIN_PARAM].setValue(p.sustain);
+    m.params[Raucus::BIAS_PARAM].setValue(p.bias);
+    m.params[Raucus::TONE_PARAM].setValue(p.tone);
+    m.params[Raucus::MIDS_PARAM].setValue(p.mids);
+    m.params[Raucus::VOLUME_PARAM].setValue(p.volume);
     m.diode = p.diode;
     m.osIndex = p.osIndex;
 }
@@ -132,20 +132,20 @@ struct Source {
 
 static Buf runOf(const Patch& p, const Source& in, double secs,
                  double settle = 0.1) {
-    Tomentum m;
+    Raucus m;
     apply(m, p);
     in.rewind();
     long frame = 0;
     size_t i = 0;
     for (; i < (size_t)(settle * SR); i++) {
-        m.inputs[Tomentum::AUDIO_INPUT].setVoltage(in.at(i));
+        m.inputs[Raucus::AUDIO_INPUT].setVoltage(in.at(i));
         m.process(makeArgs(frame++));
     }
     Buf out((size_t)(secs * SR));
     for (size_t k = 0; k < out.size(); k++, i++) {
-        m.inputs[Tomentum::AUDIO_INPUT].setVoltage(in.at(i));
+        m.inputs[Raucus::AUDIO_INPUT].setVoltage(in.at(i));
         m.process(makeArgs(frame++));
-        out[k] = m.outputs[Tomentum::AUDIO_OUTPUT].getVoltage();
+        out[k] = m.outputs[Raucus::AUDIO_OUTPUT].getVoltage();
     }
     return out;
 }
@@ -277,7 +277,7 @@ struct Inv {
         }
     }
     void done() {
-        report("tomentum", name, failed ? worst : (double)checked, failed == 0);
+        report("raucus", name, failed ? worst : (double)checked, failed == 0);
         if (failed)
             fprintf(stderr, "  %s: %ld/%ld failed, worst %g at [%s]\n",
                     name, failed, checked, worst, worstPatch);
@@ -538,24 +538,24 @@ static void testRobustness() {
     int n = 6 * gScale;
     for (int k = 0; k < n; k++) {
         Patch p = randomPatch(r);
-        Tomentum m;
+        Raucus m;
         apply(m, p);
-        m.inputs[Tomentum::SUSTAIN_INPUT].channels = 1;
-        m.inputs[Tomentum::TONE_INPUT].channels = 1;
-        m.inputs[Tomentum::VOLUME_INPUT].channels = 1;
+        m.inputs[Raucus::SUSTAIN_INPUT].channels = 1;
+        m.inputs[Raucus::TONE_INPUT].channels = 1;
+        m.inputs[Raucus::VOLUME_INPUT].channels = 1;
         long frame = 0;
         double fm = r.range(200.0, 3000.0);
         long bad = 0;
         double pk = 0.0;
         for (int i = 0; i < (int)(0.3 * SR); i++) {
             double ph = std::sin(2.0 * M_PI * fm * i / SR);
-            m.inputs[Tomentum::AUDIO_INPUT].setVoltage(
+            m.inputs[Raucus::AUDIO_INPUT].setVoltage(
                 (float)(5.0 * std::sin(2.0 * M_PI * 440.0 * i / SR)));
-            m.inputs[Tomentum::SUSTAIN_INPUT].setVoltage((float)(10.0 * ph));
-            m.inputs[Tomentum::TONE_INPUT].setVoltage((float)(10.0 * -ph));
-            m.inputs[Tomentum::VOLUME_INPUT].setVoltage((float)(10.0 * ph));
+            m.inputs[Raucus::SUSTAIN_INPUT].setVoltage((float)(10.0 * ph));
+            m.inputs[Raucus::TONE_INPUT].setVoltage((float)(10.0 * -ph));
+            m.inputs[Raucus::VOLUME_INPUT].setVoltage((float)(10.0 * ph));
             m.process(makeArgs(frame++));
-            float v = m.outputs[Tomentum::AUDIO_OUTPUT].getVoltage();
+            float v = m.outputs[Raucus::AUDIO_OUTPUT].getVoltage();
             if (!std::isfinite(v)) bad++;
             else pk = std::max(pk, (double)std::fabs(v));
         }
@@ -570,34 +570,34 @@ static void testRobustness() {
         const double freqs[8] = {110, 197, 313, 441, 587, 733, 941, 1217};
         size_t n2 = (size_t)(0.2 * SR);
 
-        Tomentum poly1;
+        Raucus poly1;
         apply(poly1, p);
-        poly1.inputs[Tomentum::AUDIO_INPUT].channels = ch;
+        poly1.inputs[Raucus::AUDIO_INPUT].channels = ch;
         // Port::setChannels() is a no-op on a port the harness never connects
-        poly1.outputs[Tomentum::AUDIO_OUTPUT].channels = 1;
+        poly1.outputs[Raucus::AUDIO_OUTPUT].channels = 1;
         long frame = 0;
         std::vector<Buf> got((size_t)ch, Buf(n2));
         for (size_t i = 0; i < n2; i++) {
             for (int c = 0; c < ch; c++)
-                poly1.inputs[Tomentum::AUDIO_INPUT].setVoltage(
+                poly1.inputs[Raucus::AUDIO_INPUT].setVoltage(
                     (float)(5.0 * std::sin(2.0 * M_PI * freqs[c] * i / SR)), c);
             poly1.process(makeArgs(frame++));
             for (int c = 0; c < ch; c++)
-                got[c][i] = poly1.outputs[Tomentum::AUDIO_OUTPUT].getVoltage(c);
+                got[c][i] = poly1.outputs[Raucus::AUDIO_OUTPUT].getVoltage(c);
         }
-        bool countOk = poly1.outputs[Tomentum::AUDIO_OUTPUT].getChannels() == ch;
+        bool countOk = poly1.outputs[Raucus::AUDIO_OUTPUT].getChannels() == ch;
 
         double worst = 0.0;
         for (int c = 0; c < ch; c++) {
-            Tomentum solo;
+            Raucus solo;
             apply(solo, p);
             long f2 = 0;
             Buf ref(n2);
             for (size_t i = 0; i < n2; i++) {
-                solo.inputs[Tomentum::AUDIO_INPUT].setVoltage(
+                solo.inputs[Raucus::AUDIO_INPUT].setVoltage(
                     (float)(5.0 * std::sin(2.0 * M_PI * freqs[c] * i / SR)));
                 solo.process(makeArgs(f2++));
-                ref[i] = solo.outputs[Tomentum::AUDIO_OUTPUT].getVoltage();
+                ref[i] = solo.outputs[Raucus::AUDIO_OUTPUT].getVoltage();
             }
             worst = std::max(worst, diffRatio(ref, got[c]));
         }
@@ -645,7 +645,7 @@ int main(int argc, char** argv) {
     }
     rack::random::init();
     if (header) printf("module,check,value,pass\n");
-    fprintf(stderr, "tomentum_invariants: seed 0x%08x, scale %d\n", gSeed, gScale);
+    fprintf(stderr, "raucus_invariants: seed 0x%08x, scale %d\n", gSeed, gScale);
 
     testSafety();
     testKnobs();
