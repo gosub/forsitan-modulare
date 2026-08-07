@@ -143,7 +143,13 @@ def audit(path):
                     if contains(bbox(box), obb):
                         continue   # element fully inside its badge box: fine
             if a['kind'] == 'light' or b['kind'] == 'light':
-                need = 0.2   # LEDs sit at the corner of their control
+                # An LED sits at the corner of the control it signals, so it
+                # gets its own floor rather than the 1.5mm between separate
+                # controls. 0.5mm is what a TL1105 button's corner leaves,
+                # the tightest placement the collection actually uses; a jack
+                # LED at the standard +5/-3 clears by 0.82 and a knob corner
+                # by 1.0 or more. Below half a millimetre it reads as touching.
+                need = 0.5
             elif a['kind'] == 'screw' or b['kind'] == 'screw':
                 need = 1.0
             elif a['kind'] == 'label' and b['kind'] == 'label':

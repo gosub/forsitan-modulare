@@ -191,7 +191,10 @@ When laying out a panel (by hand or generated), follow these rules:
   the top-right corner of its output badge (box center +5,−5 — see
   scando). A stereo output pair always gets one level LED per badge —
   both L and R, never just one of the two. An LED for a non-jack
-  control sits at that control's top-right corner.
+  control sits at that control's top-right corner. Whatever it sits on,
+  it must clear that element's edge by **≥0.5mm** (`panel_audit.py`
+  enforces this; the canonical offsets are +5.00/−3.00 from a jack
+  centre, which clears by 0.82, and the control's own corner otherwise).
 - **Stereo output labels**: when the badge labels are just the channel
   letters, write them uppercase — `L` and `R`, not `l` / `r`.
 - **Readability**: every jack and control gets a label; labels sit
