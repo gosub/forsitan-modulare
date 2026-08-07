@@ -143,6 +143,9 @@ struct Sylla : Module {
     // minimum time instead, so every GEN is seen.
     dsp::PulseGenerator busyPulse;
     bool pendingRender = false;
+    // a GEN that arrived while the worker was busy: rolled when it lands,
+    // so the press is late rather than lost
+    bool pendingGen = false;
     // a render was refused (out of memory); do not retry until asked
     bool renderFailed = false;
     bool running = true;      // loop + trigger mode: the run latch
@@ -299,6 +302,7 @@ struct Sylla : Module {
         scaleIndex = imber_dsp::kDefaultScale;
         applyFamilyLabels();
         pendingRender = true;
+        pendingGen = false;
     }
 
     json_t* dataToJson() override {
@@ -351,9 +355,13 @@ struct Sylla : Module {
 
         bool genHit = genButton.process(params[GEN_PARAM].getValue() > 0.5f);
         genHit |= genTrig.process(inputs[GEN_INPUT].getVoltage(), 0.1f, 1.f);
-        if (genHit && !job) {
-            renderFailed = false;
-            startRender(args.sampleRate, (uint64_t)random::u64());
+        if (genHit) {
+            if (job)
+                pendingGen = true;  // the worker is busy; roll when it lands
+            else {
+                renderFailed = false;
+                startRender(args.sampleRate, (uint64_t)random::u64());
+            }
         }
 
         // collect a finished render (vector swaps, no allocation here).
@@ -372,6 +380,13 @@ struct Sylla : Module {
                     pos = 0.f;
             }
             job.reset();
+        }
+        // a GEN that arrived mid-render starts its own as soon as the
+        // worker is free, so a press during a render is never swallowed
+        if (pendingGen && !job) {
+            pendingGen = false;
+            renderFailed = false;
+            startRender(args.sampleRate, (uint64_t)random::u64());
         }
         bool busyHold = busyPulse.process(args.sampleTime);
         lights[BUSY_LIGHT].setBrightness((job || busyHold) ? 1.f : 0.f);
