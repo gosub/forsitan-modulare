@@ -457,7 +457,7 @@ struct AntrumWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(61.40f, 106.00f)), module, Antrum::CV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(77.00f, 106.00f)), module, Antrum::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.60f, 106.00f)), module, Antrum::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(43.10f, 57.70f)), module, Antrum::SPEED_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(44.30f, 56.50f)), module, Antrum::SPEED_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(52.50f, 103.00f)), module, Antrum::REVERSE_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(66.40f, 103.00f)), module, Antrum::CV_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(82.00f, 103.00f)), module, Antrum::LEVEL_L_LIGHT));
