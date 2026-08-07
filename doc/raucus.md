@@ -1,8 +1,8 @@
-# tomentum
+# raucus
 
-![tomentum panel](../img/tomentum.png)
+![raucus panel](../img/raucus.png)
 
-*tomentum* (Latin: the stuffing of a cushion, flock, wool padding) is a model
+*raucus* (Latin: hoarse, harsh, the root of "raucous") is a model
 of the four-transistor **Big Muff Pi**, the USA V3 of 1976-77: an input
 booster, two common-emitter stages clipped by antiparallel silicon diodes in
 their collector-base feedback, the passive two-branch tone network, and a
@@ -53,13 +53,13 @@ Circuit values and stage figures come from
 
 **The tone stack is solved, not approximated.** The usual shortcut is a
 lowpass and a highpass mixed by the knob, which gets the general tilt and
-misses everything interesting. tomentum runs the actual passive network — a
+misses everything interesting. raucus runs the actual passive network — a
 39k/10n bass leg to ground, a 3.9n/22k treble leg to ground, the 100k pot
 between them, the driving stage's 15k source impedance and the volume pot's
 100k load — as a single biquad from a nodal analysis of the whole thing.
 
 What that buys, measured on the filter the module actually runs
-(`test/tomentum_probe tone`):
+(`test/raucus_probe tone`):
 
 | tone | 60 Hz | 1 kHz | 12 kHz | notch |
 |---|---|---|---|---|
@@ -83,10 +83,10 @@ v + Rf·Id(v) = w,    Id(v) = 2·Is·sinh(v/nVt),    w = −gain · in
 ```
 
 which is worth knowing because it means the transfer curve can be solved once
-into a table rather than Newton-iterated every sample. tomentum solves it on a
+into a table rather than Newton-iterated every sample. raucus solves it on a
 4096-point grid with a companded `sign(w)·√|w|` index; the result is within
 0.01 mV of a bisection solve of the same equation anywhere in range
-(`test/tomentum_probe diode`), for a per-sample cost of a square root and a
+(`test/raucus_probe diode`), for a per-sample cost of a square root and a
 lerp.
 
 The shape that comes out is the point. Feedback clipping is not a limiter: at
@@ -104,7 +104,7 @@ pole pairs at 55 Hz/1.78 kHz and 94 Hz/1.17 kHz.
 ## Aliasing
 
 Spectral distance from the same patch rendered at 16×
-(`test/tomentum_probe alias`), sustain at maximum:
+(`test/raucus_probe alias`), sustain at maximum:
 
 | input | 1× | 2× | 4× | 8× |
 |---|---|---|---|---|

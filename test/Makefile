@@ -8,17 +8,17 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # One smoke binary per module: `make -j` builds them in parallel and a change
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
-                guttur vespae quadrare vestigia antrum caligo tomentum
+                guttur vespae quadrare vestigia antrum caligo raucus
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
 # smoke_oom drives imber and sylla against a render they cannot allocate.
 # The two invariant harnesses are property-based rather than per-point: they
 # randomize and sweep the whole control space and assert invariants over it.
-CROSS_BINS = smoke_oom caligo_invariants tomentum_invariants
+CROSS_BINS = smoke_oom caligo_invariants raucus_invariants
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
-     caligo_probe tomentum_probe $(SMOKE_BINS) $(CROSS_BINS)
+     caligo_probe raucus_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -46,7 +46,7 @@ caligo_probe: caligo_probe.cpp smoke_harness.hpp ../src/caligo.cpp ../src/caligo
 
 # Measurement harness for the fuzz: tone stack response against the published
 # figures, diode table accuracy, gain structure. Built by `make all`.
-tomentum_probe: tomentum_probe.cpp smoke_harness.hpp ../src/tomentum.cpp ../src/tomentum_dsp.hpp $(wildcard ../src/guttur/*.hpp)
+raucus_probe: raucus_probe.cpp smoke_harness.hpp ../src/raucus.cpp ../src/raucus_dsp.hpp $(wildcard ../src/guttur/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Property-based harnesses. `--seed N` reproduces a run, `--long` sweeps 8x
@@ -54,7 +54,7 @@ tomentum_probe: tomentum_probe.cpp smoke_harness.hpp ../src/tomentum.cpp ../src/
 caligo_invariants: caligo_invariants.cpp smoke_harness.hpp ../src/caligo.cpp ../src/caligo_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-tomentum_invariants: tomentum_invariants.cpp smoke_harness.hpp ../src/tomentum.cpp ../src/tomentum_dsp.hpp $(wildcard ../src/guttur/*.hpp)
+raucus_invariants: raucus_invariants.cpp smoke_harness.hpp ../src/raucus.cpp ../src/raucus_dsp.hpp $(wildcard ../src/guttur/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
@@ -68,9 +68,9 @@ smoke_oom: smoke_oom.cpp smoke_harness.hpp ../src/imber.cpp ../src/sylla.cpp \
 # Header-only DSP libraries the modules pull in.
 smoke_lustro: ../src/scando_engine.hpp
 smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
-# vespae and tomentum reuse guttur's vendored ChowDSP oversampler
-smoke_guttur smoke_vespae smoke_tomentum: $(wildcard ../src/guttur/*.hpp)
-smoke_tomentum: ../src/tomentum_dsp.hpp
+# vespae and raucus reuse guttur's vendored ChowDSP oversampler
+smoke_guttur smoke_vespae smoke_raucus: $(wildcard ../src/guttur/*.hpp)
+smoke_raucus: ../src/raucus_dsp.hpp
 smoke_quadrare: ../src/quadrare_dsp.hpp
 smoke_antrum: ../src/antrum_dsp.hpp
 smoke_caligo: ../src/caligo_dsp.hpp
@@ -85,6 +85,6 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
-	      caligo_probe tomentum_probe $(SMOKE_BINS) $(CROSS_BINS)
+	      caligo_probe raucus_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean

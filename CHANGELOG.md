@@ -62,13 +62,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     with the delay time. Seven factory presets. Clock sync on antrum's ratio
     table. ~1.3% of one core.
 
-  - **tomentum**, a 10 HP model of the four-transistor **Big Muff Pi**, the
+  - **raucus**, a 10 HP model of the four-transistor **Big Muff Pi**, the
     USA V3 of 1976-77: a 16.7 dB input booster, two common-emitter stages at
     23 and 25 dB clipped by antiparallel silicon diodes in their
     collector-base feedback, the passive two-branch tone network, and a 13 dB
     recovery stage to make back what that network takes. Circuit values and
     stage figures follow ElectroSmash's analysis of the USA V3. Polyphonic,
-    one pedal per channel, with the DSP core in `tomentum_dsp.hpp` and no
+    one pedal per channel, with the DSP core in `raucus_dsp.hpp` and no
     Rack in it.
 
     Two parts are solved rather than approximated, and both are audible.

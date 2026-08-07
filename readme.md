@@ -36,7 +36,7 @@ A collection of VCV Rack modules.
 | [vestigia](doc/vestigia.md) | Stereo memory effect: an endless tape loop under three memory modes, with fragments that degrade each time they return | [doc/vestigia.md](doc/vestigia.md) |
 | [antrum](doc/antrum.md) | Feedback delay network reverb: a space that runs from a coffin to the heavens, every parameter voltage-controlled (Erbe-Verb clone) | [doc/antrum.md](doc/antrum.md) |
 | [caligo](doc/caligo.md) | Greyhole: a long modulated echo inside a nested allpass diffuser, so every repeat comes back smeared further than the last, with the feedback loop broken out to jacks (Julian Parker's Greyhole) | [doc/caligo.md](doc/caligo.md) |
-| [tomentum](doc/tomentum.md) | Big Muff Pi: four transistor stages, feedback diode clipping solved rather than limited, and the passive tone stack's notch where it belongs | [doc/tomentum.md](doc/tomentum.md) |
+| [raucus](doc/raucus.md) | Big Muff Pi: four transistor stages, feedback diode clipping solved rather than limited, and the passive tone stack's notch where it belongs | [doc/raucus.md](doc/raucus.md) |
 
 ## Tools
 
@@ -93,7 +93,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **vestigia** | traces, footprints — what sound leaves behind, recalled from an endless tape loop |
 | **antrum** | cave, grotto — the resonant space, real or imagined (Tom Erbe's Erbe-Verb) |
 | **caligo** | mist, gloom, murk — the grey fog an echo dissolves into (Julian Parker's Greyhole) |
-| **tomentum** | the stuffing of a cushion, flock, wool padding — fuzz you could fill a mattress with (Electro-Harmonix's Big Muff Pi) |
+| **raucus** | hoarse, harsh — the root of "raucous" (Electro-Harmonix's Big Muff Pi) |
 
 ## Author
 
