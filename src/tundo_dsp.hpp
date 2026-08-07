@@ -400,7 +400,12 @@ struct Engine {
         gain[0] = stage[0] = 1.f;
         dmul[0] = 1.f;
         float u2 = smoothstep(h / kHarmSecondSpan);
-        gain[1] = stage[1] = u2;
+        stage[1] = u2;
+        // the tilt applies to this partial as much as to the four below it.
+        // Leaving it out left the one partial SPREAD moves furthest (2x f0 to
+        // 3x f0) sitting at exactly the fundamental's level, so the ear
+        // followed it and the whole sweep read as a change of pitch.
+        gain[1] = stage[1] * std::pow(2.f, -kSpectralTilt);
         dmul[1] = 0.5f + 0.5f * u2;
         for (int i = 2; i < kNumOsc; i++) {
             float st = (float)(i - 2) / 3.f;
