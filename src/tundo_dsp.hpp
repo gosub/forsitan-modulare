@@ -13,7 +13,7 @@
 //                       |
 //   noise (LCG, held) --+
 //                       v
-//                 sum -> x attackEnv x finalEnv -> folder -> out
+//                 sum -> x (attackEnv x decayEnv) -> folder -> out
 //                                       (threshold reflection,        |
 //                                        amplitude compensation,      +-> env
 //                                        pulse train at the top)
@@ -88,6 +88,10 @@ constexpr float kMetalRamp = 0.75f;       // width of one modulator's ramp
 // setting without colouring the clean end of the knobs. (soft)
 constexpr float kOutputGain = 1.05f;
 constexpr float kSoftKnee = 0.85f;
+// how far the attack has to have risen before the decay is allowed to start.
+// The attack is a one-pole, so it only ever approaches 1: this is the point
+// at which it counts as crested. (soft)
+constexpr float kAttackCrest = 0.9f;
 constexpr float kCeiling = 0.98f;         // headroom for the DC blocker
 
 // Noise colour. The burst is a sample-and-hold and its refresh rate is what
@@ -535,8 +539,9 @@ struct Engine {
         float fe = 0.f;
         for (int i = 0; i < kNumOsc; i++)
             fe = std::max(fe, gain[i] * env[i]);
+        fe *= attEnv;
         finalEnv = fe;
-        float x = acc * attEnv * fe;
+        float x = acc * fe;
 
         // ---- infinifolder: reflect about the threshold as many times as the
         // level demands, then divide by the threshold to compensate. The
@@ -583,8 +588,16 @@ struct Engine {
         }
         pulse *= pulseCoef;
 
-        // ---- advance the envelopes
-        for (int i = 0; i < kNumOsc; i++) env[i] *= envCoef[i];
+        // ---- advance the envelopes. The decay does not start until the
+        // attack has crested: with both running from the strike they fight,
+        // and a slow attack against a short decay cancels outright, since by
+        // the time the attack is up the decay has already collapsed. Measured
+        // over the ATTACK x DECAY plane that left the whole top of ATTACK
+        // inaudible below about half travel on DECAY: 39 dB down at full
+        // attack with DECAY at noon, 70 dB in the corner. A fast attack
+        // crests in well under a millisecond, so nothing else changes.
+        if (attEnv >= kAttackCrest)
+            for (int i = 0; i < kNumOsc; i++) env[i] *= envCoef[i];
         attEnv = 1.f + (attEnv - 1.f) * attCoef;
         noiseEnv *= noiseCoef;
         pitchEnv *= pitchCoef;

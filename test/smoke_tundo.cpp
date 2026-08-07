@@ -287,6 +287,28 @@ static void testSkinVsMetal() {
     report("tundo", "skin_metal_differ", worst, worst > 0.15);
 }
 
+// A slow attack has to sound whatever DECAY says. While both envelopes ran
+// from the strike they fought each other: by the time a slow attack was up, a
+// short decay had already collapsed, and the product never got off the floor.
+// Measured over the plane, the top of ATTACK was 39 dB down with DECAY at
+// noon and 70 dB down in the corner.
+static void testAttackDecay() {
+    const float attacks[3] = {0.7f, 0.85f, 1.0f};
+    const float decays[2] = {0.2f, 0.5f};
+    double worst = 1e9;
+    for (int a = 0; a < 3; a++) {
+        for (int d = 0; d < 2; d++) {
+            Tundo m;
+            defaults(m);
+            m.params[Tundo::ATTACK_PARAM].setValue(attacks[a]);
+            m.params[Tundo::DECAY_PARAM].setValue(decays[d]);
+            // long enough to contain the crest of the slowest attack
+            worst = std::min(worst, peakOf(strike(m, 3.0)));
+        }
+    }
+    report("tundo", "slow_attack_audible_V", worst, worst > 1.5);
+}
+
 // every mode sounds, and Liquid starts above its own steady pitch
 static void testModes() {
     for (int mo = 0; mo < 3; mo++) {
@@ -464,5 +486,6 @@ static void testCpu() {
 }
 
 SMOKE_MAIN(testSilence, testHit, testRetrigger, testPitch, testSpread,
-           testHarmStaging, testFold, testSkinVsMetal, testModes, testRateModes,
-           testFreeRun, testSwitchCv, testHostile, testCpu)
+           testHarmStaging, testFold, testSkinVsMetal, testAttackDecay,
+           testModes, testRateModes, testFreeRun, testSwitchCv, testHostile,
+           testCpu)
