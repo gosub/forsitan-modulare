@@ -1092,12 +1092,12 @@ struct PergeWidget : ModuleWidget {
         addParam(createParamCentered<TL1105>(mm2px(Vec(69.80f, 112.00f)), module, Perge::FREEZE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(88.80f, 112.00f)), module, Perge::TILT_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(90.20f, 96.00f)), module, Perge::REPEATSMODE_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(42.30f, 92.30f)), module, Perge::CAPT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(43.60f, 93.00f)), module, Perge::CAPT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(72.70f, 109.10f)), module, Perge::FREEZE_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(91.70f, 109.10f)), module, Perge::TILT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(17.80f, 109.00f)), module, Perge::OUT_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(36.80f, 109.00f)), module, Perge::OUT_R_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(55.20f, 92.30f)), module, Perge::TICK_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(56.50f, 93.00f)), module, Perge::TICK_LIGHT));
         // @layout:end
     }
 
