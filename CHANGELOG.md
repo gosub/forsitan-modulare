@@ -164,6 +164,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     light was already back off. It now stays lit for 120 ms, from wherever
     a render starts, so a press blinks once and a run of them reads as a
     steady busy.
+  - **antrum**'s speed LED, and **perge**'s capt and clock LEDs, sitting
+    hard against the controls they belong to: 0.28mm off the knob and
+    0.22mm off the jacks, close enough to read as touching. All three now
+    use the offsets the rest of the collection uses. `panel_audit.py` asks
+    every LED for half a millimetre of clearance now, rather than merely
+    no overlap, so this cannot pass unnoticed again.
   - **sylla** dropping a GEN that arrived while the worker was still
     rendering the previous sample. Since a render is milliseconds long this
     only bit a fast clock into GEN IN, where it silently ate triggers. The
