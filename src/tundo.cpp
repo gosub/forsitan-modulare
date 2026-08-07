@@ -307,7 +307,7 @@ struct Tundo : Module {
         if (buttonTrigger.process(params[HIT_PARAM].getValue(), 0.1f, 0.5f))
             hit = true;
         if (hit) {
-            engine.trigger(p.hold);
+            engine.trigger(p);
             hitLight = 1.f;
         }
 
