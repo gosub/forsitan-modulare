@@ -440,7 +440,8 @@ static void testSyllaSwitch() {
 
 // A sample renders in 0.01 to 15 ms, inside a single 60 Hz video frame, so a
 // busy light tied straight to the job is sampled back at zero and most GENs
-// show nothing at all. It has to stay lit for longer than a frame.
+// show nothing at all. It has to stay lit for longer than a frame. And a GEN
+// arriving mid-render has to produce its own sample rather than vanish.
 static void testSyllaBusyLight() {
     Sylla m;
     long frame = 0;
@@ -495,6 +496,22 @@ static void testSyllaBusyLight() {
     report("sylla", "busy_light_button_s", byButton, byButton >= 0.1);
     report("sylla", "busy_light_input_s", byInput, byInput >= 0.1);
 
+    // two GENs a hair apart: the second lands while the worker is busy
+    waitIdle();
+    uint64_t s0 = m.sampleSeed;
+    m.params[Sylla::GEN_PARAM].setValue(1.f); step();
+    m.params[Sylla::GEN_PARAM].setValue(0.f); step();
+    uint64_t s1 = m.sampleSeed;
+    bool inFlight = (bool)m.job;
+    m.params[Sylla::GEN_PARAM].setValue(1.f); step();
+    m.params[Sylla::GEN_PARAM].setValue(0.f); step();
+    for (int i = 0; i < 3000 && (m.job || m.pendingGen); i++) {
+        settle(64.f / SR);
+        if (m.job)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    bool queued = inFlight && s1 != s0 && m.sampleSeed != s1;
+    report("sylla", "gen_during_render_queued", queued ? 1 : 0, queued);
     (void)frame;
 }
 
