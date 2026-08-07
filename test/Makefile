@@ -13,7 +13,9 @@ SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
 # smoke_oom drives imber and sylla against a render they cannot allocate.
-CROSS_BINS = smoke_oom
+# cartilago_invariants is property-based rather than per-point: it randomizes
+# and sweeps the whole control space and asserts invariants over it.
+CROSS_BINS = smoke_oom cartilago_invariants
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      cartilago_probe $(SMOKE_BINS) $(CROSS_BINS)
@@ -40,6 +42,13 @@ antrum_probe: antrum_probe.cpp smoke_harness.hpp ../src/antrum.cpp ../src/antrum
 # Measurement harness for the Gristleizer: LFO alias floors and the polyBLAMP
 # scale they fix, the FET transfer curve. Built by `make all`.
 cartilago_probe: cartilago_probe.cpp smoke_harness.hpp ../src/cartilago.cpp $(wildcard ../src/guttur/*.hpp)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Property-based harness for the modulator: safety, signal path, LFO,
+# distinctness, continuity, polyphony and aliasing invariants, checked over
+# randomized and swept patches. `--seed N` reproduces a run, `--long` sweeps
+# 8x as many.
+cartilago_invariants: cartilago_invariants.cpp smoke_harness.hpp ../src/cartilago.cpp $(wildcard ../src/guttur/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
