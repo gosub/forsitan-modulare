@@ -68,6 +68,13 @@ struct Tomentum : Module {
     static const int kMaxChannels = 16;
 
     tomentum::Voice voices[kMaxChannels];
+    // The pedal's output coupling capacitor sits after the volume pot, and so
+    // does this: the voice's own blocker is upstream of the makeup gain and
+    // the soft ceiling below, and a ceiling compresses an asymmetric waveform
+    // asymmetrically. That turns a signal with no offset into one with a
+    // couple of hundred millivolts of it, and nothing downstream of the
+    // voice was removing it.
+    tomentum::DCBlock outDc[kMaxChannels];
     VariableOversampling<> upsampler[kMaxChannels];
     // Smoothed controls, per channel because their CV may be polyphonic.
     float sustainZ[kMaxChannels] = {}, toneZ[kMaxChannels] = {}, volumeZ[kMaxChannels] = {};
@@ -106,6 +113,7 @@ struct Tomentum : Module {
     void onReset() override {
         for (int c = 0; c < kMaxChannels; c++) {
             voices[c].reset();
+            outDc[c].reset();
             toneSet[c] = -1.f;
         }
         levelEnv = 0.f;
@@ -138,6 +146,8 @@ struct Tomentum : Module {
                 upsampler[c].setOversamplingIndex(osIndex);
                 upsampler[c].reset(sr);
                 voices[c].setRate(sr * (1 << osIndex));
+                outDc[c].set(sr);              // this one runs at host rate
+                outDc[c].reset();
                 toneSet[c] = -1.f;
             }
             lastOsIndex = osIndex;
@@ -190,7 +200,12 @@ struct Tomentum : Module {
             float* buf = upsampler[c].getOSBuffer();
             for (int k = 0; k < ratio; k++) buf[k] = voices[c].process(buf[k], p);
             float y = upsampler[c].downsample();
-            if (!std::isfinite(y)) { y = 0.f; voices[c].reset(); toneSet[c] = -1.f; }
+            if (!std::isfinite(y)) {
+                y = 0.f;
+                voices[c].reset();
+                outDc[c].reset();
+                toneSet[c] = -1.f;
+            }
             // The pedal's own gain structure leaves about half a volt peak at
             // the output jack, as the hardware does; bring that up to Rack's
             // nominal +-5 V at the default volume. The makeup is calibrated on
@@ -200,7 +215,13 @@ struct Tomentum : Module {
             // The soft ceiling asymptotes at 10 V, so however loud the LED
             // and lifted settings get they approach Rack's rail rather than
             // squaring off against it.
-            y = clamp(tomentum::railClip(12.f * y, 5.f, 5.f), -10.f, 10.f);
+            // 4.8 rather than 5: the soft ceiling asymptotes at twice this,
+            // and the coupling below shifts the signal by whatever offset it
+            // removes. Without that headroom the shifted signal meets the
+            // hard clamp, and a hard clamp on an asymmetric waveform puts
+            // the offset straight back.
+            y = outDc[c].process(tomentum::railClip(12.f * y, 4.8f, 4.8f));
+            y = clamp(y, -10.f, 10.f);
             outputs[AUDIO_OUTPUT].setVoltage(y, c);
             peak = std::max(peak, std::fabs(y));
             clipAmt = std::max(clipAmt, voices[c].clipEnv);
