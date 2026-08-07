@@ -35,3 +35,4 @@ extern Model* modelVestigia;
 extern Model* modelAntrum;
 extern Model* modelCaligo;
 extern Model* modelRaucus;
+extern Model* modelTundo;

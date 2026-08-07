@@ -103,6 +103,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     variants differ within a single named era, and this model cannot honestly
     claim one.
 
+  - **tundo**, a parameterized digital drum voice built after the Noise
+    Engineering Basimilus Iteritas Alter, from Noise Engineering's own
+    published manuals. Six tonal oscillators plus a noise oscillator are
+    stacked into a modal spectrum, summed, folded and re-enveloped.
+    **spread** interpolates the partial ratios from the harmonic series to
+    the prime series; **harm** fades in a second tone and then extends
+    first the decays and then the amplitudes of the other four, so the
+    spectrum collapses towards the fundamental as the hit dies;
+    **morph** runs sine to triangle to saw to square; **fold** is the
+    threshold-reflection folder with amplitude compensation, and its top
+    quarter mixes in a pulse train fired at every peak and trough.
+    Skin, Liquid and Metal modes, a Bass/Alto/Treble range switch, both
+    taking CV that overrides the switch, and an envelope output.
+    Every knob has its own attenuverter and CV input.
+
+    The engine renders on its own clock at a power-of-two multiple of the
+    fundamental and the host sees it through a zero-order hold, so its
+    alias images land on harmonics of the note rather than smearing: that
+    tuned grit is the sound being cloned. The context menu offers a clean
+    4x oversampled PolyBLEP path instead, along with 16-bit output
+    quantization, an extended spread law reaching down to a detuned
+    unison, free-run at full decay, the Liquid pitch depth and the output
+    swing. 14HP.
+
 ## [2.13.3] - 2026-08-05
 ### Fixed
   - **imber** crashing Rack while it generates its sample bank, on Linux,

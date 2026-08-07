@@ -8,5 +8,7 @@ vespae_probe
 antrum_probe
 caligo_probe
 raucus_probe
+tundo_probe
 caligo_invariants
 raucus_invariants
+tundo_invariants
