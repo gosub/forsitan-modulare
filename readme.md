@@ -37,6 +37,7 @@ A collection of VCV Rack modules.
 | [antrum](doc/antrum.md) | Feedback delay network reverb: a space that runs from a coffin to the heavens, every parameter voltage-controlled (Erbe-Verb clone) | [doc/antrum.md](doc/antrum.md) |
 | [caligo](doc/caligo.md) | Greyhole: a long modulated echo inside a nested allpass diffuser, so every repeat comes back smeared further than the last, with the feedback loop broken out to jacks (Julian Parker's Greyhole) | [doc/caligo.md](doc/caligo.md) |
 | [raucus](doc/raucus.md) | Big Muff Pi: four transistor stages, feedback diode clipping solved rather than limited, and the passive tone stack's notch where it belongs | [doc/raucus.md](doc/raucus.md) |
+| [tundo](doc/tundo.md) | Parameterized digital drum voice: six additive oscillators, morphing waves, prime-series spread and an infinite folder (Basimilus Iteritas Alter clone) | [doc/tundo.md](doc/tundo.md) |
 
 ## Tools
 
@@ -94,6 +95,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **antrum** | cave, grotto — the resonant space, real or imagined (Tom Erbe's Erbe-Verb) |
 | **caligo** | mist, gloom, murk — the grey fog an echo dissolves into (Julian Parker's Greyhole) |
 | **raucus** | hoarse, harsh — the root of "raucous" (Electro-Harmonix's Big Muff Pi) |
+| **tundo** | I beat, I pound — *tundere*, to strike repeatedly, whose repetition winks at the *iteritas* of the Basimilus Iteritas Alter it is built after |
 
 ## Author
 

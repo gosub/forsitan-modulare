@@ -305,6 +305,17 @@
         "Hardware clone",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "tundo",
+      "name": "tundo",
+      "description": "Digital drum voice: six additive oscillators, morphing waves, prime spread, infinite folder.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/tundo.md",
+      "tags": [
+        "Drum",
+        "Oscillator",
+        "Synth Voice"
+      ]
     }
   ]
 }
