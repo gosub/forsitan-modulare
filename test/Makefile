@@ -20,7 +20,7 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
              cartilago_invariants
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
-     caligo_probe raucus_probe tundo_probe cartilago_probe \
+     caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
@@ -61,6 +61,11 @@ cartilago_probe: cartilago_probe.cpp smoke_harness.hpp ../src/cartilago.cpp $(wi
 # harm staging, spread ratios, fold energy, pitch tracking, per-mode survey and
 # a CPU figure. `--wav <dir>` dumps the five target sounds instead.
 tundo_probe: tundo_probe.cpp smoke_harness.hpp ../src/tundo.cpp ../src/tundo_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Measurement harness for the weaver: sample-to-sample discontinuities in
+# the woven output, with the declick option on and off. Built by `make all`.
+textor_probe: textor_probe.cpp smoke_harness.hpp ../src/textor.cpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Property-based harnesses. `--seed N` reproduces a run, `--long` sweeps 8x
