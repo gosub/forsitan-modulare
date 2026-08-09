@@ -38,7 +38,12 @@ struct Motor {
     double asymmetry = 0.1, backfire = 0.0, backfireRate = 0.0;
     double revIntakes = 0.0, vibrations = 0.0, fwdExtractors = 0.0;
     double revMufflers = 0.0, fwdMufflers = 0.0, fwdOutlet = 0.0;
-    double damp = 20.0, dc = 20.0;
+    // SDTMotor's own defaults are 20 Hz for both, but nothing in the C ever
+    // applies them: SDTMotor_new leaves the one-poles at pass-through and the
+    // DC blockers as plain first differences, and only a host that sets the
+    // attributes calls update(). Applying 20 Hz literally lowpasses the intake
+    // hiss and the block radiation down to nothing. The module sets its own.
+    double damp = 2500.0, dc = 25.0;
     bool twoStrokeCycle = false, isRevvingDown = false, isBackfiring = false;
     int nCylinders = 4;
 

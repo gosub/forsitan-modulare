@@ -369,6 +369,19 @@
         "Envelope generator",
         "Sound design"
       ]
+    },
+    {
+      "slug": "machina",
+      "name": "machina",
+      "description": "A combustion engine: cylinders, exhaust, muffler, and a trigger every crank cycle.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/machina.md",
+      "tags": [
+        "Physical modeling",
+        "Noise",
+        "Oscillator",
+        "Clock generator",
+        "Sound design"
+      ]
     }
   ]
 }

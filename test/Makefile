@@ -9,7 +9,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
-                cartilago stridor crepitus ruina
+                cartilago stridor crepitus ruina machina
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
@@ -21,7 +21,7 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
-     stridor_probe crepitus_probe ruina_probe $(SMOKE_BINS) $(CROSS_BINS)
+     stridor_probe crepitus_probe ruina_probe machina_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -84,6 +84,12 @@ crepitus_probe: crepitus_probe.cpp smoke_harness.hpp ../src/crepitus.cpp ../src/
 ruina_probe: ruina_probe.cpp smoke_harness.hpp ../src/ruina.cpp ../src/fracture_dsp.hpp $(wildcard ../src/sdt/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
+# Measurement harness for the engine: firing rate against speed and cycle,
+# level at each tap, what the plumbing does, a rev sweep, CPU per cylinder
+# count. Built by `make all`.
+machina_probe: machina_probe.cpp smoke_harness.hpp ../src/machina.cpp $(wildcard ../src/sdt/*.hpp)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
 # Property-based harnesses. `--seed N` reproduces a run, `--long` sweeps 8x
 # as many patches.
 caligo_invariants: caligo_invariants.cpp smoke_harness.hpp ../src/caligo.cpp ../src/caligo_dsp.hpp
@@ -117,7 +123,7 @@ smoke_antrum: ../src/antrum_dsp.hpp
 smoke_caligo: ../src/caligo_dsp.hpp
 smoke_tundo: ../src/tundo_dsp.hpp
 # the SDT port, shared by the friction/fracture/motor modules
-smoke_stridor: $(wildcard ../src/sdt/*.hpp)
+smoke_stridor smoke_machina: $(wildcard ../src/sdt/*.hpp)
 smoke_crepitus smoke_ruina: ../src/fracture_dsp.hpp $(wildcard ../src/sdt/*.hpp)
 
 # Run every smoke test, printing one CSV header for the lot.
@@ -131,6 +137,7 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
 	      caligo_probe raucus_probe tundo_probe cartilago_probe \
-	      textor_probe stridor_probe crepitus_probe ruina_probe $(SMOKE_BINS) $(CROSS_BINS)
+	      textor_probe stridor_probe crepitus_probe ruina_probe \
+	      machina_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean

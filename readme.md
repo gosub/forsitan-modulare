@@ -42,6 +42,7 @@ A collection of VCV Rack modules.
 | [stridor](doc/stridor.md) | Dry friction as a voice: a probe pressed and dragged across a resonant object, grinding at low speed and squealing at high, with a trigger on every stick-slip (Sound Design Toolkit port) | [doc/stridor.md](doc/stridor.md) |
 | [crepitus](doc/crepitus.md) | A material being worked: a self-exciting point process of fracture events, running from crumpling through tearing to breaking on one criticality knob (Sound Design Toolkit port) | [doc/crepitus.md](doc/crepitus.md) |
 | [ruina](doc/ruina.md) | An object under load: damage accumulates as the cube of the load, the creaking accelerates, and a Weibull draw decides when it gives — a trigger the patch can see coming but cannot time | [doc/ruina.md](doc/ruina.md) |
+| [machina](doc/machina.md) | An internal combustion engine: up to twelve cylinders on a shared crank into a real exhaust, with a trigger per crank cycle — a rhythm source that is not a clock (Sound Design Toolkit port) | [doc/machina.md](doc/machina.md) |
 
 ## Tools
 
@@ -104,6 +105,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **stridor** | a creaking, a grating, a shrill sound — the noise of two surfaces that do not want to slide |
 | **crepitus** | a crackling, a rustling, a clattering — the sound of a material coming apart in small pieces |
 | **ruina** | a falling down, a collapse — what the object under load is heading for |
+| **machina** | machine, engine, contrivance — the *deus ex machina* was a crane, and this one is a motor |
 
 ## Author
 
