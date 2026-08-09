@@ -356,6 +356,19 @@
         "Drum",
         "Sound design"
       ]
+    },
+    {
+      "slug": "ruina",
+      "name": "ruina",
+      "description": "An object under load: it creaks, accumulates damage, and decides when to break.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/ruina.md",
+      "tags": [
+        "Noise",
+        "Physical modeling",
+        "Random",
+        "Envelope generator",
+        "Sound design"
+      ]
     }
   ]
 }

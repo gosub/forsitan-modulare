@@ -41,6 +41,7 @@ A collection of VCV Rack modules.
 | [cartilago](doc/cartilago.md) | Gristleizer: one LFO into a FET attenuator that never quite closes, or into a swept filter; ticks like the hardware and ring-modulates at audio rate | [doc/cartilago.md](doc/cartilago.md) |
 | [stridor](doc/stridor.md) | Dry friction as a voice: a probe pressed and dragged across a resonant object, grinding at low speed and squealing at high, with a trigger on every stick-slip (Sound Design Toolkit port) | [doc/stridor.md](doc/stridor.md) |
 | [crepitus](doc/crepitus.md) | A material being worked: a self-exciting point process of fracture events, running from crumpling through tearing to breaking on one criticality knob (Sound Design Toolkit port) | [doc/crepitus.md](doc/crepitus.md) |
+| [ruina](doc/ruina.md) | An object under load: damage accumulates as the cube of the load, the creaking accelerates, and a Weibull draw decides when it gives — a trigger the patch can see coming but cannot time | [doc/ruina.md](doc/ruina.md) |
 
 ## Tools
 
@@ -102,6 +103,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **cartilago** | gristle, cartilage — Roy Gwinn's Gristleizer, by way of Throbbing Gristle |
 | **stridor** | a creaking, a grating, a shrill sound — the noise of two surfaces that do not want to slide |
 | **crepitus** | a crackling, a rustling, a clattering — the sound of a material coming apart in small pieces |
+| **ruina** | a falling down, a collapse — what the object under load is heading for |
 
 ## Author
 

@@ -39,3 +39,4 @@ extern Model* modelTundo;
 extern Model* modelCartilago;
 extern Model* modelStridor;
 extern Model* modelCrepitus;
+extern Model* modelRuina;
