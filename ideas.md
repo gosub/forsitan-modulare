@@ -709,6 +709,179 @@ get re-proposed.
 - **Compositions** (Ligeti aside, which contributed to SC3): the finding from
   the first list holds. Instruments port, compositions do not.
 
+## material sweep (2026-08-09)
+
+Fourth brainstorm, from the question: what would everyday-object sounds be if
+they were not modal synthesis? Paper crunching and tearing, mechanical
+switches, friction, things breaking. Numbered M0 up; the numbering is
+independent of the lists above.
+
+The premise survived checking. **Rack's entire "Physical modeling" tag is
+resonators**: Audible Instruments **Modal Synthesizer** (Elements), Prism
+**Rainbow** (SMR), chowdsp **ChowModal**, Chaotic Instruments **Modal Filter**,
+**PinkTrombone**, Sckitam **WaveguideDelay**, Vult **Rescomb**, Sapphire
+**Elastika** (balls and springs), Free Surface **WaterTable**, Coalescent
+**Haptik**. Every one of them is an object waiting to be struck, and the
+striking is left to the patch. Grepping all 4735 modules (index as in the
+sccode sweep, checked 2026-08-09) for friction, stick-slip, scrape, squeak,
+creak, crumple, tear, rustle, fracture, shatter, contact and foley returns
+**zero hits**. The only everyday-object module in the library is Ambivalent
+Instruments **Rain**.
+
+So the gap is not "paper is missing". The gap is that nobody in Rack models
+**interaction**, only objects. Modal synthesis answers "what is ringing";
+these sounds are almost entirely "how is energy arriving", and for crumpling
+the resonator barely matters at all.
+
+That is also what makes this one family rather than six unrelated toys. All of
+it is a stochastic point process of micro-events, and the axis that separates
+the materials is whether the events are independent or self-exciting:
+
+- **crumpling**: independent events, power-law energy distribution, scale-free
+  over decades (Houle and Sethna's acoustic-emission measurements on crumpling
+  paper are the canonical reference; cited from memory, verify before relying
+  on the exponent)
+- **tearing**: a crack front propagating along a line, so events cluster and
+  each one raises the odds of the next
+- **breaking**: full avalanche, one event triggering a cascade of fragments
+- **friction and scraping**: the same process with a restoring drive, walking
+  from discrete creaks at low velocity to periodic squeal at high
+
+One knob from independent to self-exciting walks paper rustle to tear to
+shatter. One knob of drive velocity walks creak to squeal. Both are physical
+parameters (criticality, drive), not fudges, which is the sort of spine
+forsitan panels are good at exposing.
+
+**The design rule for everything below**: not a foley box with named buttons
+(PAPER, GLASS, SWITCH), which is a module you demo once. These are
+**CV-played excitation sources**: force and velocity in, material and
+criticality as the timbre axes, audio out plus a per-event trigger out. Then
+paper rustle is a texture that answers a gesture, and the trigger out makes it
+a rhythm source as well as a voice. That framing has to be in the design from
+the start, not bolted on.
+
+### M0. the SDT port (prerequisite, not a module)
+
+The [Sound Design Toolkit](https://soundobject.org/SDT/) (Delle Monache and
+Rocchesso, out of the EU SOb / CLOSED / SkAT-VG projects,
+[SoftwareX 2017](https://www.sciencedirect.com/science/article/pii/S2352711017300195),
+source at [SkAT-VG/SDT](https://github.com/SkAT-VG/SDT)) is a hierarchical,
+perceptually founded taxonomy of everyday sound events, implemented as a
+cross-platform C core with Max and Pd externals on top.
+
+- **It is GPL version 3 or later, in plain C, last pushed 2024.** That is
+  directly compatible with forsitan and changes the whole posture of this
+  section: a port (caligo, vorax) rather than a reimplementation from papers
+  (vespae, bulla, antrum).
+- The model list is almost exactly the brief: `SDTCrumpling`, `SDTBreaking`,
+  `SDTScraping`, `SDTRolling`, `SDTBouncing`, `SDTFriction`, `SDTImpact`,
+  plus `SDTExplosion`, `SDTBubble`, `SDTFluidFlow`, `SDTWindFlow`,
+  `SDTWindCavity`, `SDTWindKarman`, `SDTMotor`, `SDTDCMotor` and the
+  `SDTResonator` they attach to.
+- The architecture is resonators times interactors: an interactor computes a
+  contact force between two resonators, and impact and friction are the two
+  interactor types. That maps onto Rack cleanly, and it is the same shape as
+  `src/imber/`, a header-only DSP library shared by several modules.
+- Before leaning on it: read `3rdparty/`, check what the models need at
+  control rate versus audio rate, and settle attribution the way vorax did.
+- Do not port the taxonomy. Port two or three models and build modules around
+  them. The Max package is a research instrument with a hundred parameters;
+  the forsitan version of any of these is six knobs and a decision about
+  which ninety-four to fix.
+
+### M1. stridor, friction and scraping
+
+Dry friction as a voice: a stick-slip relaxation oscillator driven by normal
+force and sliding velocity, with surface roughness as a noise profile feeding
+the contact. At low velocity it emits discrete creaks, as velocity rises the
+slips lock into a periodic squeal, and the transition between the two is
+continuous and playable.
+
+- **The strongest single module of the batch.** It is continuously excitable,
+  so it behaves like an instrument rather than an effect, and it self-oscillates
+  at the squeal end, which is the forsitan house style (vespae's
+  self-oscillation was kept deliberately).
+- `SDTFriction` and `SDTScraping` are both in the toolkit; scraping is friction
+  with a surface profile scrolling under the contact, so one engine covers
+  rubbing, scraping, bowing-adjacent squeal and the creaking door.
+- Controls: FORCE, VELOCITY (both CV), roughness, stiffness and dissipation of
+  the contact, and the resonator it drives.
+- **Library check: CLEAR.** Zero hits for friction, stick-slip, scrape, squeak
+  or creak. The nearest thing is the bow exciter buried inside Elements, which
+  is a preset inside a resonator module and not reachable as a source.
+- Name candidates: stridor (creaking, screeching), attritus (rubbing, wearing
+  away).
+
+### M2. crepitus, crumpling and tearing and breaking
+
+One point-process engine with a criticality knob. At the bottom, independent
+buckling events with power-law energies: paper being squeezed. Raise it and
+events start triggering their neighbours, so the texture organises into a
+crack front travelling along a line: tearing. At the top, one event sets off
+the whole cascade: something breaks.
+
+- `SDTCrumpling` and `SDTBreaking` in the toolkit are two ends of this and are
+  worth diffing before deciding whether they are one module or two.
+- The distinctive sound of the batch, and the one furthest from anything Rack
+  can currently make.
+- Controls: DRIVE (how hard the material is being worked, CV), criticality,
+  material (fragment size distribution and the resonance each event excites),
+  plus the event trigger out, which turns paper into a rhythm generator.
+- **Library check: CLEAR.** Zero hits for crumple, tear, rustle, fracture or
+  shatter. HetrickCV **Crackle** is the SuperCollider `Crackle` UGen, a chaotic
+  map, unrelated to acoustic emission.
+- **Self-competition with imber**, which already generates procedural rain, and
+  rain is also a point process. If crumpling turns out to sound like rain with
+  a different filter, it is an imber engine and not a module. Test that by ear
+  early, before any panel work.
+- Name: crepitus (crackling, rustling, clattering).
+
+### M3. ruina, the object under load
+
+Same engine as M2 with a different front end, and the more forsitan of the two
+framings. A CV loads the object; the module accumulates strain, creaks and
+crackles as it goes, and decides for itself when the material fails. On failure
+it emits the break and a trigger, then resets.
+
+- This turns a smash button into a modulation source with hysteresis: the
+  output is a texture, but the interesting signal is the trigger, whose timing
+  the patch cannot fully predict and cannot force.
+- Failure statistics are the design: a Weibull-ish distribution means the
+  object usually survives a given load and occasionally does not, so repeated
+  identical gestures give different lifetimes.
+- **Build M2 or M3, not both.** They are one engine and two panels. M3 is the
+  better module and the harder sell; M2 is the more obvious one and the easier
+  demo.
+- Name: ruina (collapse).
+
+### M4. contact and bounce
+
+Impacts, bouncing and rolling: `SDTImpact`, `SDTBouncing`, `SDTRolling`. A
+mechanical switch is exactly this, an impact plus contact bounce with low
+restitution, and so is a dropped object settling.
+
+- Ranked last deliberately. As a module of its own it is a click generator, and
+  clicks are cheap in Rack. Bouncing-ball triggers are also taken three times
+  over (Voxglitch **Hazumi**, JW **Bouncy Balls**, Bidoo **ChUTE**).
+- Worth having as the excitation *source* inside M1 and M2 rather than as a
+  panel: what strikes the object should be as physical as the object.
+
+### Further SDT stock, unranked
+
+Available from the same port, none of it checked as carefully as the above:
+`SDTExplosion`, three wind models (`SDTWindFlow`, `SDTWindCavity`,
+`SDTWindKarman`, the last being vortex-shedding tones, the whistle of wind past
+an edge), `SDTBubble` and `SDTFluidFlow`. The library is nearly empty here too:
+the only liquid hit is TyrannosaurusRu **Droplets**, a sequencer inspired by a
+leaky faucet rather than a synthesis model.
+
+The wind models are the ones to keep in mind, because tempestas (7) is a
+weather *modulation* source with no sound of its own, and these would give it
+one.
+
+SC6 (machina) also moves here: `SDTMotor` is a better engine than the Farnell
+patch it was based on, and it arrives with the same port.
+
 ## Considered and dropped
 
 - **Chase Bliss Mood mk2 / Lost + Found / Bad Mood**: worst case on both axes
