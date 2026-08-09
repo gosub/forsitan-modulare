@@ -54,7 +54,8 @@
 //   Out   : L, R, three element GATEs
 //   Light : REC (red, while capturing), gate activity per element,
 //           output level per channel
-//   Menu  : Restart loop on every weave (hardware knob-sweep behavior)
+//   Menu  : Restart loop on every weave (hardware knob-sweep behavior),
+//           Loop evolution, Declick (on by default)
 
 #include "forsitan.hpp"
 
@@ -202,6 +203,24 @@ struct Textor : Module {
     // options
     bool sweepRestart = false;  // hardware behavior: reroll restarts loop
     int evolution = 1;          // 0 frozen, 1 slow, 2 fast (demo-matched)
+    bool declick = true;        // smooth the engine's own discontinuities
+
+    // declick state. The engine has four places where a sample value can
+    // jump: a fragment reading past the end of the cloth and wrapping to
+    // the other end, a voice stolen mid-note, the cloth being replaced
+    // under sounding voices by a new capture (or erased by RESET), and the
+    // delay tap moving to a new time or a new element on a reroll. Each
+    // gets a short fade rather than a step.
+    static constexpr float kEdgeFadeS = 0.005f;    // cloth ends
+    static constexpr float kDelayFadeS = 0.004f;   // delay tap change
+    static constexpr float kHoldS = 0.012f;        // wait before cloth changes
+    float edgeFade = 240.f;     // cloth edge fade, samples
+    int pendingKind = 0;        // 0 none, 1 swap in the capture, 2 erase
+    int pendingCount = 0;       // samples until the pending cloth change lands
+    float dlyGain = 1.f;        // delay wet gain, dips across a tap change
+    bool dlyFading = false;     // fading out to commit a new tap
+    int pendDelayElem = 1, pendDelaySamp = 4800;
+    float pendDelayFb = 0.45f;
 
     // control state
     float lastWovenKnob = -1.f;
@@ -250,10 +269,17 @@ struct Textor : Module {
         stepSamples = rollStepS * sr;
         clockInterval = 0.f;
         sinceClock = 1e9f;
+        edgeFade = std::max(1.f, kEdgeFadeS * sr);
+        pendingKind = 0;
+        pendingCount = 0;
         for (auto& v : voices)
             v.active = false;
         if (loomRunning)
             weaveStrands();
+        // nothing is sounding, so whatever the weave asked to fade to lands now
+        commitDelay();
+        dlyFading = false;
+        dlyGain = 1.f;
     }
 
     void onReset() override {
@@ -263,6 +289,7 @@ struct Textor : Module {
         lastWovenKnob = -1.f;
         weaveCvPrimed = false;
         sweepRestart = false;
+        declick = true;
         sr = 0.f;   // force buffer re-init on the next process()
     }
 
@@ -273,6 +300,7 @@ struct Textor : Module {
         json_object_set_new(rootJ, "loomRunning", json_boolean(loomRunning));
         json_object_set_new(rootJ, "sweepRestart", json_boolean(sweepRestart));
         json_object_set_new(rootJ, "evolution", json_integer(evolution));
+        json_object_set_new(rootJ, "declick", json_boolean(declick));
         return rootJ;
     }
 
@@ -288,6 +316,8 @@ struct Textor : Module {
             sweepRestart = json_boolean_value(j);
         if ((j = json_object_get(rootJ, "evolution")))
             evolution = clamp((int)json_integer_value(j), 0, 2);
+        if ((j = json_object_get(rootJ, "declick")))
+            declick = json_boolean_value(j);
         if (loomRunning)
             weaveStrands();
     }
@@ -316,15 +346,22 @@ struct Textor : Module {
         // third come out completely dry
         {
             float u = w.uniform();
-            delayElem = (u < 0.35f) ? -1
-                      : (u < 0.48f) ? 0    // warp
-                      : (u < 0.80f) ? 1    // weft
-                                    : 2;   // fleck
+            pendDelayElem = (u < 0.35f) ? -1
+                          : (u < 0.48f) ? 0    // warp
+                          : (u < 0.80f) ? 1    // weft
+                                        : 2;   // fleck
             float t = clamp((1.f + (float)w.irange(0, 2)) * rollStepS, 0.10f, 0.48f);
-            delaySamp = std::max(1, (int)(t * (sr > 0.f ? sr : 48000.f)));
+            pendDelaySamp = std::max(1, (int)(t * (sr > 0.f ? sr : 48000.f)));
             if (sr > 0.f)
-                delaySamp = std::min(delaySamp, (int)dlyL.size() - 2);
-            delayFb = w.range(0.35f, 0.6f);
+                pendDelaySamp = std::min(pendDelaySamp, (int)dlyL.size() - 2);
+            pendDelayFb = w.range(0.35f, 0.6f);
+            // moving the tap (or handing it to another element) steps the
+            // wet signal, so fade the bus out first and commit at silence
+            if (declick && loomRunning
+                && (pendDelayElem != delayElem || pendDelaySamp != delaySamp))
+                dlyFading = true;
+            else
+                commitDelay();
         }
 
         // slow spatial drift, one lazy LFO per element
@@ -388,6 +425,35 @@ struct Textor : Module {
         }
     }
 
+    void commitDelay() {
+        delayElem = pendDelayElem;
+        delaySamp = pendDelaySamp;
+        delayFb = pendDelayFb;
+        dlyFading = false;
+    }
+
+    // the fragment window, without the reroll fadeout
+    static float voiceEnv(const Voice& v) {
+        float t = v.age / v.lenSamp;
+        float a = v.attackFrac;
+        if (t < a)
+            return 0.5f * (1.f - std::cos((float)M_PI * t / a));
+        return 0.5f * (1.f + std::cos((float)M_PI * (t - a) / (1.f - a)));
+    }
+
+    bool anyVoiceActive() const {
+        for (const auto& v : voices)
+            if (v.active)
+                return true;
+        return false;
+    }
+
+    void fadeOutVoices() {
+        for (auto& v : voices)
+            if (v.active && v.kill <= 0.f)
+                v.kill = 1.f;
+    }
+
     void reweave() {
         moveCounter++;
         float knob = params[WEAVE_PARAM].getValue();
@@ -398,9 +464,7 @@ struct Textor : Module {
             // voices fast and fire step 0 on the next sample (next clock
             // edge when externally clocked), so a knob sweep sputters a
             // cascade of pattern beginnings
-            for (auto& v : voices)
-                if (v.active && v.kill <= 0.f)
-                    v.kill = 1.f;
+            fadeOutVoices();
             step = kSteps - 1;
             stepPhase = stepSamples;
         }
@@ -414,15 +478,38 @@ struct Textor : Module {
         capturePos = 0;
     }
 
-    void clearSample() {
+    void finishClear() {
         std::fill(cloth.begin(), cloth.end(), 0.f);
-        std::fill(shadow.begin(), shadow.end(), 0.f);
         std::fill(dlyL.begin(), dlyL.end(), 0.f);
         std::fill(dlyR.begin(), dlyR.end(), 0.f);
-        capturing = false;
         for (auto& v : voices)
             v.active = false;
+        pendingKind = 0;
+    }
+
+    void clearSample() {
+        std::fill(shadow.begin(), shadow.end(), 0.f);
+        capturing = false;
         loomRunning = false;
+        if (declick && anyVoiceActive()) {
+            // let what is sounding fade first, then erase (the delay bus
+            // is held muted meanwhile, so its tail goes with it)
+            fadeOutVoices();
+            pendingKind = 2;
+            pendingCount = std::max(1, (int)(kHoldS * sr));
+        }
+        else
+            finishClear();
+    }
+
+    // the fresh capture takes the loom's place
+    void finishSwap() {
+        std::copy(shadow.begin(), shadow.end(), cloth.begin());
+        pendingKind = 0;
+        // the hardware starts playing a fresh weave by itself the moment a
+        // capture lands on a silent loom
+        if (!loomRunning)
+            reweave();
     }
 
     void fireStep(float interval) {
@@ -433,6 +520,10 @@ struct Textor : Module {
         static const float kJitScale[3] = {0.f, 0.5f, 1.f};
         static const float kAmpJit[3] = {0.f, 0.05f, 0.15f};
         int evo = clamp(evolution, 0, 2);
+        // the cloth is about to be replaced or erased: hold fire for the
+        // few ms the sounding voices need to fade
+        if (pendingKind != 0)
+            return;
         for (int e = 0; e < kElements; e++) {
             for (int i = 0; i < strandCount[e]; i++) {
                 Strand& s = strands[e][i];
@@ -449,14 +540,26 @@ struct Textor : Module {
                 gatePulse[e].trigger(0.002f);
                 lightEnv[e] = 1.f;
 
-                // steal the oldest voice
                 Voice* v = nullptr;
                 for (auto& c : voices)
                     if (!c.active) { v = &c; break; }
                 if (!v) {
                     v = &voices[0];
-                    for (auto& c : voices)
-                        if (c.order < v->order) v = &c;
+                    if (declick) {
+                        // steal the quietest voice, not the oldest: cutting
+                        // a fragment off at its window's peak is a click,
+                        // cutting one that is nearly silent is not
+                        float best = 1e9f;
+                        for (auto& c : voices) {
+                            float level = voiceEnv(c) * c.amp
+                                        * (c.kill > 0.f ? c.kill : 1.f);
+                            if (level < best) { best = level; v = &c; }
+                        }
+                    }
+                    else {
+                        for (auto& c : voices)
+                            if (c.order < v->order) v = &c;
+                    }
                 }
                 v->active = true;
                 v->elem = e;
@@ -557,12 +660,23 @@ struct Textor : Module {
             shadow[capturePos] = inputs[AUDIO_INPUT].getVoltage() * 0.2f;
             if (++capturePos >= bufLen) {
                 capturing = false;
-                std::copy(shadow.begin(), shadow.end(), cloth.begin());
-                // the hardware starts playing a fresh weave by itself
-                // the moment a capture lands on a silent loom
-                if (!loomRunning)
-                    reweave();
+                if (declick && anyVoiceActive()) {
+                    // swapping the cloth under sounding voices jumps them
+                    // to unrelated samples: fade them out and swap after
+                    fadeOutVoices();
+                    pendingKind = 1;
+                    pendingCount = std::max(1, (int)(kHoldS * sr));
+                }
+                else
+                    finishSwap();
             }
+        }
+        if (pendingCount > 0 && --pendingCount == 0) {
+            if (pendingKind == 1)
+                finishSwap();
+            else if (pendingKind == 2)
+                finishClear();
+            pendingKind = 0;
         }
         lights[REC_LIGHT].setBrightness(capturing ? 1.f : 0.f);
 
@@ -600,6 +714,11 @@ struct Textor : Module {
             if (!v.active)
                 continue;
             if (v.startDelay > 0) {
+                // still silent: a fadeout has nothing to fade
+                if (v.kill > 0.f) {
+                    v.active = false;
+                    continue;
+                }
                 v.startDelay--;
                 continue;
             }
@@ -612,14 +731,23 @@ struct Textor : Module {
             float frac = v.pos - (float)i0;
             float smp = cloth[i0] + (cloth[i1] - cloth[i0]) * frac;
 
+            // a fragment that runs past the end of the cloth wraps to the
+            // other end, where the waveform is unrelated. Fading the last
+            // and first few ms of the cloth as it is read makes that seam
+            // silent on both sides, whichever way the head is running. The
+            // window widens with the playback rate, so a fleck an octave
+            // up crosses it in the same few ms, not a fraction of one.
+            if (declick) {
+                float w = edgeFade * std::max(1.f, std::fabs(v.rate));
+                float d = std::min(v.pos, (float)bufLen - v.pos);
+                if (d < w) {
+                    float g = d / w;
+                    smp *= g * g * (3.f - 2.f * g);
+                }
+            }
+
             // asymmetric raised-cosine window: soft rise, soft fall
-            float t = v.age / v.lenSamp;
-            float a = v.attackFrac;
-            float env;
-            if (t < a)
-                env = 0.5f * (1.f - std::cos((float)M_PI * t / a));
-            else
-                env = 0.5f * (1.f + std::cos((float)M_PI * (t - a) / (1.f - a)));
+            float env = voiceEnv(v);
 
             if (v.kill > 0.f) {
                 // reroll restart: old weave fades out in ~8 ms
@@ -647,14 +775,28 @@ struct Textor : Module {
         // frozen, for the next delayed roll
         {
             int n = (int)dlyL.size();
+            // the bus fades out before a new tap takes over, and stays
+            // muted while an erase is pending
+            float target = (dlyFading || pendingKind == 2) ? 0.f : 1.f;
+            if (dlyGain != target) {
+                float d = 1.f / std::max(1.f, kDelayFadeS * sr);
+                dlyGain = (dlyGain < target) ? std::min(target, dlyGain + d)
+                                             : std::max(target, dlyGain - d);
+                if (dlyFading && dlyGain <= 0.f)
+                    commitDelay();
+            }
             int readIdx = dlyPos - delaySamp;
             if (readIdx < 0) readIdx += n;
-            float wetL = dlyL[readIdx];
-            float wetR = dlyR[readIdx];
+            float wetL = dlyL[readIdx] * dlyGain;
+            float wetR = dlyR[readIdx] * dlyGain;
+            // the fade covers what is written as well as what is read: the
+            // tap commits by handing the bus to a different element, and a
+            // step recorded into the line comes back as a click one delay
+            // time later, long after the reroll that caused it
             float inL = 0.f, inR = 0.f;
             if (delayElem >= 0) {
-                inL = elemL[delayElem];
-                inR = elemR[delayElem];
+                inL = elemL[delayElem] * dlyGain;
+                inR = elemR[delayElem] * dlyGain;
             }
             dlyL[dlyPos] = inL + wetL * delayFb;
             dlyR[dlyPos] = inR + wetR * delayFb;
@@ -784,6 +926,7 @@ struct TextorWidget : ModuleWidget {
             "", &module->sweepRestart));
         menu->addChild(createIndexPtrSubmenuItem("Loop evolution",
             {"Frozen", "Slow", "Fast"}, &module->evolution));
+        menu->addChild(createBoolPtrMenuItem("Declick", "", &module->declick));
     }
 };
 
