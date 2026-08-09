@@ -73,6 +73,9 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 - `src/forsitan.hpp` declares `extern Model*` for each module.
 - `src/forsitan.cpp` calls `p->addModel(...)` for each one in `init()`.
 - `src/callback_button.hpp` is a small shared widget helper.
+- `src/sdt/` is a header-only port of the Sound Design Toolkit
+  (GPL-3.0-or-later), shared by stridor, crepitus, ruina and machina;
+  `src/fracture_dsp.hpp` is the crepitus/ruina engine built on it.
 
 | slug | description | width |
 |------|-------------|-------|
@@ -105,6 +108,10 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | raucus | Big Muff Pi USA V3 (four transistor stages, feedback diode clipping solved into a table, tone stack as one biquad from a nodal analysis; added gain/bias trims, mids, diode menu, oversampling) | 50.8mm (10HP) |
 | tundo | Basimilus Iteritas Alter clone (six tonal oscillators + noise, spread from harmonic to prime ratios, harm decay/amplitude staging, morph, infinite folder with pulse train; skin/liquid/metal, bass/alto/treble, per-knob attenuverter + CV, env out; engine on its own power-of-two clock through a ZOH) | 71.12mm (14HP) |
 | cartilago | Gristleizer (one band-limited LFO of four shapes into a shunt-FET attenuator that never closes and ticks, or into a ZDF state-variable filter; depth past 100%, v/oct into the audio band for ring modulation, oversampled) | 60.96mm (12HP) |
+| stridor | dry friction voice (SDT elasto-plastic bristle contact + modal object + scraping surface; grinds at low speed, squeals at high, slip trigger) | 50.8mm (10HP) |
+| crepitus | fracture point process (SDT crumpling/breaking joined by a Hawkes self-exciting process; crit = branching ratio, self-limiting above 1) | 50.8mm (10HP) |
+| ruina | object under load (crepitus engine + cube-law damage, Weibull failure, acoustic-emission ramp; break trigger and strain CV) | 60.96mm (12HP) |
+| machina | combustion engine (SDTMotor port: 12 cylinders, exhaust/muffler waveguides, trigger per crank cycle) | 81.28mm (16HP) |
 
 ## limen module
 

@@ -5,6 +5,83 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+Four modules from the Sound Design Toolkit, on the experimental branch
+`sdt-machina`. They are ideas M1, M2, M3 and SC6 from `ideas.md`, built to be
+heard rather than shipped: nothing here is version-stamped yet, and the
+`manualUrl`s still point at v2.14.0 until the version is bumped and
+`tools/release/sync_version.py` is run.
+
+### Added
+  - **the SDT port**, `src/sdt/`. The [Sound Design
+    Toolkit](https://github.com/SkAT-VG/SDT) (Delle Monache, Rocchesso et al.,
+    out of the SOb / CLOSED / SkAT-VG projects) is a taxonomy of everyday
+    sound events in plain C, GPL-3.0-or-later. Ported here as header-only
+    C++: the modal resonator, the impact and friction interactors, the
+    crumpling/breaking/scraping control layer, the motor, and the filter and
+    waveguide primitives underneath. The algorithms are unchanged; the C's
+    global sample rate, global `rand()` and heap-allocated opaque structs are
+    replaced by per-object state and fixed-capacity arrays.
+
+  - **stridor**, 10 HP, dry friction as a voice. A probe pressed against a
+    modal object with a normal force and dragged at a sliding velocity. The
+    elasto-plastic bristle contact sticks and slips: at low speed the object
+    grinds, as speed rises the slips lock into its modes and it squeals, and
+    past that the contact slides and only the surface hiss is left. One
+    relaxation oscillator crossing a bifurcation, with **vel** as the axis,
+    and **slip** as a trigger taken from the model's own plastic fraction.
+
+    Three deviations from the SDT tutorial patches, all forced by
+    measurement: pickup gain 1 rather than 100 (the gain scales the velocity
+    the contact senses as well as the output, so at 100 the viscous term
+    damps every mode to Q≈4 and the object never rings); 5 g modes rather
+    than 20 (the object has to move enough to swing the contact's relative
+    velocity or there is no stick-slip at any speed); and an exponential
+    **vel** over 1.5 mm/s to 0.8 m/s, because everything audible happens in
+    the first third of that.
+
+  - **crepitus**, 10 HP, fracture as a self-exciting point process. The SDT
+    ships crumpling and breaking as separate models with nothing in between;
+    here they are one continuum, because the event rate is
+    `base + sum of a·exp(-t/tau)` over past events — a Hawkes process whose
+    branching ratio is the **crit** knob. Below 1, crumpling. At 1,
+    avalanches of every size: tearing. Above 1, breaking. The event grain
+    stays stock SDT: the clipped exponential energy draw, the fragmentation
+    rule, and an impact between an inertial hammer and a modal object wired
+    as the `crumpling~` help patch wires it.
+
+    The rate also scales with how much object is left, as `SDTBreaking`'s
+    does, so the effective branching is `crit × integrity` and a runaway
+    cascade eats the object down to `integrity = 1/crit` and parks there: the
+    process drives itself onto its own critical point. Measured 0.802 / 0.547
+    / 0.375 at crit 1.2 / 2.0 / 3.0 against a predicted 0.833 / 0.500 / 0.333.
+
+  - **ruina**, 12 HP, an object under load. The crepitus engine behind a
+    different front end, and the more forsitan of the two framings: a CV
+    loads the object, damage accumulates as the *cube* of the load, the
+    acoustic emission climbs with the square of the damage and starts to
+    organise into avalanches, and a Weibull draw decides when it gives. The
+    deliverable is **brk**, a trigger whose approach the patch can watch on
+    **str** but whose timing it cannot dictate. Measured lifetimes follow
+    load⁻³ to within 5 %, and the lifetime spread against **brit** matches
+    the Weibull coefficient of variation to two decimal places.
+
+  - **machina**, 16 HP, an internal combustion engine. A port of `SDTMotor`:
+    up to twelve cylinders on a shared crank, each with an intake pipe, a
+    chamber whose delay length breathes with the piston, and an extractor
+    into a common exhaust, expansion chamber, muffler bank and tailpipe. The
+    valve openings modulate the reflection coefficients between chamber and
+    pipe every sample, so the exhaust note is a real pipe resonance. **trig**
+    fires once per crank cycle and **asym** makes that uneven, which is the
+    point: a rhythm source that is not a clock.
+
+    One deviation. `SDTMotor`'s nominal damping is 20 Hz, but nothing in the
+    C ever applies it — `SDTMotor_new` leaves the one-poles at pass-through
+    and only a host that sets the attributes calls `update()`. Applied
+    literally it lowpasses the intake hiss and the block radiation to
+    nothing. The module uses 2500 Hz, switchable in the context menu.
+
 ## [2.14.0] - 2026-08-06
 ### Added
   - **caligo**, a 24 HP port of **Greyhole**, Julian Parker's 2013 algorithm

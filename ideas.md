@@ -530,6 +530,9 @@ scales, from about twenty bytes of state.
 
 ### SC6. machina, procedural machines
 
+> **BUILT** (2026-08-09, branch `sdt-machina`, unreleased). As `machina`,
+> 16 HP, from `SDTMotor` rather than the Farnell patch. See `doc/machina.md`.
+
 Andy Farnell's *Designing Sound* motor: a speed envelope drives a saw, the
 rotor is bandpassed noise gated by the drive raised to a power, the stator is
 a folded cosine of the same phase, and the lot goes through a resonant tube.
@@ -770,6 +773,10 @@ the start, not bolted on.
 
 ### M0. the SDT port (prerequisite, not a module)
 
+> **DONE** (2026-08-09, branch `sdt-machina`). `src/sdt/`: resonator, impact
+> and friction interactors, crumpling/breaking/scraping, motor, and the filter
+> and waveguide primitives. Header-only C++, per-object sample rate and RNG.
+
 The [Sound Design Toolkit](https://soundobject.org/SDT/) (Delle Monache and
 Rocchesso, out of the EU SOb / CLOSED / SkAT-VG projects,
 [SoftwareX 2017](https://www.sciencedirect.com/science/article/pii/S2352711017300195),
@@ -799,6 +806,9 @@ cross-platform C core with Max and Pd externals on top.
 
 ### M1. stridor, friction and scraping
 
+> **BUILT** (2026-08-09, branch `sdt-machina`, unreleased). 10 HP. See
+> `doc/stridor.md` for the three measured deviations from the SDT patches.
+
 Dry friction as a voice: a stick-slip relaxation oscillator driven by normal
 force and sliding velocity, with surface roughness as a noise profile feeding
 the contact. At low velocity it emits discrete creaks, as velocity rises the
@@ -821,6 +831,11 @@ continuous and playable.
   away).
 
 ### M2. crepitus, crumpling and tearing and breaking
+
+> **BUILT** (2026-08-09, branch `sdt-machina`, unreleased). 10 HP. The two SDT
+> models joined by a Hawkes self-exciting process, so criticality is one knob.
+> Built alongside M3 rather than instead of it: they share `fracture_dsp.hpp`
+> and the choice between them is now one to make by ear.
 
 One point-process engine with a criticality knob. At the bottom, independent
 buckling events with power-law energies: paper being squeezed. Raise it and
@@ -845,6 +860,10 @@ the whole cascade: something breaks.
 - Name: crepitus (crackling, rustling, clattering).
 
 ### M3. ruina, the object under load
+
+> **BUILT** (2026-08-09, branch `sdt-machina`, unreleased). 12 HP. See the note
+> under M2: both were built, against the advice below, precisely so the choice
+> can be made by ear.
 
 Same engine as M2 with a different front end, and the more forsitan of the two
 framings. A CV loads the object; the module accumulates strain, creaks and
