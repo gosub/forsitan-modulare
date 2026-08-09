@@ -106,6 +106,19 @@ can audition the same loop as pad and as beat.
   exactly, only the slow spatial drift remains); **Slow** (default)
   breathes gently and mutates rarely; **Fast** matches the drift rate
   measured in the hardware demos.
+- **Declick** — on by default. The loom has four places where a sample
+  value can jump: a fragment reading past the end of the two-second
+  cloth and wrapping to the other end, where the waveform is unrelated;
+  a voice stolen mid-note when all sixteen are busy; the cloth being
+  replaced by a fresh capture (or erased by RESET) under sounding
+  voices; and the delay tap moving to a new time, or to a new element,
+  on a reroll. Each gets a short fade instead of a step: the cloth ends
+  fade as they are read (wider for fast fragments, so the seam always
+  takes the same few ms), the loom steals the quietest voice rather
+  than the oldest, cloth changes wait ~12 ms for what is sounding to
+  fade, and the delay bus fades out and back across a tap change. It
+  costs nothing audible otherwise; turn it off to hear the raw engine,
+  or if you want the grit.
 
 ## Tips
 

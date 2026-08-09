@@ -175,6 +175,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     only bit a fast clock into GEN IN, where it silently ate triggers. The
     last one is now held and started as soon as the worker is free: late
     rather than lost.
+  - **textor** clicking, in both texture and rhythm mode. The loom had four
+    places where a sample value could step. Every fragment that runs past
+    the end of the two-second cloth wraps to the other end, where the
+    waveform is unrelated, and since fragments are long and start anywhere
+    most of them wrap: that one clicked several times a second, all the
+    time. The other three are occasional: a voice stolen mid-note when all
+    sixteen are busy, a fresh capture replacing (or RESET erasing) the
+    cloth under sounding voices, and the delay tap moving to a new time or
+    a new element on a reroll — that last one clicking a whole delay time
+    *after* the reroll, because the step went into the delay line and came
+    back out. Each now gets a short fade instead of a step, under a
+    **Declick** context-menu option that defaults on: the cloth ends fade
+    as they are read (the window widening with playback rate, so the seam
+    always takes the same few ms whatever the pitch), the loom steals the
+    quietest voice rather than the oldest, cloth changes wait ~12 ms for
+    what is sounding to fade out, and the delay bus fades both what it
+    reads and what it writes across a tap change. Measured with the new
+    `test/textor_probe`, which highpasses the output at 8 kHz where nothing
+    the engine plays belongs: the loudest transient drops from 0.87 V to
+    0.013 V and the count of audible ones from 5.6 per second to none, in
+    every scenario. Turning the option off restores the old behavior
+    exactly.
 
 ## [2.13.3] - 2026-08-05
 ### Fixed
