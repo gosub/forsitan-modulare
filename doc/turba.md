@@ -221,12 +221,27 @@ and both were forced by measurement.
 
 **The normalizer only turns a loop down.** The manual says each channel has a
 normalizer in its delay line, and a normalizer, properly, holds a signal at a
-fixed level in both directions. Built that way, it was a mistake: with all
-eight channels pinned to the same level, the macro knobs stopped being
-audible. Nothing the bars said survived a stage that erased their levels. It
-is now a limiter — it holds a loop that is running away and leaves a quiet one
-quiet. What keeps this bank alive with no gate is not the normalizer, it is
-that the oscillators never stop.
+fixed level in both directions. Built that way it flattens the bank's
+*dynamics*: with every channel pushed back up to the same level, the macro
+knobs stop changing how loud anything is. Measured across the four macros,
+knob hard left to hard right, with a true normalizer against the limiter that
+shipped:
+
+| macro | RMS span, normalizer | RMS span, limiter |
+|-------|----------------------|-------------------|
+| pitch | 1.47 → 1.56 | 1.20 → 0.56 |
+| cutoff | 0.50 → 1.45 | 0.05 → 1.06 |
+| delay | 1.66 → 1.55 | 1.15 → 0.93 |
+| flow | 1.58 → 1.43 | 1.19 → 0.60 |
+
+The timbral effect survives either way — the centroid spans are comparable,
+and on cutoff the normalizer's is actually wider — so this is not a claim that
+a normalizer makes the macros inaudible. It is narrower than that: the level
+differences the bars ask for do not survive it, the per-channel crest factor
+drops from 3.2 to 2.7, and a bank where nothing can be quiet is a bank with
+one dynamic. So it is a limiter here — it holds a loop that is running away
+and leaves a quiet one quiet. What keeps this bank alive with no gate is not
+the normalizer, it is that the oscillators never stop.
 
 **Flow maps resonance backwards**, as described above. Skrewell's own
 behaviour, but arrived at deliberately here rather than as a side effect of a
@@ -238,6 +253,30 @@ oscillators are polyBLEP pulses rather than REAKTOR's; the panning across the
 eight channels is fixed rather than a parameter; and the input, the four CV
 inputs, the CV output and the rand trigger have no counterpart in the
 original.
+
+## What it does not do
+
+turba standing still is **stationary**. Its chaos is fast: the largest
+Lyapunov estimate of 670/s means the waveform decorrelates in a millisecond
+or two, which makes a restless *texture* whose statistics never change.
+Measured over a minute of untouched output, the spread of its short-time
+loudness is 0.2 dB — it does not surge, drop out or lurch on its own.
+
+Recordings of Skrewell move 1.5 to 5.7 dB by the same measure, but every one
+that could be found is a *performance*, with somebody's hand on the controls,
+so that is not a like-for-like comparison. Driven equivalently — flow swept
+over twenty seconds — turba measures 5.8 dB, and with all four macros drifting
+7.8 dB. The dynamics are there; they come from the hand or from CV, not from
+the bank.
+
+Whether that is a shortfall depends on what you want. If you want it to
+evolve untouched, patch something slow into a macro; the **cv** output feeding
+back into a macro input is the cheapest way, and the attenuverters set how far
+it wanders. Several attempts to give the engine its own slow motion — a second
+ring of envelope followers cross-coupling the loop gains, at both signs, three
+lag settings and gains up to 3 — all measured null, at 0.15 to 0.32 dB. The
+reason is structural: eight oscillators running at constant amplitude sum to
+constant power, and nothing downstream of them can swing the level far.
 
 ## Cost
 

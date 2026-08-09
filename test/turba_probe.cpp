@@ -9,11 +9,18 @@
 //             evidence that this thing is actually chaotic and not just busy
 //   cpu       real time per sample against the audio budget
 //
+// Plus `render`, which writes 16-bit stereo WAVs of the bank at a spread of
+// settings. Those are for listening to, and for measuring against reference
+// recordings of the instrument this module takes after.
+//
 // Usage: ./turba_probe [levels|flow|macros|lyapunov|cpu|all]
+//        ./turba_probe render <directory> [seconds]
 
 #include "smoke_harness.hpp"
 #include "../src/turba.cpp"
 
+#include <cstdint>
+#include <cstdlib>
 #include <ctime>
 #include <vector>
 
@@ -173,8 +180,80 @@ static void probeCpu() {
            secs / n * 1e9, 100.0 * secs / (n / SR), SR / 1000.0);
 }
 
+// ─────────────────────────────────────────────────────────────────── render
+
+static void writeWav(const char* path, const std::vector<float>& l,
+                     const std::vector<float>& r) {
+    const uint32_t n = (uint32_t)l.size();
+    const uint32_t rate = (uint32_t)SR;
+    const uint32_t dataBytes = n * 2 * 2;
+    FILE* f = fopen(path, "wb");
+    if (!f) { fprintf(stderr, "cannot write %s\n", path); return; }
+    auto u32 = [&](uint32_t v) { fwrite(&v, 4, 1, f); };
+    auto u16 = [&](uint16_t v) { fwrite(&v, 2, 1, f); };
+    fwrite("RIFF", 1, 4, f); u32(36 + dataBytes); fwrite("WAVE", 1, 4, f);
+    fwrite("fmt ", 1, 4, f); u32(16); u16(1); u16(2);
+    u32(rate); u32(rate * 4); u16(4); u16(16);
+    fwrite("data", 1, 4, f); u32(dataBytes);
+    for (uint32_t i = 0; i < n; i++) {
+        const float lv = clamp(l[i], -10.f, 10.f) * 0.1f;
+        const float rv = clamp(r[i], -10.f, 10.f) * 0.1f;
+        u16((uint16_t)(int16_t)std::lrint(lv * 32000.f));
+        u16((uint16_t)(int16_t)std::lrint(rv * 32000.f));
+    }
+    fclose(f);
+}
+
+struct RenderSetting {
+    const char* name;
+    int topology;
+    float flow;
+    bool randomize;
+};
+
+static void probeRender(const char* dir, double seconds) {
+    static const RenderSetting settings[] = {
+        {"default_loop",   0,  0.0f, false},
+        {"default_pre",    1,  0.0f, false},
+        {"default_bare",   2,  0.0f, false},
+        {"flow_left",      0, -1.0f, false},
+        {"flow_right",     0,  1.0f, false},
+        {"rand_loop",      0,  0.5f, true},
+        {"rand_pre",       1,  0.5f, true},
+        {"rand_bare",      2,  0.5f, true},
+    };
+    const int count = (int)(sizeof(settings) / sizeof(settings[0]));
+    printf("\n== render, %.1f s each, into %s ==\n", seconds, dir);
+    for (int s = 0; s < count; s++) {
+        Turba m;
+        m.params[Turba::MODE_PARAM].setValue((float)settings[s].topology);
+        m.params[Turba::FLOW_PARAM].setValue(settings[s].flow);
+        m.params[Turba::LEVEL_PARAM].setValue(0.5f);
+        if (settings[s].randomize) m.randomizeChannels();
+
+        long frame = 0;
+        settle(m, frame, 2.0);
+        const int n = (int)(seconds * SR);
+        std::vector<float> l, r;
+        l.reserve(n); r.reserve(n);
+        for (int i = 0; i < n; i++) {
+            m.process(makeArgs(frame++));
+            l.push_back(m.outputs[Turba::LEFT_OUTPUT].getVoltage());
+            r.push_back(m.outputs[Turba::RIGHT_OUTPUT].getVoltage());
+        }
+        char path[512];
+        snprintf(path, sizeof(path), "%s/turba_%s.wav", dir, settings[s].name);
+        writeWav(path, l, r);
+        printf("  %-14s %s\n", settings[s].name, path);
+    }
+}
+
 int main(int argc, char** argv) {
     rack::random::init();
+    if (argc > 2 && !std::strcmp(argv[1], "render")) {
+        probeRender(argv[2], argc > 3 ? atof(argv[3]) : 12.0);
+        return 0;
+    }
     const char* which = argc > 1 ? argv[1] : "all";
     const bool all = !std::strcmp(which, "all");
     if (all || !std::strcmp(which, "levels")) probeLevels();

@@ -198,8 +198,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
 
     Two deliberate departures. The normalizer only turns a loop **down**;
-    built as a true normalizer, holding every channel at one level, it
-    erased the macro knobs and nothing the bars said survived it. And the
+    built as a true normalizer, holding every channel at one level, the
+    macros stop changing how loud anything is (the RMS span of the cutoff
+    macro goes from 0.05-1.06 to 0.50-1.45) and the crest factor drops from
+    3.2 to 2.7. The timbre still responds either way, so this is the narrower
+    claim: a bank where nothing can be quiet has one dynamic. And the
     additions a Rack module wants and the original has none of: an audio
     input into all eight loops, an attenuverter and CV per macro, a chaos CV
     out, and a rand trigger. 1.15 % of a core at 48 kHz.
