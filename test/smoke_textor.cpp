@@ -133,4 +133,76 @@ static void testTextor() {
     report("textor", "reset_stops_gates", offGates, offGates == 0);
 }
 
-SMOKE_MAIN(testTextor)
+// The declick option: with it on, the woven output must hold no
+// discontinuities. Everything textor plays here is a 220.3 Hz sine at a
+// semitone-quantized rate, so nothing musical reaches 8 kHz; a step in the
+// waveform does. The cloth frequency deliberately does not fit a whole
+// number of cycles into the two-second buffer, or fragments would wrap
+// continuously by accident and the check would pass on a bug. Element
+// levels stay low so the output soft limiter, a cubic, does not generate
+// harmonics up there itself. textor_probe measures the same thing in
+// detail across more scenarios.
+static float declickPeak(bool declick) {
+    // 4th-order Butterworth highpass at 8 kHz, as two RBJ biquads
+    struct Biquad {
+        float b0, b1, b2, a1, a2;
+        float x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        Biquad(float f0, float q) {
+            float w0 = 2.f * (float)M_PI * f0 / SR;
+            float c = std::cos(w0), alpha = std::sin(w0) / (2.f * q);
+            float a0 = 1.f + alpha;
+            b0 = (1.f + c) * 0.5f / a0;
+            b1 = -(1.f + c) / a0;
+            b2 = b0;
+            a1 = -2.f * c / a0;
+            a2 = (1.f - alpha) / a0;
+        }
+        float process(float x) {
+            float y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+            x2 = x1; x1 = x; y2 = y1; y1 = y;
+            return y;
+        }
+    } hp1(8000.f, 0.5412f), hp2(8000.f, 1.3066f);
+
+    Textor m;
+    long frame = 0;
+    m.declick = declick;
+    m.params[Textor::WARP_LEVEL_PARAM].setValue(0.3f);
+    m.params[Textor::WEFT_LEVEL_PARAM].setValue(0.3f);
+    m.params[Textor::FLECK_LEVEL_PARAM].setValue(0.3f);
+    m.inputs[Textor::AUDIO_INPUT].channels = 1;
+    m.inputs[Textor::REC_INPUT].channels = 1;
+    float phase = 0.f;
+    for (int i = 0; i < (int)(2.3f * SR); i++) {
+        phase += 220.3f / SR; if (phase >= 1.f) phase -= 1.f;
+        m.inputs[Textor::AUDIO_INPUT].setVoltage(5.f * std::sin(2.f * (float)M_PI * phase));
+        m.inputs[Textor::REC_INPUT].setVoltage(i >= 1000 && i < 1100 ? 10.f : 0.f);
+        m.process(makeArgs(frame++));
+    }
+    m.inputs[Textor::AUDIO_INPUT].setVoltage(0.f);
+    m.inputs[Textor::REC_INPUT].setVoltage(0.f);
+
+    float peak = 0.f;
+    for (int k = 0; k < 4; k++) {
+        m.params[Textor::WEAVE_PARAM].setValue(0.3f + 0.1f * k);
+        for (int i = 0; i < (int)(3.f * SR); i++) {
+            m.process(makeArgs(frame++));
+            float h = hp2.process(hp1.process(m.outputs[Textor::LEFT_OUTPUT].getVoltage()));
+            if (i > (int)(0.05f * SR))   // past the filters' own startup
+                peak = std::max(peak, std::fabs(h));
+        }
+    }
+    return peak;
+}
+
+static void testTextorDeclick() {
+    float raw = declickPeak(false);
+    float clean = declickPeak(true);
+    // the raw engine clicks: if it did not, the check below proves nothing
+    report("textor", "declick_off_clicks", raw, raw > 0.3f);
+    report("textor", "declick_on_clean", clean, clean < 0.05f);
+    report("textor", "declick_improves", raw / std::max(clean, 1e-6f),
+           clean < 0.5f * raw);
+}
+
+SMOKE_MAIN(testTextor, testTextorDeclick)
