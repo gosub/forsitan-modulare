@@ -361,6 +361,23 @@ frequency-dependent infinite tails.
 
 ### S7. skrewell-inspired chaos (no spectral core needed)
 
+> **BUILT, 2026-08-09, as `turba`.** 24 HP, branch `turba`, for 2.14.0. Built
+> as inspired-by exactly as advised below, from the REAKTOR factory library
+> manual's description (section 7.2) rather than from the patch. The
+> self-competition worry the library check raises turned out to be misplaced:
+> the interface is the module, not the chaos. bulla, rete and guttur are all
+> knobs-and-jacks modules, and turba is 64 bars in an edit area with four
+> macros that *map* those bars through `v^γ` rather than offsetting them.
+> Nothing in this collection or in the library works that way.
+>
+> The one finding worth keeping: the porters' unexplained observation that
+> chaos arrives when resonance is turned *down* is not a REAKTOR artefact. In
+> a saturating feedback loop, high Q hands the gain to one narrow band and it
+> rings there; open the Q and the loop gets broadband gain for the saturator
+> to fold. Reproduced deliberately here, and measured: a largest-Lyapunov
+> estimate of 0/s below flow -0.5 and 670/s above centre. See
+> [doc/turba.md](doc/turba.md).
+
 Pulse oscillator bank, cross FM/AM, several resonant 2-pole filters, feedback,
 and one FLOW macro sweeping all of it at once. Squarely the rete / bulla /
 guttur family.

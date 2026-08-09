@@ -156,6 +156,54 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     attenuator and one filter per channel, one LFO for all of them, as it is
     one modulator in one box.
 
+  - **turba**, a 24 HP chaotic bank taking its architecture and its interface
+    from **Skrewell**, John Nowak's sound generator in the REAKTOR factory
+    library. Not a port and not for want of trying by other people: Skrewell's
+    chaos lives inside REAKTOR's built-in filters, which cannot be opened, and
+    every attempt to rebuild it in Max/gen~ or Pd has run aground on exactly
+    that. What is taken is the structure the factory library manual describes.
+
+    Eight parallel channels, each an oscillator into a feedback delay with a
+    normalizer in the loop, mixed to stereo. Three topologies differing only
+    in where the filter sits: inside the loop, in front of the delay, or
+    absent, with a parabolic oscillator instead of the pulse. The channels are
+    cross-coupled in a ring, each oscillator frequency-modulated by its
+    right-hand neighbour's loop signal and amplitude-modulated by its
+    left-hand one, so the eight loops are one system. There is no gate and no
+    pitch input; like the original it simply runs.
+
+    Every channel has its own value for each of eight functions, 64 in all,
+    edited as eight bars in the edit area with Skrewell's three mouse
+    behaviours: **draw** sets a bar, **wrap** shifts all eight and mirrors
+    them back at the ends, **rand** jogs all eight at once. Beside it is a
+    Lissajous of the output, as on the original panel.
+
+    The four macro knobs are the part worth knowing about. They do not offset
+    the bars, they **map** them, applying `v^γ` to all eight at once with
+    `γ = 5^-knob`: centre is the identity, hard left crushes the bank so only
+    the tallest bars survive, hard right lifts the whole thing. One knob asks
+    how much of a parameter the bank gets, of eight channels at once, and
+    keeps their order. **pitch** moves the measured centroid from 71 Hz to
+    1385 Hz, **cutoff** from 83 Hz to 1862 Hz, **delay** slides all eight
+    loops from 0.17 ms (comb, ring modulation) to 134 ms (echo).
+
+    **flow** maps the FM and AM bars, sets the engine's inertia from 1 s to
+    2.5 ms, and maps resonance **backwards**: right takes the Q down. That
+    inversion is Skrewell's own, and it is the thing the Max porter found and
+    could not explain, "the resonance parameter in a 2-pole filter being
+    turned down… a pretty surprising behavior". It is reasonable in a
+    feedback loop: high Q hands the loop gain in one narrow band and it rings
+    there, orderly; open it out and the loop has broadband gain for the
+    saturator to fold. Measured as a largest-Lyapunov estimate, there is a
+    real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
+
+    Two deliberate departures. The normalizer only turns a loop **down**;
+    built as a true normalizer, holding every channel at one level, it
+    erased the macro knobs and nothing the bars said survived it. And the
+    additions a Rack module wants and the original has none of: an audio
+    input into all eight loops, an attenuverter and CV per macro, a chaos CV
+    out, and a rand trigger. 1.15 % of a core at 48 kHz.
+
 ### Fixed
   - **sylla**'s GEN light answering almost none of the presses it acted on.
     A sample renders in 0.01 to 15 ms and the light was on for exactly as

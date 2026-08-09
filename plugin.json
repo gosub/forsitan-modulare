@@ -325,6 +325,19 @@
         "Hardware clone",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "turba",
+      "name": "turba",
+      "description": "Chaotic bank: 8 oscillators and 8 feedback delays in a self-modulating ring.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/turba.md",
+      "tags": [
+        "Noise",
+        "Oscillator",
+        "Synth Voice",
+        "Effect",
+        "Random"
+      ]
     }
   ]
 }

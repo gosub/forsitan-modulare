@@ -109,6 +109,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | raucus | Big Muff Pi USA V3 (four transistor stages, feedback diode clipping solved into a table, tone stack as one biquad from a nodal analysis; added gain/bias trims, mids, diode menu, oversampling) | 50.8mm (10HP) |
 | tundo | Basimilus Iteritas Alter clone (six tonal oscillators + noise, spread from harmonic to prime ratios, harm decay/amplitude staging, morph, infinite folder with pulse train; skin/liquid/metal, bass/alto/treble, per-knob attenuverter + CV, env out; engine on its own power-of-two clock through a ZOH) | 71.12mm (14HP) |
 | cartilago | Gristleizer (one band-limited LFO of four shapes into a shunt-FET attenuator that never closes and ticks, or into a ZDF state-variable filter; depth past 100%, v/oct into the audio band for ring modulation, oversampled) | 60.96mm (12HP) |
+| turba | chaotic bank inspired by Reaktor's Skrewell (8 oscillator + feedback-delay channels cross-coupled in a ring, 3 topologies, 64 bars in an edit area, 4 macros that map rather than offset) | 121.92mm (24HP) |
 
 ## limen module
 
