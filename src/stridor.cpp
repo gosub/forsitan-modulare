@@ -30,60 +30,11 @@
 #include "sdt/sdt_control.hpp"
 #include "sdt/sdt_filters.hpp"
 #include "sdt/sdt_interactors.hpp"
+#include "sdt/sdt_material.hpp"
 
 namespace stridor {
 
-static const int kModes = 6;
-
-// Four materials, as modal frequency ratios and per-mode decay factors.
-// Rubber is nearly harmonic and dead; wood is the same shape with more life;
-// metal is a free bar, wide and inharmonic; glass sits between the two and
-// rings the longest.
-struct Material {
-    double ratio[kModes];
-    double decay[kModes];
-    double gain[kModes];
-    double decayScale;
-};
-
-static const Material kMaterials[4] = {
-    // rubber
-    {{1.0, 1.41, 2.10, 2.90, 3.61, 4.40},
-     {1.0, 0.80, 0.62, 0.50, 0.40, 0.33},
-     {1.0, 0.55, 0.30, 0.18, 0.10, 0.06},
-     0.25},
-    // wood
-    {{1.0, 1.72, 2.63, 3.42, 4.51, 5.30},
-     {1.0, 0.90, 0.78, 0.66, 0.55, 0.46},
-     {1.0, 0.70, 0.50, 0.36, 0.25, 0.17},
-     1.0},
-    // metal
-    {{1.0, 2.76, 5.40, 8.93, 13.34, 18.64},
-     {1.0, 0.95, 0.88, 0.80, 0.72, 0.64},
-     {1.0, 0.85, 0.70, 0.56, 0.44, 0.33},
-     3.0},
-    // glass
-    {{1.0, 2.32, 4.25, 6.63, 9.38, 12.22},
-     {1.0, 0.97, 0.93, 0.88, 0.82, 0.75},
-     {1.0, 0.80, 0.62, 0.47, 0.34, 0.24},
-     5.0},
-};
-
-// Morph across the table. Ratios and decays interpolate in the log domain so
-// the sweep sounds even rather than crowding at one end.
-inline void blendMaterial(double x, Material& out) {
-    x = sdt::fclip(x, 0.0, 1.0) * 3.0;
-    const int i = std::min(2, (int)x);
-    const double t = x - i;
-    const Material& a = kMaterials[i];
-    const Material& b = kMaterials[i + 1];
-    for (int m = 0; m < kModes; m++) {
-        out.ratio[m] = std::exp((1.0 - t) * std::log(a.ratio[m]) + t * std::log(b.ratio[m]));
-        out.decay[m] = (1.0 - t) * a.decay[m] + t * b.decay[m];
-        out.gain[m] = (1.0 - t) * a.gain[m] + t * b.gain[m];
-    }
-    out.decayScale = std::exp((1.0 - t) * std::log(a.decayScale) + t * std::log(b.decayScale));
-}
+static const int kModes = sdt::kMaterialModes;
 
 // Pink-ish noise: three one-poles summed, the usual Voss-free approximation.
 // This is the surface the probe is dragged over.
@@ -146,16 +97,12 @@ struct Voice {
         energy = 0.0;
     }
 
-    void setTone(const Material& mat, double f0, double decay) {
-        for (int m = 0; m < kModes; m++) {
-            object.setFrequency(m, f0 * mat.ratio[m]);
-            object.setDecay(m, decay * mat.decayScale * mat.decay[m]);
-            // Pickup gain stays O(1) on purpose. It scales the velocity the
-            // contact senses as well as the output, so it is the gain of the
-            // friction feedback loop: at the SDT patches' 100 the viscosity
-            // term damps every mode to Q≈4 and the object stops ringing.
-            object.setGain(0, m, mat.gain[m]);
-        }
+    // Pickup gain stays O(1) on purpose. It scales the velocity the contact
+    // senses as well as the output, so it is the gain of the friction
+    // feedback loop: at the SDT patches' 100 the viscosity term damps every
+    // mode to Q≈4 and the object stops ringing.
+    void setTone(const sdt::Material& mat, double f0, double decay) {
+        sdt::applyMaterial(object, mat, f0, decay, 1.0);
     }
 
     // Returns the object's displacement at the pickup, DC removed.
@@ -202,7 +149,7 @@ struct Stridor : Module {
     };
 
     stridor::Voice voice;
-    stridor::Material mat;
+    sdt::Material mat;
     dsp::PulseGenerator slipPulse;
     float lastSampleRate = 0.f;
     int ctlCount = 0;
@@ -277,7 +224,7 @@ struct Stridor : Module {
             const double decay = 0.015 * std::pow(266.0, params[DECAY_PARAM].getValue());
 
             if (matKnob != lastMat) {
-                stridor::blendMaterial(matKnob, mat);
+                sdt::blendMaterial(matKnob, mat);
                 lastMat = matKnob;
                 lastF0 = -1.0;
             }
