@@ -343,6 +343,19 @@
         "Sound design",
         "Granular"
       ]
+    },
+    {
+      "slug": "crepitus",
+      "name": "crepitus",
+      "description": "Fracture as a point process: crumpling, tearing and breaking on one criticality knob.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/crepitus.md",
+      "tags": [
+        "Noise",
+        "Physical modeling",
+        "Random",
+        "Drum",
+        "Sound design"
+      ]
     }
   ]
 }
