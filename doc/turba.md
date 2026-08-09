@@ -24,7 +24,13 @@ interface, both reimplemented from scratch. Same precedent as
 
 ## The engine
 
-Eight parallel channels, mixed into one stereo signal. Each channel:
+Eight channels, **sixteen loops**: the ensemble was taken apart for this (see
+*Attribution*) and every tone generator in it holds exactly two `LEVER`
+macros with a `crossvoice` between them, where a LEVER is not an oscillator
+but a whole channel — oscillator, filter, resonance, normalizer, delay and
+feedback. So a channel here is a pair of those, driven by the same bar, the
+second offset a tritone up with a shorter loop so the pair is two loops and
+not one played twice. Each lever:
 
 ```
               ┌──────────── FM from the channel to its right ───┐
@@ -43,11 +49,17 @@ Eight parallel channels, mixed into one stereo signal. Each channel:
 The oscillators never stop and there is no gate and no pitch input. Like the
 original, you switch it on and it runs.
 
-What makes it more than eight parallel drones is the **ring**: `y`, each
-channel's loop signal, is what frequency-modulates the oscillator one seat to
-the left and amplitude-modulates the one to the right. All eight loops are
-therefore one system, and with the filter saturating inside that system it is
-a genuinely chaotic one — see *Is it actually chaotic* below.
+What makes it more than sixteen parallel drones is the coupling, which comes
+in two kinds, as it does in the ensemble. Inside a pair the two levers
+modulate each other — that is what `crossvoice` is there for — and on top of
+that each lever is FM'd by the corresponding lever of the next channel along
+and AM'd by the previous one, a ring through the whole bank. Every loop is
+therefore part of one system, and with the filter saturating inside it that
+system is genuinely chaotic — see *Is it actually chaotic* below.
+
+Lever pairs can be switched off in the context menu, which halves the CPU and
+is not just an economy: see the note there, it is the setting that evolves
+most.
 
 ### Two-state switching
 
@@ -220,7 +232,7 @@ precessing figure is the interesting middle.
 | item | |
 |------|---|
 | **Ring coupling** | off makes each channel modulate *itself* instead of its neighbours. Eight independent chaotic loops rather than one coupled system: much tamer, and useful as a bank of eight droning comb resonators |
-| **Oscillator pairs** | each channel becomes *two* oscillators cross-FM'ing and cross-AM'ing each other rather than one, which is how Skrewell is built: colB counts "3 pairs of oscillators, each pair has cross modulation for FM and AM". Off by default, and that is a measured trade rather than laziness — the pair is brighter and rougher (centroid 626 → 918 Hz in the loop topology, 226 → 419 in bare) and it costs self-evolution at every switching depth (1.02 → 0.61 octaves at wild). Turn it on for harshness, off for movement |
+| **Lever pairs** | both loops of every channel, on by default because it is what the ensemble does. Off, each channel is a single lever: half the CPU, a thinner and more separated bank, and — this is the awkward part — **more** self-evolution, 0.82 octaves of spectral wander against 0.34. Two chaotic loops summed into one voice average each other out, and no amount of coupling weight recovers it (measured at six settings from 0 to 0.85). On is denser, rougher and more faithful; off moves more. There is no setting that is both |
 | **Raw oscillators (aliasing)** | drops the band-limiting from the pulses so every edge folds its harmonics back down the spectrum. colB puts part of Skrewell's character down to it being "digital with aliasing and quantization". Measured, it is a **small** effect here and honesty demands saying so: at the default bank the centroid moves 1052 → 1092 Hz and the spectral flatness 0.011 → 0.013. It shows up properly only with the pitch macro up, where the flatness goes 0.041 → 0.051. The reason is that most of this engine's aliasing never came from the waveform edges in the first place — exponential FM at audio rate throws sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was never correcting those. It also costs nothing; raw is cheaper than band-limited |
 | **Bit crush** | 12, 10 or 8 bits, quantizing each loop signal on its way into the delay. The other half of "aliasing and quantization", and similarly small on its own: 8 bit moves the centroid 1052 → 1123 Hz and doubles the energy above 5 kHz |
 | **Randomize all functions** | off makes the rand button and trigger randomize only the function currently on screen, which is far more controllable than rolling all 64 |
@@ -345,13 +357,17 @@ Recorded so nobody spends the afternoon again:
   changes its phase, not its statistics, so the FM sidebands come out the same.
 - **The normalizer, at every speed and depth.** It is not what holds the
   levels still; see the note above.
+- **Recovering the wander that lever pairs cost**, by reweighting the
+  crossvoice against the ring. Swept from 0 (levers ignore their partner) to
+  0.85 (they barely hear anything else): 0.48 down to 0.30 octaves, against
+  0.82 with a single lever. It is the summing that does it, not the coupling.
 - **Switching the pitch or the delay time** instead of the cutoff, once the
   two-state mechanism was in. Both made the wander worse than no switching at
   all.
 
 ## Cost
 
-1.4% of one core at 48 kHz, all eight channels always running. There is no
+2.8% of one core at 48 kHz with lever pairs on, 1.4% with them off, all eight channels always running. There is no
 oversampling: the loops are saturating feedback paths where aliasing folds
 back into the signal and becomes part of the chaos, and oversampling eight of
 them would cost more than the module is worth.
@@ -376,3 +392,14 @@ and delays come from **colB**'s reverse engineering of the ensemble in
 Skrewell?](https://community.native-instruments.com/discussion/14722/skrewell-hardware-synth-equivalent-ideas-what-is-the-structure-of-skrewell),
 which is the only public account of the structure written by somebody who
 actually opened it.
+
+Beyond that, two ensembles were read directly: **TG-8H** (lAZyfISh, 2003–2013,
+whose own header calls it "an early Skrewell prototype") and a
+multi-output modification of Skrewell itself. Reaktor's `.ens` is a chunked
+binary, but its strings are stored length-prefixed and in structural order,
+which is enough to recover the module tree without parsing the object graph.
+That is where the two-lever architecture, the `crossvoice` between them, the
+per-tone-generator filter differences (`CUT`/`TYP` in one, `HPF`/`LPF` in the
+next, none at all in the third) and the `cc`/`min`/`max` shape of the macro
+mappings all come from. The tooling for it is not in this repository; it was
+forty lines of Python and is described here so it can be redone.

@@ -227,11 +227,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was
     never correcting those.
 
-    In the menu and off by default, **oscillator pairs** makes each channel
+    The channel is a **pair of levers**, sixteen loops in all. That comes from
+    reading the ensembles rather than the forums: every tone generator in
+    Skrewell holds exactly two `LEVER` macros with a `crossvoice` between
+    them, and a LEVER is not an oscillator but a whole channel -- oscillator,
+    filter, resonance, normalizer, delay, feedback. Both levers of a channel
+    are driven by the same bar, the second offset a tritone up with a shorter
+    loop. Pairs can be switched off, which halves the CPU and, awkwardly,
+    evolves more: two chaotic loops summed into one voice average each other
+    out, 0.82 octaves of wander against 0.34, and reweighting the crossvoice
+    against the ring does not recover it (swept at six settings). On is
+    denser, rougher and faithful; off moves more; there is no setting that is
+    both.
+
+    Superseded by the above and removed, **oscillator pairs** makes each channel
     two oscillators cross-FM'ing and cross-AM'ing each other rather than one,
-    which is how Skrewell is built. It is brighter and rougher (centroid
-    626 -> 918 Hz) and it costs self-evolution at every switching depth
-    (1.02 -> 0.61 octaves), so it is a choice rather than a default.
+    was a weaker approximation of the same idea -- a second oscillator inside
+    one channel, sharing its filter and delay -- written before the ensembles
+    were read.
 
     Two deliberate departures. The normalizer only turns a loop **down**;
     built as a true normalizer, holding every channel at one level, the

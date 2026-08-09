@@ -134,13 +134,11 @@ struct Turba : Module {
     // bifDepths; see turba_dsp.hpp for what it does and why it is the cutoff
     // that gets switched.
     int bifIndex = 2;
-    // Each channel as a cross-modulating *pair* of oscillators rather than
-    // one, which is how Skrewell is built. Off by default, and that is a
-    // measured trade rather than a shrug: the pair raises the centroid a
-    // lot (626 -> 918 Hz in the loop topology, 226 -> 419 in bare) and it
-    // costs spectral wander at every switching depth (1.02 -> 0.61 octaves at
-    // "wild"). Brighter and rougher against more self-evolution; ears decide.
-    bool oscPairs = false;
+    // Both levers of each channel. On by default because it is the actual
+    // structure of the ensemble -- every tone generator in Skrewell holds two
+    // LEVER macros with a crossvoice between them -- and off it halves the
+    // CPU and gives a thinner, more separated version of the same bank.
+    bool oscPairs = true;
     // colB's other observation about why Skrewell sounds like it does: it is
     // digital, "with aliasing and quantization". raw drops the band-limiting
     // from the pulses; crush quantizes each loop signal.
@@ -205,7 +203,7 @@ struct Turba : Module {
         randomizeAllFuncs = true;
         scopeScale = 0;
         bifIndex = 2;
-        oscPairs = false;
+        oscPairs = true;
         oscRaw = false;
         crushIndex = 0;
         scopeCount = 0;
@@ -291,7 +289,7 @@ struct Turba : Module {
             eng.topology = (int)std::round(params[MODE_PARAM].getValue());
             eng.ringCoupling = ringCoupling;
             eng.bifurcate = bifDepths[bifIndex];
-            eng.pairMix = oscPairs ? 1.f : 0.f;
+            eng.pairs = oscPairs;
             eng.bandLimit = !oscRaw;
             eng.crushBits = crushLevels[crushIndex];
             updateTargets(args.sampleRate);
@@ -713,7 +711,7 @@ struct TurbaWidget : ModuleWidget {
         menu->addChild(createBoolPtrMenuItem("Ring coupling", "", &module->ringCoupling));
         menu->addChild(createBoolPtrMenuItem("Randomize all functions", "",
                                              &module->randomizeAllFuncs));
-        menu->addChild(createBoolPtrMenuItem("Oscillator pairs", "",
+        menu->addChild(createBoolPtrMenuItem("Lever pairs (both loops per channel)", "",
                                              &module->oscPairs));
         menu->addChild(createBoolPtrMenuItem("Raw oscillators (aliasing)", "",
                                              &module->oscRaw));
