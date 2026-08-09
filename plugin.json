@@ -330,6 +330,19 @@
         "Hardware clone",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "stridor",
+      "name": "stridor",
+      "description": "Dry friction as a voice: a probe dragged over a resonant object, grinding to squeal.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/stridor.md",
+      "tags": [
+        "Oscillator",
+        "Physical modeling",
+        "Noise",
+        "Sound design",
+        "Granular"
+      ]
     }
   ]
 }
