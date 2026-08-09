@@ -382,6 +382,333 @@ guttur family.
   This was already the July list's finding ("chaos attractors: saturated
   corners of the library"), now reconfirmed.
 
+## sccode sweep (2026-08-09)
+
+Third brainstorm, this one systematic rather than associative: a crawl of every
+"added code" post on sccode.org (1052 entries, the site's whole history), read
+for things that would become a *module* rather than a piece. Numbered SC1 up,
+best first, independent of the lists above.
+
+Five sccode entries have already become forsitan modules (blippoo box → bulla,
+guitar feedback → ululo, audrey II → vorax, Walsh-Hadamard → quadrare, scanned
+synthesis → scando) and four more are already ranked above (Radiophoni → 4,
+Molecular Music Box → 8, SC tweets → 10, Paulstretch → S1). Everything here is
+new.
+
+**Novelty checked against the VCV Library 2026-08-09**, by cloning
+`github.com/VCVRack/library` (the manifest repo behind the library, current to
+2026-08-03) and grepping all 4735 module names, descriptions and tags. That is
+a much sharper instrument than the web search used for the earlier lists, so
+the verdicts below are firmer, with one known limit: 217 modules ship an empty
+description, so absence is strong evidence and not proof.
+
+Licensing posture is the same everywhere in this section: sccode posts carry no
+licence unless stated, so these are *techniques read off the code*, not code to
+lift. Every one of them is a paragraph of algorithm, which is why they are here.
+
+### SC1. waveset distortion
+
+Wishart's waveset technique: cut the incoming signal at every second
+zero crossing, and treat those variable-length fragments as the unit of
+playback. Then repeat each waveset N times, omit them at some probability,
+resample them to a fixed length, reverse them, shuffle a window of them.
+Pitch and rhythm come apart in a way nothing time-domain-conventional does.
+
+- Source: [Simple GUI for WavesetsEvent](https://sccode.org/1-5du), which
+  exposes exactly the parameter set a panel wants (start, count, repeats,
+  rate, omission probability, legato/overlap) over
+  [musikinformatik/WavesetsEvent](https://github.com/musikinformatik/WavesetsEvent).
+  The underlying idea is Wishart's *Audible Design*.
+- Cheap: a zero-crossing detector, a ring buffer and an index. No FFT, no
+  latency, works on live input, which is what makes it a Rack module rather
+  than an offline CDP process.
+- **Overlap watch**: perge repeats and glitches, tabes and textor loop. The
+  differentiator is that the *segmentation is the signal's own*, not a clock's,
+  so a repeat count of 3 raises pitch by nothing and stretches time by three.
+  That has to be legible on the panel or it reads as another stutter box.
+- **Library check: CLEAR.** No module mentions wavesets in this sense; the one
+  hit for the word is CV funk Zephyr, whose "waveset families" are wavetable
+  banks. Nothing does zero-crossing segmentation.
+- Name candidates: sectio, incisum.
+
+### SC2. eternal accelerando and glissando
+
+The Risset rhythm: stack six copies of the same loop at octave-spaced rates,
+each one sliding continuously up the rate scale, with a raised-cosine window
+over log rate fading a layer in at the bottom as its neighbour leaves at the
+top. The result speeds up forever without ever arriving. The pitch version is
+the Shepard-Risset glissando, the same construction one dimension over.
+
+- Sources: [Risset rhythm](https://sccode.org/1-511) by snappizz, whose
+  SynthDef is fifteen lines and cites
+  [Stowell's ICMC 2011 paper](http://c4dm.eecs.qmul.ac.uk/papers/2011/Stowell2011icmc.pdf),
+  plus [Shepard-Risset glissando](https://sccode.org/1-5ee).
+- The strong version is an *effect*, not a generator: capture live input into
+  the buffer and drive the illusion with it. RATE (bipolar, accelerate or
+  decelerate), BANDWIDTH (how convincing versus how wide), and a CV over the
+  centre so the illusion can be steered.
+- **Library check: CLEAR.** `risset` and `accelerando` return nothing.
+  `shepard` returns exactly one module, Count Modula Shepard Generator, which
+  emits 8 phased ramps as *control signals* for you to build a Shepard tone
+  out of yourself. Nobody has done the rhythmic version, and nobody applies
+  either to incoming audio.
+- Name candidates: vertigo, gyrus.
+- A wider framing worth considering before drawing the panel: a bank of
+  auditory illusions (Risset rhythm, Shepard glissando, continuity illusion,
+  combination tones from [Sound illusions](https://sccode.org/1-5hd)) as
+  selectable engines, the draen pattern. `illusion` returns zero modules in the
+  whole library. Against it: the engines share no machinery, so it would be a
+  bag rather than an instrument.
+
+### SC3. entrainment network
+
+N pulse nodes, each with its own free rate, each listening to its neighbours
+and pulling its period toward what it hears. One knob from zero coupling
+(N independent metronomes drifting apart forever) to full coupling (all locked
+in phase), with the interesting music living in the middle, where clusters
+form, break and reform.
+
+- Sources: LFSaw's [network of loosely connected nodes](https://sccode.org/1-4Tw)
+  (each node measures the interval between its predecessor's events with a
+  timer and re-emits at that rate; the chain settles after ~15 s), and
+  [Poème Symphonique for 100 Metronomes](https://sccode.org/1-5ir), which is
+  the zero-coupling end of the same dial and supplies the other half of the
+  design: nodes that run down and stop, so the texture thins to a last
+  surviving pulse.
+- Outputs: a gate per node, a sum, and the order parameter (how synchronised
+  the flock is, 0 to 1) as a CV. That last one is what makes it a modulation
+  source and not just a clock bank.
+- **Library check: CLEAR in the rhythm domain, occupied in the audio domain.**
+  ZetaCarinae **Firefly** is a Kuramoto phase-coupled system, but it is five
+  *wavetable oscillators* summed into a timbre, not gates. Moffenzeef **Swarm**
+  is an asynchronous gate generator with no coupling at all. Nothing entrains.
+- **Self-competition**: imber already has 8 players on drunk clocks. The
+  distinction is that imber's clocks wander independently and these listen to
+  each other. If that distinction cannot be heard, this is an imber mode.
+- Name candidates: concentus, turba.
+
+### SC4. residuum, Xenakis sieves
+
+Sieve theory: build a set from unions, intersections and complements of
+residue classes (every n-th unit offset by m), and read the result as either a
+scale or a rhythm. Two or three moduli produce patterns that are periodic but
+never obvious, and the same expression works on pitch and time.
+
+- Source: [sieves](https://sccode.org/1-5fS) by eli.rosenkim, with the
+  Exarchos and Jones paper linked from it. The core function is eight lines.
+- Panel: three or four module/residue pairs, boolean operators between them,
+  the resulting pattern drawn as a strip, outputs for gates and for quantised
+  pitch. The interval succession is the pattern, so it wants a display.
+- **Library check: CLEAR.** `sieve` returns nothing. Xenakis is present in the
+  library only as GENDY (Coalescent GENDYN, docB Gendy), which the July list
+  already ruled out for that reason; sieves are the other half of his toolkit
+  and untouched.
+- Name: cribrum is the literal translation but is already spoken for by S3, so
+  residuum (the residue classes are the actual mechanism) or crates.
+
+### SC5. L-system sequencer
+
+Axiom plus rewrite rules, iterated, then read through a turtle interpretation:
+`F` a note, `+` and `-` transpose, `[` and `]` push and pop a voice. Structure
+that is neither looped nor random, with audible self-similarity at several
+scales, from about twenty bytes of state.
+
+- Sources: [Generating Graphics and Music From The Dragon
+  Curve](https://sccode.org/1-5bp), and blueprint's series of forks
+  ([Weed after P. Bourke](https://sccode.org/1-5gV),
+  [l-systems Pbindef](https://sccode.org/1-5gY),
+  [leaf](https://sccode.org/1-5hy)), which between them show the same engine
+  driving different interpretations.
+- Sits beside campanae (1) and tela (2) as a third pre-electronic pattern
+  tradition, except this one is 1968 rather than 1668.
+- The panel can draw the turtle path, which is the whole appeal of L-systems
+  and would be a display no other sequencer has.
+- **Library check: CLEAR.** `l-system` and `lindenmayer` both return zero.
+  Note that cellular automata, the neighbouring idea, are the opposite:
+  eleven modules, listed under dropped below.
+- Name candidates: arbor, ramus.
+
+### SC6. machina, procedural machines
+
+Andy Farnell's *Designing Sound* motor: a speed envelope drives a saw, the
+rotor is bandpassed noise gated by the drive raised to a power, the stator is
+a folded cosine of the same phase, and the lot goes through a resonant tube.
+RPM as CV, load as CV, and the thing lugs, catches and stalls.
+
+- Sources: DSastre's ports of the book's Pd patches:
+  [Motors](https://sccode.org/1-4RG), [Cars](https://sccode.org/1-4RH)
+  (four-cylinder engine with slugging speed),
+  [Electricity](https://sccode.org/1-4RF), [Insects](https://sccode.org/1-4QB).
+  Farnell's technique is published and the SC ports are readable, so this is
+  the vespae posture: build from the description.
+- **Library check: CLEAR.** Nothing in the library makes engine, motor or
+  machine sounds. The whole procedural-audio-for-sound-design corner of Rack is
+  empty.
+- Honest caveat: it is a sound-design voice, not a musical one, and forsitan
+  has no precedent for that. It earns its place by being a rhythm source that
+  is not a clock: an engine at 12 Hz is a pulse train with physics.
+- Name: machina.
+
+### SC7. self-similar sequences
+
+Sloth canons: from a short seed, generate a sequence obeying `r(n) = r(a*n)`,
+so the sequence contains a slowed copy of itself, which contains a slowed copy
+of itself. Play the fast version against the slow one and the canon is exact at
+every depth. Same family as Nørgård's infinity series.
+
+- Sources: [sloth canons](https://sccode.org/1-5fU) and
+  [monzos + sloth patch](https://sccode.org/1-5fV) by eli.rosenkim, plus
+  [Psloth](https://sccode.org/1-5g3), a pattern class for it by tom.dugovic.
+- Module: seed, ratio `a`, and three or four outputs reading the same sequence
+  at 1x, 1/a, 1/a², so the canon is patchable rather than described.
+- **Library check: CLEAR, with one unknown.** `infinity series`, `norgard` and
+  `self-similar` all return nothing. LydD **Poppy-Fields** calls itself an
+  "Infinite Sequencer Fractal Generator" but its plugin ships no documentation
+  at all, so what it does is unverifiable; check it in Rack before starting.
+- Small module, weekend scale, pairs naturally with SC4 and SC5 on one panel if
+  none of the three justifies its own.
+
+### SC8. relabi, the meandering beat
+
+A metronome whose beats keep their average positions but whose individual beat
+locations random-walk inside the bar, each beat's displacement compensated by
+its neighbour so the bar length never drifts. Rhythm that is neither quantised
+nor free.
+
+- Sources: [mutronome](https://sccode.org/1-5fQ) by eli.rosenkim (tagged
+  relabi, after Peter Blasser's term), and
+  [Cumulative Pulses](https://sccode.org/1-53Y), which reaches similar
+  territory by summing pulse trains.
+- **Library check: CLEAR** for this mechanism. Humanize and swing modules
+  exist everywhere, but they jitter each hit independently; the compensation
+  (push beat 2 late, beat 3 comes early) is what makes it musical rather than
+  sloppy.
+- Ranked here because it is one knob's worth of idea. Most likely home is a
+  mode inside SC3 rather than a panel of its own.
+
+### SC9. UPIC arcs
+
+Xenakis' UPIC: draw arcs on a page, each arc is a voice, x is time and y is
+pitch, and the page is performed by sweeping a playhead across it. Draw
+several and you have written a polyphonic gesture by hand.
+
+- Source: [UPIC waveform editor](https://sccode.org/1-4VJ) by snappizz, a
+  freehand editor toy in a GUI.
+- **Library check: novel in framing, crowded in mechanism.** `upic` and
+  `graphic score` return nothing, but mouse-drawable modules are a category:
+  PdArray **Array**, mscHack **Wave morph Oscillator**, Bacon **ChipYourWave**,
+  Eternal Eclipse **Saros** (drawable envelope screen with playhead), Patina
+  **Memory Pad**. All of them draw one curve. The UPIC idea is *several arcs on
+  one page swept together*, which none of them do.
+- forsitan can build the display (imber's widget is the precedent), which is
+  the only hard part.
+
+### SC10. sonic focal depth
+
+Ten layers running continuously, only one of them in focus at a time: the rest
+are dimmed, blurred and pushed back, and one control moves the focal plane
+through the stack. Depth of field for sound.
+
+- Source: [sonic focal depth](https://sccode.org/1-4Q5) by Dan Stowell.
+- Polyphonic input, a FOCUS CV, and a DEPTH knob setting how sharply focus
+  falls off. Blur being lowpass plus reverb plus level is a design decision, not
+  a given; that choice is the module.
+- **Library check: CLEAR**, and no near neighbour found, but the concept is
+  unproven: it may just be a crossfader with extra steps. Prototype in a patch
+  before committing to a panel.
+
+### SC11. Barry's Satan Maximizer
+
+Steve Harris' LADSPA plugin: a compressor with an absurdly short window that
+destroys transients and drags the noise floor up to the peaks. Two controls,
+decay time and threshold, and everything sounds like it was recorded through a
+wall.
+
+- Source: [Barry's Satan Maximizer](https://sccode.org/1-51w), snappizz's
+  replication.
+- **Library check: CLEAR.** The only `maximizer` hit is a section of Unfiltered
+  Audio Battalion's output stage. Nothing does this deliberately-broken
+  dynamics processing.
+- Weekend module, and the original is GPL, which for once means code could be
+  read rather than only described. Adjacent to raucus, so it would want to look
+  like a sibling.
+
+### SC12. dissonator
+
+Ring modulation aimed at psychoacoustics rather than timbre: place the
+sidebands where they land inside the critical band of the input's partials, so
+the output is maximally rough rather than maximally metallic. Roughness as a
+tracked, controllable quantity.
+
+- Source: [Dissonator](https://sccode.org/1-4Zv), julian.rohrhuber's remix of
+  a dissonant ring modulator.
+- **Library check: CLEAR.** `roughness`, `critical band` and `beating` all
+  return nothing; ring modulators are everywhere but none of them track the
+  input to place their sidebands.
+- Weakest of the batch, and the least certain to be musical, but it is the only
+  idea here that would need a real psychoacoustic model.
+
+### Dropped in this sweep
+
+Checked against the library and abandoned. Recorded so the same entries do not
+get re-proposed.
+
+- **The Muse** ([1-4Rg](https://sccode.org/1-4Rg), an emulator of Triadex's
+  1972 sequencer): occupied twice over, by SignalFunctionSet **Muse**
+  ("faithful Triadex Muse port", 40 sources, 31-bit XNOR register) and docB
+  **TME**. This was the most attractive entry in the crawl until the check.
+- **PadSynth** ([1-58B](https://sccode.org/1-58B), Nasca's algorithm):
+  docB **Pad** and **Pad2** are both PadSynth. Note this is the same author as
+  Paulstretch, so S1 has a neighbour in the library after all, just not for
+  the stretching half.
+- **SCGAZER** ([1-5db](https://sccode.org/1-5db), a recreation of the
+  Møffenzeef Stargazer): Moffenzeef ships **Stargazer** in the library
+  themselves, along with 25 other modules. Cloning a brand that is already
+  present in the library is the worst version of a clone.
+- **Game of Life and cellular automata** ([1-4YW](https://sccode.org/1-4YW),
+  [1-4Xf](https://sccode.org/1-4Xf), [1-4WC](https://sccode.org/1-4WC)): eleven
+  modules, including docB **C42** / **CCA** / **CCA2** / **Ant**, 23volts
+  **Cells**, Ouroboros **Automata**, Voxglitch **Glitch Sequencer**,
+  AlgoritmArte **CyclicCA**, Sparkette **Microcosm**, iggy.labs
+  **more-ideas**, Ondas **Bittorio**, Sonus **Cellular Noise**.
+- **Wine glass / glass armonica** ([1-51e](https://sccode.org/1-51e)):
+  CV funk **Glass** is "a glass armonica physical model".
+- **Bouncing ball triggers** ([1-51X](https://sccode.org/1-51X)): Voxglitch
+  **Hazumi**, JW **Bouncy Balls**, Bidoo **ChUTE**. The one untouched corner is
+  snappizz's [bouncy-ball delay](https://sccode.org/1-56v), a *delay* whose
+  echoes accelerate as the ball settles, which is a different module from a
+  bouncing-ball sequencer. Too thin to build alone; a good mode for a delay.
+- **Vinyl crackle** ([1-4Sj](https://sccode.org/1-4Sj),
+  [1-1H](https://sccode.org/1-1H)): HetrickCV **Crackle** is itself a
+  SuperCollider port, and stoermelder **DIRT** covers the defect-modelling
+  angle.
+- **Doppler** ([1-5ef](https://sccode.org/1-5ef)): nozoïd
+  **Nozori_84_DOPPLER** and NYSTHI **DOPPLAB**.
+- **Integer-sequence sequencers** ([Collatz](https://sccode.org/1-4Vx),
+  [Pisano](https://sccode.org/1-4Wb), [Kaprekar](https://sccode.org/1-4Wv)):
+  CV funk **Collatz** and two Fibonacci clock dividers already occupy the
+  "number theory as rhythm" idea, and the remaining sequences are
+  interchangeable with those.
+- **Morse code** ([1-4RQ](https://sccode.org/1-4RQ)): four modules
+  (Tonecarver, mscHack, Moffenzeef, Daniel Davies).
+- **Markov chains** ([1-5ca](https://sccode.org/1-5ca),
+  [1-4Su](https://sccode.org/1-4Su)): ZetaCarinae **Rosenchance** and
+  **GuildensTurn**.
+- **DX7 emulation** ([1-57R](https://sccode.org/1-57R)): SignalFunctionSet
+  **Operator** loads real `.syx` cartridges on the msfa engine.
+- **Wiard noise ring** ([1-4SD](https://sccode.org/1-4SD)): shift-register
+  randomness, which is bulla's runglers plus the saturated Turing corner.
+- **Convolution reverb / reverse reverb** ([1-5hf](https://sccode.org/1-5hf),
+  [1-5he](https://sccode.org/1-5he)): NYSTHI **CONVOLVZILLA**.
+- **Boids** ([1-4RY](https://sccode.org/1-4RY)): already ranked as 11 above,
+  and the sccode entry is a port of a Cycling '74 example used with permission,
+  so it is not a source to work from.
+- **THX Deep Note** ([1-5c6](https://sccode.org/1-5c6)): a beautiful
+  reconstruction of a single gesture. One-trick, and the trick is 30 seconds
+  long.
+- **Compositions** (Ligeti aside, which contributed to SC3): the finding from
+  the first list holds. Instruments port, compositions do not.
+
 ## Considered and dropped
 
 - **Chase Bliss Mood mk2 / Lost + Found / Bad Mood**: worst case on both axes
