@@ -85,6 +85,9 @@ struct Crepitus : Module {
 
     Crepitus() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+        // Per instance, or two of these in a patch fire the same events at the
+        // same samples.
+        engine.rng = sdt::Rng(random::u32());
         configParam(DRIVE_PARAM, 0.f, 1.f, 0.5f, "Drive (event rate)", " /s", 6000.f, 0.5f);
         configParam(CRIT_PARAM, 0.f, 3.f, 0.6f, "Criticality (branching ratio)");
         configParam(ENERGY_PARAM, 0.f, 1.f, 0.55f, "Event energy", " J", 100.f, 0.05f);

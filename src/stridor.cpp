@@ -160,6 +160,10 @@ struct Stridor : Module {
 
     Stridor() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
+        // Per instance, or two of these in a patch would rub the same surface
+        // sample for sample and phase against each other.
+        voice.contact.rng = sdt::Rng(random::u32());
+        voice.pink.rng = sdt::Rng(random::u32());
         configParam(FORCE_PARAM, 0.f, 1.f, 0.5f, "Normal force", " N", 0.f, 12.f);
         // Exponential, and it has to be: everything interesting happens
         // between 1 and 100 mm/s, and above ~0.3 m/s the contact just slides.
