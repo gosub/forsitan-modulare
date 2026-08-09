@@ -403,3 +403,21 @@ per-tone-generator filter differences (`CUT`/`TYP` in one, `HPF`/`LPF` in the
 next, none at all in the third) and the `cc`/`min`/`max` shape of the macro
 mappings all come from. The tooling for it is not in this repository; it was
 forty lines of Python and is described here so it can be redone.
+
+**What that does not include is the wiring.** The records are bracketed —
+`[`, a length-prefixed class name, a payload, `]` — and a bracket walk over
+the Skrewell file yields 3531 of them: 1077 `KSModul`, 1345 `KInPort`, 1108
+`KOutPort`, one `KEnsemble`. That is the object *tree*, and containment and
+order come out of it reliably. The connections do not. A port record's payload
+is 25 bytes and holds no reference to another port: the `-1`s in it are the
+same in every port, and the trailing values that look like identifiers cross
+match between inputs and outputs 18 times out of 1345, which is chance. The
+graph is somewhere in the 3.1 MB of unparsed blobs hanging off four
+`KSModul` records — most of that will be the snapshot banks and the panel
+bitmaps, but the connection table is in there too.
+
+So: the parts list and the grouping are read from the ensemble and can be
+relied on. **The signal flow inside a lever is not.** What modulates what, in
+what order, with what scaling, is still this module's own design, informed by
+the factory manual's description and by the forum accounts. Anyone wanting to
+go further should start by working out the layout of those blobs.
