@@ -65,6 +65,7 @@ static const int CONTROL_PERIOD = 32;
 // Lissajous history, written by the audio thread and read by the widget.
 static const int SCOPE_POINTS = 512;
 static const int SCOPE_DECIM = 12;
+static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
 
 struct Turba : Module {
     enum ParamId {
@@ -120,6 +121,9 @@ struct Turba : Module {
     // context menu options
     bool ringCoupling = true;
     bool randomizeAllFuncs = true;
+    // Skrewell's "Display Control", which scales the Lissajous. Index into
+    // scopeScales below; 1x means +/-5 V fills the box.
+    int scopeScale = 0;
 
     Turba() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -173,6 +177,7 @@ struct Turba : Module {
         eng.reset();
         ringCoupling = true;
         randomizeAllFuncs = true;
+        scopeScale = 0;
         scopeCount = 0;
     }
 
@@ -278,8 +283,9 @@ struct Turba : Module {
         lights[RIGHT_LIGHT].setBrightness(clamp(envR * 0.4f, 0.f, 1.f));
 
         if ((args.frame % SCOPE_DECIM) == 0) {
-            scopeX[scopeHead] = clamp(l * 0.1f, -1.f, 1.f);
-            scopeY[scopeHead] = clamp(r * 0.1f, -1.f, 1.f);
+            const float sc = 0.2f * scopeScales[scopeScale];
+            scopeX[scopeHead] = clamp(l * sc, -1.f, 1.f);
+            scopeY[scopeHead] = clamp(r * sc, -1.f, 1.f);
             scopeHead = (scopeHead + 1) % SCOPE_POINTS;
             if (scopeCount < SCOPE_POINTS) scopeCount++;
         }
@@ -289,6 +295,7 @@ struct Turba : Module {
         json_t* root = json_object();
         json_object_set_new(root, "ringCoupling", json_boolean(ringCoupling));
         json_object_set_new(root, "randomizeAllFuncs", json_boolean(randomizeAllFuncs));
+        json_object_set_new(root, "scopeScale", json_integer(scopeScale));
         return root;
     }
 
@@ -297,6 +304,8 @@ struct Turba : Module {
         if (j) ringCoupling = json_boolean_value(j);
         j = json_object_get(root, "randomizeAllFuncs");
         if (j) randomizeAllFuncs = json_boolean_value(j);
+        j = json_object_get(root, "scopeScale");
+        if (j) scopeScale = clamp((int)json_integer_value(j), 0, 3);
     }
 };
 
@@ -580,6 +589,7 @@ struct TurbaWidget : ModuleWidget {
 // @elem FUNC_PARAM RoundBlackKnob 4.8 param "" 0.0 16.00 53.00
 // @elem MODE_PARAM CKSSThree 2.3 param "" 0.0 42.00 53.00
 // @elem EDIT_PARAM CKSSThree 2.3 param "" 0.0 64.00 53.00
+// @elem RAND_PARAM TL1105 2.6 param "" 0.0 82.00 53.00
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0 100.00 53.00
 // @elem PITCH_PARAM RoundBigBlackKnob 7.62 param "" 0.0 16.00 73.00
 // @elem CUTOFF_PARAM RoundBigBlackKnob 7.62 param "" 0.0 44.00 73.00
@@ -593,7 +603,6 @@ struct TurbaWidget : ModuleWidget {
 // @elem CUTOFF_CV_INPUT PJ301MPort 4.01 input "" 0.0 44.00 98.00
 // @elem DELAY_CV_INPUT PJ301MPort 4.01 input "" 0.0 72.00 98.00
 // @elem FLOW_CV_INPUT PJ301MPort 4.01 input "" 0.0 100.00 98.00
-// @elem RAND_PARAM TL1105 2.6 param "" 0.0 30.00 98.00
 // @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0 12.00 111.00
 // @elem RAND_INPUT PJ301MPort 4.01 input "" 0.0 30.00 111.00
 // @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0 76.00 111.00
@@ -607,13 +616,14 @@ struct TurbaWidget : ModuleWidget {
 // @elem LABEL_FUNC label 0.0 label "function" 0.0 16.00 61.50
 // @elem LABEL_MODE label 0.0 label "mode" 0.0 42.00 61.50
 // @elem LABEL_EDIT label 0.0 label "edit" 0.0 64.00 61.50
+// @elem LABEL_RAND_PARAM label 0.0 label "rand" 0.0 82.00 60.00
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 100.00 61.50
 // @elem LABEL_PITCH label 0.0 label "pitch" 0.0 16.00 84.50
 // @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 44.00 84.50
 // @elem LABEL_DELAY label 0.0 label "delay" 0.0 72.00 84.50
 // @elem LABEL_FLOW label 0.0 label "flow" 0.0 100.00 84.50
 // @elem LABEL_AUDIO label 0.0 label "in" 0.0 12.00 118.50
-// @elem LABEL_RAND label 0.0 label "rand" 0.0 30.00 118.50
+// @elem LABEL_RAND_INPUT label 0.0 label "rand" 0.0 30.00 118.50
 // @elem LABEL_CV label 0.0 label "cv" 0.0 76.00 118.50
 // @elem LABEL_LEFT label 0.0 label "L" 0.0 94.00 118.50
 // @elem LABEL_RIGHT label 0.0 label "R" 0.0 110.00 118.50
@@ -626,6 +636,7 @@ struct TurbaWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.00f, 53.00f)), module, Turba::FUNC_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(42.00f, 53.00f)), module, Turba::MODE_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(64.00f, 53.00f)), module, Turba::EDIT_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(82.00f, 53.00f)), module, Turba::RAND_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(100.00f, 53.00f)), module, Turba::LEVEL_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(16.00f, 73.00f)), module, Turba::PITCH_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(44.00f, 73.00f)), module, Turba::CUTOFF_PARAM));
@@ -639,7 +650,6 @@ struct TurbaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 98.00f)), module, Turba::CUTOFF_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 98.00f)), module, Turba::DELAY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.00f, 98.00f)), module, Turba::FLOW_CV_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(30.00f, 98.00f)), module, Turba::RAND_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.00f, 111.00f)), module, Turba::AUDIO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.00f, 111.00f)), module, Turba::RAND_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 111.00f)), module, Turba::CV_OUTPUT));
@@ -657,6 +667,10 @@ struct TurbaWidget : ModuleWidget {
         menu->addChild(createBoolPtrMenuItem("Ring coupling", "", &module->ringCoupling));
         menu->addChild(createBoolPtrMenuItem("Randomize all functions", "",
                                              &module->randomizeAllFuncs));
+        menu->addChild(createIndexSubmenuItem("Display scale",
+            {"1x (+/-5 V)", "2x", "4x", "8x"},
+            [=]() { return module->scopeScale; },
+            [=](int idx) { module->scopeScale = idx; }));
         menu->addChild(createMenuItem("Randomize channels", "", [=]() {
             module->randomizeChannels();
         }));
