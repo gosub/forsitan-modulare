@@ -254,29 +254,63 @@ eight channels is fixed rather than a parameter; and the input, the four CV
 inputs, the CV output and the rand trigger have no counterpart in the
 original.
 
-## What it does not do
+## Making it wander
 
-turba standing still is **stationary**. Its chaos is fast: the largest
-Lyapunov estimate of 670/s means the waveform decorrelates in a millisecond
-or two, which makes a restless *texture* whose statistics never change.
-Measured over a minute of untouched output, the spread of its short-time
-loudness is 0.2 dB — it does not surge, drop out or lurch on its own.
+turba has two quite different kinds of motion in it and they are worth
+separating, because only one of them is automatic.
 
-Recordings of Skrewell move 1.5 to 5.7 dB by the same measure, but every one
-that could be found is a *performance*, with somebody's hand on the controls,
-so that is not a like-for-like comparison. Driven equivalently — flow swept
-over twenty seconds — turba measures 5.8 dB, and with all four macros drifting
-7.8 dB. The dynamics are there; they come from the hand or from CV, not from
-the bank.
+The **fast** one is the chaos: a largest-Lyapunov estimate of 670/s means the
+waveform decorrelates in a millisecond or two. That is what makes it restless
+rather than a static tone. But fast chaos mixes fast, and a fast-mixing system
+has *stationary statistics* — it can be violent and still not go anywhere.
 
-Whether that is a shortfall depends on what you want. If you want it to
-evolve untouched, patch something slow into a macro; the **cv** output feeding
-back into a macro input is the cheapest way, and the attenuverters set how far
-it wanders. Several attempts to give the engine its own slow motion — a second
-ring of envelope followers cross-coupling the loop gains, at both signs, three
-lag settings and gains up to 3 — all measured null, at 0.15 to 0.32 dB. The
-reason is structural: eight oscillators running at constant amplitude sum to
-constant power, and nothing downstream of them can swing the level far.
+The **slow** one is the bank moving through its own range, and that is a
+property of where you put the bars, not something the engine does by itself.
+The measure is the spread of the spectral centroid over a long untouched run,
+in octaves (`test/turba_probe wander`). Three things control it, in order of
+how much they matter:
+
+| | |
+|---|---|
+| **long delays** | the biggest one by far. Below about 10 ms a loop is a comb and settles in a few passes; up at 100–300 ms it takes a tenth of a second per pass and its state survives long enough to evolve |
+| **feedback near unity** | at 0.5 every loop is safely damped and nothing ever builds. Push the **fbk** bars to 0.9–1.0 and loops build, saturate against the limiter and collapse, which is where the lurching comes from |
+| **pitches close together** | eight channels spread over three octaves beat against each other at audio rate, which is timbre. Eight inside a fifth beat *slowly*, and the cross-modulation turns those slow beats into slow movement |
+
+The default bank is set that way — delays 30–307 ms, every loop between 0.88
+and 1.0, pitches within a fifth — which is worth knowing if you wonder why it
+sounds nothing like eight independent oscillators. An earlier default with
+half the feedback and 2–40 ms delays measured 0.04 octaves of wander; this one
+measures 0.19–0.24 in all three topologies.
+
+Two honest caveats. **flow hard left kills it** (0.01 octaves): that end is
+the periodic, ordered one, and the 1 s inertia there means nothing moves
+quickly either. And turba still does not reach the reference recordings of
+Skrewell, which measure 0.75 and 3.74 octaves — though every one of those is a
+*performance*, with a hand on the controls, so it is not a like-for-like
+comparison. Driven equivalently, with flow swept over twenty seconds, turba's
+short-time loudness moves 5.8 dB against their 1.5–5.7.
+
+If you want more movement than the bank gives you, patch something slow into a
+macro. The **cv** output into one of the macro inputs is the cheapest, and the
+attenuverter sets how far it goes.
+
+### What was tried and did not work
+
+Recorded so nobody spends the afternoon again:
+
+- **A second, slow ring**: an envelope follower per channel, cross-coupling
+  the loop gains, at both signs, three lag settings and gains up to 3. All
+  null, 0.15–0.32 dB. Eight oscillators at constant amplitude sum to constant
+  power, and modulating loop *gain* barely moves a channel's level, so the
+  slow loop has almost no gain to go unstable with.
+- **Cross-FM tapped after the neighbour's delay line** rather than from its
+  current output, so the modulation arrives 0.15–307 ms late. Plausible, one
+  line to implement, and null: over fourteen random banks, paired against the
+  same banks with the instantaneous tap, it won five times and the means were
+  0.213 against 0.221 octaves. Delaying a stationary audio-rate modulator
+  changes its phase, not its statistics, so the FM sidebands come out the same.
+- **The normalizer, at every speed and depth.** It is not what holds the
+  levels still; see the note above.
 
 ## Cost
 

@@ -7,13 +7,15 @@
 //   macros    spectral centroid against each macro knob
 //   lyapunov  divergence rate of two runs from almost the same state, the
 //             evidence that this thing is actually chaotic and not just busy
+//   wander    how much the spectrum moves with nobody touching anything,
+//             which is the measure that caught the bank sitting still
 //   cpu       real time per sample against the audio budget
 //
 // Plus `render`, which writes 16-bit stereo WAVs of the bank at a spread of
 // settings. Those are for listening to, and for measuring against reference
 // recordings of the instrument this module takes after.
 //
-// Usage: ./turba_probe [levels|flow|macros|lyapunov|cpu|all]
+// Usage: ./turba_probe [levels|flow|macros|lyapunov|wander|cpu|all]
 //        ./turba_probe render <directory> [seconds]
 
 #include "smoke_harness.hpp"
@@ -22,6 +24,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
+#include <algorithm>
 #include <vector>
 
 static void settle(Turba& m, long& frame, double seconds) {
@@ -165,6 +168,67 @@ static void probeLyapunov() {
     }
 }
 
+// Spectral wander: the per-window centroid over a long run, reported as the
+// spread and the mean window-to-window step, both in octaves. This is the
+// measure that matters for "does it evolve on its own", and it is not the
+// same as loudness: eight oscillators at constant amplitude sum to constant
+// power however much their frequencies move. Reference recordings of Skrewell
+// standing still measure 0.75 and 3.74 octaves of spread (both of them
+// performances, so treat as an upper bound rather than a target).
+static void probeWander() {
+    printf("\n== spectral wander, 60 s untouched (octaves) ==\n");
+    printf("topology   flow    spread    step   burst\n");
+    static const char* name[3] = {"loop", "pre", "bare"};
+    for (int t = 0; t < 3; t++) {
+        for (float flow : {-1.f, 0.f, 1.f}) {
+            Turba m;
+            m.params[Turba::MODE_PARAM].setValue((float)t);
+            m.params[Turba::FLOW_PARAM].setValue(flow);
+            m.params[Turba::LEVEL_PARAM].setValue(0.5f);
+            long frame = 0;
+            settle(m, frame, 6.0);
+
+            const int W = (int)(0.5 * SR);
+            std::vector<double> oct, db;
+            for (int w = 0; w < 120; w++) {
+                double s2 = 0, d2 = 0;
+                float prev = 0.f;
+                for (int i = 0; i < W; i++) {
+                    m.process(makeArgs(frame++));
+                    float v = m.outputs[Turba::LEFT_OUTPUT].getVoltage();
+                    if (!std::isfinite(v)) v = 0.f;
+                    s2 += (double)v * v;
+                    const float d = v - prev;
+                    d2 += (double)d * d;
+                    prev = v;
+                }
+                const double rms = std::sqrt(s2 / W);
+                if (rms < 1e-5) continue;
+                const double c = (SR / (2 * M_PI)) *
+                    std::asin(std::min(0.5 * std::sqrt(d2 / W) / rms, 1.0));
+                if (c > 0) {
+                    oct.push_back(std::log2(c));
+                    db.push_back(20 * std::log10(rms));
+                }
+            }
+            if (oct.size() < 8) {
+                printf("%-9s %+5.1f   (silent)\n", name[t], flow);
+                continue;
+            }
+            double acc = 0;
+            for (size_t i = 1; i < oct.size(); i++)
+                acc += std::fabs(oct[i] - oct[i - 1]);
+            std::vector<double> so = oct, sd = db;
+            std::sort(so.begin(), so.end());
+            std::sort(sd.begin(), sd.end());
+            printf("%-9s %+5.1f  %8.2f %7.3f %7.2f\n", name[t], flow,
+                   so[(int)(0.9 * (so.size() - 1))] - so[(int)(0.1 * (so.size() - 1))],
+                   acc / (oct.size() - 1),
+                   sd[(int)(0.9 * (sd.size() - 1))] - sd[(int)(0.1 * (sd.size() - 1))]);
+        }
+    }
+}
+
 static void probeCpu() {
     printf("\n== cpu ==\n");
     Turba m;
@@ -260,6 +324,7 @@ int main(int argc, char** argv) {
     if (all || !std::strcmp(which, "flow")) probeFlow();
     if (all || !std::strcmp(which, "macros")) probeMacros();
     if (all || !std::strcmp(which, "lyapunov")) probeLyapunov();
+    if (all || !std::strcmp(which, "wander")) probeWander();
     if (all || !std::strcmp(which, "cpu")) probeCpu();
     return 0;
 }

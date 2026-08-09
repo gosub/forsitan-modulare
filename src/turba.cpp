@@ -44,14 +44,22 @@ static const char* funcName[NFUNC] = {
     "pitch", "cutoff", "reso", "time", "fbk", "fm", "am", "level"
 };
 
-// A starting bank: eight channels detuned across three octaves, moderate
-// feedback, enough cross-modulation to be alive without being a mess.
+// A starting bank. The three rows that matter for whether this thing sits
+// still are fbk, time and pitch, and they are set where they are on purpose:
+// long delays (30-307 ms) with every loop just under or just over unity, and
+// the eight pitches inside a fifth of each other rather than spread over
+// three octaves. That is the regime where the bank wanders on its own -- the
+// loops take a tenth of a second per pass, so state survives long enough to
+// evolve, and channels close in pitch beat slowly against each other through
+// the cross-modulation. An earlier default with half the feedback and 2-40 ms
+// delays measured 0.04 octaves of spectral wander over a minute; this one
+// measures 0.19-0.20 in every topology. See "Making it wander" in the manual.
 static const float chDefault[NFUNC][NCH] = {
-    {0.47f, 0.32f, 0.60f, 0.38f, 0.53f, 0.26f, 0.66f, 0.42f},   // pitch
+    {0.48f, 0.38f, 0.56f, 0.42f, 0.52f, 0.34f, 0.60f, 0.44f},   // pitch
     {0.66f, 0.52f, 0.74f, 0.58f, 0.70f, 0.48f, 0.78f, 0.62f},   // cutoff
     {0.45f, 0.55f, 0.40f, 0.60f, 0.50f, 0.35f, 0.58f, 0.48f},   // reso
-    {0.34f, 0.52f, 0.28f, 0.61f, 0.44f, 0.70f, 0.38f, 0.56f},   // time
-    {0.55f, 0.48f, 0.60f, 0.44f, 0.58f, 0.50f, 0.62f, 0.46f},   // fbk
+    {0.74f, 0.87f, 0.70f, 0.94f, 0.81f, 1.00f, 0.77f, 0.90f},   // time
+    {0.95f, 0.91f, 0.99f, 0.88f, 0.97f, 0.92f, 1.00f, 0.89f},   // fbk
     {0.30f, 0.22f, 0.36f, 0.18f, 0.28f, 0.34f, 0.24f, 0.32f},   // fm
     {0.26f, 0.34f, 0.20f, 0.38f, 0.30f, 0.24f, 0.36f, 0.28f},   // am
     {0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f},   // level

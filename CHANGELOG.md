@@ -197,6 +197,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     saturator to fold. Measured as a largest-Lyapunov estimate, there is a
     real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
 
+    The default bank is set where the thing actually moves: delays 30-307 ms,
+    every loop between 0.88 and 1.0 so it builds and collapses against the
+    limiter, and the eight pitches inside a fifth so they beat slowly against
+    each other rather than at audio rate. Those three, in that order, are what
+    decide whether the bank wanders on its own; an earlier default at half the
+    feedback with 2-40 ms delays measured 0.04 octaves of spectral wander over
+    an untouched minute, this one measures 0.19-0.24 in every topology.
+
     Two deliberate departures. The normalizer only turns a loop **down**;
     built as a true normalizer, holding every channel at one level, the
     macros stop changing how loud anything is (the RMS span of the cutoff
