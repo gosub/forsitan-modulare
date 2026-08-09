@@ -67,6 +67,17 @@ static const float chDefault[NFUNC][NCH] = {
 
 enum FuncId { F_PITCH, F_CUTOFF, F_RESO, F_TIME, F_FBK, F_FM, F_AM, F_LEVEL };
 
+// The bare topology has no filter, so two of the eight functions have nothing
+// to point at there. carloskleiber, dissecting the original's polycontrol:
+// "In Skrewell it controls 8 (or 6) parameters of 8 oscillators" -- the six
+// being exactly this case. The bars stay editable, because they are real
+// parameters and a mode switch must not silently drop them, but the edit area
+// says so rather than letting you draw into a function that does nothing.
+static bool funcActive(int func, int topology) {
+    if (topology != turba_dsp::TOPO_BARE) return true;
+    return func != F_CUTOFF && func != F_RESO;
+}
+
 // How many samples between control-rate updates of the mapped targets.
 static const int CONTROL_PERIOD = 32;
 
@@ -387,6 +398,11 @@ struct TurbaEditArea : OpaqueWidget {
         return clamp((int)std::round(module->params[Turba::FUNC_PARAM].getValue()),
                      0, NFUNC - 1);
     }
+    int topology() const {
+        if (!module) return 0;
+        return clamp((int)std::round(module->params[Turba::MODE_PARAM].getValue()),
+                     0, 2);
+    }
     int editMode() const {
         if (!module) return 0;
         return clamp((int)std::round(module->params[Turba::EDIT_PARAM].getValue()),
@@ -513,6 +529,7 @@ struct TurbaEditArea : OpaqueWidget {
             nvgStroke(args.vg);
         }
 
+        const bool active = funcActive(func(), topology());
         const float pitch = w / NCH;
         for (int c = 0; c < NCH; c++) {
             const float v = bar(c);
@@ -527,13 +544,15 @@ struct TurbaEditArea : OpaqueWidget {
 
             nvgBeginPath(args.vg);
             nvgRect(args.vg, x, h - 3.f - bh, bw, bh);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0xcc));
+            nvgFillColor(args.vg, active ? nvgRGBA(0xff, 0xd5, 0x00, 0xcc)
+                                         : nvgRGBA(0xff, 0xd5, 0x00, 0x33));
             nvgFill(args.vg);
 
             // cap line, so a bar at zero is still visible
             nvgBeginPath(args.vg);
             nvgRect(args.vg, x, h - 4.f - bh, bw, 1.5f);
-            nvgFillColor(args.vg, nvgRGB(0xff, 0xf0, 0x80));
+            nvgFillColor(args.vg, active ? nvgRGB(0xff, 0xf0, 0x80)
+                                         : nvgRGB(0x80, 0x78, 0x40));
             nvgFill(args.vg);
         }
 
@@ -546,9 +565,15 @@ struct TurbaEditArea : OpaqueWidget {
             static const char* editName[3] = {"draw", "wrap", "rand"};
             nvgFontFaceId(args.vg, font->handle);
             nvgFontSize(args.vg, 10.f);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0x99));
+            nvgFillColor(args.vg, active ? nvgRGBA(0xff, 0xd5, 0x00, 0x99)
+                                         : nvgRGBA(0xff, 0xd5, 0x00, 0x44));
             nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
-            nvgText(args.vg, 4.f, 3.f, funcName[func()], NULL);
+            if (active)
+                nvgText(args.vg, 4.f, 3.f, funcName[func()], NULL);
+            else
+                nvgText(args.vg, 4.f, 3.f,
+                        string::f("%s (no filter in bare)",
+                                  funcName[func()]).c_str(), NULL);
             nvgFillColor(args.vg, nvgRGBA(0xe5, 0xe5, 0xe5, 0x66));
             nvgTextAlign(args.vg, NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
             nvgText(args.vg, w - 4.f, 3.f, editName[editMode()], NULL);
