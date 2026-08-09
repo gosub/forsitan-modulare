@@ -74,6 +74,7 @@ static const int CONTROL_PERIOD = 32;
 static const int SCOPE_POINTS = 512;
 static const int SCOPE_DECIM = 12;
 static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
+static const float bifDepths[4] = {0.f, 1.25f, 2.5f, 3.5f};
 
 struct Turba : Module {
     enum ParamId {
@@ -128,6 +129,17 @@ struct Turba : Module {
 
     // context menu options
     bool ringCoupling = true;
+    // Depth of the two-state switch, in octaves of filter cutoff. Index into
+    // bifDepths; see turba_dsp.hpp for what it does and why it is the cutoff
+    // that gets switched.
+    int bifIndex = 2;
+    // Each channel as a cross-modulating *pair* of oscillators rather than
+    // one, which is how Skrewell is built. Off by default, and that is a
+    // measured trade rather than a shrug: the pair raises the centroid a
+    // lot (626 -> 918 Hz in the loop topology, 226 -> 419 in bare) and it
+    // costs spectral wander at every switching depth (1.02 -> 0.61 octaves at
+    // "wild"). Brighter and rougher against more self-evolution; ears decide.
+    bool oscPairs = false;
     bool randomizeAllFuncs = true;
     // Skrewell's "Display Control", which scales the Lissajous. Index into
     // scopeScales below; 1x means +/-5 V fills the box.
@@ -186,6 +198,8 @@ struct Turba : Module {
         ringCoupling = true;
         randomizeAllFuncs = true;
         scopeScale = 0;
+        bifIndex = 2;
+        oscPairs = false;
         scopeCount = 0;
     }
 
@@ -268,6 +282,8 @@ struct Turba : Module {
         if (controlPhase == 0) {
             eng.topology = (int)std::round(params[MODE_PARAM].getValue());
             eng.ringCoupling = ringCoupling;
+            eng.bifurcate = bifDepths[bifIndex];
+            eng.pairMix = oscPairs ? 1.f : 0.f;
             updateTargets(args.sampleRate);
             eng.glide(tgt, CONTROL_PERIOD);
         }
@@ -304,6 +320,8 @@ struct Turba : Module {
         json_object_set_new(root, "ringCoupling", json_boolean(ringCoupling));
         json_object_set_new(root, "randomizeAllFuncs", json_boolean(randomizeAllFuncs));
         json_object_set_new(root, "scopeScale", json_integer(scopeScale));
+        json_object_set_new(root, "bifIndex", json_integer(bifIndex));
+        json_object_set_new(root, "oscPairs", json_boolean(oscPairs));
         return root;
     }
 
@@ -314,6 +332,10 @@ struct Turba : Module {
         if (j) randomizeAllFuncs = json_boolean_value(j);
         j = json_object_get(root, "scopeScale");
         if (j) scopeScale = clamp((int)json_integer_value(j), 0, 3);
+        j = json_object_get(root, "bifIndex");
+        if (j) bifIndex = clamp((int)json_integer_value(j), 0, 3);
+        j = json_object_get(root, "oscPairs");
+        if (j) oscPairs = json_boolean_value(j);
     }
 };
 
@@ -675,6 +697,12 @@ struct TurbaWidget : ModuleWidget {
         menu->addChild(createBoolPtrMenuItem("Ring coupling", "", &module->ringCoupling));
         menu->addChild(createBoolPtrMenuItem("Randomize all functions", "",
                                              &module->randomizeAllFuncs));
+        menu->addChild(createBoolPtrMenuItem("Oscillator pairs", "",
+                                             &module->oscPairs));
+        menu->addChild(createIndexSubmenuItem("Two-state switching",
+            {"off", "light", "normal", "wild"},
+            [=]() { return module->bifIndex; },
+            [=](int idx) { module->bifIndex = idx; }));
         menu->addChild(createIndexSubmenuItem("Display scale",
             {"1x (+/-5 V)", "2x", "4x", "8x"},
             [=]() { return module->scopeScale; },

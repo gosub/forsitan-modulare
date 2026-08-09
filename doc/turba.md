@@ -6,8 +6,8 @@
 cross-modulates itself. One knob decides whether it drones or shatters.**
 
 *turba* is Latin for uproar, tumult, commotion; a disorderly crowd. The module
-takes its architecture and its interface from **Skrewell**, John Nowak's
-chaotic sound generator in the REAKTOR factory library — "an intuitive and
+takes its architecture and its interface from **Skrewell**, the chaotic sound
+generator in the REAKTOR factory library — "an intuitive and
 visual sound design workstation whose soundscapes can range from meditative
 atmospheres to crackling harshness", in the manual's words.
 
@@ -49,10 +49,38 @@ the left and amplitude-modulates the one to the right. All eight loops are
 therefore one system, and with the filter saturating inside that system it is
 a genuinely chaotic one — see *Is it actually chaotic* below.
 
+### Two-state switching
+
+The thing that makes the bank evolve with nobody touching it, and the last
+piece to go in. From colB's reverse engineering of the ensemble: *"There are
+some parameters that have two settings that get switched between… It does
+that thing where components of the sound toggle chaotically between two
+states, and when lots of things are doing that you get loads of layers that
+still make sense."*
+
+Once per pass of its own delay line — so every 30 to 300 ms, at eight
+different rates — each channel latches one bit from the sign of another
+channel's loop signal, and that bit picks between two values of its filter
+cutoff. Nothing drifts and there is no LFO: the sound *flips*, and eight
+channels flipping out of step with each other is what keeps it moving.
+
+It has to be the **cutoff** that switches. Measured over an untouched minute,
+switching the cutoff takes the spectral wander from 0.19 to 0.97 octaves;
+switching the pitch or the delay time instead makes it *worse*, 0.10 to 0.14,
+because those move the sound without moving where its energy sits. In the
+bare topology, which has no filter, the switch shortens the delay instead.
+
+Depth is in the context menu, off / light / normal / wild, defaulting to
+normal. The switch clock never runs faster than 10 ms however short the
+delays get: past that it stops being a change of state and becomes an
+audio-rate modulator.
+
 ### Three topologies
 
 The **mode** switch chooses where the filter sits, after Skrewell's three
-operation modes:
+operation modes. colB's reading of the ensemble matches the manual here:
+three pairs of oscillators, *"two pairs use pulse waves and the other uses
+sinusoid (par FM)"*, only one pair live at a time.
 
 | mode | | |
 |------|---|---|
@@ -192,6 +220,7 @@ precessing figure is the interesting middle.
 | item | |
 |------|---|
 | **Ring coupling** | off makes each channel modulate *itself* instead of its neighbours. Eight independent chaotic loops rather than one coupled system: much tamer, and useful as a bank of eight droning comb resonators |
+| **Oscillator pairs** | each channel becomes *two* oscillators cross-FM'ing and cross-AM'ing each other rather than one, which is how Skrewell is built: colB counts "3 pairs of oscillators, each pair has cross modulation for FM and AM". Off by default, and that is a measured trade rather than laziness — the pair is brighter and rougher (centroid 626 → 918 Hz in the loop topology, 226 → 419 in bare) and it costs self-evolution at every switching depth (1.02 → 0.61 octaves at wild). Turn it on for harshness, off for movement |
 | **Randomize all functions** | off makes the rand button and trigger randomize only the function currently on screen, which is far more controllable than rolling all 64 |
 | **Display scale** | 1× to 8× on the Lissajous, the original's "Display Control". 1× is ±5 V filling the box; turn it up when the bank is running quietly |
 | **Randomize channels** | the button, from the menu |
@@ -272,23 +301,26 @@ how much they matter:
 
 | | |
 |---|---|
-| **long delays** | the biggest one by far. Below about 10 ms a loop is a comb and settles in a few passes; up at 100–300 ms it takes a tenth of a second per pass and its state survives long enough to evolve |
+| **two-state switching** | the biggest one, and the only one that is not a property of the patch. See above; off it is 0.19 octaves, wild it is 1.02 |
+| **long delays** | below about 10 ms a loop is a comb and settles in a few passes; up at 100–300 ms it takes a tenth of a second per pass and its state survives long enough to evolve |
 | **feedback near unity** | at 0.5 every loop is safely damped and nothing ever builds. Push the **fbk** bars to 0.9–1.0 and loops build, saturate against the limiter and collapse, which is where the lurching comes from |
 | **pitches close together** | eight channels spread over three octaves beat against each other at audio rate, which is timbre. Eight inside a fifth beat *slowly*, and the cross-modulation turns those slow beats into slow movement |
 
 The default bank is set that way — delays 30–307 ms, every loop between 0.88
 and 1.0, pitches within a fifth — which is worth knowing if you wonder why it
 sounds nothing like eight independent oscillators. An earlier default with
-half the feedback and 2–40 ms delays measured 0.04 octaves of wander; this one
-measures 0.19–0.24 in all three topologies.
+half the feedback and 2–40 ms delays, and no switching, measured 0.04 octaves
+of wander; with both it measures **0.82 in the loop topology**, against 0.75
+for a reference recording of Skrewell standing still.
 
-Two honest caveats. **flow hard left kills it** (0.01 octaves): that end is
-the periodic, ordered one, and the 1 s inertia there means nothing moves
-quickly either. And turba still does not reach the reference recordings of
-Skrewell, which measure 0.75 and 3.74 octaves — though every one of those is a
-*performance*, with a hand on the controls, so it is not a like-for-like
-comparison. Driven equivalently, with flow swept over twenty seconds, turba's
-short-time loudness moves 5.8 dB against their 1.5–5.7.
+Two honest caveats. **flow at either extreme kills it** — 0.29 octaves hard
+left, 0.21 hard right, against 0.82 at noon. Left is the ordered, periodic
+end with a 1 s inertia on everything; right takes the resonance down until
+the filters stop being able to say where the energy is, so switching them has
+less to switch. The middle is where it lives. And the second reference
+recording measures 3.74 octaves, which turba does not come near — though every
+reference is a *performance*, with a hand on the controls, so it is an upper
+bound rather than a target.
 
 If you want more movement than the bank gives you, patch something slow into a
 macro. The **cv** output into one of the macro inputs is the cheapest, and the
@@ -311,22 +343,34 @@ Recorded so nobody spends the afternoon again:
   changes its phase, not its statistics, so the FM sidebands come out the same.
 - **The normalizer, at every speed and depth.** It is not what holds the
   levels still; see the note above.
+- **Switching the pitch or the delay time** instead of the cutoff, once the
+  two-state mechanism was in. Both made the wander worse than no switching at
+  all.
 
 ## Cost
 
-1.15% of one core at 48 kHz, all eight channels always running. There is no
+1.5% of one core at 48 kHz, all eight channels always running. There is no
 oversampling: the loops are saturating feedback paths where aliasing folds
 back into the signal and becomes part of the chaos, and oversampling eight of
 them would cost more than the module is worth.
 
 ## Attribution
 
-Skrewell is by **John Nowak**, shipped in the REAKTOR factory library by
-Native Instruments. No code from it was used or could have been — it is a
-closed patch built on closed primitives. The architecture came from the
+Skrewell ships in the REAKTOR factory library by Native Instruments, which
+does not credit it. Its authorship is reported inconsistently: on the
+Cycling '74 thread below it is attributed to **John Nowak**, while the NI
+community thread discusses it as the work of **Lazyfish** (Alexander
+Potekhin), whose **TG-8H** is described as its prototype and is built in
+Reaktor Core rather than closed primitives. No code from it was used or could
+have been. The architecture came from the
 [REAKTOR Factory Library manual](https://www.native-instruments.com/fileadmin/ni_media/downloads/manuals/REAKTOR_Factory_Library_Manual_English_2015_11.pdf)
 (section 7.2, pp. 262–265), and the account of where its chaos comes from from
 the Cycling '74 thread
 [Problem rebuilding Reaktors Skrewell in Max/Gen](https://cycling74.com/forums/problem-rebuilding-the-reaktors-skrewell-in-maxgen),
 where zangpa, Matteo Marson and AlbertoZ compare notes on why it will not
-port.
+port. The two-state switching, the oscillator pairs and the count of filters
+and delays come from **colB**'s reverse engineering of the ensemble in
+[SKREWELL - Hardware synth equivalent ideas? What is the structure of
+Skrewell?](https://community.native-instruments.com/discussion/14722/skrewell-hardware-synth-equivalent-ideas-what-is-the-structure-of-skrewell),
+which is the only public account of the structure written by somebody who
+actually opened it.

@@ -273,18 +273,21 @@ struct RenderSetting {
     int topology;
     float flow;
     bool randomize;
+    bool pairs;
 };
 
 static void probeRender(const char* dir, double seconds) {
     static const RenderSetting settings[] = {
-        {"default_loop",   0,  0.0f, false},
-        {"default_pre",    1,  0.0f, false},
-        {"default_bare",   2,  0.0f, false},
-        {"flow_left",      0, -1.0f, false},
-        {"flow_right",     0,  1.0f, false},
-        {"rand_loop",      0,  0.5f, true},
-        {"rand_pre",       1,  0.5f, true},
-        {"rand_bare",      2,  0.5f, true},
+        {"default_loop",   0,  0.0f, false, false},
+        {"default_pre",    1,  0.0f, false, false},
+        {"default_bare",   2,  0.0f, false, false},
+        {"flow_left",      0, -1.0f, false, false},
+        {"flow_right",     0,  1.0f, false, false},
+        {"rand_loop",      0,  0.5f, true,  false},
+        {"rand_pre",       1,  0.5f, true,  false},
+        {"rand_bare",      2,  0.5f, true,  false},
+        {"pairs_loop",     0,  0.0f, false, true},
+        {"pairs_bare",     2,  0.0f, false, true},
     };
     const int count = (int)(sizeof(settings) / sizeof(settings[0]));
     printf("\n== render, %.1f s each, into %s ==\n", seconds, dir);
@@ -293,6 +296,7 @@ static void probeRender(const char* dir, double seconds) {
         m.params[Turba::MODE_PARAM].setValue((float)settings[s].topology);
         m.params[Turba::FLOW_PARAM].setValue(settings[s].flow);
         m.params[Turba::LEVEL_PARAM].setValue(0.5f);
+        m.oscPairs = settings[s].pairs;
         if (settings[s].randomize) m.randomizeChannels();
 
         long frame = 0;

@@ -309,6 +309,10 @@ static void testEngine() {
             p.ch[F_FBK][c] = 1.f;
             p.ch[F_LEVEL][c] = 1.f;
         }
+        // The output level knob is not what this is testing, and a random
+        // one lands near zero often enough to fail the "came back audible"
+        // check for a reason that has nothing to do with recovery.
+        p.level = 0.5f;
         Patch hot = p;
         hot.pitch = hot.cutoff = hot.delay = hot.flow = 1.f;
 

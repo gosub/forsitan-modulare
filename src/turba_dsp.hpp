@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cmath>
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -134,6 +135,11 @@ struct DelayLine {
     }
 };
 
+// The largest filter coefficient the SVF is ever handed, tan(pi*0.45), i.e.
+// a cutoff at 0.45 of the sample rate. The two-state switch multiplies the
+// coefficient, so it needs a ceiling of its own.
+static const float G_MAX = 6.3138f;
+
 // Per-channel control-rate targets. Everything here is already mapped: the
 // module hands over final values, the engine only glides towards them.
 struct Targets {
@@ -155,12 +161,43 @@ struct Engine {
     float oct[NCH], gc[NCH], kc[NCH], dly[NCH], fbk[NCH], fm[NCH], am[NCH],
           lvl[NCH];
     float phase[NCH];
+    // Each channel is a *pair* of oscillators cross-modulating each other,
+    // which is how colB describes Skrewell: "3 pairs of oscillators, each
+    // pair has cross modulation for FM and AM". A cross-modulating pair is a
+    // chaotic little machine in its own right, quite unlike one oscillator.
+    float phaseB[NCH];
+    float oscA[NCH], oscBv[NCH];   // last outputs, for the intra-pair cross-mod
+    float pairMix = 0.f;      // 0 = single oscillator, 1 = the pair
+    float pairRatio = 1.48f;  // partner frequency, times the channel's own
+    float pairFM = 0.7f;      // octaves of cross FM inside the pair
+    float pairAM = 0.6f;      // AM depth inside the pair
     float y[NCH];        // each channel's loop output, this sample
     float yPrev[NCH];    // ...and the previous one, what the ring reads
     SatSVF filt[NCH];
     Normalizer norm[NCH];
     DelayLine line[NCH];
     float panL[NCH], panR[NCH];
+
+    // Two-state switching, the mechanism colB found when he took Skrewell
+    // apart: "parameters that have two settings that get switched between...
+    // components of the sound toggle chaotically between two states". Once
+    // per pass of its own delay line, each channel latches a bit from the
+    // sign of another channel's loop signal, and that bit picks between two
+    // values of a parameter. It is not drift and it is not an LFO: the sound
+    // *flips*, and eight channels flipping at eight different rates is what
+    // makes the bank evolve with nobody touching it.
+    //
+    // The parameter switched is the filter cutoff, in octaves. That is the
+    // one that works: measured over an untouched minute, switching the cutoff
+    // takes the spectral wander from 0.19 to 0.97 octaves, while switching
+    // pitch or delay time instead makes it *worse* (0.10-0.14). Where there
+    // is no filter to switch, the bare topology, it shortens the delay
+    // instead, which is the next best thing there.
+    float bifurcate = 0.f;
+    int flip[NCH];
+    float flipS[NCH];       // glided, so a flip is a swoop and not a click
+    float flipCount[NCH];
+    float flipGlide = 0.f;
 
     float smooth = 0.01f;   // one-pole coefficient, set from the inertia time
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
@@ -181,6 +218,7 @@ struct Engine {
             norm[i].setSampleRate(sr);
         }
         setInertia(0.05f);
+        flipGlide = 1.f - std::exp(-1.f / (0.008f * sr));
     }
 
     void setInertia(float seconds) {
@@ -195,7 +233,12 @@ struct Engine {
             // Start the phases spread out. Identical phases are a fixed point
             // of the coupled ring and the bank would take a while to leave it.
             phase[i] = (float)i / (float)NCH;
+            phaseB[i] = (float)i / (float)NCH + 0.37f;
+            oscA[i] = oscBv[i] = 0.f;
             y[i] = yPrev[i] = 0.f;
+            flip[i] = 0;
+            flipS[i] = 0.f;
+            flipCount[i] = 0.f;
             filt[i].reset();
             norm[i].reset();
             line[i].reset();
@@ -236,9 +279,24 @@ struct Engine {
             const float mf = ringCoupling ? yPrev[(i + 1) & (NCH - 1)] : yPrev[i];
             const float ma = ringCoupling ? yPrev[(i + 7) & (NCH - 1)] : yPrev[i];
 
+            // One tick per pass of this channel's delay line, but never
+            // faster than 10 ms: past that the switch stops being a change of
+            // state and becomes an audio-rate modulator.
+            float period = dly[i];
+            if (period < 0.010f * sr) period = 0.010f * sr;
+            flipCount[i] += 1.f;
+            if (flipCount[i] >= period) {
+                flipCount[i] -= period;
+                flip[i] = yPrev[(i + 5) & (NCH - 1)] > 0.f ? 1 : 0;
+            }
+            flipS[i] += ((float)flip[i] - flipS[i]) * flipGlide;
+
             // Exponential FM, so the frequency stays positive however hard
-            // the modulator swings.
-            const float freq = 8.f * std::exp2(oct[i] + fm[i] * mf);
+            // the modulator swings. Inside a pair the two oscillators FM each
+            // other on top of that, using the other's previous sample.
+            const float base = oct[i] + fm[i] * mf;
+            const float freq = 8.f * std::exp2(
+                base + pairMix * pairFM * oscBv[i]);
             float inc = freq * sT;
             if (inc > 0.45f) inc = 0.45f;
             if (inc < 1e-7f) inc = 1e-7f;
@@ -246,36 +304,82 @@ struct Engine {
             phase[i] += inc;
             if (phase[i] >= 1.f) phase[i] -= std::floor(phase[i]);
 
-            float osc;
+            float incB = 0.f;
+            if (pairMix > 0.f) {
+                const float freqB = 8.f * std::exp2(
+                    base + std::log2(pairRatio) + pairFM * oscA[i]);
+                incB = freqB * sT;
+                if (incB > 0.45f) incB = 0.45f;
+                if (incB < 1e-7f) incB = 1e-7f;
+                phaseB[i] += incB;
+                if (phaseB[i] >= 1.f) phaseB[i] -= std::floor(phaseB[i]);
+            }
+
+            float a, b = 0.f;
             if (topology == TOPO_BARE) {
                 // Parabolic wave: smooth, and much fatter at the bottom than
                 // the pulse, which is what makes this topology the calm one.
                 const float x = 2.f * phase[i] - 1.f;
-                osc = -4.f * x * (std::fabs(x) - 1.f);
+                a = -4.f * x * (std::fabs(x) - 1.f);
+                if (pairMix > 0.f) {
+                    const float xb = 2.f * phaseB[i] - 1.f;
+                    b = -4.f * xb * (std::fabs(xb) - 1.f);
+                }
             }
             else {
                 float p2 = phase[i] + 0.5f;
                 if (p2 >= 1.f) p2 -= 1.f;
-                osc = phase[i] < 0.5f ? 1.f : -1.f;
-                osc += polyBlep(phase[i], inc);
-                osc -= polyBlep(p2, inc);
+                a = phase[i] < 0.5f ? 1.f : -1.f;
+                a += polyBlep(phase[i], inc);
+                a -= polyBlep(p2, inc);
+                if (pairMix > 0.f) {
+                    float p2b = phaseB[i] + 0.5f;
+                    if (p2b >= 1.f) p2b -= 1.f;
+                    b = phaseB[i] < 0.5f ? 1.f : -1.f;
+                    b += polyBlep(phaseB[i], incB);
+                    b -= polyBlep(p2b, incB);
+                }
+            }
+            oscA[i] = a;
+            oscBv[i] = b;
+
+            // Each half amplitude-modulates the other, then they sum.
+            float osc = a;
+            if (pairMix > 0.f) {
+                const float ga = 1.f - pairAM * 0.5f * (1.f - b);
+                const float gb = 1.f - pairAM * 0.5f * (1.f - a);
+                osc = a + pairMix * (a * (ga - 1.f) + b * gb);
+                osc *= 1.f / (1.f + pairMix);
             }
 
             // AM from the neighbour, never all the way to silence.
             const float amp = 1.f - am[i] * 0.5f * (1.f - ma);
             float s = osc * amp * 0.5f + in;
 
-            const float d = line[i].read(dly[i]);
+            // The switch moves the cutoff where there is a filter, and the
+            // delay time where there is not.
+            float gEff = gc[i];
+            float dEff = dly[i];
+            if (bifurcate > 0.f) {
+                if (topology == TOPO_BARE)
+                    dEff *= 1.f - std::min(bifurcate * 0.25f, 0.8f) * flipS[i];
+                else {
+                    gEff *= std::exp2(bifurcate * flipS[i]);
+                    if (gEff > G_MAX) gEff = G_MAX;
+                }
+            }
+
+            const float d = line[i].read(dEff);
             float v;
             if (topology == TOPO_PRE) {
-                s = filt[i].process(s, gc[i], kc[i]);
+                s = filt[i].process(s, gEff, kc[i]);
                 v = norm[i].process(s + d * fbk[i], 1.0f);
             }
             else if (topology == TOPO_BARE) {
                 v = norm[i].process(s + d * fbk[i], 1.0f);
             }
             else {
-                v = filt[i].process(s + d * fbk[i], gc[i], kc[i]);
+                v = filt[i].process(s + d * fbk[i], gEff, kc[i]);
                 v = norm[i].process(v, 1.0f);
             }
 

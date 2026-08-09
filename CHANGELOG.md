@@ -197,13 +197,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     saturator to fold. Measured as a largest-Lyapunov estimate, there is a
     real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
 
+    Each channel also carries a **two-state switch**, which is what makes the
+    bank evolve with nobody touching it. Once per pass of its own delay line,
+    so every 30-300 ms at eight different rates, a channel latches one bit
+    from the sign of another channel's loop signal, and that bit picks between
+    two values of its filter cutoff. Nothing drifts and there is no LFO: the
+    sound flips. It has to be the cutoff -- switching pitch or delay time
+    instead measures *worse* than not switching at all, because those move the
+    sound without moving where its energy sits. Off/light/normal/wild in the
+    context menu.
+
     The default bank is set where the thing actually moves: delays 30-307 ms,
     every loop between 0.88 and 1.0 so it builds and collapses against the
     limiter, and the eight pitches inside a fifth so they beat slowly against
     each other rather than at audio rate. Those three, in that order, are what
     decide whether the bank wanders on its own; an earlier default at half the
     feedback with 2-40 ms delays measured 0.04 octaves of spectral wander over
-    an untouched minute, this one measures 0.19-0.24 in every topology.
+    an untouched minute; with the new bank and the switch it measures 0.82,
+    against 0.75 for a reference recording of Skrewell standing still.
+
+    In the menu and off by default, **oscillator pairs** makes each channel
+    two oscillators cross-FM'ing and cross-AM'ing each other rather than one,
+    which is how Skrewell is built. It is brighter and rougher (centroid
+    626 -> 918 Hz) and it costs self-evolution at every switching depth
+    (1.02 -> 0.61 octaves), so it is a choice rather than a default.
 
     Two deliberate departures. The normalizer only turns a loop **down**;
     built as a true normalizer, holding every channel at one level, the
