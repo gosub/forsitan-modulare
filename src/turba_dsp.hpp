@@ -171,6 +171,21 @@ struct Engine {
     float pairRatio = 1.48f;  // partner frequency, times the channel's own
     float pairFM = 0.7f;      // octaves of cross FM inside the pair
     float pairAM = 0.6f;      // AM depth inside the pair
+
+    // colB, on why Skrewell sounds the way it does: "the kind of sounds you
+    // get from Skrewell depend at least in part on being digital with
+    // aliasing and quantization". Two separate things, both optional here.
+    //
+    // bandLimit off drops the polyBLEP correction from the pulses, so every
+    // edge folds its harmonics back down the spectrum. In a bank of eight
+    // oscillators being exponentially FM'd by each other, that is not a few
+    // stray partials, it is a second inharmonic spectrum that moves the wrong
+    // way when the pitch does.
+    //
+    // crushBits quantizes each loop signal on its way into the delay. Zero
+    // leaves it alone.
+    bool bandLimit = true;
+    int crushBits = 0;
     float y[NCH];        // each channel's loop output, this sample
     float yPrev[NCH];    // ...and the previous one, what the ring reads
     SatSVF filt[NCH];
@@ -330,14 +345,18 @@ struct Engine {
                 float p2 = phase[i] + 0.5f;
                 if (p2 >= 1.f) p2 -= 1.f;
                 a = phase[i] < 0.5f ? 1.f : -1.f;
-                a += polyBlep(phase[i], inc);
-                a -= polyBlep(p2, inc);
+                if (bandLimit) {
+                    a += polyBlep(phase[i], inc);
+                    a -= polyBlep(p2, inc);
+                }
                 if (pairMix > 0.f) {
                     float p2b = phaseB[i] + 0.5f;
                     if (p2b >= 1.f) p2b -= 1.f;
                     b = phaseB[i] < 0.5f ? 1.f : -1.f;
-                    b += polyBlep(phaseB[i], incB);
-                    b -= polyBlep(p2b, incB);
+                    if (bandLimit) {
+                        b += polyBlep(phaseB[i], incB);
+                        b -= polyBlep(p2b, incB);
+                    }
                 }
             }
             oscA[i] = a;
@@ -388,6 +407,11 @@ struct Engine {
                 filt[i].reset();
                 norm[i].reset();
                 line[i].reset();
+            }
+
+            if (crushBits > 0) {
+                const float steps = (float)(1 << (crushBits - 1));
+                v = std::floor(v * steps + 0.5f) / steps;
             }
 
             line[i].write(v);

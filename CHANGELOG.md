@@ -216,6 +216,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     an untouched minute; with the new bank and the switch it measures 0.82,
     against 0.75 for a reference recording of Skrewell standing still.
 
+    Two more menu options, both from colB's remark that Skrewell's sound owes
+    something to it "being digital with aliasing and quantization": **raw
+    oscillators** drops the band-limiting from the pulses, and **bit crush**
+    quantizes each loop signal to 12, 10 or 8 bits. Both are honestly small.
+    Raw moves the centroid 1052 -> 1092 Hz at the default bank and the
+    spectral flatness 0.011 -> 0.013, and only really shows with the pitch
+    macro up (flatness 0.041 -> 0.051), because most of this engine's aliasing
+    never came from the waveform edges: exponential FM at audio rate throws
+    sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was
+    never correcting those.
+
     In the menu and off by default, **oscillator pairs** makes each channel
     two oscillators cross-FM'ing and cross-AM'ing each other rather than one,
     which is how Skrewell is built. It is brighter and rougher (centroid

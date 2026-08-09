@@ -221,6 +221,8 @@ precessing figure is the interesting middle.
 |------|---|
 | **Ring coupling** | off makes each channel modulate *itself* instead of its neighbours. Eight independent chaotic loops rather than one coupled system: much tamer, and useful as a bank of eight droning comb resonators |
 | **Oscillator pairs** | each channel becomes *two* oscillators cross-FM'ing and cross-AM'ing each other rather than one, which is how Skrewell is built: colB counts "3 pairs of oscillators, each pair has cross modulation for FM and AM". Off by default, and that is a measured trade rather than laziness — the pair is brighter and rougher (centroid 626 → 918 Hz in the loop topology, 226 → 419 in bare) and it costs self-evolution at every switching depth (1.02 → 0.61 octaves at wild). Turn it on for harshness, off for movement |
+| **Raw oscillators (aliasing)** | drops the band-limiting from the pulses so every edge folds its harmonics back down the spectrum. colB puts part of Skrewell's character down to it being "digital with aliasing and quantization". Measured, it is a **small** effect here and honesty demands saying so: at the default bank the centroid moves 1052 → 1092 Hz and the spectral flatness 0.011 → 0.013. It shows up properly only with the pitch macro up, where the flatness goes 0.041 → 0.051. The reason is that most of this engine's aliasing never came from the waveform edges in the first place — exponential FM at audio rate throws sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was never correcting those. It also costs nothing; raw is cheaper than band-limited |
+| **Bit crush** | 12, 10 or 8 bits, quantizing each loop signal on its way into the delay. The other half of "aliasing and quantization", and similarly small on its own: 8 bit moves the centroid 1052 → 1123 Hz and doubles the energy above 5 kHz |
 | **Randomize all functions** | off makes the rand button and trigger randomize only the function currently on screen, which is far more controllable than rolling all 64 |
 | **Display scale** | 1× to 8× on the Lissajous, the original's "Display Control". 1× is ±5 V filling the box; turn it up when the bank is running quietly |
 | **Randomize channels** | the button, from the menu |
@@ -349,7 +351,7 @@ Recorded so nobody spends the afternoon again:
 
 ## Cost
 
-1.5% of one core at 48 kHz, all eight channels always running. There is no
+1.4% of one core at 48 kHz, all eight channels always running. There is no
 oversampling: the loops are saturating feedback paths where aliasing folds
 back into the signal and becomes part of the chaos, and oversampling eight of
 them would cost more than the module is worth.

@@ -274,20 +274,28 @@ struct RenderSetting {
     float flow;
     bool randomize;
     bool pairs;
+    bool raw;
+    int crush;
+    float pitch;
 };
 
 static void probeRender(const char* dir, double seconds) {
     static const RenderSetting settings[] = {
-        {"default_loop",   0,  0.0f, false, false},
-        {"default_pre",    1,  0.0f, false, false},
-        {"default_bare",   2,  0.0f, false, false},
-        {"flow_left",      0, -1.0f, false, false},
-        {"flow_right",     0,  1.0f, false, false},
-        {"rand_loop",      0,  0.5f, true,  false},
-        {"rand_pre",       1,  0.5f, true,  false},
-        {"rand_bare",      2,  0.5f, true,  false},
-        {"pairs_loop",     0,  0.0f, false, true},
-        {"pairs_bare",     2,  0.0f, false, true},
+        {"default_loop",   0,  0.0f, false, false, false,  0, 0.f},
+        {"default_pre",    1,  0.0f, false, false, false,  0, 0.f},
+        {"default_bare",   2,  0.0f, false, false, false,  0, 0.f},
+        {"flow_left",      0, -1.0f, false, false, false,  0, 0.f},
+        {"flow_right",     0,  1.0f, false, false, false,  0, 0.f},
+        {"rand_loop",      0,  0.5f, true,  false, false,  0, 0.f},
+        {"rand_pre",       1,  0.5f, true,  false, false,  0, 0.f},
+        {"rand_bare",      2,  0.5f, true,  false, false,  0, 0.f},
+        {"pairs_loop",     0,  0.0f, false, true,  false,  0, 0.f},
+        {"pairs_bare",     2,  0.0f, false, true,  false,  0, 0.f},
+        {"raw_loop",       0,  0.0f, false, false, true,   0, 0.f},
+        {"raw_hi",         0,  0.0f, false, false, true,   0, 0.6f},
+        {"blep_hi",        0,  0.0f, false, false, false,  0, 0.6f},
+        {"raw_crush8",     0,  0.0f, false, false, true,   3, 0.f},
+        {"raw_pairs_hi",   0,  0.0f, false, true,  true,   0, 0.6f},
     };
     const int count = (int)(sizeof(settings) / sizeof(settings[0]));
     printf("\n== render, %.1f s each, into %s ==\n", seconds, dir);
@@ -297,6 +305,9 @@ static void probeRender(const char* dir, double seconds) {
         m.params[Turba::FLOW_PARAM].setValue(settings[s].flow);
         m.params[Turba::LEVEL_PARAM].setValue(0.5f);
         m.oscPairs = settings[s].pairs;
+        m.oscRaw = settings[s].raw;
+        m.crushIndex = settings[s].crush;
+        m.params[Turba::PITCH_PARAM].setValue(settings[s].pitch);
         if (settings[s].randomize) m.randomizeChannels();
 
         long frame = 0;
