@@ -41,7 +41,7 @@ using turba_dsp::NCH;
 static const int NFUNC = 8;
 
 static const char* funcName[NFUNC] = {
-    "pitch", "cutoff", "reso", "time", "fbk", "fm", "am", "level"
+    "pitch", "cutoff", "type", "time", "fbk", "fm", "am", "level"
 };
 
 // A starting bank. The three rows that matter for whether this thing sits
@@ -57,7 +57,7 @@ static const char* funcName[NFUNC] = {
 static const float chDefault[NFUNC][NCH] = {
     {0.48f, 0.38f, 0.56f, 0.42f, 0.52f, 0.34f, 0.60f, 0.44f},   // pitch
     {0.66f, 0.52f, 0.74f, 0.58f, 0.70f, 0.48f, 0.78f, 0.62f},   // cutoff
-    {0.45f, 0.55f, 0.40f, 0.60f, 0.50f, 0.35f, 0.58f, 0.48f},   // reso
+    {0.10f, 0.45f, 0.00f, 0.60f, 0.20f, 0.85f, 0.05f, 0.35f},   // type
     {0.74f, 0.87f, 0.70f, 0.94f, 0.81f, 1.00f, 0.77f, 0.90f},   // time
     {0.95f, 0.91f, 0.99f, 0.88f, 0.97f, 0.92f, 1.00f, 0.89f},   // fbk
     {0.30f, 0.22f, 0.36f, 0.18f, 0.28f, 0.34f, 0.24f, 0.32f},   // fm
@@ -65,7 +65,7 @@ static const float chDefault[NFUNC][NCH] = {
     {0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f},   // level
 };
 
-enum FuncId { F_PITCH, F_CUTOFF, F_RESO, F_TIME, F_FBK, F_FM, F_AM, F_LEVEL };
+enum FuncId { F_PITCH, F_CUTOFF, F_TYPE, F_TIME, F_FBK, F_FM, F_AM, F_LEVEL };
 
 // The bare topology has no filter, so two of the eight functions have nothing
 // to point at there. carloskleiber, dissecting the original's polycontrol:
@@ -75,7 +75,7 @@ enum FuncId { F_PITCH, F_CUTOFF, F_RESO, F_TIME, F_FBK, F_FM, F_AM, F_LEVEL };
 // says so rather than letting you draw into a function that does nothing.
 static bool funcActive(int func, int topology) {
     if (topology != turba_dsp::TOPO_BARE) return true;
-    return func != F_CUTOFF && func != F_RESO;
+    return func != F_CUTOFF && func != F_TYPE;
 }
 
 // How many samples between control-rate updates of the mapped targets.
@@ -259,7 +259,7 @@ struct Turba : Module {
         for (int c = 0; c < NCH; c++) {
             const float p = params[CH_PARAM + F_PITCH  * NCH + c].getValue();
             const float k = params[CH_PARAM + F_CUTOFF * NCH + c].getValue();
-            const float q = params[CH_PARAM + F_RESO   * NCH + c].getValue();
+            const float y = params[CH_PARAM + F_TYPE   * NCH + c].getValue();
             const float t = params[CH_PARAM + F_TIME   * NCH + c].getValue();
             const float b = params[CH_PARAM + F_FBK    * NCH + c].getValue();
             const float m = params[CH_PARAM + F_FM     * NCH + c].getValue();
@@ -272,14 +272,19 @@ struct Turba : Module {
             if (fc > nyq) fc = nyq;
             tgt.g[c] = std::tan((float)M_PI * fc / sr);
 
-            // Resonance is mapped by flow, and mapped the *other* way: flow
-            // to the right takes the resonance down. A high-Q loop filter
-            // rings on one narrow band and stays orderly; open it out and
-            // the loop gets broadband gain, the saturator starts folding it,
-            // and the bank tips over into chaos. Skrewell does the same, and
-            // that inversion is exactly what stumped the people porting it.
-            const float Q = 0.6f + mapValue(q, 1.f / gF) * mapValue(q, 1.f / gF) * 18.f;
+            // Resonance is not a bar. In the ensemble `res` is an input the
+            // tone generator feeds its levers, and no bar carries it -- the
+            // eight bars are F, A, cut, lbh, DEL, FB, fm, am. Here it comes
+            // from flow, and mapped the *other* way: flow to the right takes
+            // the resonance down. A high-Q loop filter rings on one narrow
+            // band and stays orderly; open it out and the loop gets broadband
+            // gain, the saturator starts folding it, and the bank tips over
+            // into chaos. That inversion is what stumped the people porting
+            // it, and it is measurable here: 0/s below flow -0.5, 670/s above.
+            const float qf = mapValue(0.55f, 1.f / gF);
+            const float Q = 0.6f + qf * qf * 18.f;
             tgt.k[c] = 1.f / Q;
+            tgt.typ[c] = y;
 
             const float ms = 0.15f * std::exp2(mapValue(t, gD) * 11.f);
             tgt.dly[c] = ms * 0.001f * sr;

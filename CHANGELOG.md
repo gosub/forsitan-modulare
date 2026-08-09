@@ -227,6 +227,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was
     never correcting those.
 
+    The eighth per-channel function is **filter type**, a continuous low →
+    band → high morph, not resonance. That is the ensemble's `lbh` parameter:
+    reading each tone generator's own input list gives its eight bars exactly
+    -- `F fm A am cut lbh DEL FB` for the multimode one, `F fm A am hp lp DEL
+    FB` for the bandpass one, and `F fm A am DEL FB`, six of them, for the one
+    with no filter, which is precisely carloskleiber's "8 (or 6) parameters of
+    8 oscillators". Resonance has no bar in Skrewell -- `res` is an input the
+    tone generator feeds its levers -- and it has none here either; flow sets
+    it, as it already did.
+
     The channel is a **pair of levers**, sixteen loops in all. That comes from
     reading the ensembles rather than the forums: every tone generator in
     Skrewell holds exactly two `LEVER` macros with a `crossvoice` between

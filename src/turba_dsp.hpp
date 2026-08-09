@@ -69,17 +69,26 @@ struct SatSVF {
 
     void reset() { ic1 = ic2 = 0.f; }
 
-    // g = tan(pi * fc / sr), k = 1/Q
-    float process(float v0, float g, float k) {
+    // g = tan(pi * fc / sr), k = 1/Q, type 0 = lowpass, 0.5 = band, 1 = high.
+    // The morph is the ensemble's `lbh` parameter: in Skrewell the eighth bar
+    // of the multimode tone generator sets the filter *type* per channel, not
+    // its resonance, so eight channels can sit on eight different slopes.
+    float process(float v0, float g, float k, float type) {
         const float a1 = 1.f / (1.f + g * (g + k));
         const float a2 = g * a1;
         const float a3 = g * a2;
         const float v3 = v0 - ic2;
-        const float v1 = a1 * ic1 + a2 * v3;
-        const float v2 = ic2 + a2 * ic1 + a3 * v3;
+        const float v1 = a1 * ic1 + a2 * v3;   // bandpass
+        const float v2 = ic2 + a2 * ic1 + a3 * v3;   // lowpass
         ic1 = fastTanh(2.f * v1 - ic1);
         ic2 = fastTanh(2.f * v2 - ic2);
-        return v2;
+        if (type <= 0.5f) {
+            const float t = type * 2.f;
+            return v2 + (v1 - v2) * t;
+        }
+        const float hp = v0 - k * v1 - v2;
+        const float t = (type - 0.5f) * 2.f;
+        return v1 + (hp - v1) * t;
     }
 };
 
@@ -162,7 +171,8 @@ static const float LEVER_B_DELAY = 0.734f;    // and a shorter loop
 struct Targets {
     float oct[NCH];    // pitch as octaves above 8 Hz
     float g[NCH];      // filter coefficient tan(pi*fc/sr)
-    float k[NCH];      // filter 1/Q
+    float k[NCH];      // filter 1/Q, from flow rather than from a bar
+    float typ[NCH];    // filter type, 0 low / 0.5 band / 1 high
     float dly[NCH];    // delay time in samples
     float fbk[NCH];    // loop gain
     float fm[NCH];     // FM index in octaves
@@ -176,7 +186,7 @@ struct Engine {
 
     // smoothed running values, one per channel
     float oct[NLEV], gc[NLEV], kc[NLEV], dly[NLEV], fbk[NLEV], fm[NLEV],
-          am[NLEV];
+          am[NLEV], tp[NLEV];
     float lvl[NCH];
     float phase[NLEV];
     // Both levers of every pair run unless this is off, in which case only
@@ -259,7 +269,7 @@ struct Engine {
     void reset() {
         for (int i = 0; i < NLEV; i++) {
             oct[i] = 4.f; gc[i] = 0.1f; kc[i] = 1.f; dly[i] = 1000.f;
-            fbk[i] = 0.f; fm[i] = 0.f; am[i] = 0.f;
+            fbk[i] = 0.f; fm[i] = 0.f; am[i] = 0.f; tp[i] = 0.f;
             // Start the phases spread out. Identical phases are a fixed point
             // of the coupled ring and the bank would take a while to leave it.
             phase[i] = (float)i / (float)NLEV;
@@ -301,6 +311,7 @@ struct Engine {
                 fbk[i] += (t.fbk[ch] - fbk[i]) * c;
                 fm[i]  += (t.fm[ch]  - fm[i])  * c;
                 am[i]  += (t.am[ch]  - am[i])  * c;
+                tp[i]  += (t.typ[ch] - tp[i])  * c;
             }
         }
     }
@@ -397,14 +408,14 @@ struct Engine {
                 const float d = line[i].read(dEff);
                 float v;
                 if (topology == TOPO_PRE) {
-                    s = filt[i].process(s, gEff, kc[i]);
+                    s = filt[i].process(s, gEff, kc[i], tp[i]);
                     v = norm[i].process(s + d * fbk[i], 1.0f);
                 }
                 else if (topology == TOPO_BARE) {
                     v = norm[i].process(s + d * fbk[i], 1.0f);
                 }
                 else {
-                    v = filt[i].process(s + d * fbk[i], gEff, kc[i]);
+                    v = filt[i].process(s + d * fbk[i], gEff, kc[i], tp[i]);
                     v = norm[i].process(v, 1.0f);
                 }
 

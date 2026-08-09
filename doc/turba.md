@@ -115,7 +115,7 @@ the module, and they are visible over [limen](limen.md) as
 |----------|-------|---|
 | **pitch** | 8 Hz – 16 kHz, exponential | the oscillator |
 | **cutoff** | 20 Hz – 20 kHz, exponential | the filter (**loop** and **pre** only) |
-| **reso** | Q 0.6 – 18.6 | mapped by **flow**, and mapped *backwards*; see below |
+| **type** | low → band → high | the filter's *shape*, morphing continuously. Each channel can sit on a different slope. This is the ensemble's `lbh` parameter, and it is the eighth bar there too — resonance is not a bar in Skrewell and is not one here |
 | **time** | 0.15 ms – 307 ms, exponential | the delay. At the short end the loop is a comb rather than an echo |
 | **fbk** | 0 – 102% | loop gain. Over unity the normalizer holds it |
 | **fm** | 0 – 4 octaves | how hard the neighbour's loop signal drives this oscillator |
@@ -173,7 +173,9 @@ to the left for less modulation and more inertia, turn to the right for the
 opposite". Here it does three things at once:
 
 1. maps the **fm** and **am** bars, the same way the other macros map theirs;
-2. maps the **reso** bars, **inverted** — right takes resonance *down*;
+2. sets the **resonance** of every filter, **inverted** — right takes it down.
+   Resonance has no bar of its own, here or in the ensemble, where `res` is an
+   input the tone generator feeds its levers;
 3. sets the engine's inertia, the glide on every internal control, from 1 s at
    hard left to 2.5 ms at hard right.
 
@@ -416,8 +418,20 @@ graph is somewhere in the 3.1 MB of unparsed blobs hanging off four
 `KSModul` records — most of that will be the snapshot banks and the panel
 bitmaps, but the connection table is in there too.
 
-So: the parts list and the grouping are read from the ensemble and can be
-relied on. **The signal flow inside a lever is not.** What modulates what, in
+Port names, though, *are* in the records — at the end of each one — and a
+`KSModul` is followed by the port records belonging to it. So every macro's
+**interface** comes out even though the wiring does not, and that turns out to
+be most of what a re-implementation needs. The LEVER takes
+`F A CUT TYP DEL FB fm am res rel nrm smt FM AM`, where lowercase `fm`/`am`
+are amounts and uppercase `FM`/`AM` are the modulation signals arriving from
+the `crossvoice` next door (`FV AV` + audio in, `FM AM` out). And each tone
+generator's own inputs give its parameter list exactly: `F fm A am cut lbh
+DEL FB` for the multimode one, `F fm A am hp lp DEL FB` for the bandpass one,
+and `F fm A am DEL FB` — six — for the one with no filter. That is where the
+**type** bar and the absence of a resonance bar in this module come from.
+
+So: the parts list, the grouping and every macro's interface are read from the
+ensemble and can be relied on. **The signal flow between them is not.** What modulates what, in
 what order, with what scaling, is still this module's own design, informed by
 the factory manual's description and by the forum accounts. Anyone wanting to
 go further should start by working out the layout of those blobs.
