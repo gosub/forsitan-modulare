@@ -9,6 +9,11 @@ them: it is a rank, not a name. rete, ululo, tabes, lustro and bulla were
 all on this list and are all in v2.7.0 — see `CHANGELOG.md` for what
 actually got built.
 
+Entries also leave when they are built and *rejected*, which is not the same
+thing: those are marked in place rather than deleted, and the verdict is in
+[doc/experiments.md](doc/experiments.md). Read it before reviving anything
+that carries one of those markers.
+
 ## 1. campanae — change-ringing sequencer
 
 Permutation sequencer from English change ringing (Plain Hunt, Plain Bob,
@@ -530,6 +535,12 @@ scales, from about twenty bytes of state.
 
 ### SC6. machina, procedural machines
 
+> **BUILT AND REJECTED, 2026-08-09.** Ported from `SDTMotor` as planned,
+> finished to panel and docs, and dropped on the sound. Tag `exp/sdt-machina`,
+> notes in [doc/experiments.md](doc/experiments.md). Do not re-propose without
+> reading those first: the honest caveat below turned out to be the whole
+> story.
+
 Andy Farnell's *Designing Sound* motor: a speed envelope drives a saw, the
 rotor is bandpassed noise gated by the drive raised to a power, the stator is
 a folded cosine of the same phase, and the lot goes through a resonant tube.
@@ -719,6 +730,17 @@ get re-proposed.
 
 ## material sweep (2026-08-09)
 
+> **M0 to M3 WERE BUILT AND REJECTED, 2026-08-09**, together with SC6, in one
+> pass on branch `sdt-machina`. The port worked, the modules were finished to
+> panels, docs and tests, and all four were dropped on the sound. Tag
+> `exp/sdt-machina`, notes in [doc/experiments.md](doc/experiments.md).
+>
+> The analysis below is left standing because it is still correct: the library
+> gap is real, the interaction-not-objects premise held, and the port is
+> reusable. What it did not predict is that the results are not worth
+> listening to. M4 and the unranked stock below are untouched, but they sit on
+> the same port and the same premise, so read the verdict before starting one.
+
 Fourth brainstorm, from the question: what would everyday-object sounds be if
 they were not modal synthesis? Paper crunching and tearing, mechanical
 switches, friction, things breaking. Numbered M0 up; the numbering is
@@ -770,6 +792,11 @@ the start, not bolted on.
 
 ### M0. the SDT port (prerequisite, not a module)
 
+> **BUILT, 2026-08-09.** The port exists and works, at tag `exp/sdt-machina`
+> as `src/sdt/`. Pull it back rather than redoing it; four settings in it were
+> forced by measurement and are listed in [doc/experiments.md](doc/experiments.md).
+
+
 The [Sound Design Toolkit](https://soundobject.org/SDT/) (Delle Monache and
 Rocchesso, out of the EU SOb / CLOSED / SkAT-VG projects,
 [SoftwareX 2017](https://www.sciencedirect.com/science/article/pii/S2352711017300195),
@@ -799,6 +826,10 @@ cross-platform C core with Max and Pd externals on top.
 
 ### M1. stridor, friction and scraping
 
+> **BUILT AND REJECTED, 2026-08-09.** 10HP, finished. Tag `exp/sdt-machina`,
+> see [doc/experiments.md](doc/experiments.md).
+
+
 Dry friction as a voice: a stick-slip relaxation oscillator driven by normal
 force and sliding velocity, with surface roughness as a noise profile feeding
 the contact. At low velocity it emits discrete creaks, as velocity rises the
@@ -821,6 +852,11 @@ continuous and playable.
   away).
 
 ### M2. crepitus, crumpling and tearing and breaking
+
+> **BUILT AND REJECTED, 2026-08-09.** 10HP, finished, with the Hawkes
+> branching ratio as the crit knob. Tag `exp/sdt-machina`, see
+> [doc/experiments.md](doc/experiments.md).
+
 
 One point-process engine with a criticality knob. At the bottom, independent
 buckling events with power-law energies: paper being squeezed. Raise it and
@@ -845,6 +881,11 @@ the whole cascade: something breaks.
 - Name: crepitus (crackling, rustling, clattering).
 
 ### M3. ruina, the object under load
+
+> **BUILT AND REJECTED, 2026-08-09.** 12HP, finished. Built alongside M2
+> rather than instead of it, so the choice could be made by ear; the answer was
+> neither. Tag `exp/sdt-machina`, see [doc/experiments.md](doc/experiments.md).
+
 
 Same engine as M2 with a different front end, and the more forsitan of the two
 framings. A CV loads the object; the module accumulates strain, creaks and

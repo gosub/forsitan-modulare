@@ -38,6 +38,10 @@ cutting a release. The essentials:
   license — no full module documentation.
 - Each module's full documentation lives in `doc/<slug>.md` (lowercase, e.g.
   `doc/alea.md`, `doc/mmcccxcix.md`), linked from the readme table.
+- `doc/experiments.md` is the exception: modules that were built, auditioned
+  and *not* kept. They live on `exp/<name>` tags rather than branches, and
+  that file records what they were and why they were dropped. Add an entry
+  there (and mark the `ideas.md` entry in place) whenever one is archived.
 - Each module entry in `plugin.json` has a `manualUrl` pointing to
   `https://github.com/gosub/forsitan-modulare/blob/v<version>/doc/<slug>.md`
   (tagged, see Versioning; `tools/release/sync_version.py` maintains them).
