@@ -535,19 +535,27 @@ rotor is bandpassed noise gated by the drive raised to a power, the stator is
 a folded cosine of the same phase, and the lot goes through a resonant tube.
 RPM as CV, load as CV, and the thing lugs, catches and stalls.
 
-- Sources: DSastre's ports of the book's Pd patches:
+- **Build this from SDT, not from Farnell.** Superseded a day after it was
+  written, see M0 below: the Sound Design Toolkit is GPLv3 C and ships
+  `SDTMotor`, a combustion engine parameterised by RPM, throttle load, cycle
+  type, cylinder count and size, compression ratio, ignition pulse width, cycle
+  irregularity, backfire amount, and the lengths of the intake pipes, the
+  extractors, the main exhaust, its expansion, the muffler chambers and the
+  outlet. That is a whole engine where Farnell is one motor, and it is a port
+  rather than a reimplementation. `SDTDCMotor` covers the small-motor case.
+- Original sources, still worth reading for how little it takes: DSastre's
+  ports of the *Designing Sound* Pd patches,
   [Motors](https://sccode.org/1-4RG), [Cars](https://sccode.org/1-4RH)
   (four-cylinder engine with slugging speed),
   [Electricity](https://sccode.org/1-4RF), [Insects](https://sccode.org/1-4QB).
-  Farnell's technique is published and the SC ports are readable, so this is
-  the vespae posture: build from the description.
 - **Library check: CLEAR.** Nothing in the library makes engine, motor or
   machine sounds. The whole procedural-audio-for-sound-design corner of Rack is
   empty.
 - Honest caveat: it is a sound-design voice, not a musical one, and forsitan
   has no precedent for that. It earns its place by being a rhythm source that
   is not a clock: an engine at 12 Hz is a pulse train with physics.
-- Name: machina.
+- Name: machina. Now downstream of M0, so rank it with the material sweep
+  rather than against the other SC entries.
 
 ### SC7. self-similar sequences
 
