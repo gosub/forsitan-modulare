@@ -367,15 +367,20 @@ frequency-dependent infinite tails.
 > self-competition worry the library check raises turned out to be misplaced:
 > the interface is the module, not the chaos. bulla, rete and guttur are all
 > knobs-and-jacks modules, and turba is 64 bars in an edit area with four
-> macros that *map* those bars through `v^γ` rather than offsetting them.
-> Nothing in this collection or in the library works that way.
+> macros that *map* those bars rather than offsetting them. Nothing in this
+> collection or in the library works that way.
+>
+> It stopped being inspired-by on 2026-08-10, when the ensemble file turned
+> out to be fully legible -- structure, wiring, mapping laws, and every knob's
+> Min and Max as float32 in its own record. Everything but the filter itself
+> and the factory knob *settings* is now the original's.
 >
 > The one finding worth keeping: the porters' unexplained observation that
 > chaos arrives when resonance is turned *down* is not a REAKTOR artefact. In
 > a saturating feedback loop, high Q hands the gain to one narrow band and it
 > rings there; open the Q and the loop gets broadband gain for the saturator
-> to fold. Reproduced deliberately here, and measured: a largest-Lyapunov
-> estimate of 0/s below flow -0.5 and 670/s above centre. See
+> to fold. Measured, over the whole state space: a largest-Lyapunov estimate
+> of 0.5/s at flow 0 rising to 67/s at flow 1. See
 > [doc/turba.md](doc/turba.md).
 
 Pulse oscillator bank, cross FM/AM, several resonant 2-pole filters, feedback,

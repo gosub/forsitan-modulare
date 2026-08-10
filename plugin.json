@@ -329,7 +329,7 @@
     {
       "slug": "turba",
       "name": "turba",
-      "description": "Chaotic bank: 8 oscillators and 8 feedback delays in a self-modulating ring.",
+      "description": "Chaotic bank: 16 oscillators into tuned feedback combs, modulating each other.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/turba.md",
       "tags": [
         "Noise",
