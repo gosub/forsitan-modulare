@@ -1,12 +1,20 @@
 // turba_dsp.hpp -- the eight-channel chaotic engine behind turba.
 //
-// Eight independent channels, each an oscillator feeding a feedback delay
-// with a normalizer (and, in two of the three topologies, a resonant filter)
-// inside or in front of the loop. The channels are not independent for long:
-// every channel's oscillator is frequency-modulated by its right-hand
-// neighbour's loop signal and amplitude-modulated by its left-hand one, so
-// the eight loops form a ring that couples the whole bank together. That ring
-// plus the saturating filter is where the chaos comes from.
+// Eight voices, each holding two identical "levers". A lever is an oscillator
+// into a tuned feedback comb with a normalizer in it, and -- in two of the
+// three topologies -- a resonant filter either in front of the summer or
+// inside the loop. The two levers of a voice modulate each other, and each
+// reads its modulator from whichever of the eight voices its `fm` and `am`
+// bars point at, so the bank is coupled all-to-all.
+//
+// Everything here is read off Skrewell's own ensemble file: the signal flow
+// from the resolved connection graph, the mapping laws from the macros that
+// implement them, and the numeric ranges from the knob records themselves
+// (a Reaktor knob keeps Min and Max as float32 in its KSModul payload). The
+// constants marked SET_ below are the one thing the file does not give up:
+// where inside those ranges the factory snapshots left each knob is packed
+// or compressed in the snapshot blocks and is not recoverable. Those, and
+// only those, are turba's choice.
 //
 // Header-only and free of Rack types so the offline harnesses in test/ can
 // drive it directly.
@@ -21,24 +29,90 @@ namespace turba_dsp {
 
 static const int NCH = 8;
 
-// Each channel is two complete "levers", after the structure of the ensemble
+// Each voice is two complete levers, after the structure of the ensemble
 // itself: every tone generator in Skrewell holds exactly two LEVER macros
 // with a `crossvoice` between them, and a LEVER is not an oscillator, it is a
-// whole channel -- oscillator, filter, resonance, normalizer, delay and
-// feedback. So eight channels are sixteen loops, coupled in pairs.
+// whole channel -- oscillator, filter, normalizer, delay and feedback. Both
+// levers of a voice are fed the *same* eight bars; what separates them is
+// that each one's modulator comes from the other's output.
 static const int LPC = 2;
 static const int NLEV = NCH * LPC;
 
-// Lever `k` of channel `c`.
+// Lever `k` of voice `c`.
 inline int lev(int c, int k) { return c * LPC + k; }
 
-// Three topologies, after Skrewell's three operation modes. The difference
-// is only where the filter sits, and what the oscillator is.
+// Three topologies, the ensemble's three tone generators. They differ in the
+// oscillator, in what the filter is, and in where it sits.
 enum Topology {
-    TOPO_LOOP = 0,   // pulse osc; filter *inside* the feedback loop
-    TOPO_PRE  = 1,   // pulse osc; filter in front of the delay, outside it
+    TOPO_LOOP = 0,   // pulse osc; 2-pole HP into 2-pole LP, inside the loop
+    TOPO_PRE  = 1,   // pulse osc; one multimode 2-pole, in front of the summer
     TOPO_BARE = 2,   // parabolic osc; no filter at all
 };
+
+// ------------------------------------------------------- ensemble ranges ---
+//
+// Min and Max of every knob that matters, straight out of the .ens. Names are
+// the ensemble's own.
+
+//   'min' / 'max' -- the two ends of the pitch mapping, in MIDI pitch
+static const float K_PITCH_LO_MIN = -90.f, K_PITCH_LO_MAX =  37.f;
+static const float K_PITCH_HI_MIN =   9.f, K_PITCH_HI_MAX = 136.f;
+//   'CUTmin'/'CUTmax', 'LPmin'/'LPmax', 'HPmin'/'HPmax' -- all the same span
+static const float K_CUT_LO_MIN = -90.f, K_CUT_LO_MAX =  37.f;
+static const float K_CUT_HI_MIN =   9.f, K_CUT_HI_MAX = 136.f;
+//   'short' / 'long' -- the delay is set as a pitch too, and inverted
+static const float K_DEL_SHORT_MIN = 9.f,   K_DEL_SHORT_MAX = 136.f;
+static const float K_DEL_LONG_MIN  = -90.f, K_DEL_LONG_MAX  =  37.f;
+//   the five knob pairs that `flow` crossfades
+static const float K_FM_MIN  = 1.f,  K_FM_MAX  = 16.f;
+static const float K_AM_MIN  = 0.f,  K_AM_MAX  = 5.f;
+static const float K_RES_MIN = 0.f,  K_RES_MAX = 1.f;
+static const float K_SMT_MIN = 1.f,  K_SMT_MAX = 20.f;
+static const float K_NRM_MIN = 1.f,  K_NRM_MAX = 0.01f;
+//   the output fader, in dB
+static const float K_OUT_MIN_DB = -36.f, K_OUT_MAX_DB = 18.f;
+
+// ------------------------------------------------------- knob settings ---
+//
+// Where inside those ranges this module leaves each knob. Not recoverable
+// from the file. The pitch, cutoff and delay endpoints are the ones turba
+// measured its way to before the ensemble was read, expressed in the
+// ensemble's units; the flow endpoints are the knob extremes except for RES,
+// which is set to reproduce a measured bifurcation (see doc/turba.md).
+static const float SET_PITCH_LO   =   0.f;    // 8.18 Hz
+static const float SET_PITCH_HI   = 132.f;    // 16.6 kHz
+static const float SET_CUT_LO     =  15.f;    // 20 Hz
+static const float SET_CUT_HI     = 135.f;    // 20 kHz
+static const float SET_DEL_SHORT  = 116.f;    // 0.15 ms
+static const float SET_DEL_LONG   = -16.f;    // 312 ms
+static const float SET_FM_LO  = K_FM_MIN,  SET_FM_HI  = K_FM_MAX;
+static const float SET_AM_LO  = K_AM_MIN,  SET_AM_HI  = K_AM_MAX;
+static const float SET_RES_LO = 0.95f,     SET_RES_HI = 0.30f;
+static const float SET_SMT_LO = K_SMT_MAX, SET_SMT_HI = K_SMT_MIN;
+static const float SET_NRM_LO = K_NRM_MIN, SET_NRM_HI = K_NRM_MAX;
+
+// Reaktor's Expon.(P) and Log.(F), which the ensemble uses everywhere a
+// frequency is set: pitch in, hertz out, and back.
+inline float pitchToHz(float p) {
+    return 440.f * std::exp2((p - 69.f) * (1.f / 12.f));
+}
+inline float hzToPitch(float f) {
+    return 69.f + 12.f * std::log2(f / 440.f);
+}
+
+// The `shaper` macro, which is what a master knob actually does to a bar.
+// Three curves -- v^4, v, the fourth root of v -- with the knob blending
+// between them: hard left crushes the bank low and only the tallest bars
+// survive, centre passes the bars through, hard right lifts them all.
+inline float shape(float v, float pos) {
+    if (v <= 0.f) return 0.f;
+    if (v >= 1.f) return 1.f;
+    const float v4 = v * v * v * v;
+    const float vq = std::sqrt(std::sqrt(v));
+    const float p = pos * 2.f;
+    if (p <= 1.f) return v4 + (v - v4) * p;
+    return v + (vq - v) * (p - 1.f);
+}
 
 inline float fastTanh(float x) {
     if (x < -3.f) return -1.f;
@@ -60,76 +134,63 @@ inline float polyBlep(float t, float dt) {
     return 0.f;
 }
 
-// Topology-preserving 2-pole state variable filter, with the integrator
-// states soft-limited. The saturation is the point: a linear filter in this
-// loop just rings, a saturating one folds the loop's trajectory back on
-// itself and the bank goes chaotic.
+// Stand-in for REAKTOR's Multi 2-Pole, whose insides are closed: a
+// topology-preserving state variable filter with the integrator states
+// soft-limited. Three simultaneous outputs, cutoff as a pitch, resonance
+// 0..1 with 1 at self-oscillation, and -- as the reference specifies for the
+// original -- unity pass-band gain. The saturation is turba's, and it is the
+// point: a linear filter in this loop just rings, a saturating one folds the
+// loop's trajectory back on itself and the bank goes chaotic.
 struct SatSVF {
     float ic1 = 0.f, ic2 = 0.f;
+    float lp = 0.f, bp = 0.f, hp = 0.f;
 
-    void reset() { ic1 = ic2 = 0.f; }
+    void reset() { ic1 = ic2 = lp = bp = hp = 0.f; }
 
-    // g = tan(pi * fc / sr), k = 1/Q, type 0 = lowpass, 0.5 = band, 1 = high.
-    // The morph is the ensemble's `lbh` parameter: in Skrewell the eighth bar
-    // of the multimode tone generator sets the filter *type* per channel, not
-    // its resonance, so eight channels can sit on eight different slopes.
-    float process(float v0, float g, float k, float type) {
+    // g = tan(pi * fc / sr), k = 1/Q.
+    void process(float v0, float g, float k) {
         const float a1 = 1.f / (1.f + g * (g + k));
         const float a2 = g * a1;
         const float a3 = g * a2;
         const float v3 = v0 - ic2;
-        const float v1 = a1 * ic1 + a2 * v3;   // bandpass
-        const float v2 = ic2 + a2 * ic1 + a3 * v3;   // lowpass
-        ic1 = fastTanh(2.f * v1 - ic1);
-        ic2 = fastTanh(2.f * v2 - ic2);
-        if (type <= 0.5f) {
-            const float t = type * 2.f;
-            return v2 + (v1 - v2) * t;
-        }
-        const float hp = v0 - k * v1 - v2;
-        const float t = (type - 0.5f) * 2.f;
-        return v1 + (hp - v1) * t;
+        bp = a1 * ic1 + a2 * v3;
+        lp = ic2 + a2 * ic1 + a3 * v3;
+        hp = v0 - k * bp - lp;
+        ic1 = fastTanh(2.f * bp - ic1);
+        ic2 = fastTanh(2.f * lp - ic2);
+    }
+
+    // The `lbh` bar, doubled, is the Pos of a Selector over the filter's
+    // three outputs in the order LP, BP, HP -- which is what the letters of
+    // its name stand for.
+    float morph(float typ) const {
+        if (typ <= 1.f) return lp + (bp - lp) * typ;
+        return bp + (hp - bp) * (typ - 1.f);
     }
 };
 
-// The normalizer inside each loop. It only ever turns the loop *down*: a
-// channel whose feedback is over unity is held at the ceiling instead of
-// exploding, and one under unity is left alone to be as quiet as it wants.
-// An earlier version pushed quiet loops back up as well, which is what the
-// name suggests, and it was a mistake: with every channel forced to the same
-// level the macro knobs stopped making an audible difference. What sustains
-// this bank is not the normalizer, it is that the oscillators never stop.
+// The normalizer inside each loop, module for module as the ensemble wires
+// it: a Peak Detector, a Clipper holding the envelope between `nrm` and a
+// constant 300, a one-pole smoother, and the signal divided by the result.
+// A real normalizer -- divide by your own envelope -- and the Clipper's floor
+// is what keeps it from flattening the bank: an envelope below it is not
+// tracked, so a quiet loop is scaled rather than dragged up to full. It also
+// bounds the loop: whatever goes in, what comes out cannot exceed 1, which is
+// why a feedback bar at the top of its travel is safe and needs no limiter.
 struct Normalizer {
     float env = 0.f, sm = 1.f;
-    float relCoef = 0.999f, smCoef = 0.01f;
-    // Reaktor's Peak Detector: rectify, "the attack time of peak detection is
-    // zero", release quoted as the time for a peak to fall to a tenth of its
-    // value -- Rel 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, a decade per
-    // twenty. So the attack is instantaneous, which is audible: a transient
-    // moves the gain on the sample it arrives on.
-    float relT = 0.230f;        // Rel = 40
-    float smT = 0.020f;         // the one-pole after the clipper
 
     void reset() { env = 0.f; sm = 1.f; }
 
-    void setSampleRate(float sr) {
-        relCoef = std::exp(-2.302585093f / (relT * sr));   // ln(10) per relT
-        smCoef  = 1.f - std::exp(-1.f / (smT * sr));
-    }
-
-    // The whole macro, in the order the ensemble wires it: peak detector,
-    // then a Clipper holding the envelope between `floor` and a constant 300,
-    // then a one-pole, and finally the signal divided by the result. It is a
-    // real normalizer -- divide by your own envelope -- and not the limiter
-    // this module used to have. The floor is what keeps it from being one:
-    // an envelope below it is not tracked, so a quiet loop is scaled rather
-    // than dragged up to full, and how quiet a loop may stay is exactly what
-    // the `nrm` control sets. Flow drives it, as flow drives the rest.
-    float process(float x, float floorLevel) {
+    // `relCoef` and `smCoef` are not constants here. In the ensemble both
+    // times come out of the `smooth` macro as the channel's own delay time
+    // multiplied by `smt`, so a long loop gets a slow normalizer and a short
+    // one a fast one.
+    float process(float x, float nrm, float relCoef, float smCoef) {
         const float a = std::fabs(x);
-        env = a > env ? a : env * relCoef;          // zero attack
-        float e = env;                               // Clipper: Min, Max, In
-        if (e < floorLevel) e = floorLevel;
+        env = a > env ? a : env * relCoef;          // Peak Detector, zero attack
+        float e = env;                               // Clipper: Max, Min, In
+        if (e < nrm) e = nrm;
         if (e > 300.f) e = 300.f;
         sm += (e - sm) * smCoef;                     // HP/LP 1-Pole
         if (sm < 1e-6f) sm = 1e-6f;
@@ -137,7 +198,7 @@ struct Normalizer {
     }
 };
 
-// One channel's delay line. Linear interpolation on the read: the delay time
+// One lever's delay line. Linear interpolation on the read: the delay time
 // is swept constantly here and anything higher-order crackles when it moves.
 struct DelayLine {
     std::vector<float> buf;
@@ -167,51 +228,52 @@ struct DelayLine {
     }
 };
 
-// How the second lever of a pair differs from the first. Both are driven by
-// the same eight bars -- there is one bar per channel, not one per lever --
-// so without an offset the pair would be one loop played twice.
-static const float LEVER_B_RATIO = 1.4783f;   // pitch, near a tritone up
-static const float LEVER_B_DELAY = 0.734f;    // and a shorter loop
+// A one-pole smoother whose cutoff moves. The ensemble smooths F and DEL this
+// way before either reaches a lever, and clamps the delay one hard.
+struct Glide {
+    float y = 0.f;
+    void reset(float v) { y = v; }
+    void step(float target, float coef) { y += (target - y) * coef; }
+};
 
-// Per-channel control-rate targets. Everything here is already mapped: the
-// module hands over final values, the engine only glides towards them.
+// Per-voice control-rate targets, in the ensemble's own units.
 struct Targets {
-    float oct[NCH];    // pitch as octaves above 8 Hz
-    float g[NCH];      // filter coefficient tan(pi*fc/sr)
-    float k[NCH];      // filter 1/Q, from flow rather than from a bar
-    float typ[NCH];    // filter type, 0 low / 0.5 band / 1 high
-    float dly[NCH];    // delay time in samples
-    float fbk[NCH];    // loop gain
-    float fmPos[NCH];  // which voice modulates this one, 0..NCH-1, fractional
-    float amPos[NCH];  // the same for AM
-    float fmDepth;     // how hard, from flow -- one value for the whole bank
-    float amDepth;
-    float lvl[NCH];    // channel level 0..1
+    float hz[NCH];     // oscillator frequency, from `osc F`
+    float amp[NCH];    // oscillator amplitude, the `A` bar, 0..1
+    float cutHz[NCH];  // multimode cutoff / the HP corner of the bandpass
+    float lpHz[NCH];   // the LP corner of the bandpass
+    float typ[NCH];    // `lbh` doubled: 0 low, 1 band, 2 high
+    float delMs[NCH];  // delay time in milliseconds, from `- P - Ms -`
+    float fbk[NCH];    // `FB`, 0..1
+    float fmPos[NCH];  // which voice modulates this one, 0..NCH
+    float amPos[NCH];
+    // the five values `flow` crossfades, one set for the whole bank
+    float fmDepth;     // 1..16, a frequency *ratio*
+    float amDepth;     // 0..5
+    float res;         // 0..1
+    float smt;         // 1..20
+    float nrm;         // 1..0.01
 };
 
 struct Engine {
     float sr = 48000.f;
     int topology = TOPO_LOOP;
 
-    // smoothed running values, one per channel
-    float oct[NLEV], gc[NLEV], kc[NLEV], dly[NLEV], fbk[NLEV], fm[NLEV],
-          tp[NLEV], fmP[NLEV], amP[NLEV];
-    float fmD = 0.f, amD = 0.f;
-    float lvl[NCH];
+    // smoothed running values, one per lever
+    float hz[NLEV], cutG[NLEV], lpG[NLEV], delSmp[NLEV], fbk[NLEV],
+          typ[NLEV], fmP[NLEV], amP[NLEV], amp[NLEV];
+    float fmLog = 0.f, amD = 0.f, filtK = 2.f;
+    float relCoef = 0.999f, smCoef = 0.01f;
+    // `nrm`, the Clipper's Min inside every normalizer, set by flow.
+    float curNrm = 0.5f;
     float phase[NLEV];
 
-    float y[NLEV];       // each lever's loop output, this sample
-    float yPrev[NLEV];   // ...and the previous one, what the ring reads
-    SatSVF filt[NLEV];
+    float y[NLEV];       // each lever's output, this sample
+    float yPrev[NLEV];   // ...and the previous one, what the couplings read
+    SatSVF fa[NLEV], fb2[NLEV];
     Normalizer norm[NLEV];
     DelayLine line[NLEV];
-    float panL[NCH], panR[NCH];
 
-    // How quiet a loop is allowed to stay: the Clipper's Min inside the
-    // normalizer, driven by flow.
-    float normFloor = 0.25f;
-
-    float smooth = 0.01f;   // one-pole coefficient, set from the inertia time
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
     float cvLp = 0.f;
 
@@ -222,72 +284,96 @@ struct Engine {
 
     void setSampleRate(float rate) {
         sr = rate;
-        // 350 ms is the longest delay the module offers, plus a guard.
-        const int n = (int)(0.4f * sr) + 8;
-        for (int i = 0; i < NLEV; i++) {
+        // `long` at the top of its travel is a 22 second delay; the setting
+        // this module uses is 312 ms, and half a second of line covers it.
+        const int n = (int)(0.5f * sr) + 8;
+        for (int i = 0; i < NLEV; i++)
             line[i].setSize(n);
-            norm[i].setSampleRate(sr);
-        }
-        setInertia(0.05f);
-    }
-
-    void setInertia(float seconds) {
-        if (seconds < 1e-4f) seconds = 1e-4f;
-        smooth = 1.f - std::exp(-1.f / (seconds * sr));
     }
 
     void reset() {
         for (int i = 0; i < NLEV; i++) {
-            oct[i] = 4.f; gc[i] = 0.1f; kc[i] = 1.f; dly[i] = 1000.f;
-            fbk[i] = 0.f; tp[i] = 0.f;
+            hz[i] = 110.f; cutG[i] = 0.1f; lpG[i] = 0.3f; delSmp[i] = 1000.f;
+            fbk[i] = 0.f; typ[i] = 0.f; amp[i] = 0.f;
             fmP[i] = (float)(i / LPC); amP[i] = (float)(i / LPC);
             // Start the phases spread out. Identical phases are a fixed point
-            // of the coupled ring and the bank would take a while to leave it.
+            // of the coupled bank and it would take a while to leave them.
             phase[i] = (float)i / (float)NLEV;
             y[i] = yPrev[i] = 0.f;
-            filt[i].reset();
+            fa[i].reset();
+            fb2[i].reset();
             norm[i].reset();
             line[i].reset();
-        }
-        for (int c = 0; c < NCH; c++) {
-            lvl[c] = 0.f;
-            // Equal-power spread across the field, channel 1 hard left.
-            const float p = (float)c / (float)(NCH - 1);
-            panL[c] = std::cos(p * 1.5707963f);
-            panR[c] = std::sin(p * 1.5707963f);
         }
         dcxL = dcyL = dcxR = dcyR = 0.f;
         cvLp = 0.f;
     }
 
-    // Glide the running values towards the control-rate targets. Called once
-    // per control tick; the coefficient is per-sample, so a long inertia
-    // setting still reaches its target, just later.
+    static float onePoleCoef(float fc, float sr) {
+        if (fc < 0.001f) fc = 0.001f;
+        if (fc > 0.45f * sr) fc = 0.45f * sr;
+        return 1.f - std::exp(-6.2831853f * fc / sr);
+    }
+
+    // Glide the running values towards the control-rate targets. The
+    // coefficients are the ensemble's: pitch is smoothed at its own frequency
+    // over `smt`, delay time at 500 * smt / delay, clamped by an Event
+    // Clipper to the pitch range -80..0, which is 0.081 Hz to 8.18 Hz.
     void glide(const Targets& t, int frames) {
-        const float c = 1.f - std::pow(1.f - smooth, (float)frames);
-        fmD += (t.fmDepth - fmD) * c;
-        amD += (t.amDepth - amD) * c;
+        const float step = (float)frames / sr;
+
+        fmLog = std::log2(std::max(t.fmDepth, 1e-3f));
+        amD = t.amDepth;
+        filtK = std::max(2.f * (1.f - t.res), 0.02f);
+        curNrm = std::max(t.nrm, 1e-4f);
+
+        // Both normalizer times are the lever's delay multiplied by `smt`.
+        // They are per-lever in the ensemble; one delay time dominates the
+        // bank, so they are computed here from the mean.
+        float meanDel = 0.f;
+        for (int c = 0; c < NCH; c++) meanDel += t.delMs[c];
+        meanDel = std::max(meanDel / (float)NCH, 0.01f);
+        const float tau = meanDel * t.smt;                 // milliseconds
+        relCoef = std::exp(-2.302585093f / (tau * 0.001f * sr));  // ln 10 per tau
+        smCoef  = onePoleCoef(1000.f / tau, sr);
+
         for (int ch = 0; ch < NCH; ch++) {
-            lvl[ch] += (t.lvl[ch] - lvl[ch]) * c;
+            // the two smoothers, from the `smooth` macro
+            const float fCoef = 1.f - std::exp(
+                -6.2831853f * std::max(t.hz[ch] / t.smt, 0.01f) * step);
+            float dPitch = hzToPitch(500.f * t.smt / std::max(t.delMs[ch], 0.01f));
+            if (dPitch < -80.f) dPitch = -80.f;
+            if (dPitch > 0.f) dPitch = 0.f;
+            const float dCoef = 1.f - std::exp(
+                -6.2831853f * pitchToHz(dPitch) * step);
+            // everything else has no smoother of its own in the ensemble;
+            // give it the delay's, which is the slow one
+            const float c = dCoef;
+
+            const float gCut = std::tan(3.14159265f *
+                std::min(t.cutHz[ch], 0.45f * sr) / sr);
+            const float gLp = std::tan(3.14159265f *
+                std::min(t.lpHz[ch], 0.45f * sr) / sr);
+
             for (int k = 0; k < LPC; k++) {
                 const int i = lev(ch, k);
-                const float octT = t.oct[ch] +
-                    (k ? 0.5637f : 0.f);          // log2(LEVER_B_RATIO)
-                const float dlyT = t.dly[ch] * (k ? LEVER_B_DELAY : 1.f);
-                oct[i] += (octT      - oct[i]) * c;
-                gc[i]  += (t.g[ch]   - gc[i])  * c;
-                kc[i]  += (t.k[ch]   - kc[i])  * c;
-                dly[i] += (dlyT      - dly[i]) * c;
-                fbk[i] += (t.fbk[ch] - fbk[i]) * c;
-                fmP[i] += (t.fmPos[ch] - fmP[i]) * c;
-                amP[i] += (t.amPos[ch] - amP[i]) * c;
-                tp[i]  += (t.typ[ch]   - tp[i])  * c;
+                hz[i]     += (t.hz[ch]     - hz[i])     * fCoef;
+                delSmp[i] += (t.delMs[ch] * 0.001f * sr - delSmp[i]) * dCoef;
+                cutG[i]   += (gCut         - cutG[i])   * c;
+                lpG[i]    += (gLp          - lpG[i])    * c;
+                fbk[i]    += (t.fbk[ch]    - fbk[i])    * c;
+                amp[i]    += (t.amp[ch]    - amp[i])    * c;
+                typ[i]    += (t.typ[ch]    - typ[i])    * c;
+                fmP[i]    += (t.fmPos[ch]  - fmP[i])    * c;
+                amP[i]    += (t.amPos[ch]  - amP[i])    * c;
             }
         }
     }
 
     // Reaktor's Selector: an integer Pos forwards that channel, a fractional
-    // one blends the two either side of it.
+    // one blends the two either side of it. `crossvoice` multiplies the bar
+    // by a constant 8 before it gets here, so the top eighth of a bar's
+    // travel all lands on the last voice.
     inline float selectVoice(float pos, int slot) const {
         if (pos < 0.f) pos = 0.f;
         if (pos > (float)(NCH - 1)) pos = (float)(NCH - 1);
@@ -304,42 +390,33 @@ struct Engine {
 
         float sumL = 0.f, sumR = 0.f, sumY = 0.f;
         const float sT = 1.f / sr;
-        const int levers = LPC;
 
         for (int ch = 0; ch < NCH; ch++) {
-            float voice = 0.f;
-
-            for (int k = 0; k < levers; k++) {
+            for (int k = 0; k < LPC; k++) {
                 const int i = lev(ch, k);
 
-                // crossvoice, as the ensemble calls it. The partner is the
-                // other lever of this pair and it is the main modulator; the
-                // ring on to the next channel is the weaker, second one.
-                // crossvoice, read properly. The macro holds eight From
-                // Voice modules wired to the *channel* inputs of a Selector,
-                // and the fm and am bars drive its Pos. So a bar does not set
-                // how hard this lever is modulated, it picks **which channel
-                // modulates it**, blending between two neighbours when it
-                // sits between them. Depth comes from flow, one value for the
-                // whole bank. The source is the partner lever of the chosen
-                // channel: crossed within the pair, selected across channels.
+                // crossvoice: eight From Voice modules into a Selector whose
+                // Pos is the fm (or am) bar. The bar does not set how hard
+                // this lever is modulated, it picks **which voice modulates
+                // it**; depth comes from flow, one value for the whole bank.
+                // The source is the partner lever of the chosen voice:
+                // crossed within the pair, selected across voices.
                 const int slot = 1 - k;
                 const float mf = selectVoice(fmP[i], slot);
                 const float ma = selectVoice(amP[i], slot);
 
-                // Linear, through-zero FM, which is what the ensemble does
-                // and is not a detail. Its oscillators are the FM variants of
-                // Reaktor's primary set, whose F input the manual calls
-                // "linear frequency control, which is added to the frequency
-                // of the P input" -- and P is pinned at -300, a MIDI pitch so
-                // low the oscillator would sit at a fraction of a hertz. So
-                // every bit of the frequency arrives through F, in hertz, and
-                // it can go negative: the oscillator runs backwards through
-                // zero rather than bottoming out. Exponential FM, which this
-                // module used to do, cannot cross zero and is a far smoother
-                // thing.
-                const float base = 8.f * std::exp2(oct[i]);
-                const float freq = base * (1.f + fmD * mf);
+                // FM as the ensemble does it, which is neither of the two
+                // obvious things. The fm depth is a frequency *ratio* between
+                // 1 and 16, and the modulator picks a point on a geometric
+                // interpolation between its reciprocal and itself: the
+                // oscillator's frequency is multiplied by ratio^m, m running
+                // -1 to 1. At depth 1 there is no modulation at all, at 16
+                // it is four octaves either way. In the file this is a
+                // Reciprocal and two Log modules into a Selector whose Pos is
+                // the modulator halved and offset, then an Exp; the whole
+                // thing multiplies the oscillator's linear F input while P
+                // sits pinned at -300.
+                const float freq = hz[i] * std::exp2(fmLog * mf);
                 float inc = freq * sT;
                 if (inc >  0.45f) inc =  0.45f;
                 if (inc < -0.45f) inc = -0.45f;
@@ -366,65 +443,71 @@ struct Engine {
                     osc -= polyBlep(p2, dt);
                 }
 
-                // AM from the partner, never all the way to silence.
-                const float amp = 1.f - amD * 0.5f * (1.f - ma);
-                float s = osc * amp * 0.5f + in;
+                // Amplitude is A * (1 + am * AM): a Mult/Add taking the AM
+                // signal, the A bar times the am depth, and the A bar. With
+                // am up past 1 the product goes negative and it is ring
+                // modulation, which is where a lot of the harshness lives.
+                osc *= amp[i] * (1.f + amD * ma);
 
-                // The loop, in the order the ensemble wires it: the delay
+                // The loop, in the order the ensemble wires it. The delay
                 // comes *before* the normalizer, and the normalizer's output
-                // is both what the lever puts out and what feeds back. So the
-                // oscillator is never heard directly -- everything reaches
-                // the output through the delay line. Where the filter sits is
-                // the only difference between the three topologies, and it is
-                // the difference the manual describes.
-                const float d = line[i].read(dly[i]);
-                float r = norm[i].process(d, normFloor);
+                // is both what the lever puts out and what feeds back, so the
+                // oscillator is never heard directly. Where the filter sits
+                // is what separates the three tone generators.
+                const float d = line[i].read(delSmp[i]);
+                float r = norm[i].process(d, curNrm, relCoef, smCoef);
 
+                float s = osc + in;
                 float sum;
                 if (topology == TOPO_PRE) {
-                    // osc -> filter -> summer -> delay
-                    s = filt[i].process(s, gc[i], kc[i], tp[i]);
-                    sum = s + r * fbk[i];
+                    // osc -> multimode filter -> summer -> delay
+                    fa[i].process(s, cutG[i], filtK);
+                    sum = fa[i].morph(typ[i]) + r * fbk[i];
                 }
                 else if (topology == TOPO_BARE) {
                     sum = s + r * fbk[i];
                 }
                 else {
-                    // summer -> filter -> delay, the filter inside the loop
-                    sum = filt[i].process(s + r * fbk[i], gc[i], kc[i], tp[i]);
+                    // summer -> 2-pole HP -> 2-pole LP -> delay, the pair
+                    // inside the loop and both taking the same resonance
+                    const float m = s + r * fbk[i];
+                    fa[i].process(m, cutG[i], filtK);
+                    fb2[i].process(fa[i].hp, lpG[i], filtK);
+                    sum = fb2[i].lp;
                 }
 
                 if (!std::isfinite(sum) || !std::isfinite(r)) {
                     sum = r = 0.f;
-                    filt[i].reset();
+                    fa[i].reset();
+                    fb2[i].reset();
                     norm[i].reset();
                     line[i].reset();
                 }
 
                 line[i].write(sum);
                 y[i] = r;
-                voice += r;
-            }
-            voice *= 0.5f;
 
-            sumL += voice * lvl[ch] * panL[ch];
-            sumR += voice * lvl[ch] * panR[ch];
-            sumY += (ch & 1) ? -voice * lvl[ch] : voice * lvl[ch];
+                // The tone generator's L output is its first lever and R is
+                // its second; Reaktor sums the eight voices into each.
+                if (k == 0) sumL += r; else sumR += r;
+                sumY += (ch & 1) ? -r : r;
+            }
         }
 
-        // DC blockers: sixteen saturating loops leave plenty of offset behind.
-        const float r = 1.f - 20.f / sr;
-        dcyL = sumL - dcxL + r * dcyL; dcxL = sumL;
-        dcyR = sumR - dcxR + r * dcyR; dcxR = sumR;
+        // DC blockers. Not in the ensemble -- neither is a patch cable, and
+        // REAKTOR's audio interface does not have to keep a Rack rail clean.
+        const float rc = 1.f - 20.f / sr;
+        dcyL = sumL - dcxL + rc * dcyL; dcxL = sumL;
+        dcyR = sumR - dcxR + rc * dcyR; dcxR = sumR;
 
-        *outL = fastTanh(dcyL * 0.5f);
-        *outR = fastTanh(dcyR * 0.5f);
+        *outL = dcyL;
+        *outR = dcyR;
 
         // A slow read of the bank's own wandering, for patching out. The
-        // channels are summed with alternating sign so the common motion
+        // levers are summed with alternating sign so the common motion
         // cancels and what is left is how unevenly the eight are behaving.
         cvLp += (sumY - cvLp) * (25.f * 6.2831853f / sr);
-        *cv = cvLp * 2.5f;
+        *cv = cvLp;
     }
 };
 

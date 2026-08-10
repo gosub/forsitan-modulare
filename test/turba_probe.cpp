@@ -85,8 +85,8 @@ static void probeLevels() {
 static void probeFlow() {
     printf("\n== flow macro ==\n");
     printf("flow      rms      peak    centroid\n");
-    for (int i = -4; i <= 4; i++) {
-        const float f = i / 4.f;
+    for (int i = 0; i <= 8; i++) {
+        const float f = i / 8.f;
         Turba m;
         m.params[Turba::FLOW_PARAM].setValue(f);
         long frame = 0;
@@ -103,8 +103,8 @@ static void probeMacros() {
     static const char* name[3] = {"pitch", "cutoff", "delay"};
     for (int k = 0; k < 3; k++) {
         printf("%-8s  knob      rms    centroid\n", name[k]);
-        for (int i = -2; i <= 2; i++) {
-            const float f = i / 2.f;
+        for (int i = 0; i <= 4; i++) {
+            const float f = i / 4.f;
             Turba m;
             m.params[knob[k]].setValue(f);
             long frame = 0;
@@ -122,8 +122,8 @@ static void probeMacros() {
 static void probeLyapunov() {
     printf("\n== divergence (largest Lyapunov estimate) ==\n");
     printf("flow    lambda(1/s)   verdict\n");
-    for (int i = -2; i <= 2; i++) {
-        const float f = i / 2.f;
+    for (int i = 0; i <= 4; i++) {
+        const float f = i / 4.f;
         Turba a, b;
         a.params[Turba::FLOW_PARAM].setValue(f);
         b.params[Turba::FLOW_PARAM].setValue(f);
@@ -180,11 +180,11 @@ static void probeWander() {
     printf("topology   flow    spread    step   burst\n");
     static const char* name[3] = {"loop", "pre", "bare"};
     for (int t = 0; t < 3; t++) {
-        for (float flow : {-1.f, 0.f, 1.f}) {
+        for (float flow : {0.f, 0.5f, 1.f}) {
             Turba m;
             m.params[Turba::MODE_PARAM].setValue((float)t);
             m.params[Turba::FLOW_PARAM].setValue(flow);
-            m.params[Turba::LEVEL_PARAM].setValue(0.5f);
+            m.params[Turba::LEVEL_PARAM].setValue(0.f);   // 0 dB
             long frame = 0;
             settle(m, frame, 6.0);
 
@@ -279,15 +279,15 @@ struct RenderSetting {
 static void probeRender(const char* dir, double seconds) {
     static const RenderSetting settings[] = {
         // Both levers always run, as they do in the ensemble.
-        {"default_loop",   0,  0.0f, false, 0.f},
-        {"default_pre",    1,  0.0f, false, 0.f},
-        {"default_bare",   2,  0.0f, false, 0.f},
-        {"flow_left",      0, -1.0f, false, 0.f},
-        {"flow_right",     0,  1.0f, false, 0.f},
-        {"rand_loop",      0,  0.5f, true, 0.f},
-        {"rand_pre",       1,  0.5f, true, 0.f},
-        {"rand_bare",      2,  0.5f, true, 0.f},
-        {"pitch_up_loop",  0,  0.0f, false, 0.6f},
+        {"default_loop",   0,  0.5f, false, 0.5f},
+        {"default_pre",    1,  0.5f, false, 0.5f},
+        {"default_bare",   2,  0.5f, false, 0.5f},
+        {"flow_left",      0,  0.0f, false, 0.5f},
+        {"flow_right",     0,  1.0f, false, 0.5f},
+        {"rand_loop",      0,  0.5f, true,  0.5f},
+        {"rand_pre",       1,  0.5f, true,  0.5f},
+        {"rand_bare",      2,  0.5f, true,  0.5f},
+        {"pitch_up_loop",  0,  0.5f, false, 0.8f},
     };
     const int count = (int)(sizeof(settings) / sizeof(settings[0]));
     printf("\n== render, %.1f s each, into %s ==\n", seconds, dir);
@@ -295,7 +295,7 @@ static void probeRender(const char* dir, double seconds) {
         Turba m;
         m.params[Turba::MODE_PARAM].setValue((float)settings[s].topology);
         m.params[Turba::FLOW_PARAM].setValue(settings[s].flow);
-        m.params[Turba::LEVEL_PARAM].setValue(0.5f);
+        m.params[Turba::LEVEL_PARAM].setValue(0.f);   // 0 dB
         m.params[Turba::PITCH_PARAM].setValue(settings[s].pitch);
         if (settings[s].randomize) m.randomizeChannels();
 

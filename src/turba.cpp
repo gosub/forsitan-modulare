@@ -9,27 +9,33 @@
 // stuff"). What is taken is the architecture, described in the factory
 // library manual, and the interface.
 //
-// Eight parallel channels, each an oscillator into a feedback delay with a
-// normalizer in the loop, and a resonant filter whose position is what the
-// three topologies differ in. The channels are cross-coupled in a ring: each
-// oscillator is frequency-modulated by its neighbour's loop signal on one
-// side and amplitude-modulated by the other side's. There is no gate and no
-// pitch input; like the original it simply runs.
+// Eight voices, each holding two levers, a lever being an oscillator into a
+// feedback comb tuned as a pitch with a normalizer in it. Two of the three
+// topologies put a resonant filter in that loop or in front of it. Every
+// lever is frequency- and amplitude-modulated by a lever in whichever voice
+// its fm and am bars point at, so the bank is coupled all-to-all. There is
+// no gate and no pitch input; like the original it simply runs.
 //
-// Every channel has its own value for each of eight parameters, edited as
-// eight bars in the edit area, one bar per channel. The four macro knobs do
-// not offset those values, they *map* them: each applies a power curve to
-// all eight at once, so turning one to the left crushes the whole bank low
-// and only the highest bars survive, and to the right lifts them all.
+// Every voice has its own value for each of eight parameters, edited as
+// eight bars in the edit area, one bar per voice. The four macro knobs do
+// not offset those values, they *map* them: three of them are the position
+// of a curve -- the fourth power, the identity, the fourth root -- so hard
+// left crushes the whole bank low and only the tallest bars survive, and
+// hard right lifts them all. The fourth, flow, is a crossfade of five
+// global settings between a calm end and a chaotic one.
+//
+// The mapping laws, the loop order and every numeric range here are read out
+// of Skrewell's own ensemble file; see the header of turba_dsp.hpp for what
+// that read did and did not recover.
 //
 // Controls:
-//   Edit  : eight bars, one per channel, for the selected function. Draw
+//   Edit  : eight bars, one per voice, for the selected function. Draw
 //           sets bars directly, wrap shifts all of them and mirrors at the
 //           ends, rand jogs all of them at once.
-//   Knobs : function, level, and the four macros pitch, cutoff, delay, flow
-//           (each with an attenuverter and a CV input)
+//   Knobs : function, level (a dB fader), and the four macros pitch, cutoff,
+//           delay, flow (each with an attenuverter and a CV input)
 //   Switch: mode (loop / pre / bare), edit (draw / wrap / rand)
-//   In    : audio (injected into all eight loops), rand trigger
+//   In    : audio (injected into all sixteen loops), rand trigger
 //   Out   : L, R, cv (the bank's own slow wander, +/-5 V)
 //   Light : L and R output level
 
@@ -40,32 +46,42 @@ using turba_dsp::NCH;
 
 static const int NFUNC = 8;
 
+// The eight bars, in the ensemble's own order and standing for the same
+// things: `F fm A am cut lbh DEL FB`. Two of them are read differently
+// depending on which tone generator is running, exactly as in the original,
+// where the three generators share one set of eight bars: the multimode one
+// reads bars five and six as a cutoff and a filter type, the bandpass one as
+// the two corners of its band, and the third has no filter and ignores both.
 static const char* funcName[NFUNC] = {
-    "pitch", "cutoff", "type", "time", "fbk", "fm", "am", "level"
+    "pitch", "fm", "amp", "am", "cutoff", "type", "time", "fbk"
+};
+static const char* funcNameLoop[NFUNC] = {
+    "pitch", "fm", "amp", "am", "hp", "lp", "time", "fbk"
 };
 
 // A starting bank. The three rows that matter for whether this thing sits
 // still are fbk, time and pitch, and they are set where they are on purpose:
-// long delays (30-307 ms) with every loop just under or just over unity, and
-// the eight pitches inside a fifth of each other rather than spread over
-// three octaves. That is the regime where the bank wanders on its own -- the
-// loops take a tenth of a second per pass, so state survives long enough to
-// evolve, and channels close in pitch beat slowly against each other through
-// the cross-modulation. An earlier default with half the feedback and 2-40 ms
-// delays measured 0.04 octaves of spectral wander over a minute; this one
-// measures 0.19-0.20 in every topology. See "Making it wander" in the manual.
+// long delays (30-310 ms) with every loop near unity, and the eight pitches
+// inside a fifth of each other rather than spread over three octaves. That is
+// the regime where the bank wanders on its own -- the loops take a tenth of a
+// second per pass, so state survives long enough to evolve, and voices close
+// in pitch beat slowly against each other through the cross-modulation. An
+// earlier default with half the feedback and 2-40 ms delays measured 0.04
+// octaves of spectral wander over a minute. See "Making it wander" in the
+// manual. The snapshots in the ensemble would have given the original's own
+// starting values, but they are packed and did not decode.
 static const float chDefault[NFUNC][NCH] = {
     {0.48f, 0.38f, 0.56f, 0.42f, 0.52f, 0.34f, 0.60f, 0.44f},   // pitch
+    {0.30f, 0.22f, 0.36f, 0.18f, 0.28f, 0.34f, 0.24f, 0.32f},   // fm
+    {0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f},   // amp
+    {0.26f, 0.34f, 0.20f, 0.38f, 0.30f, 0.24f, 0.36f, 0.28f},   // am
     {0.66f, 0.52f, 0.74f, 0.58f, 0.70f, 0.48f, 0.78f, 0.62f},   // cutoff
     {0.10f, 0.45f, 0.00f, 0.60f, 0.20f, 0.85f, 0.05f, 0.35f},   // type
     {0.74f, 0.87f, 0.70f, 0.94f, 0.81f, 1.00f, 0.77f, 0.90f},   // time
     {0.95f, 0.91f, 0.99f, 0.88f, 0.97f, 0.92f, 1.00f, 0.89f},   // fbk
-    {0.30f, 0.22f, 0.36f, 0.18f, 0.28f, 0.34f, 0.24f, 0.32f},   // fm
-    {0.26f, 0.34f, 0.20f, 0.38f, 0.30f, 0.24f, 0.36f, 0.28f},   // am
-    {0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f, 0.72f},   // level
 };
 
-enum FuncId { F_PITCH, F_CUTOFF, F_TYPE, F_TIME, F_FBK, F_FM, F_AM, F_LEVEL };
+enum FuncId { F_PITCH, F_FM, F_AMP, F_AM, F_CUTOFF, F_TYPE, F_TIME, F_FBK };
 
 // The bare topology has no filter, so two of the eight functions have nothing
 // to point at there. carloskleiber, dissecting the original's polycontrol:
@@ -80,6 +96,10 @@ static bool funcActive(int func, int topology) {
 
 // How many samples between control-rate updates of the mapped targets.
 static const int CONTROL_PERIOD = 32;
+
+// Volts per internal unit at 0 dB on the fader. REAKTOR's audio is +-1 into
+// a soundcard; a Rack cable is +-5, and eight voices sum into each side.
+static const float OUT_VOLTS = 0.9f;
 
 // Lissajous history, written by the audio thread and read by the widget.
 static const int SCOPE_POINTS = 512;
@@ -152,8 +172,9 @@ struct Turba : Module {
                             "%", 0.f, 100.f);
 
         configSwitch(FUNC_PARAM, 0.f, (float)(NFUNC - 1), 0.f, "Function",
-                     {"Pitch", "Cutoff", "Resonance", "Delay time",
-                      "Feedback", "FM amount", "AM amount", "Level"});
+                     {"Pitch", "FM source", "Amplitude", "AM source",
+                      "Cutoff / HP corner", "Filter type / LP corner",
+                      "Delay time", "Feedback"});
         configSwitch(MODE_PARAM, 0.f, 2.f, 0.f, "Topology",
                      {"Filter in the loop", "Filter before the delay",
                       "No filter, parabolic oscillator"});
@@ -162,15 +183,20 @@ struct Turba : Module {
         getParamQuantity(FUNC_PARAM)->randomizeEnabled = false;
         getParamQuantity(EDIT_PARAM)->randomizeEnabled = false;
 
-        configParam(PITCH_PARAM, -1.f, 1.f, 0.f, "Pitch mapping");
-        configParam(CUTOFF_PARAM, -1.f, 1.f, 0.f, "Cutoff mapping");
-        configParam(DELAY_PARAM, -1.f, 1.f, 0.f, "Delay time mapping");
-        configParam(FLOW_PARAM, -1.f, 1.f, 0.f, "Flow");
+        // The four master knobs are 0..1 in the ensemble, and so are they
+        // here. Three of them are the position of a `shaper`, which is a
+        // curve and not an offset; the fourth is the Pos of five Selectors.
+        configParam(PITCH_PARAM, 0.f, 1.f, 0.5f, "Pitch mapping");
+        configParam(CUTOFF_PARAM, 0.f, 1.f, 0.5f, "Cutoff mapping");
+        configParam(DELAY_PARAM, 0.f, 1.f, 0.5f, "Delay time mapping");
+        configParam(FLOW_PARAM, 0.f, 1.f, 0.5f, "Flow");
         configParam(PITCH_ATT_PARAM, -1.f, 1.f, 0.f, "Pitch CV amount");
         configParam(CUTOFF_ATT_PARAM, -1.f, 1.f, 0.f, "Cutoff CV amount");
         configParam(DELAY_ATT_PARAM, -1.f, 1.f, 0.f, "Delay CV amount");
         configParam(FLOW_ATT_PARAM, -1.f, 1.f, 0.f, "Flow CV amount");
-        configParam(LEVEL_PARAM, 0.f, 1.f, 0.5f, "Output level", "%", 0.f, 100.f);
+        // The ensemble's output stage is a dB fader with exactly this travel.
+        configParam(LEVEL_PARAM, turba_dsp::K_OUT_MIN_DB, turba_dsp::K_OUT_MAX_DB,
+                    0.f, "Output level", " dB");
         configButton(RAND_PARAM, "Randomize channels");
 
         configInput(PITCH_CV_INPUT, "Pitch mapping CV");
@@ -196,21 +222,14 @@ struct Turba : Module {
         scopeCount = 0;
     }
 
-    // The whole point of the macro knobs: a power curve over the eight bars
-    // rather than an offset. gamma > 1 pushes everything towards zero and
-    // only the tallest bars stay up; gamma < 1 lifts the whole bank.
-    static float mapValue(float v, float gamma) {
-        if (v <= 0.f) return 0.f;
-        if (v >= 1.f) return 1.f;
-        return std::pow(v, gamma);
-    }
-
     float macro(int knob, int att, int cv) {
         float v = params[knob].getValue();
         if (inputs[cv].isConnected())
-            v += params[att].getValue() * inputs[cv].getVoltage() * 0.2f;
-        return clamp(v, -1.f, 1.f);
+            v += params[att].getValue() * inputs[cv].getVoltage() * 0.1f;
+        return clamp(v, 0.f, 1.f);
     }
+
+    static float lerp(float a, float b, float t) { return a + (b - a) * t; }
 
     void randomizeChannels() {
         // All 64, as the original's does: "sends random values to all 64
@@ -221,66 +240,85 @@ struct Turba : Module {
     }
 
     void updateTargets(float sr) {
-        const float gP = std::pow(5.f, -macro(PITCH_PARAM, PITCH_ATT_PARAM, PITCH_CV_INPUT));
-        const float gC = std::pow(5.f, -macro(CUTOFF_PARAM, CUTOFF_ATT_PARAM, CUTOFF_CV_INPUT));
-        const float gD = std::pow(5.f, -macro(DELAY_PARAM, DELAY_ATT_PARAM, DELAY_CV_INPUT));
+        using namespace turba_dsp;
+
+        const float mOsc = macro(PITCH_PARAM, PITCH_ATT_PARAM, PITCH_CV_INPUT);
+        const float mFil = macro(CUTOFF_PARAM, CUTOFF_ATT_PARAM, CUTOFF_CV_INPUT);
+        const float mDel = macro(DELAY_PARAM, DELAY_ATT_PARAM, DELAY_CV_INPUT);
         const float flow = macro(FLOW_PARAM, FLOW_ATT_PARAM, FLOW_CV_INPUT);
 
         // Flow is not a bar mapping like the other three. In the ensemble it
-        // is the Pos of five Selectors, each blending between two knobs, so
-        // it crossfades a handful of global settings between a low and a high
-        // value. Here: how hard the crossvoice modulates, the resonance of
-        // every filter, and the engine's inertia.
-        const float fw = clamp(flow * 0.5f + 0.5f, 0.f, 1.f);
-        tgt.fmDepth = 0.04f + fw * 2.4f;
-        tgt.amDepth = fw * 0.95f;
-        // Resonance runs the other way: high Q rings on one band and stays
-        // orderly, an open one hands the loop broadband gain for the
-        // saturator to fold, and the bank tips over. That inversion is what
-        // stumped the people porting it. Measured: 0/s below flow -0.5,
-        // 670/s above centre.
-        const float flowQ = 12.f + fw * (0.7f - 12.f);
-        // `nrm`, the Clipper's Min inside the normalizer: how quiet a loop is
-        // allowed to stay. Low means a quiet loop gets dragged up towards
-        // full, high means it is left alone.
-        eng.normFloor = 0.5f - fw * 0.45f;
+        // is the Pos of five Selectors, each blending between a pair of
+        // knobs, and these are those five: the FM ratio, the AM depth, the
+        // resonance of every filter, the smoothing multiplier and the
+        // normalizer's floor. At flow zero fm is 1, which is no modulation at
+        // all, and am is 0: eight plain oscillators through resonant filters
+        // into tuned combs. At flow one it is four octaves of FM either way
+        // and ring modulation on top.
+        tgt.fmDepth = lerp(SET_FM_LO,  SET_FM_HI,  flow);
+        tgt.amDepth = lerp(SET_AM_LO,  SET_AM_HI,  flow);
+        tgt.res     = lerp(SET_RES_LO, SET_RES_HI, flow);
+        tgt.smt     = lerp(SET_SMT_LO, SET_SMT_HI, flow);
+        tgt.nrm     = lerp(SET_NRM_LO, SET_NRM_HI, flow);
 
-        // Flow also sets how quickly the engine chases its own controls:
-        // "less modulation and more inertia" at one end, twitchy at the other.
-        eng.setInertia(std::pow(10.f, -1.3f - 1.1f * flow));   // 1 s .. 2.5 ms
+        const int topo = eng.topology;
 
-        const float nyq = 0.45f * sr;
         for (int c = 0; c < NCH; c++) {
-            const float p = params[CH_PARAM + F_PITCH  * NCH + c].getValue();
-            const float k = params[CH_PARAM + F_CUTOFF * NCH + c].getValue();
-            const float y = params[CH_PARAM + F_TYPE   * NCH + c].getValue();
-            const float t = params[CH_PARAM + F_TIME   * NCH + c].getValue();
-            const float b = params[CH_PARAM + F_FBK    * NCH + c].getValue();
-            const float m = params[CH_PARAM + F_FM     * NCH + c].getValue();
-            const float a = params[CH_PARAM + F_AM     * NCH + c].getValue();
-            const float l = params[CH_PARAM + F_LEVEL  * NCH + c].getValue();
+            const float bF   = params[CH_PARAM + F_PITCH  * NCH + c].getValue();
+            const float bFm  = params[CH_PARAM + F_FM     * NCH + c].getValue();
+            const float bA   = params[CH_PARAM + F_AMP    * NCH + c].getValue();
+            const float bAm  = params[CH_PARAM + F_AM     * NCH + c].getValue();
+            const float b5   = params[CH_PARAM + F_CUTOFF * NCH + c].getValue();
+            const float b6   = params[CH_PARAM + F_TYPE   * NCH + c].getValue();
+            const float bDel = params[CH_PARAM + F_TIME   * NCH + c].getValue();
+            const float bFb  = params[CH_PARAM + F_FBK    * NCH + c].getValue();
 
-            tgt.oct[c] = mapValue(p, gP) * 11.f;                  // 8 Hz .. 16 kHz
+            // `osc F`: the shaped bar is the Pos of a Selector between two
+            // pitch knobs, and an Exp turns the result into hertz.
+            tgt.hz[c] = pitchToHz(
+                lerp(SET_PITCH_LO, SET_PITCH_HI, shape(bF, mOsc)));
 
-            float fc = 20.f * std::exp2(mapValue(k, gC) * 10.f);
-            if (fc > nyq) fc = nyq;
-            tgt.g[c] = std::tan((float)M_PI * fc / sr);
+            // `osc A`: a Selector between constants 0 and 1, so the bar is
+            // the oscillator's amplitude, straight through and unshaped.
+            tgt.amp[c] = bA;
 
-            tgt.k[c] = 1.f / flowQ;
-            tgt.typ[c] = y;
+            if (topo == TOPO_LOOP) {
+                // The bandpass mapping, which is not two independent knobs:
+                // the LP corner is cc1/2 * (1 - cc2) + cc2 and the HP corner
+                // is that multiplied by cc2 again, so the HP can never climb
+                // above the LP and the band never closes.
+                const float u = shape(b5, mFil) * 0.5f * (1.f - b6) + b6;
+                const float h = u * b6;
+                tgt.lpHz[c]  = pitchToHz(lerp(SET_CUT_LO, SET_CUT_HI, u));
+                tgt.cutHz[c] = pitchToHz(lerp(SET_CUT_LO, SET_CUT_HI, h));
+                tgt.typ[c] = 0.f;
+            }
+            else {
+                tgt.cutHz[c] = pitchToHz(
+                    lerp(SET_CUT_LO, SET_CUT_HI, shape(b5, mFil)));
+                tgt.lpHz[c] = tgt.cutHz[c];
+                // `lbh` times a constant 2, the Pos of a Selector over the
+                // filter's LP, BP and HP outputs in that order.
+                tgt.typ[c] = b6 * 2.f;
+            }
 
-            const float ms = 0.15f * std::exp2(mapValue(t, gD) * 11.f);
-            tgt.dly[c] = ms * 0.001f * sr;
+            // `delay`: the shaped bar picks a pitch between the `short` and
+            // `long` knobs, and `- P - Ms -` is an Exp into 1000 divided by
+            // it. The delay time is one period of that pitch, which is why
+            // every loop is a comb tuned to a note.
+            tgt.delMs[c] = 1000.f / pitchToHz(
+                lerp(SET_DEL_SHORT, SET_DEL_LONG, shape(bDel, mDel)));
 
-            tgt.fbk[c] = b * 1.02f;
+            // `fbck`: a Selector between constants 0 and 1.
+            tgt.fbk[c] = bFb;
+
             // The fm and am bars are Selector positions, not depths: they
-            // choose which of the eight channels modulates this one. The
+            // choose which of the eight voices modulates this one. The
             // scaling is the ensemble's -- inside `crossvoice` a constant 8
             // multiplies the bar before it reaches the selector, so the top
-            // eighth of a bar's travel all lands on the last channel.
-            tgt.fmPos[c] = m * (float)NCH;
-            tgt.amPos[c] = a * (float)NCH;
-            tgt.lvl[c] = l * l;
+            // eighth of a bar's travel all lands on the last voice.
+            tgt.fmPos[c] = bFm * (float)NCH;
+            tgt.amPos[c] = bAm * (float)NCH;
         }
     }
 
@@ -300,19 +338,19 @@ struct Turba : Module {
         float l = 0.f, r = 0.f, cv = 0.f;
         eng.process(in, &l, &r, &cv);
 
-        // Calibrated so the level knob at half gives about 0.9 V RMS with
-        // the default bank. The figure moved when the normalizer became a
-        // real one: dividing by the envelope holds the loops nearer full
-        // than the limiter it replaced did.
-        const float gain = params[LEVEL_PARAM].getValue() * 8.f;
+        // The dB fader, and the one number that has to come from outside the
+        // ensemble: how much of a Rack volt an internal unit is worth. Set so
+        // the default bank at 0 dB sits near a 5 V peak.
+        const float gain = std::pow(10.f, params[LEVEL_PARAM].getValue() * 0.05f)
+                           * OUT_VOLTS;
         l *= gain;
         r *= gain;
 
-        // The engine's own saturator bounds the mix to +-1, but the level
-        // knob scales past that, so the jack needs a rail of its own.
+        // Every normalizer bounds its own lever to +-1, so the mix is bounded
+        // too, but the fader reaches +18 dB. Rack still needs a rail.
         outputs[LEFT_OUTPUT].setVoltage(clamp(l, -10.f, 10.f));
         outputs[RIGHT_OUTPUT].setVoltage(clamp(r, -10.f, 10.f));
-        outputs[CV_OUTPUT].setVoltage(clamp(cv * 10.f, -5.f, 5.f));
+        outputs[CV_OUTPUT].setVoltage(clamp(cv * 2.f, -5.f, 5.f));
 
         envL += (std::fabs(l) - envL) * 0.002f;
         envR += (std::fabs(r) - envR) * 0.002f;
@@ -545,12 +583,13 @@ struct TurbaEditArea : OpaqueWidget {
             nvgFillColor(args.vg, active ? nvgRGBA(0xff, 0xd5, 0x00, 0x99)
                                          : nvgRGBA(0xff, 0xd5, 0x00, 0x44));
             nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+            const char* nm = (topology() == turba_dsp::TOPO_LOOP)
+                             ? funcNameLoop[func()] : funcName[func()];
             if (active)
-                nvgText(args.vg, 4.f, 3.f, funcName[func()], NULL);
+                nvgText(args.vg, 4.f, 3.f, nm, NULL);
             else
                 nvgText(args.vg, 4.f, 3.f,
-                        string::f("%s (no filter in bare)",
-                                  funcName[func()]).c_str(), NULL);
+                        string::f("%s (no filter in bare)", nm).c_str(), NULL);
             nvgFillColor(args.vg, nvgRGBA(0xe5, 0xe5, 0xe5, 0x66));
             nvgTextAlign(args.vg, NVG_ALIGN_RIGHT | NVG_ALIGN_TOP);
             nvgText(args.vg, w - 4.f, 3.f, editName[editMode()], NULL);

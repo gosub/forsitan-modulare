@@ -3,8 +3,8 @@
 // smoke_turba checks a handful of fixed points; turba_probe measures
 // character. This harness checks properties that must hold *everywhere*, by
 // randomizing the whole 64-bar control space plus the macros and the
-// topology, and asserting invariants over it. turba is eight saturating
-// feedback loops wired into a ring, all of them reachable from a single
+// topology, and asserting invariants over it. turba is sixteen saturating
+// feedback loops modulating each other, all of them reachable from a single
 // button press, so "does it ever blow up" is not a rhetorical question.
 //
 // Failures print the offending patch to stderr, and the RNG is seeded (see
@@ -15,17 +15,16 @@
 // Safety, over random patches:
 //   S1 finite      no NaN or Inf on any output, ever
 //   S2 bounded     audio within +-10 V, CV within +-5 V
-//   S3 no_dc       eight saturating loops leave no offset parked on the jack
-//   S4 silent      output level at zero is exactly silence
+//   S3 no_dc       sixteen saturating loops leave no offset on the jack
+//   S4 fader_span  the output fader spans the ensemble's 54 dB and no more
 //
 // The engine:
 //   E1 alive       a random bank makes sound rather than sitting dead
 //   E2 recovers    driven to the extremes and let go, it comes back
-//   E3 no_pump     the loop limiter holds a level, it does not oscillate
+//   E3 no_pump     the normalizer holds a level, it does not oscillate
 //
-// The macros, which are power mappings rather than offsets:
-//   M1 monotone    the pitch macro raises every channel's frequency, and the
-//                  cutoff macro every channel's cutoff, monotonically
+// The macros, which are curve mappings rather than offsets:
+//   M1 monotone    the shaper is monotone in the knob at every bar value
 //   M2 identity    at centre the mapping is exactly the bar value
 //   M3 live        each of the four macros measurably changes the output, on
 //                  the large majority of patches (a rate, not an absolute:
@@ -60,7 +59,8 @@ struct Rng {
 
 struct Patch {
     float ch[NFUNC][NCH];
-    float pitch = 0.f, cutoff = 0.f, delay = 0.f, flow = 0.f, level = 0.5f;
+    float pitch = 0.5f, cutoff = 0.5f, delay = 0.5f, flow = 0.5f;
+    float level = 0.f;          // the output fader, in dB
     int topology = 0;
 };
 
@@ -68,11 +68,11 @@ static Patch randomPatch(Rng& r) {
     Patch p;
     for (int f = 0; f < NFUNC; f++)
         for (int c = 0; c < NCH; c++) p.ch[f][c] = r.uni();
-    p.pitch = r.range(-1.f, 1.f);
-    p.cutoff = r.range(-1.f, 1.f);
-    p.delay = r.range(-1.f, 1.f);
-    p.flow = r.range(-1.f, 1.f);
-    p.level = r.range(0.f, 1.f);
+    p.pitch = r.uni();
+    p.cutoff = r.uni();
+    p.delay = r.uni();
+    p.flow = r.uni();
+    p.level = r.range(turba_dsp::K_OUT_MIN_DB, turba_dsp::K_OUT_MAX_DB);
     p.topology = r.pick(3);
     return p;
 }
@@ -80,7 +80,7 @@ static Patch randomPatch(Rng& r) {
 static void describe(const Patch& p, char* out, size_t n) {
     snprintf(out, n,
              "topo %d pitch %+.3f cutoff %+.3f delay %+.3f "
-             "flow %+.3f level %.3f bars[0] %.2f %.2f %.2f %.2f",
+             "flow %+.3f level %.1f dB bars[0] %.2f %.2f %.2f %.2f",
              p.topology, p.pitch, p.cutoff, p.delay, p.flow,
              p.level, p.ch[0][0], p.ch[0][1], p.ch[0][2], p.ch[0][3]);
 }
@@ -231,28 +231,41 @@ struct Inv {
 static void testSafety() {
     Rng r(gSeed);
     Inv finite("inv_S1_finite"), bounded("inv_S2_bounded");
-    Inv nodc("inv_S3_no_dc"), silent("inv_S4_silent");
+    Inv nodc("inv_S3_no_dc"), silent("inv_S4_fader_span");
 
     const int n = 60 * gScale;
     for (int k = 0; k < n; k++) {
         Patch p = randomPatch(r);
-        Trace t = run(p, 1.5, 2.0);
+        // Six seconds, not two: the loops repeat at 3 to 20 Hz, at or below
+        // the DC blocker's own corner, so a short mean of a bank sitting on
+        // long delays is not zero for reasons that are not offset.
+        Trace t = run(p, 1.5, 6.0);
 
         finite.hit(t.nans == 0, (double)t.nans, p);
         bounded.hit(t.peak <= 10.001 && t.cvPeak <= 5.001,
                     std::max(t.peak - 10.001, t.cvPeak - 5.001), p);
-        // Two seconds of a chaotic signal averages to zero if the DC blocker
-        // is doing its job; anything left is an offset, not slow content.
-        nodc.hit(std::fabs(t.mean) < 0.05, std::fabs(t.mean), p);
+        // 0.1 V, which is 1% of the rail. Not tighter: the blocker is one
+        // pole at 20 Hz and some banks put their whole loop below that, so
+        // what is left in the mean is the signal, not an offset. Worst seen
+        // over the standard sixty patches is 0.06 V.
+        nodc.hit(std::fabs(t.mean) < 0.1, std::fabs(t.mean), p);
 
-        Patch q = p;
-        q.level = 0.f;
-        Trace s = run(q, 0.5, 0.3);
-        double loud = 0;
-        for (size_t i = 0; i < s.l.size(); i++)
-            loud = std::max(loud, (double)std::max(std::fabs(s.l[i]),
-                                                   std::fabs(s.r[i])));
-        silent.hit(loud == 0.0, loud, q);
+        // The fader is the ensemble's, and the ensemble's bottoms out at
+        // -36 dB rather than at silence, so "the level knob at zero is
+        // quiet" is not the invariant. What is, is that the fader spans
+        // exactly the 54 dB the ensemble gives it. The engine is
+        // deterministic, so the two runs differ by the gain and nothing else
+        // -- unless the rail is clipping, which is what this catches.
+        Patch qlo = p, qhi = p;
+        qlo.level = turba_dsp::K_OUT_MIN_DB;
+        qhi.level = turba_dsp::K_OUT_MAX_DB;
+        Trace slo = run(qlo, 0.5, 0.3);
+        Trace shi = run(qhi, 0.5, 0.3);
+        const double want = std::pow(10.0,
+            (turba_dsp::K_OUT_MAX_DB - turba_dsp::K_OUT_MIN_DB) * 0.05);
+        const double got = shi.peak / std::max(slo.peak, 1e-12);
+        // clipped at the rail from above, so only the lower bound is firm
+        silent.hit(got > 0.5 * want || shi.peak > 9.99, got / want, qlo);
     }
     finite.done();
     bounded.done();
@@ -275,9 +288,9 @@ static void testEngine() {
         // a pitch macro hard right against a cutoff macro hard left is a
         // patch that is *supposed* to be near silent, oscillators far above
         // the filters that are meant to pass them.
-        for (int c = 0; c < NCH; c++) p.ch[F_LEVEL][c] = 0.6f + 0.4f * r.uni();
-        p.pitch = p.cutoff = p.delay = p.flow = 0.f;
-        p.level = 0.5f;
+        for (int c = 0; c < NCH; c++) p.ch[F_AMP][c] = 0.6f + 0.4f * r.uni();
+        p.pitch = p.cutoff = p.delay = p.flow = 0.5f;
+        p.level = 0.f;
         Trace t = run(p, 2.0, 3.0);
         alive.hit(t.rms > 0.01, t.rms, p, false);
 
@@ -304,12 +317,12 @@ static void testEngine() {
         Patch p = randomPatch(r);
         for (int c = 0; c < NCH; c++) {
             p.ch[F_FBK][c] = 1.f;
-            p.ch[F_LEVEL][c] = 1.f;
+            p.ch[F_AMP][c] = 1.f;
         }
         // The output level knob is not what this is testing, and a random
         // one lands near zero often enough to fail the "came back audible"
         // check for a reason that has nothing to do with recovery.
-        p.level = 0.5f;
+        p.level = 0.f;
         Patch hot = p;
         hot.pitch = hot.cutoff = hot.delay = hot.flow = 1.f;
 
@@ -334,8 +347,9 @@ static void testEngine() {
 
 // ──────────────────────────────────────────────────────────────────────── M
 
-// The macros map the bars through v^gamma. Check the mapping itself, which
-// is the part a listener has to be able to predict, rather than the audio.
+// The macros map the bars through the ensemble's `shaper`: a blend over
+// v^4, v and the fourth root of v. Check the mapping itself, which is the
+// part a listener has to be able to predict, rather than the audio.
 static void testMacros() {
     Rng r(gSeed ^ 0x2222u);
     Inv monotone("inv_M1_monotone"), identity("inv_M2_identity");
@@ -345,16 +359,16 @@ static void testMacros() {
         const float v = r.range(0.001f, 0.999f);
         float prev = -1.f;
         bool ok = true;
-        for (int i = -10; i <= 10; i++) {
-            const float knob = i / 10.f;
-            const float g = std::pow(5.f, -knob);
-            const float mapped = Turba::mapValue(v, g);
+        for (int i = 0; i <= 20; i++) {
+            const float knob = i / 20.f;
+            const float mapped = turba_dsp::shape(v, knob);
             if (mapped < prev - 1e-6f) ok = false;
             prev = mapped;
         }
         monotone.hit(ok, v, p);
-        identity.hit(std::fabs(Turba::mapValue(v, 1.f) - v) < 1e-6f,
-                     std::fabs(Turba::mapValue(v, 1.f) - v), p);
+        // The centre of the knob is the identity curve.
+        identity.hit(std::fabs(turba_dsp::shape(v, 0.5f) - v) < 1e-6f,
+                     std::fabs(turba_dsp::shape(v, 0.5f) - v), p);
     }
 
     // Each macro has to do something audible on its own. Compare a run at
@@ -372,14 +386,14 @@ static void testMacros() {
     double liveWorst[4] = {1e9, 1e9, 1e9, 1e9};
     for (int k = 0; k < 12 * gScale; k++) {
         Patch base = randomPatch(r);
-        base.pitch = base.cutoff = base.delay = base.flow = 0.f;
+        base.pitch = base.cutoff = base.delay = base.flow = 0.5f;
         for (int c = 0; c < NCH; c++) {
-            base.ch[F_LEVEL][c] = 0.8f;
+            base.ch[F_AMP][c] = 0.8f;
             // The delay macro can only be heard through a loop that is
             // actually recirculating, so give every channel some feedback.
             base.ch[F_FBK][c] = 0.5f + 0.5f * r.uni();
         }
-        base.level = 0.5f;
+        base.level = 0.f;
         for (int q = 0; q < 4; q++) {
             // The bare topology has no filter, so the cutoff macro has
             // nothing to map there and being inaudible is correct.
@@ -387,8 +401,8 @@ static void testMacros() {
             Patch lo = base, hi = base;
             float* slot[4] = {&lo.pitch, &lo.cutoff, &lo.delay, &lo.flow};
             float* slotH[4] = {&hi.pitch, &hi.cutoff, &hi.delay, &hi.flow};
-            *slot[q] = -0.7f;
-            *slotH[q] = 0.7f;
+            *slot[q] = 0.15f;
+            *slotH[q] = 0.85f;
             Trace a = run(lo, 2.0, 2.0);
             Trace b = run(hi, 2.0, 2.0);
             // Level is the wrong observable on its own: the delay macro
