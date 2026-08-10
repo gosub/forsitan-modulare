@@ -313,10 +313,13 @@ global pip install):
     modules on a 1920x1200 screen). Then fullscreen, zoom to fit, and
     `grim`. **It needs limen protocol 2** (`move_module`), so the installed
     plugin must be built from a tree that has it.
-- `tools/presets/` — `skrewell_to_scrupea.py`, converts the snapshots in a
-  Reaktor ensemble **the user supplies** into scrupea `.vcvm` presets. No
-  snapshot data is checked in: the factory snapshots are Native Instruments'
-  content, names included, so the converter ships and the presets do not.
+- `tools/presets/` — `gen_presets.py` writes `presets/scrupea/*.vcvm`, and
+  `skrewell_to_scrupea.py` converts the snapshots in a Reaktor ensemble **the
+  user supplies** into the same format. No snapshot data is checked in: the
+  factory snapshots are Native Instruments' content, names included, so the
+  converter ships and their presets do not. Ours are written from the
+  *statistics* of the factory banks, which the generator documents.
+  `test/scrupea_probe preset presets/scrupea/*.vcvm` measures them.
 - `tools/patches/` — `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
   zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
   builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so

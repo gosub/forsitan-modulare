@@ -344,6 +344,35 @@ the original's "Display Control", so there is no context menu.
 There isn't one. The only display control the original has is the X/Y pad
 above, and that is on the panel.
 
+## Presets
+
+Six, and they are scrupea's own. Skrewell's snapshots decode (see
+*Attribution*) but they are Native Instruments' content, creative names and
+all, so none of them is in this repository. What was taken is the *shape* of a
+Skrewell bank, measured across 44 of them: rows are wide and freehand, with a
+mean within-row spread of 0.22 against 0.29 for a uniform draw; `pitch` sits
+lower than every other row; and `fm` is the one row that is ever flat — 11 of
+the 44 point every voice at the same modulator, a star instead of a scatter,
+which sounds quite unlike a drawn row.
+
+| | |
+|---|---|
+| **stagnum** | a standing pool. Pitches inside a fifth, feedback near unity, the longest delays, flow low. The one that wanders on its own |
+| **grando** | hail. Short loops so the combs ring instead of echoing, wide everything, flow well up |
+| **unum** | one. The star topology, every voice modulated by voice three, over a pitch row spanning the whole range |
+| **vitrum** | glass. High and thin, highpassed, barely recirculating. Centroid 4.9 kHz |
+| **limus** | silt. Low, slow and dark, the sludge at the bottom of the range |
+| **chorda** | a string. Pitches on a ramp so the bank is a chord, amplitudes tapering across it, in the bare topology |
+
+They are generated rather than hand-edited — `tools/presets/gen_presets.py`
+holds the tables and the reasoning — and measured with
+`test/scrupea_probe preset`, which is how they came to sit between 0.86 and
+1.30 V RMS with centroids from 64 Hz to 4.9 kHz.
+
+**If you own Reaktor**, `tools/presets/skrewell_to_scrupea.py` converts your
+own copy's snapshots into presets locally. Fifty-five of them come out of the
+multi-output mod.
+
 ## Tips
 
 - The default patch is deliberately mild. Start by pushing **flow** right and

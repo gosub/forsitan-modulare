@@ -26,6 +26,7 @@
 #include <ctime>
 #include <algorithm>
 #include <vector>
+#include <jansson.h>
 
 static void settle(Scrupea& m, long& frame, double seconds) {
     const int n = (int)(seconds * SR);
@@ -271,6 +272,30 @@ static void probeWander() {
     }
 }
 
+// Load a .vcvm and measure it, so a preset can be checked rather than hoped
+// at. jansson comes in with the Rack headers.
+static void probePreset(const char* path) {
+    json_error_t err;
+    json_t* root = json_load_file(path, 0, &err);
+    if (!root) { printf("  %-14s  (unreadable: %s)\n", path, err.text); return; }
+    Scrupea m;
+    json_t* ps = json_object_get(root, "params");
+    size_t i;
+    json_t* e;
+    json_array_foreach(ps, i, e) {
+        const int id = (int)json_integer_value(json_object_get(e, "id"));
+        const float v = (float)json_number_value(json_object_get(e, "value"));
+        if (id >= 0 && id < Scrupea::PARAMS_LEN) m.params[id].setValue(v);
+    }
+    json_decref(root);
+    long frame = 0;
+    settle(m, frame, 4.0);
+    Meas r = measure(m, frame, 8.0);
+    const char* base = std::strrchr(path, '/');
+    printf("  %-14s %7.3f  %7.3f  %8.0f  %7.3f\n",
+           base ? base + 1 : path, r.rms, r.peak, r.centroid, r.cvRms);
+}
+
 static void probeCpu() {
     printf("\n== cpu ==\n");
     Scrupea m;
@@ -371,6 +396,13 @@ int main(int argc, char** argv) {
     if (all || !std::strcmp(which, "macros")) probeMacros();
     if (all || !std::strcmp(which, "lyapunov")) probeLyapunov();
     if (all || !std::strcmp(which, "wander")) probeWander();
+    if (!std::strcmp(which, "preset")) {
+        printf("\n== presets ==\n");
+        printf("  %-14s %7s  %7s  %8s  %7s\n",
+               "name", "rms", "peak", "centroid", "cv");
+        for (int i = 2; i < argc; i++) probePreset(argv[i]);
+        return 0;
+    }
     if (all || !std::strcmp(which, "cpu")) probeCpu();
     return 0;
 }
