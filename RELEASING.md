@@ -42,10 +42,27 @@ than a bad release.
    panel `res/<name>.svg`, the `plugin.json` entry with its `manualUrl`,
    `doc/<slug>.md`, and the readme row.
 
-5. **`plugin.json` metadata.** Tags still describe the module (`tags` drives
-   library filtering). Descriptions are **one-line summaries**: Rack renders
-   the field as the module-browser hover tooltip and does not wrap it, so
-   keep them under ~100 characters and leave behaviour to the manual.
+5. **`plugin.json` metadata.** Every tag must be one Rack knows, and this is
+   not a matter of taste: the library rejects a manifest with an unknown tag,
+   and it does so *after* the tag is pushed. That has already cost one
+   release ([#19](https://github.com/gosub/forsitan-modulare/issues/19),
+   `Drone` on four modules and `Tape` on a fifth). Check before tagging:
+
+   ```
+   python3 tools/release/check_tags.py
+   ```
+
+   Nonzero on an unknown tag, and it warns about aliases -- `Synth Voice`
+   where Rack says `Synth voice` -- which the library accepts but which read
+   as typos. It works offline against a cached copy of Rack's own list;
+   `--fetch` refreshes that copy from `src/tag.cpp` upstream and reports what
+   changed. Worth running after a Rack release.
+
+   Beyond validity, tags should still *describe* the module, since library
+   browse-by-tag is a discovery channel. Descriptions are **one-line
+   summaries**: Rack renders the field as the module-browser hover tooltip and
+   does not wrap it, so keep them under ~100 characters and leave behaviour to
+   the manual.
 
 6. **Regenerate anything derived**, if its source changed:
 

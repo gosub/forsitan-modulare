@@ -68,7 +68,8 @@
       "description": "TCP + JSON server for controlling Rack from external tools.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/limen.md",
       "tags": [
-        "Utility"
+        "Utility",
+        "External"
       ]
     },
     {
@@ -78,7 +79,8 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/mmcccxcix.md",
       "tags": [
         "Delay",
-        "Effect"
+        "Effect",
+        "Hardware clone"
       ]
     },
     {
@@ -109,7 +111,7 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/draen.md",
       "tags": [
         "Oscillator",
-        "Synth Voice"
+        "Synth voice"
       ]
     },
     {
@@ -163,7 +165,7 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/bulla.md",
       "tags": [
         "Oscillator",
-        "Synth Voice",
+        "Synth voice",
         "Random"
       ]
     },
@@ -185,7 +187,7 @@
       "description": "Feedback drone synthesizer: a self-exciting Karplus-Strong string (Audrey II port).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/vorax.md",
       "tags": [
-        "Synth Voice",
+        "Synth voice",
         "Physical modeling"
       ]
     },
@@ -219,7 +221,7 @@
       "tags": [
         "Sampler",
         "Random",
-        "Synth Voice"
+        "Synth voice"
       ]
     },
     {
@@ -309,7 +311,7 @@
       "tags": [
         "Drum",
         "Oscillator",
-        "Synth Voice"
+        "Synth voice"
       ]
     },
     {
@@ -319,7 +321,7 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/cartilago.md",
       "tags": [
         "Effect",
-        "Tremolo",
+        "Voltage-controlled amplifier",
         "Ring modulator",
         "Filter",
         "Hardware clone",
@@ -334,7 +336,7 @@
       "tags": [
         "Noise",
         "Oscillator",
-        "Synth Voice",
+        "Synth voice",
         "Effect",
         "Random"
       ]

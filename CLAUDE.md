@@ -280,7 +280,10 @@ global pip install):
 - `tools/release/` — `sync_version.py`, repoints every `manualUrl` /
   `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
   against the newest `CHANGELOG.md` heading. `--check` is the tag-day gate;
-  see `RELEASING.md`. Plus two image generators, so nothing in `img/` is ever
+  see `RELEASING.md`. Alongside it `check_tags.py` validates every module's
+  `tags` against Rack's own list (cached in `rack_tags.txt`, `--fetch` to
+  refresh): the library rejects unknown tags *after* you push the tag, which
+  is an expensive way to find out. Plus two image generators, so nothing in `img/` is ever
   made by hand:
 
   - `gen_screenshots.py` — the per-module panel images:
