@@ -97,12 +97,24 @@ matches AlbertoZ's account on the Cycling '74 thread from the other side:
 
 ### Two-state switching
 
-The thing that makes the bank evolve with nobody touching it, and the last
-piece to go in. From colB's reverse engineering of the ensemble: *"There are
-some parameters that have two settings that get switched between… It does
-that thing where components of the sound toggle chaotically between two
-states, and when lots of things are doing that you get loads of layers that
-still make sense."*
+The thing that makes the bank evolve with nobody touching it — and, unlike
+almost everything else here, **an invention rather than a reading**. It went
+in on colB's remark that *"there are some parameters that have two settings
+that get switched between… it does that thing where components of the sound
+toggle chaotically between two states"*, taken as a description of Skrewell's
+structure. Reading the patch afterwards showed it is not.
+
+There is no switch, no comparator and nothing clocked anywhere in a LEVER.
+What colB was pointing at turns out to be the `flow` macro, where each of the
+five parameters it controls (`fm`, `am`, `res`, `smt`, `nrm`) is a Selector
+blending between **two knobs** — two settings per parameter, crossfaded by one
+control. The chaotic toggling he describes hearing is emergent, which is what
+a feedback system near a bifurcation does on its own.
+
+So this is a mechanism of this module's own, kept because it works: it is what
+takes the spectral wander from 0.19 octaves to 0.97, and without it the bank
+sits still. But it is not what the original does, and the section below is
+where it belongs as much as here.
 
 Once per pass of its own delay line — so every 30 to 300 ms, at eight
 different rates — each channel latches one bit from the sign of another
@@ -342,6 +354,18 @@ the normalizer, it is that the oscillators never stop.
 **Flow maps resonance backwards**, as described above. Skrewell's own
 behaviour, but arrived at deliberately here rather than as a side effect of a
 closed filter.
+
+**Two-state switching is invented.** See the section above: the patch has no
+switch in it. It is here because it makes the bank evolve on its own and the
+bank otherwise does not.
+
+**The fm and am bars mean something different in the original.** Here they are
+modulation depths. There they are the `Pos` of an eight-way Selector inside
+`crossvoice` — they choose *which voice* modulates this one, blending between
+two adjacent voices when set between them, while `flow` supplies the depth.
+That makes the bank's coupling a topology the bars draw, which is a
+considerably more interesting instrument than a set of depths, and it is the
+biggest thing still unimplemented here.
 
 Smaller ones: the filter is a topology-preserving 2-pole SVF with its
 integrator states soft-limited, not a model of whatever REAKTOR uses; the

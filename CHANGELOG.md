@@ -202,7 +202,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
 
     Each channel also carries a **two-state switch**, which is what makes the
-    bank evolve with nobody touching it. Once per pass of its own delay line,
+    bank evolve with nobody touching it, and which is this module's own
+    invention rather than a reading of the original -- see doc/turba.md. Once per pass of its own delay line,
     so every 30-300 ms at eight different rates, a channel latches one bit
     from the sign of another channel's loop signal, and that bit picks between
     two values of its filter cutoff. Nothing drifts and there is no LFO: the
