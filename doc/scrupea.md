@@ -294,8 +294,8 @@ that were chaotic and a large number for one that was diverging.
 
 ## morph
 
-Centred in the bottom row, three controls that belong together: a **gate**
-input, the **morph** button, and a small **time** trimpot. While the gate is
+In the bottom row, sitting together in the gap between **rand** and the
+outputs: a **gate** input, the **morph** button, and a small **time** trimpot. While the gate is
 high or the button held, all sixty-four bars set off towards destinations of
 their own — the same motion a **rand** drag makes, but driven by a gate and at
 a time you choose rather than by the speed of your hand.
