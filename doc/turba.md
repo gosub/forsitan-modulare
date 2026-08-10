@@ -126,7 +126,7 @@ the module, and they are visible over [limen](limen.md) as
 | **type** | low → band → high | the filter's *shape*. The ensemble's `lbh`: the `Pos` of a selector over the Multi 2-Pole's three outputs, blending between adjacent ones, so each channel can sit on a different slope |
 | **time** | 0.15 ms – 307 ms, exponential | the delay. At the short end the loop is a comb rather than an echo |
 | **fbk** | 0 – 102% | loop gain. Over unity the normalizer holds it |
-| **fm** | channel 1 – 8 | **which channel frequency-modulates this one.** Not a depth: it is the position of an eight-way selector over the bank, blending between two adjacent channels when set between them. Depth comes from **flow** |
+| **fm** | channel 1 – 8 | **which channel frequency-modulates this one.** Not a depth: it is the position of an eight-way selector over the bank, blending between two adjacent channels when set between them. The bar is multiplied by 8, as the ensemble does, so the top eighth of its travel all lands on the last channel. Depth comes from **flow** |
 | **am** | channel 1 – 8 | the same, for amplitude modulation. The two bars together draw the bank's coupling: which channel listens to which |
 | **level** | 0 – 100% | this channel's contribution to the mix. Channels are panned across the field in order, channel 1 hard left |
 

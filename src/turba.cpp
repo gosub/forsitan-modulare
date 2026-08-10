@@ -270,9 +270,12 @@ struct Turba : Module {
 
             tgt.fbk[c] = b * 1.02f;
             // The fm and am bars are Selector positions, not depths: they
-            // choose which of the eight channels modulates this one.
-            tgt.fmPos[c] = m * (float)(NCH - 1);
-            tgt.amPos[c] = a * (float)(NCH - 1);
+            // choose which of the eight channels modulates this one. The
+            // scaling is the ensemble's -- inside `crossvoice` a constant 8
+            // multiplies the bar before it reaches the selector, so the top
+            // eighth of a bar's travel all lands on the last channel.
+            tgt.fmPos[c] = m * (float)NCH;
+            tgt.amPos[c] = a * (float)NCH;
             tgt.lvl[c] = l * l;
         }
     }
