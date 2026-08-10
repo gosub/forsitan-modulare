@@ -201,13 +201,10 @@ struct Scrupea : Module {
         configParam(CUTOFF_ATT_PARAM, -1.f, 1.f, 0.f, "Cutoff CV amount");
         configParam(DELAY_ATT_PARAM, -1.f, 1.f, 0.f, "Delay CV amount");
         configParam(FLOW_ATT_PARAM, -1.f, 1.f, 0.f, "Flow CV amount");
-        // The ensemble's output stage is a dB fader with exactly this travel.
-        // Three quarters up it, which is +4.5 dB: unity was too quiet to be a
-        // useful default for a module you patch straight into a mixer.
+        // The ensemble's output stage is a dB fader with exactly this travel,
+        // and it starts where the ensemble's starts, at unity.
         configParam(LEVEL_PARAM, scrupea_dsp::K_OUT_MIN_DB, scrupea_dsp::K_OUT_MAX_DB,
-                    scrupea_dsp::K_OUT_MIN_DB + 0.75f *
-                    (scrupea_dsp::K_OUT_MAX_DB - scrupea_dsp::K_OUT_MIN_DB),
-                    "Output level", " dB");
+                    0.f, "Output level", " dB");
         configButton(RAND_PARAM, "Randomize channels");
 
         // Skrewell's XY pad. It is a Reaktor XY element, which is a display
