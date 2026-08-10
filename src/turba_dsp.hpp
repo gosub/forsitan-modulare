@@ -323,6 +323,14 @@ struct Engine {
         const float sT = 1.f / sr;
         const int levers = pairs ? LPC : 1;
 
+        // The crossvoice bus, one per lever slot: every channel's lever k,
+        // averaged. Averaged rather than summed because eight of them at
+        // full tilt would be eight times the modulation the amounts expect.
+        float bus[LPC] = {0.f, 0.f};
+        for (int c = 0; c < NCH; c++)
+            for (int q = 0; q < levers; q++) bus[q] += yPrev[lev(c, q)];
+        for (int q = 0; q < LPC; q++) bus[q] *= 1.f / (float)NCH;
+
         for (int ch = 0; ch < NCH; ch++) {
             float voice = 0.f;
 
@@ -332,22 +340,15 @@ struct Engine {
                 // crossvoice, as the ensemble calls it. The partner is the
                 // other lever of this pair and it is the main modulator; the
                 // ring on to the next channel is the weaker, second one.
-                const float ringF = yPrev[lev((ch + 1) & (NCH - 1), k)];
-                const float ringA = yPrev[lev((ch + 7) & (NCH - 1), k)];
-                float mf, ma;
-                if (!ringCoupling) {
-                    // no ring: a lever hears only its partner, or itself
-                    mf = ma = yPrev[pairs ? lev(ch, 1 - k) : i];
-                }
-                else if (pairs) {
-                    const float p = yPrev[lev(ch, 1 - k)];
-                    mf = pairWeight * p + (1.f - pairWeight) * ringF;
-                    ma = pairWeight * p + (1.f - pairWeight) * ringA;
-                }
-                else {
-                    mf = ringF;
-                    ma = ringA;
-                }
+                // What the ensemble actually does, read off its graph: the
+                // `crossvoice` macro beside each lever holds eight From Voice
+                // modules feeding a nine-input adder, so a lever is modulated
+                // by its partner's output *summed across all eight channels*,
+                // not by a neighbour. All-to-all between channels, crossed
+                // within the pair. `bus` below is that sum, taken once.
+                const float partner = pairs ? yPrev[lev(ch, 1 - k)] : yPrev[i];
+                const float mf = ringCoupling ? bus[pairs ? 1 - k : k] : partner;
+                const float ma = mf;
 
                 // One tick per pass of this lever's delay line, but never
                 // faster than 10 ms: past that the switch stops being a

@@ -324,8 +324,10 @@ struct Turba : Module {
         l *= gain;
         r *= gain;
 
-        outputs[LEFT_OUTPUT].setVoltage(l);
-        outputs[RIGHT_OUTPUT].setVoltage(r);
+        // The engine's own saturator bounds the mix to +-1, but the level
+        // knob scales past that, so the jack needs a rail of its own.
+        outputs[LEFT_OUTPUT].setVoltage(clamp(l, -10.f, 10.f));
+        outputs[RIGHT_OUTPUT].setVoltage(clamp(r, -10.f, 10.f));
         outputs[CV_OUTPUT].setVoltage(clamp(cv * 10.f, -5.f, 5.f));
 
         envL += (std::fabs(l) - envL) * 0.002f;
@@ -741,7 +743,7 @@ struct TurbaWidget : ModuleWidget {
         Turba* module = getModule<Turba>();
 
         menu->addChild(new MenuSeparator);
-        menu->addChild(createBoolPtrMenuItem("Ring coupling", "", &module->ringCoupling));
+        menu->addChild(createBoolPtrMenuItem("Crossvoice (all channels)", "", &module->ringCoupling));
         menu->addChild(createBoolPtrMenuItem("Randomize all functions", "",
                                              &module->randomizeAllFuncs));
         menu->addChild(createBoolPtrMenuItem("Lever pairs (both loops per channel)", "",

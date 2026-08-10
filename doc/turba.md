@@ -54,13 +54,18 @@ what the factory manual says and now also what the patch says.
 The oscillators never stop and there is no gate and no pitch input. Like the
 original, you switch it on and it runs.
 
-What makes it more than sixteen parallel drones is the coupling, which comes
-in two kinds, as it does in the ensemble. Inside a pair the two levers
-modulate each other — that is what `crossvoice` is there for — and on top of
-that each lever is FM'd by the corresponding lever of the next channel along
-and AM'd by the previous one, a ring through the whole bank. Every loop is
-therefore part of one system, and with the filter saturating inside it that
-system is genuinely chaotic — see *Is it actually chaotic* below.
+What makes it more than sixteen parallel drones is the coupling, and its shape
+was read off the ensemble rather than invented. The `crossvoice` macro beside
+each lever turns out to contain **eight From Voice modules feeding a nine-input
+adder**: a lever is modulated by its partner's output *summed across all eight
+channels*. So the coupling is all-to-all between channels and crossed within
+the pair, not a ring between neighbours. Every loop is part of one system, and
+with the filter saturating inside it that system is genuinely chaotic — see
+*Is it actually chaotic* below.
+
+Switching **crossvoice** off in the context menu drops the channel sum and
+leaves each lever hearing only its own partner: sixteen loops in eight
+independent pairs, much tamer.
 
 Lever pairs can be switched off in the context menu, which halves the CPU and
 is not just an economy: see the note there, it is the setting that evolves
@@ -238,7 +243,7 @@ precessing figure is the interesting middle.
 
 | item | |
 |------|---|
-| **Ring coupling** | off makes each channel modulate *itself* instead of its neighbours. Eight independent chaotic loops rather than one coupled system: much tamer, and useful as a bank of eight droning comb resonators |
+| **Crossvoice (all channels)** | on, a lever is modulated by its partner's output summed across all eight channels, which is what the ensemble does. Off, it hears only its own partner: eight independent pairs rather than one coupled system, much tamer, and useful as a bank of droning comb resonators |
 | **Lever pairs** | both loops of every channel, on by default because it is what the ensemble does. Off, each channel is a single lever: half the CPU, a thinner and more separated bank, and — this is the awkward part — **more** self-evolution, 0.82 octaves of spectral wander against 0.34. Two chaotic loops summed into one voice average each other out, and no amount of coupling weight recovers it (measured at six settings from 0 to 0.85). On is denser, rougher and more faithful; off moves more. There is no setting that is both |
 | **Raw oscillators (aliasing)** | drops the band-limiting from the pulses so every edge folds its harmonics back down the spectrum. colB puts part of Skrewell's character down to it being "digital with aliasing and quantization". Measured, it is a **small** effect here and honesty demands saying so: at the default bank the centroid moves 1052 → 1092 Hz and the spectral flatness 0.011 → 0.013. It shows up properly only with the pitch macro up, where the flatness goes 0.041 → 0.051. The reason is that most of this engine's aliasing never came from the waveform edges in the first place — exponential FM at audio rate throws sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was never correcting those. It also costs nothing; raw is cheaper than band-limited |
 | **Bit crush** | 12, 10 or 8 bits, quantizing each loop signal on its way into the delay. The other half of "aliasing and quantization", and similarly small on its own: 8 bit moves the centroid 1052 → 1123 Hz and doubles the energy above 5 kHz |
