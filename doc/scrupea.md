@@ -292,6 +292,24 @@ that were chaotic and a large number for one that was diverging.
 | **L**, **R** | the mix, through the ensemble's output fader: −36 to +18 dB, defaulting three quarters up at +4.5 dB, which puts the starting bank at about 2.2 V RMS. The channels are the ensemble's own: **L is the first lever of every voice and R the second**, eight voices summed into each. There is no panning. The two sides are genuinely different because the two levers of a voice take their modulation from opposite sides of the bank, which is what gives the Lissajous something to draw |
 | **cv** | the bank's own slow wander, ±5 V. The sixteen levers summed with alternating sign and lowpassed at 25 Hz, so common motion cancels and what is left is how unevenly they are behaving |
 
+## morph
+
+Centred in the bottom row, three controls that belong together: a **gate**
+input, the **morph** button, and a small **time** trimpot. While the gate is
+high or the button held, all sixty-four bars set off towards destinations of
+their own — the same motion a **rand** drag makes, but driven by a gate and at
+a time you choose rather than by the speed of your hand.
+
+It is a *time to value*, not a rate: each leg takes the same time whatever
+distance it has to cover, so the whole bank arrives together and immediately
+leaves again. What you get is a fresh bank every `time` rather than a shiver.
+The trimpot runs 0.1 s to 30 s and takes effect at the start of the next leg,
+so turning it while morphing never jerks anything.
+
+Like the **rand** button, morph moves all sixty-four values, not only the
+eight bars of whichever function happens to be on screen. Patch a slow square
+into the gate and the module rewrites itself between the edges.
+
 ## The displays
 
 The **edit area** is the eight bars. The square to its right is the
