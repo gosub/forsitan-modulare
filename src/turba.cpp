@@ -201,8 +201,12 @@ struct Turba : Module {
         configParam(DELAY_ATT_PARAM, -1.f, 1.f, 0.f, "Delay CV amount");
         configParam(FLOW_ATT_PARAM, -1.f, 1.f, 0.f, "Flow CV amount");
         // The ensemble's output stage is a dB fader with exactly this travel.
+        // Three quarters up it, which is +4.5 dB: unity was too quiet to be a
+        // useful default for a module you patch straight into a mixer.
         configParam(LEVEL_PARAM, turba_dsp::K_OUT_MIN_DB, turba_dsp::K_OUT_MAX_DB,
-                    0.f, "Output level", " dB");
+                    turba_dsp::K_OUT_MIN_DB + 0.75f *
+                    (turba_dsp::K_OUT_MAX_DB - turba_dsp::K_OUT_MIN_DB),
+                    "Output level", " dB");
         configButton(RAND_PARAM, "Randomize channels");
 
         // Skrewell's XY pad. It is a Reaktor XY element, which is a display
