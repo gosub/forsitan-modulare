@@ -317,18 +317,36 @@ the normalizer, it is that the oscillators never stop.
 behaviour, but arrived at deliberately here rather than as a side effect of a
 closed filter.
 
-Beyond those two, what is left is the parts whose behaviour the file does not
-give up: the normalizer's gain law after its envelope, the delay's
-interpolation, and the arithmetic of the modulation chain, where 49 of the
-ensemble's 57 module classes are still unidentified. Those are designed here,
-not read.
+### The rule
 
-Smaller ones: the filter is a topology-preserving 2-pole SVF with its
-integrator states soft-limited, not a model of whatever REAKTOR uses; the
-oscillators are polyBLEP pulses rather than REAKTOR's; the panning across the
-eight channels is fixed rather than a parameter; and the input, the four CV
-inputs, the CV output and the rand trigger have no counterpart in the
-original.
+**Nothing is in the engine that is not in the ensemble.** Anything invented
+has been taken out again, including some things that measured well: a
+chaotically clocked two-state switch on the filters that doubled the module's
+self-evolution, a raw-oscillator option, a bit crush, and menu switches for
+turning off the lever pairs and the crossvoice. None of them exist in the
+patch, so none of them are here. The context menu is one item, and that item
+is in the original.
+
+What remains that is *not* read from the file is only the parts the file does
+not give up, and they are all inside primitives rather than in the
+architecture:
+
+- the **normalizer's gain law** after its envelope — the envelope itself is
+  Reaktor's Peak Detector to the letter, but the five primitives that follow
+  it are unidentified classes, so the ceiling and the saturator are designed;
+- the **filter** is a topology-preserving 2-pole SVF with soft-limited
+  integrator states, matched to the Multi 2-Pole's described behaviour rather
+  than modelled from it;
+- the **arithmetic of the modulation chain** — 49 of the ensemble's 57 module
+  classes are still unnamed, so how depth scales is inference;
+- the **delay's interpolation**, and the **panning** across the eight
+  channels, which the file does not specify.
+
+The **jacks** are the exception, and a deliberate one. Skrewell has no audio
+input, no CV inputs and no CV output — it is a generator with four knobs. A
+Rack module that cannot be patched is not a Rack module, so the audio input,
+the four macro CV inputs with their attenuverters, the rand trigger and the
+**cv** output are all additions. They are the interface, not the instrument.
 
 ## Making it wander
 
