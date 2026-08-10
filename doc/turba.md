@@ -269,8 +269,6 @@ precessing figure is the interesting middle.
 |------|---|
 | **Crossvoice (all channels)** | on, a lever is modulated by its partner's output summed across all eight channels, which is what the ensemble does. Off, it hears only its own partner: eight independent pairs rather than one coupled system, much tamer, and useful as a bank of droning comb resonators |
 | **Lever pairs** | both loops of every channel, on by default because it is what the ensemble does. Off, each channel is a single lever: half the CPU, a thinner and more separated bank, and — this is the awkward part — **more** self-evolution, 0.82 octaves of spectral wander against 0.34. Two chaotic loops summed into one voice average each other out, and no amount of coupling weight recovers it (measured at six settings from 0 to 0.85). On is denser, rougher and more faithful; off moves more. There is no setting that is both |
-| **Raw oscillators (aliasing)** | drops the band-limiting from the pulses so every edge folds its harmonics back down the spectrum. colB puts part of Skrewell's character down to it being "digital with aliasing and quantization" — though the module reference says REAKTOR's own oscillators *are* anti-aliased, so this is a deviation rather than fidelity, and whatever aliasing the original has comes from its FM sidebands rather than its edges. Measured, it is a **small** effect here and honesty demands saying so: at the default bank the centroid moves 1052 → 1092 Hz and the spectral flatness 0.011 → 0.013. It shows up properly only with the pitch macro up, where the flatness goes 0.041 → 0.051. The reason is that most of this engine's aliasing never came from the waveform edges in the first place — exponential FM at audio rate throws sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was never correcting those. It also costs nothing; raw is cheaper than band-limited |
-| **Bit crush** | 12, 10 or 8 bits, quantizing each loop signal on its way into the delay. The other half of "aliasing and quantization", and similarly small on its own: 8 bit moves the centroid 1052 → 1123 Hz and doubles the energy above 5 kHz |
 | **Randomize all functions** | off makes the rand button and trigger randomize only the function currently on screen, which is far more controllable than rolling all 64 |
 | **Display scale** | 1× to 8× on the Lissajous, the original's "Display Control". 1× is ±5 V filling the box; turn it up when the bank is running quietly |
 | **Randomize channels** | the button, from the menu |
@@ -412,6 +410,14 @@ Recorded so nobody spends the afternoon again:
   changes its phase, not its statistics, so the FM sidebands come out the same.
 - **The normalizer, at every speed and depth.** It is not what holds the
   levels still; see the note above.
+- **Raw oscillators and a bit crush**, both shipped for a while and both
+  removed. They came from colB's remark that Skrewell's sound owes something
+  to it "being digital with aliasing and quantization", and both were wrong on
+  two counts: the module reference says REAKTOR's oscillators *are*
+  anti-aliased, so they were unfaithful, and measured against the finished
+  engine they did almost nothing — raw moved the centroid 1454 to 1527 Hz and
+  8-bit crush moved it 12 Hz further. Whatever aliasing the original has comes
+  from its FM sidebands, which are still here.
 - **Recovering the wander that lever pairs cost**, by reweighting the
   crossvoice against the ring. Swept from 0 (levers ignore their partner) to
   0.85 (they barely hear anything else): 0.48 down to 0.30 octaves, against

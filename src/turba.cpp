@@ -86,7 +86,6 @@ static const int SCOPE_POINTS = 512;
 static const int SCOPE_DECIM = 12;
 static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
 static const float bifDepths[4] = {0.f, 1.25f, 2.5f, 3.5f};
-static const int crushLevels[4] = {0, 12, 10, 8};
 
 struct Turba : Module {
     enum ParamId {
@@ -150,11 +149,6 @@ struct Turba : Module {
     // LEVER macros with a crossvoice between them -- and off it halves the
     // CPU and gives a thinner, more separated version of the same bank.
     bool oscPairs = true;
-    // colB's other observation about why Skrewell sounds like it does: it is
-    // digital, "with aliasing and quantization". raw drops the band-limiting
-    // from the pulses; crush quantizes each loop signal.
-    bool oscRaw = false;
-    int crushIndex = 0;
     bool randomizeAllFuncs = true;
     // Skrewell's "Display Control", which scales the Lissajous. Index into
     // scopeScales below; 1x means +/-5 V fills the box.
@@ -215,8 +209,6 @@ struct Turba : Module {
         scopeScale = 0;
         bifIndex = 2;
         oscPairs = true;
-        oscRaw = false;
-        crushIndex = 0;
         scopeCount = 0;
     }
 
@@ -309,8 +301,6 @@ struct Turba : Module {
             eng.ringCoupling = ringCoupling;
             eng.bifurcate = bifDepths[bifIndex];
             eng.pairs = oscPairs;
-            eng.bandLimit = !oscRaw;
-            eng.crushBits = crushLevels[crushIndex];
             updateTargets(args.sampleRate);
             eng.glide(tgt, CONTROL_PERIOD);
         }
@@ -354,8 +344,6 @@ struct Turba : Module {
         json_object_set_new(root, "scopeScale", json_integer(scopeScale));
         json_object_set_new(root, "bifIndex", json_integer(bifIndex));
         json_object_set_new(root, "oscPairs", json_boolean(oscPairs));
-        json_object_set_new(root, "oscRaw", json_boolean(oscRaw));
-        json_object_set_new(root, "crushIndex", json_integer(crushIndex));
         return root;
     }
 
@@ -370,10 +358,6 @@ struct Turba : Module {
         if (j) bifIndex = clamp((int)json_integer_value(j), 0, 3);
         j = json_object_get(root, "oscPairs");
         if (j) oscPairs = json_boolean_value(j);
-        j = json_object_get(root, "oscRaw");
-        if (j) oscRaw = json_boolean_value(j);
-        j = json_object_get(root, "crushIndex");
-        if (j) crushIndex = clamp((int)json_integer_value(j), 0, 3);
     }
 };
 
@@ -751,12 +735,6 @@ struct TurbaWidget : ModuleWidget {
                                              &module->randomizeAllFuncs));
         menu->addChild(createBoolPtrMenuItem("Lever pairs (both loops per channel)", "",
                                              &module->oscPairs));
-        menu->addChild(createBoolPtrMenuItem("Raw oscillators (aliasing)", "",
-                                             &module->oscRaw));
-        menu->addChild(createIndexSubmenuItem("Bit crush",
-            {"off", "12 bit", "10 bit", "8 bit"},
-            [=]() { return module->crushIndex; },
-            [=](int idx) { module->crushIndex = idx; }));
         menu->addChild(createIndexSubmenuItem("Two-state switching",
             {"off", "light", "normal", "wild"},
             [=]() { return module->bifIndex; },

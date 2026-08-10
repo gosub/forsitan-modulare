@@ -220,17 +220,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     an untouched minute; with the new bank and the switch it measures 0.82,
     against 0.75 for a reference recording of Skrewell standing still.
 
-    Two more menu options, both from colB's remark that Skrewell's sound owes
-    something to it "being digital with aliasing and quantization": **raw
-    oscillators** drops the band-limiting from the pulses, and **bit crush**
-    quantizes each loop signal to 12, 10 or 8 bits. Both are honestly small.
-    Raw moves the centroid 1052 -> 1092 Hz at the default bank and the
-    spectral flatness 0.011 -> 0.013, and only really shows with the pitch
-    macro up (flatness 0.041 -> 0.051), because most of this engine's aliasing
-    never came from the waveform edges: exponential FM at audio rate throws
-    sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was
-    never correcting those.
-
     The FM is **linear and through-zero**, not exponential. Skrewell's
     oscillators are the FM variants of Reaktor's primary set, whose F input
     the manual calls "linear frequency control, which is added to the
@@ -273,10 +262,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     The normalizer's envelope follower is Reaktor's Peak Detector to the
     letter: rectify, **zero attack** -- the reference says so outright -- and
     a release quoted as the time to fall to a tenth, 230 ms at the Rel 40 used
-    here. The gain law after it is still this module's own. And REAKTOR's
-    oscillators are themselves anti-aliased, so the raw option is a deviation
-    rather than fidelity; whatever aliasing the original has comes from its FM
-    sidebands, not its edges.
+    here. The gain law after it is still this module's own. REAKTOR's
+    oscillators are themselves anti-aliased, so these are too, and whatever
+    aliasing the original has comes from its FM sidebands rather than its
+    edges.
 
     Two deliberate departures. The normalizer only turns a loop **down**;
     built as a true normalizer, holding every channel at one level, the

@@ -204,20 +204,6 @@ struct Engine {
     // channel. Tuned by measurement.
     float pairWeight = 0.35f;
 
-    // colB, on why Skrewell sounds the way it does: "the kind of sounds you
-    // get from Skrewell depend at least in part on being digital with
-    // aliasing and quantization". Two separate things, both optional here.
-    //
-    // bandLimit off drops the polyBLEP correction from the pulses, so every
-    // edge folds its harmonics back down the spectrum. In a bank of eight
-    // oscillators being exponentially FM'd by each other, that is not a few
-    // stray partials, it is a second inharmonic spectrum that moves the wrong
-    // way when the pitch does.
-    //
-    // crushBits quantizes each loop signal on its way into the delay. Zero
-    // leaves it alone.
-    bool bandLimit = true;
-    int crushBits = 0;
     float y[NLEV];       // each lever's loop output, this sample
     float yPrev[NLEV];   // ...and the previous one, what the ring reads
     SatSVF filt[NLEV];
@@ -400,11 +386,12 @@ struct Engine {
                 else {
                     float p2 = phase[i] + 0.5f;
                     if (p2 >= 1.f) p2 -= 1.f;
+                    // Band-limited, as REAKTOR's own oscillators are: the
+                    // module reference notes that waveforms with strong
+                    // transients "have anti-aliasing in REAKTOR".
                     osc = phase[i] < 0.5f ? 1.f : -1.f;
-                    if (bandLimit) {
-                        osc += polyBlep(phase[i], dt);
-                        osc -= polyBlep(p2, dt);
-                    }
+                    osc += polyBlep(phase[i], dt);
+                    osc -= polyBlep(p2, dt);
                 }
 
                 // AM from the partner, never all the way to silence.
@@ -453,11 +440,6 @@ struct Engine {
                     filt[i].reset();
                     norm[i].reset();
                     line[i].reset();
-                }
-
-                if (crushBits > 0) {
-                    const float steps = (float)(1 << (crushBits - 1));
-                    sum = std::floor(sum * steps + 0.5f) / steps;
                 }
 
                 line[i].write(sum);
