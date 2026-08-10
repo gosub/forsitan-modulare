@@ -259,10 +259,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     one channel, sharing its filter and delay -- written before the ensembles
     were read.
 
-    The normalizer's envelope follower is Reaktor's Peak Detector to the
-    letter: rectify, **zero attack** -- the reference says so outright -- and
-    a release quoted as the time to fall to a tenth, 230 ms at the Rel 40 used
-    here. The gain law after it is still this module's own. REAKTOR's
+    The normalizer is read whole: Peak Detector (rectify, zero attack, release
+    quoted as the time to fall to a tenth) into a Clipper holding the envelope
+    at or above **nrm**, into a one-pole, and the signal divided by the
+    result. A real normalizer rather than the limiter earlier drafts carried,
+    with the Clipper's floor as what stops it flattening everything -- an
+    envelope below it is not tracked, so a quiet loop is scaled rather than
+    dragged to full. Flow drives the floor. REAKTOR's
     oscillators are themselves anti-aliased, so these are too, and whatever
     aliasing the original has comes from its FM sidebands rather than its
     edges.

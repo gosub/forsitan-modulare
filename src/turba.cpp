@@ -240,6 +240,10 @@ struct Turba : Module {
         // stumped the people porting it. Measured: 0/s below flow -0.5,
         // 670/s above centre.
         const float flowQ = 12.f + fw * (0.7f - 12.f);
+        // `nrm`, the Clipper's Min inside the normalizer: how quiet a loop is
+        // allowed to stay. Low means a quiet loop gets dragged up towards
+        // full, high means it is left alone.
+        eng.normFloor = 0.5f - fw * 0.45f;
 
         // Flow also sets how quickly the engine chases its own controls:
         // "less modulation and more inertia" at one end, twitchy at the other.
@@ -296,10 +300,11 @@ struct Turba : Module {
         float l = 0.f, r = 0.f, cv = 0.f;
         eng.process(in, &l, &r, &cv);
 
-        // 14 rather than 10 since the loop was rewired: the output is now
-        // the normalizer's take on the *delayed* signal, which sits about
-        // 5 dB below the pre-delay sum the old order put on the jack.
-        const float gain = params[LEVEL_PARAM].getValue() * 14.f;
+        // Calibrated so the level knob at half gives about 0.9 V RMS with
+        // the default bank. The figure moved when the normalizer became a
+        // real one: dividing by the envelope holds the loops nearer full
+        // than the limiter it replaced did.
+        const float gain = params[LEVEL_PARAM].getValue() * 8.f;
         l *= gain;
         r *= gain;
 

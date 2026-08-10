@@ -100,35 +100,40 @@ struct SatSVF {
 // level the macro knobs stopped making an audible difference. What sustains
 // this bank is not the normalizer, it is that the oscillators never stop.
 struct Normalizer {
-    float env = 0.f, gain = 1.f;
-    float relCoef = 0.999f, down = 0.05f, up = 0.0005f;
-    // The envelope follower is Reaktor's Peak Detector, and its reference
-    // entry is specific: the signal is rectified, "the attack time of peak
-    // detection is zero", and the release is quoted as the time for a peak to
-    // fall to a tenth of its value -- Rel 0 is 2.3 ms, 20 is 23 ms, 40 is
-    // 230 ms, 60 is 2300 ms, a decade per twenty on the knob. So the attack
-    // is instantaneous rather than a one-pole, which is audible: a transient
-    // pulls the gain down on the sample it arrives, not a few ms later.
+    float env = 0.f, sm = 1.f;
+    float relCoef = 0.999f, smCoef = 0.01f;
+    // Reaktor's Peak Detector: rectify, "the attack time of peak detection is
+    // zero", release quoted as the time for a peak to fall to a tenth of its
+    // value -- Rel 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, a decade per
+    // twenty. So the attack is instantaneous, which is audible: a transient
+    // moves the gain on the sample it arrives on.
     float relT = 0.230f;        // Rel = 40
+    float smT = 0.020f;         // the one-pole after the clipper
 
-    void reset() { env = 0.f; gain = 1.f; }
+    void reset() { env = 0.f; sm = 1.f; }
 
     void setSampleRate(float sr) {
         relCoef = std::exp(-2.302585093f / (relT * sr));   // ln(10) per relT
-        down = 1.f - std::exp(-1.f / (0.001f * sr));
-        up   = 1.f - std::exp(-1.f / (0.250f * sr));
+        smCoef  = 1.f - std::exp(-1.f / (smT * sr));
     }
 
-    float process(float x, float ceiling) {
+    // The whole macro, in the order the ensemble wires it: peak detector,
+    // then a Clipper holding the envelope between `floor` and a constant 300,
+    // then a one-pole, and finally the signal divided by the result. It is a
+    // real normalizer -- divide by your own envelope -- and not the limiter
+    // this module used to have. The floor is what keeps it from being one:
+    // an envelope below it is not tracked, so a quiet loop is scaled rather
+    // than dragged up to full, and how quiet a loop may stay is exactly what
+    // the `nrm` control sets. Flow drives it, as flow drives the rest.
+    float process(float x, float floorLevel) {
         const float a = std::fabs(x);
-        env = a > env ? a : env * relCoef;      // zero attack, per the spec
-        float want = 1.f;
-        if (env > ceiling) {
-            want = ceiling / env;
-            if (want < 0.02f) want = 0.02f;
-        }
-        gain += (want - gain) * (want < gain ? down : up);
-        return fastTanh(x * gain);
+        env = a > env ? a : env * relCoef;          // zero attack
+        float e = env;                               // Clipper: Min, Max, In
+        if (e < floorLevel) e = floorLevel;
+        if (e > 300.f) e = 300.f;
+        sm += (e - sm) * smCoef;                     // HP/LP 1-Pole
+        if (sm < 1e-6f) sm = 1e-6f;
+        return x / sm;                               // Divide
     }
 };
 
@@ -201,6 +206,10 @@ struct Engine {
     Normalizer norm[NLEV];
     DelayLine line[NLEV];
     float panL[NCH], panR[NCH];
+
+    // How quiet a loop is allowed to stay: the Clipper's Min inside the
+    // normalizer, driven by flow.
+    float normFloor = 0.25f;
 
     float smooth = 0.01f;   // one-pole coefficient, set from the inertia time
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
@@ -369,7 +378,7 @@ struct Engine {
                 // the only difference between the three topologies, and it is
                 // the difference the manual describes.
                 const float d = line[i].read(dly[i]);
-                float r = norm[i].process(d, 1.0f);
+                float r = norm[i].process(d, normFloor);
 
                 float sum;
                 if (topology == TOPO_PRE) {

@@ -266,52 +266,40 @@ precessing figure is the interesting middle.
 
 ## The normalizer
 
-Each loop carries one, and its envelope follower is no longer a design of
-mine. colB spotted "some sort of compression set up using peak detectors and
-clippers on the post oscillator delay feedback sections", the `norm` macro in
-the file confirms it, and the module reference then pins the behaviour down.
-REAKTOR's Peak Detector rectifies the signal, **"the attack time of peak
-detection is zero"**, and its release is quoted as the time for a peak to fall
-to a tenth of its value: `Rel` 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, 60 is
-2300 ms, a decade per twenty on the knob.
+Each loop carries one, and as of the last pass **none of it is guesswork**.
+colB spotted "some sort of compression set up using peak detectors and
+clippers on the post oscillator delay feedback sections"; the `norm` macro in
+the file has five primitives in it; and naming those five gives the whole
+thing:
 
-So the attack here is instantaneous rather than the couple of milliseconds it
-had before, which is audible — a transient pulls the gain down on the sample
-it arrives on. The release runs at `Rel = 40`, 230 ms.
+```
+  audio ─┬─> Peak Detector (Rel) ─> Clipper (Min = nrm, Max = 300)
+         │                                        │
+         │                              1-pole smoother (smt)
+         │                                        │
+         └────────────────> Divide <──────────────┘
+                              │
+                              └──> out
+```
 
-What happens *after* the envelope is still mine: the gain law, the ceiling,
-and the saturator. The macro's five primitives are mapped but their classes
-are unidentified, so that part is designed rather than read.
+It is a **real normalizer** — divide the signal by its own envelope — and not
+the limiter this module carried for most of its life. What stops it flattening
+everything is the Clipper: it holds the envelope at or above **`nrm`**, so an
+envelope quieter than that is not tracked and the loop is scaled rather than
+dragged up to full. How quiet a loop may stay is exactly what `nrm` sets, and
+flow drives it, as flow drives the rest.
+
+The Peak Detector's own behaviour is quoted in the module reference: rectify,
+**"the attack time of peak detection is zero"**, release given as the time for
+a peak to fall to a tenth — `Rel` 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, a
+decade per twenty. So the attack is instantaneous, which is audible: a
+transient moves the gain on the sample it arrives on.
 
 ## Differences from Skrewell
 
 Beyond the obvious one — this is a different implementation of a described
 architecture, not a translation of a patch — two changes were made on purpose,
 and both were forced by measurement.
-
-**The normalizer only turns a loop down.** The manual says each channel has a
-normalizer in its delay line, and a normalizer, properly, holds a signal at a
-fixed level in both directions. Built that way it flattens the bank's
-*dynamics*: with every channel pushed back up to the same level, the macro
-knobs stop changing how loud anything is. Measured across the four macros,
-knob hard left to hard right, with a true normalizer against the limiter that
-shipped:
-
-| macro | RMS span, normalizer | RMS span, limiter |
-|-------|----------------------|-------------------|
-| pitch | 1.47 → 1.56 | 1.20 → 0.56 |
-| cutoff | 0.50 → 1.45 | 0.05 → 1.06 |
-| delay | 1.66 → 1.55 | 1.15 → 0.93 |
-| flow | 1.58 → 1.43 | 1.19 → 0.60 |
-
-The timbral effect survives either way — the centroid spans are comparable,
-and on cutoff the normalizer's is actually wider — so this is not a claim that
-a normalizer makes the macros inaudible. It is narrower than that: the level
-differences the bars ask for do not survive it, the per-channel crest factor
-drops from 3.2 to 2.7, and a bank where nothing can be quiet is a bank with
-one dynamic. So it is a limiter here — it holds a loop that is running away
-and leaves a quiet one quiet. What keeps this bank alive with no gate is not
-the normalizer, it is that the oscillators never stop.
 
 **Flow maps resonance backwards**, as described above. Skrewell's own
 behaviour, but arrived at deliberately here rather than as a side effect of a
@@ -331,9 +319,6 @@ What remains that is *not* read from the file is only the parts the file does
 not give up, and they are all inside primitives rather than in the
 architecture:
 
-- the **normalizer's gain law** after its envelope — the envelope itself is
-  Reaktor's Peak Detector to the letter, but the five primitives that follow
-  it are unidentified classes, so the ceiling and the saturator are designed;
 - the **filter** is a topology-preserving 2-pole SVF with soft-limited
   integrator states, matched to the Multi 2-Pole's described behaviour rather
   than modelled from it;
