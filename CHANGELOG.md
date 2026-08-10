@@ -257,10 +257,32 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     original's knobs sat**, since the snapshots are packed and did not decode.
     Those settings are collected as `SET_` constants in one place.
 
+    The Lissajous is the panel's **X/Y pad** as well as its display, which is
+    what it is in the original: a Reaktor XY element emits MX/MY, two one-poles
+    smooth them, and they become `scX`/`scY`, the positions of two Selectors
+    choosing which lever of the running tone generator drives each axis. Every
+    tone generator carries X and Y outputs alongside L and R for exactly this.
+    Drag the display to move them, double-click to put them back to L and R.
+    It is drawn as a phosphor trail -- 170 ms of history in twenty bands, dim
+    amber at the tail through to near-white at the head -- so the figure shows
+    which way and how fast it is being drawn, not only its shape.
+
     The jacks are the deliberate exception, since Skrewell has none: an audio
     input into all sixteen loops, an attenuverter and CV per macro, a chaos CV
     out, and a rand trigger. The output stage is the ensemble's dB fader,
-    -36 to +18 dB. 3.0 % of a core at 48 kHz.
+    -36 to +18 dB, defaulting three quarters up.
+
+    **1.4 % of a core at 48 kHz**, after the inner loop was made to run four
+    levers at a time. It was 2.7 %, and the route down is worth recording
+    because everything tried first was null: the engine is throughput-bound
+    rather than latency-bound (two engines cost 2.07x one), so swapping the
+    saturator's divide for a polynomial made it *slower* -- a divide is one uop
+    and the polynomial four -- and a cheaper exp2, smaller delay buffers and a
+    reciprocal in polyBLEP all measured as noise. The sixteen levers only read
+    each other through the previous sample, and the two levers of a voice share
+    every control value including the delay time, so a group of four lanes is
+    two voices with left on lanes 0 and 2 and right on 1 and 3. RMS, centroid
+    and the whole Lyapunov ladder land within a percent of the scalar version.
 
 ### Fixed
   - **sylla**'s GEN light answering almost none of the presses it acted on.

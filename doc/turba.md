@@ -282,22 +282,43 @@ that were chaotic and a large number for one that was diverging.
 |------|---|
 | **in** | audio, injected into **all sixteen loops** at once. The original has no input at all; this is the addition that makes turba usable as a processor. A signal in here is filtered, delayed, saturated and cross-modulated sixteen ways, and it also becomes part of what the bank modulates itself with |
 | **rand** | trigger, randomizes the whole bank. Same as the button |
-| **L**, **R** | the mix, and the ensemble's own: **L is the first lever of every voice and R the second**, eight voices summed into each. There is no panning. The two sides are genuinely different because the two levers of a voice take their modulation from opposite sides of the bank, which is what gives the Lissajous something to draw |
+| **L**, **R** | the mix, through the ensemble's output fader: −36 to +18 dB, defaulting three quarters up at +4.5 dB, which puts the starting bank at about 2.2 V RMS. The channels are the ensemble's own: **L is the first lever of every voice and R the second**, eight voices summed into each. There is no panning. The two sides are genuinely different because the two levers of a voice take their modulation from opposite sides of the bank, which is what gives the Lissajous something to draw |
 | **cv** | the bank's own slow wander, ±5 V. The sixteen levers summed with alternating sign and lowpassed at 25 Hz, so common motion cancels and what is left is how unevenly they are behaving |
 
 ## The displays
 
-The **edit area** is the eight bars. The square to its right is a **Lissajous**
-of L against R, as on the original panel — it is the fastest way to see what
-the bank is doing. A single loop means the two channels are correlated and the
-bank is behaving; a filled square means it has gone to noise; a slowly
+The **edit area** is the eight bars. The square to its right is the
+**Lissajous**, as on the original panel, and it is the fastest way to see what
+the bank is doing: a single closed loop means the two axes are correlated and
+the bank is behaving, a filled square means it has gone to noise, and a slowly
 precessing figure is the interesting middle.
+
+It is drawn as a phosphor trail rather than a flat outline — 170 ms of history
+in twenty bands, each stroked twice, dim amber at the tail through to
+near-white at the head, with the newest sample as a bright dot. So you can see
+which way the figure is being drawn and how fast, not just its shape.
+
+### The X/Y pad
+
+On Skrewell's panel the display is a Reaktor **XY** element, which is a
+display and a mouse control in the same object: dragging it emits `MX` and
+`MY`, two one-poles at about 0.8 Hz smooth them, and they arrive at each tone
+generator as `scX` and `scY`. Those are the positions of two Selectors that
+choose **which lever drives which axis** — every tone generator carries `X`
+and `Y` outputs alongside its `L` and `R` for exactly this. It changes what
+you are looking at and not one thing about what you are hearing.
+
+Here the Lissajous is that pad. Drag it: left-right moves the X source, up-down
+the Y source, each crossfading between the voice's first and second lever. At
+`x 0.00  y 1.00` — where it starts, and where a double-click puts it back —
+the axes are L and R. Push both to the same end and the figure collapses to a
+diagonal, because both axes are then watching the same lever.
 
 ## Context menu
 
 | item | |
 |------|---|
-| **Display scale** | 1× to 8× on the Lissajous, the original's "Display Control". 1× is ±5 V filling the box; turn it up when the bank is running quietly |
+| **Display scale** | 1× to 8× on the Lissajous. 1× is ±5 V filling the box; turn it up when the bank is running quietly |
 
 ## Tips
 
@@ -497,12 +518,30 @@ Recorded so nobody spends the afternoon again:
 
 ## Cost
 
-3.0% of one core at 48 kHz, all sixteen loops always running. Most of it is
-one `exp2` per lever per sample for the FM ratio, and the second filter the
-loop topology puts in each lever. There is no oversampling: the loops are
-saturating feedback paths where aliasing folds back into the signal and
-becomes part of the chaos, and oversampling sixteen of them would cost more
-than the module is worth.
+1.4% of one core at 48 kHz, all sixteen loops always running. There is no
+oversampling: the loops are saturating feedback paths where aliasing folds
+back into the signal and becomes part of the chaos, and oversampling sixteen
+of them would cost more than the module is worth.
+
+It was 2.7% until the inner loop was made to run **four levers at a time**.
+The route there is worth recording because almost everything tried first did
+nothing at all. The engine is throughput-bound rather than latency-bound —
+two engines side by side cost 2.07× one, so the machine is saturated, not
+stalled — and by ablation on a 524 ns sample the budget was: filters 202 ns,
+delay lines 83, the FM `exp2` 80, polyBLEP 59, the voice selector 44, the
+normalizer 29. Given that, swapping the divide in the saturator for a
+polynomial made it *slower*, because a divide is one uop and the polynomial is
+four; a cheaper `exp2`, smaller delay buffers and a reciprocal in polyBLEP
+were all null to within noise.
+
+What was left was doing fewer, wider operations. The sixteen levers only read
+each other through the previous sample's outputs, so within a sample they are
+sixteen independent chains, and the two levers of a voice share every control
+value including the delay time. One group is four lanes: two voices, lanes 0
+and 2 the left output and lanes 1 and 3 the right. The delay lines stay
+scalar, since four buffers with two read offsets will not widen. The result
+measures as the same engine — RMS, centroid and the whole Lyapunov ladder all
+land within a percent of the scalar version.
 
 ## Attribution
 
