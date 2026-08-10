@@ -103,12 +103,21 @@ static const int CONTROL_PERIOD = 32;
 static const float OUT_VOLTS = 0.9f;
 
 // Lissajous history, written by the audio thread and read by the widget.
-// 2048 samples at every sixth one is a quarter of a second at 48 kHz, which
-// is long enough to close a figure down at 8 Hz and short enough that the
-// shape still visibly moves.
-static const int SCOPE_POINTS = 2048;
-static const int SCOPE_DECIM = 6;
-static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
+//
+// **Sampled at Reaktor's event rate, not at audio rate**, and that is the
+// whole difference between a figure and a fog. The display in the ensemble is
+// an XY panel element, and a panel element is fed events: the audio rate over
+// the control-rate ratio, 64 by default, so about 750 points a second at
+// 48 kHz rather than eight thousand. Undersampling a Lissajous is not a loss
+// of detail, it is the mechanism -- the sampling beats against the signal and
+// the figure is traced out slowly and precesses, which is where the curves
+// and the little curls come from. Sample it densely instead and every one of
+// those figures fills in and becomes a cloud.
+//
+// 2048 points at that rate is about 2.7 seconds of persistence.
+// 384 points per voice at that rate is about half a second of persistence.
+static const int SCOPE_POINTS = 384;
+static const int SCOPE_DECIM = 64;
 
 struct Scrupea : Module {
     enum ParamId {
@@ -158,15 +167,10 @@ struct Scrupea : Module {
     dsp::BooleanTrigger randBtn;
     float envL = 0.f, envR = 0.f;
 
-    // scope ring buffer
-    float scopeX[SCOPE_POINTS] = {};
-    float scopeY[SCOPE_POINTS] = {};
+    // scope ring buffer, one point per voice per slot
+    float scopeX[SCOPE_POINTS][NCH] = {};
+    float scopeY[SCOPE_POINTS][NCH] = {};
     int scopeHead = 0, scopeCount = 0;
-
-    // context menu options
-    // Skrewell's "Display Control", which scales the Lissajous. Index into
-    // scopeScales below; 1x means +/-5 V fills the box.
-    int scopeScale = 0;
 
     Scrupea() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -213,8 +217,8 @@ struct Scrupea : Module {
         // the running tone generator drives each axis of the Lissajous. It
         // changes what you are looking at, not what you are hearing. Here you
         // drag the Lissajous itself; at 0 and 1 the axes are L and R.
-        configParam(SCOPE_X_PARAM, 0.f, 1.f, 0.f, "Scope X source");
-        configParam(SCOPE_Y_PARAM, 0.f, 1.f, 1.f, "Scope Y source");
+        configParam(SCOPE_X_PARAM, 0.f, 4.f, 1.f, "Scope X scale");
+        configParam(SCOPE_Y_PARAM, 0.f, 4.f, 1.f, "Scope Y scale");
         getParamQuantity(SCOPE_X_PARAM)->randomizeEnabled = false;
         getParamQuantity(SCOPE_Y_PARAM)->randomizeEnabled = false;
 
@@ -237,7 +241,6 @@ struct Scrupea : Module {
 
     void onReset() override {
         eng.reset();
-        scopeScale = 0;
         scopeCount = 0;
     }
 
@@ -380,26 +383,20 @@ struct Scrupea : Module {
         lights[RIGHT_LIGHT].setBrightness(clamp(envR * 0.4f, 0.f, 1.f));
 
         if ((args.frame % SCOPE_DECIM) == 0) {
-            // The display's own taps, not L and R -- see SCOPE_X_PARAM.
-            const float sc = 0.2f * scopeScales[scopeScale] * gain;
-            scopeX[scopeHead] = clamp(eng.scopeX * sc, -1.f, 1.f);
-            scopeY[scopeHead] = clamp(eng.scopeY * sc, -1.f, 1.f);
+            // The display's own taps: one point per voice, ahead of the fader
+            // as the ensemble takes them, against the +-1.2 frame its own
+            // record declares. Turning the output down must not empty it.
+            const float sc = 1.f / scrupea_dsp::Engine::SCOPE_RANGE;
+            for (int c = 0; c < NCH; c++) {
+                scopeX[scopeHead][c] = clamp(eng.scopeVX[c] * sc, -1.f, 1.f);
+                scopeY[scopeHead][c] = clamp(eng.scopeVY[c] * sc, -1.f, 1.f);
+            }
             scopeHead = (scopeHead + 1) % SCOPE_POINTS;
             if (scopeCount < SCOPE_POINTS) scopeCount++;
         }
     }
 
-    json_t* dataToJson() override {
-        json_t* root = json_object();
-        json_object_set_new(root, "scopeScale", json_integer(scopeScale));
-        return root;
-    }
-
-    void dataFromJson(json_t* root) override {
-        json_t* j = NULL;
-        j = json_object_get(root, "scopeScale");
-        if (j) scopeScale = clamp((int)json_integer_value(j), 0, 3);
-    }
+    // Nothing outside the params needs saving: the XY pad is a pair of them.
 };
 
 // --------------------------------------------------------------- undo ---
@@ -665,9 +662,14 @@ struct ScrupeaEditArea : OpaqueWidget {
 // -- with alpha and colour ramping from a dim amber at the tail to near-white
 // at the head.
 //
-// It is also the panel's XY control: drag it to move `scX` and `scY`, the two
-// Selectors that choose which lever of the running tone generator feeds each
-// axis. See SCOPE_X_PARAM.
+// Eight figures, not one: the ensemble hands its display a poly signal and it
+// plots a point per voice. A calm voice traces a curve inside the frame; a
+// chaotic one fills it and squares off against the edges, because each
+// lever's normalizer bounds it to 1 and the frame is +-1.2.
+//
+// It is also the panel's XY control: drag it to set `scX` and `scY`, the gain
+// on each axis -- the pad's own tooltip in the ensemble says it "scales the
+// Lissajous display". See SCOPE_X_PARAM.
 struct ScrupeaScope : OpaqueWidget {
     Scrupea* module = NULL;
     Vec dragPos;
@@ -692,16 +694,16 @@ struct ScrupeaScope : OpaqueWidget {
         const Vec d = e.mouseDelta.div(zoom == 0.f ? 1.f : zoom);
         dragPos = dragPos.plus(d);
         module->params[Scrupea::SCOPE_X_PARAM].setValue(
-            clamp(dragPos.x / box.size.x, 0.f, 1.f));
+            clamp(dragPos.x / box.size.x * 4.f, 0.f, 4.f));
         module->params[Scrupea::SCOPE_Y_PARAM].setValue(
-            clamp(1.f - dragPos.y / box.size.y, 0.f, 1.f));
+            clamp((1.f - dragPos.y / box.size.y) * 4.f, 0.f, 4.f));
     }
 
     void onDragEnd(const DragEndEvent& e) override { dragging = false; }
 
     void onDoubleClick(const DoubleClickEvent& e) override {
         if (!module) return;
-        module->params[Scrupea::SCOPE_X_PARAM].setValue(0.f);
+        module->params[Scrupea::SCOPE_X_PARAM].setValue(1.f);
         module->params[Scrupea::SCOPE_Y_PARAM].setValue(1.f);
         e.consume(this);
     }
@@ -746,11 +748,12 @@ struct ScrupeaScope : OpaqueWidget {
         const int head = module->scopeHead;
         const float px = w - 6.f, py = h - 6.f;
 
-        // Dots, batched: one path of little squares per age band and a single
-        // fill for each, twice over. Squares rather than circles because a
-        // circle is four beziers and there are two thousand of these.
+        // Dots, batched: one path of little squares per age band and a
+        // single fill for each, twice over. Squares rather than circles
+        // because a circle is four beziers and there are three thousand of
+        // these -- eight voices at every slot.
         for (int pass = 0; pass < 2; pass++) {
-            const float sz = pass == 0 ? 2.6f : 1.2f;   // bloom, then grain
+            const float sz = pass == 0 ? 3.0f : 1.5f;   // bloom, then grain
             const float half = sz * 0.5f;
             for (int seg = 0; seg < NSEG; seg++) {
                 const int i0 = (int)((int64_t)n * seg / NSEG);
@@ -760,42 +763,38 @@ struct ScrupeaScope : OpaqueWidget {
                 nvgBeginPath(args.vg);
                 for (int i = i0; i < i1; i++) {
                     const int idx = (head - n + i + SCOPE_POINTS * 2) % SCOPE_POINTS;
-                    const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
-                    const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
-                    nvgRect(args.vg, x - half, y - half, sz, sz);
+                    for (int c = 0; c < NCH; c++) {
+                        const float x = (module->scopeX[idx][c] * 0.5f + 0.5f)
+                                        * px + 3.f;
+                        const float y = (0.5f - module->scopeY[idx][c] * 0.5f)
+                                        * py + 3.f;
+                        nvgRect(args.vg, x - half, y - half, sz, sz);
+                    }
                 }
 
-                // age: 0 at the tail, 1 at the head
+                // age: 0 at the tail, 1 at the head. Cubed, so the last
+                // moment carries the figure and the rest is a ghost of where
+                // it has been.
                 const float age = (float)(seg + 1) / (float)NSEG;
-                const float a2 = age * age;
+                const float a3 = age * age * age;
                 if (pass == 0) {
-                    nvgFillColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.05f * a2));
+                    nvgFillColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.10f * a3));
                 } else {
-                    const float wht = a2 * a2;
+                    const float wht = a3 * a3;
                     nvgFillColor(args.vg, nvgRGBAf(1.f,
                                                    0.84f + 0.16f * wht,
-                                                   0.10f + 0.75f * wht,
-                                                   0.18f + 0.72f * a2));
+                                                   0.10f + 0.80f * wht,
+                                                   0.10f + 0.85f * a3));
                 }
                 nvgFill(args.vg);
             }
         }
 
-        // the newest sample, so the beam has a visible head
-        {
-            const int idx = (head - 1 + SCOPE_POINTS) % SCOPE_POINTS;
-            const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
-            const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
-            nvgBeginPath(args.vg);
-            nvgCircle(args.vg, x, y, 1.5f);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xe0, 0xee));
-            nvgFill(args.vg);
-        }
-
-        // say what the axes are looking at, but only when it is not L and R
+        // the axis scales, when they are not both at unity
         const float sx = module->params[Scrupea::SCOPE_X_PARAM].getValue();
         const float sy = module->params[Scrupea::SCOPE_Y_PARAM].getValue();
-        if (dragging || sx > 0.001f || sy < 0.999f) {
+        if (dragging || std::fabs(sx - 1.f) > 0.01f ||
+            std::fabs(sy - 1.f) > 0.01f) {
             std::shared_ptr<window::Font> font = APP->window->loadFont(
                 asset::system("res/fonts/ShareTechMono-Regular.ttf"));
             if (font) {
@@ -807,7 +806,6 @@ struct ScrupeaScope : OpaqueWidget {
                         string::f("x %.2f  y %.2f", sx, sy).c_str(), NULL);
             }
         }
-
         nvgResetScissor(args.vg);
         OpaqueWidget::draw(args);
     }
@@ -911,15 +909,6 @@ struct ScrupeaWidget : ModuleWidget {
         // @layout:end
     }
 
-    void appendContextMenu(Menu* menu) override {
-        Scrupea* module = getModule<Scrupea>();
-
-        menu->addChild(new MenuSeparator);
-        menu->addChild(createIndexSubmenuItem("Display scale",
-            {"1x (+/-5 V)", "2x", "4x", "8x"},
-            [=]() { return module->scopeScale; },
-            [=](int idx) { module->scopeScale = idx; }));
-    }
 };
 
 Model* modelScrupea = createModel<Scrupea, ScrupeaWidget>("scrupea");

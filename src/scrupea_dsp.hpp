@@ -75,11 +75,19 @@ static const float K_OUT_MIN_DB = -36.f, K_OUT_MAX_DB = 18.f;
 
 // ------------------------------------------------------- knob settings ---
 //
-// Where inside those ranges this module leaves each knob. Not recoverable
-// from the file. The pitch, cutoff and delay endpoints are the ones scrupea
-// measured its way to before the ensemble was read, expressed in the
-// ensemble's units; the flow endpoints are the knob extremes except for RES,
-// which is set to reproduce a measured bifurcation (see doc/scrupea.md).
+// Where inside those ranges this module leaves each knob. The endpoints are
+// the ones scrupea measured its way to, expressed in the ensemble's units.
+//
+// The snapshots decoded on 2026-08-10 and it was hoped these could come out
+// of them instead, but they cannot yet: the *values* read out cleanly, and
+// which control each one belongs to does not. Wiring the factory medians in
+// under the best available attribution moved the spectral centroid from
+// 540 Hz to 33 Hz, took the largest Lyapunov exponent from 65 to 5, and
+// pinned the chaos CV against its rail -- a sub-bass rumble, not Skrewell.
+// Shifting the attribution by one either way is worse still: it makes `min`
+// come out above `max`, which cannot be. So the attribution is wrong, not the
+// module, and these stay put until the snapshot control ids are resolved to
+// modules properly rather than matched by order. See doc/scrupea.md.
 static const float SET_PITCH_LO   =   0.f;    // 8.18 Hz
 static const float SET_PITCH_HI   = 132.f;    // 16.6 kHz
 static const float SET_CUT_LO     =  15.f;    // 20 Hz
@@ -381,13 +389,22 @@ struct Engine {
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
     float cvLp = 0.f;
 
-    // The Lissajous has its own pair of taps in the ensemble, not L and R.
-    // Each tone generator carries `X` and `Y` outputs alongside them, and each
-    // is a Selector between its two levers positioned by `scX` / `scY`, which
-    // come from dragging the small XY pad on the panel. At 0 and 1 they are
-    // exactly L and R, which is where they start.
-    float scX = 0.f, scY = 1.f;
-    float scopeX = 0.f, scopeY = 0.f;
+    // The Lissajous taps, which are not L and R and are not the mix at all.
+    // Every tone generator carries `X` and `Y` outputs beside `L` and `R`,
+    // each a Selector fed by one lever and scaled by `scX` / `scY` from the
+    // panel's XY pad -- whose own tooltip in the file says it "scales the
+    // Lissajous display". And they are **poly**: Reaktor hands the display a
+    // per-voice signal and it plots one point per voice, eight figures rather
+    // than one. That is why the display's own record gives its Min and Max as
+    // -1.2 and +1.2, which is one lever's range and nowhere near the range of
+    // an eight-voice sum: each normalizer bounds its lever to 1, so a calm
+    // voice traces a curve inside the frame and a chaotic one fills it out to
+    // the edges and squares off against them.
+    float scX = 1.f, scY = 1.f;
+    float scopeVX[NCH], scopeVY[NCH];
+
+    // The frame the ensemble's display declares.
+    static constexpr float SCOPE_RANGE = 1.2f;
 
     Engine() {
         setSampleRate(48000.f);
@@ -425,6 +442,7 @@ struct Engine {
         }
         dcxL = dcyL = dcxR = dcyR = 0.f;
         cvLp = 0.f;
+        for (int c = 0; c < NCH; c++) scopeVX[c] = scopeVY[c] = 0.f;
     }
 
     static float onePoleCoef(float fc, float sr) {
@@ -647,8 +665,10 @@ struct Engine {
         *outL = dcyL;
         *outR = dcyR;
 
-        scopeX = dcyL + (dcyR - dcyL) * scX;
-        scopeY = dcyL + (dcyR - dcyL) * scY;
+        for (int c = 0; c < NCH; c++) {
+            scopeVX[c] = y[lev(c, 0)] * scX;
+            scopeVY[c] = y[lev(c, 1)] * scY;
+        }
 
         // A slow read of the bank's own wandering, for patching out. The
         // levers are summed with alternating sign so the common motion
