@@ -231,6 +231,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was
     never correcting those.
 
+    The FM is **linear and through-zero**, not exponential. Skrewell's
+    oscillators are the FM variants of Reaktor's primary set, whose F input
+    the manual calls "linear frequency control, which is added to the
+    frequency of the P input", and every LEVER pins P to a constant -300 -- a
+    MIDI pitch low enough to be silence. So the whole frequency arrives
+    through F in hertz and can go negative, running the oscillator backwards.
+    `freq = base * (1 + fm * mod)`. That nearly triples the energy above 2 kHz
+    at the default bank, 0.137 -> 0.381, and is most of what makes this thing
+    harsh rather than smooth.
+
     The eighth per-channel function is **filter type**, a continuous low →
     band → high morph, not resonance. That is the ensemble's `lbh` parameter:
     reading each tone generator's own input list gives its eight bars exactly

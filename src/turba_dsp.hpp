@@ -362,15 +362,26 @@ struct Engine {
                 }
                 flipS[i] += ((float)flip[i] - flipS[i]) * flipGlide;
 
-                // Exponential FM, so the frequency stays positive however
-                // hard the modulator swings.
-                const float freq = 8.f * std::exp2(oct[i] + fm[i] * mf);
+                // Linear, through-zero FM, which is what the ensemble does
+                // and is not a detail. Its oscillators are the FM variants of
+                // Reaktor's primary set, whose F input the manual calls
+                // "linear frequency control, which is added to the frequency
+                // of the P input" -- and P is pinned at -300, a MIDI pitch so
+                // low the oscillator would sit at a fraction of a hertz. So
+                // every bit of the frequency arrives through F, in hertz, and
+                // it can go negative: the oscillator runs backwards through
+                // zero rather than bottoming out. Exponential FM, which this
+                // module used to do, cannot cross zero and is a far smoother
+                // thing.
+                const float base = 8.f * std::exp2(oct[i]);
+                const float freq = base * (1.f + fm[i] * mf);
                 float inc = freq * sT;
-                if (inc > 0.45f) inc = 0.45f;
-                if (inc < 1e-7f) inc = 1e-7f;
+                if (inc >  0.45f) inc =  0.45f;
+                if (inc < -0.45f) inc = -0.45f;
 
                 phase[i] += inc;
-                if (phase[i] >= 1.f) phase[i] -= std::floor(phase[i]);
+                phase[i] -= std::floor(phase[i]);   // correct for inc < 0
+                const float dt = std::fabs(inc) + 1e-9f;
 
                 float osc;
                 if (topology == TOPO_BARE) {
@@ -384,8 +395,8 @@ struct Engine {
                     if (p2 >= 1.f) p2 -= 1.f;
                     osc = phase[i] < 0.5f ? 1.f : -1.f;
                     if (bandLimit) {
-                        osc += polyBlep(phase[i], inc);
-                        osc -= polyBlep(p2, inc);
+                        osc += polyBlep(phase[i], dt);
+                        osc -= polyBlep(p2, dt);
                     }
                 }
 

@@ -71,6 +71,30 @@ Lever pairs can be switched off in the context menu, which halves the CPU and
 is not just an economy: see the note there, it is the setting that evolves
 most.
 
+### Through-zero FM
+
+Worth its own note, because it is the single biggest thing separating this
+module from a polite one, and it was got wrong at first.
+
+Skrewell's oscillators are the FM variants of Reaktor's primary set, whose
+extra input the manual describes as *"F — Linear frequency control, which is
+added to the frequency of the P input"*. In every LEVER the `P` input is wired
+to a constant **−300**: a MIDI pitch so low the oscillator would sit at a
+fraction of a hertz. So the pitch input is dead and the entire frequency
+arrives through `F`, in hertz — and a linear frequency input can go
+**negative**, running the oscillator backwards through zero.
+
+Here that is `freq = base × (1 + fm × mod)`. Exponential FM, which this module
+used until the ensemble was read, cannot cross zero: it is smooth, it sounds
+like vibrato at low index and like a siren at high index, and it is a much
+politer thing. Switching to the linear form nearly tripled the energy above
+2 kHz at the default bank, 0.137 → 0.381 of the total, and moved the centroid
+from 1052 Hz to 1607 Hz.
+
+The port order that makes the wiring consistent is **P, F, A, W**, which also
+matches AlbertoZ's account on the Cycling '74 thread from the other side:
+"the width W inlet is not used… and the P inlet is fixed to -300".
+
 ### Two-state switching
 
 The thing that makes the bank evolve with nobody touching it, and the last
@@ -128,7 +152,7 @@ the module, and they are visible over [limen](limen.md) as
 | **type** | low → band → high | the filter's *shape*, morphing continuously. Each channel can sit on a different slope. This is the ensemble's `lbh` parameter, and it is the eighth bar there too — resonance is not a bar in Skrewell and is not one here |
 | **time** | 0.15 ms – 307 ms, exponential | the delay. At the short end the loop is a comb rather than an echo |
 | **fbk** | 0 – 102% | loop gain. Over unity the normalizer holds it |
-| **fm** | 0 – 4 octaves | how hard the neighbour's loop signal drives this oscillator |
+| **fm** | 0 – 250% | how hard the crossvoice bus drives this oscillator's frequency. **Linear and through zero**: the frequency is `base × (1 + fm × mod)`, so past about 40% the modulator drags it negative and the oscillator runs backwards. That is what the ensemble does, and it is most of why this module is harsh |
 | **am** | 0 – 100% | how hard the other neighbour amplitude-modulates it |
 | **level** | 0 – 100% | this channel's contribution to the mix. Channels are panned across the field in order, channel 1 hard left |
 

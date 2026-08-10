@@ -290,7 +290,10 @@ struct Turba : Module {
             tgt.dly[c] = ms * 0.001f * sr;
 
             tgt.fbk[c] = b * 1.02f;
-            tgt.fm[c]  = mapValue(m, gF) * 4.f;
+            // FM is now a linear depth, not an octave count: the
+            // oscillator frequency is base * (1 + fm * mod), so past 1 the
+            // modulator drags it through zero and the oscillator reverses.
+            tgt.fm[c]  = mapValue(m, gF) * 2.5f;
             tgt.am[c]  = mapValue(a, gF);
             tgt.lvl[c] = l * l;
         }
