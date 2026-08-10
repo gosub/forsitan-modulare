@@ -22,6 +22,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -114,6 +115,20 @@ inline float shape(float v, float pos) {
     return v + (vq - v) * (p - 1.f);
 }
 
+// 2^x to about six digits, which is far more than a modulation ratio needs
+// and a good deal cheaper than the libm call this does sixteen times a sample.
+inline float fastExp2(float x) {
+    if (x < -60.f) x = -60.f;
+    if (x >  60.f) x =  60.f;
+    const float xi = std::floor(x);
+    const float f = x - xi;
+    const float p = 1.f + f * (0.6931472f + f * (0.2402265f +
+                    f * (0.0555041f + f * 0.0096181f)));
+    union { float f; int32_t i; } u;
+    u.i = ((int32_t)xi + 127) << 23;
+    return p * u.f;
+}
+
 inline float fastTanh(float x) {
     if (x < -3.f) return -1.f;
     if (x >  3.f) return  1.f;
@@ -134,6 +149,78 @@ inline float polyBlep(float t, float dt) {
     return 0.f;
 }
 
+// ---------------------------------------------------------------- simd ---
+//
+// The sixteen levers only read each other through `yPrev`, which is frozen for
+// the whole sample, so within a sample they are sixteen independent chains.
+// Measured, the engine is throughput-bound rather than latency-bound -- two
+// engines cost 2.07x one, and swapping a divide for a polynomial made it
+// *slower*, because a divide is one uop and a polynomial is four. The only
+// thing that helps is doing fewer, wider operations, so the whole inner loop
+// runs four levers at a time.
+//
+// Four lanes is one group of two voices: group g holds levers 4g..4g+3, which
+// is voice 2g lever 0, voice 2g lever 1, voice 2g+1 lever 0, voice 2g+1 lever
+// 1. So lanes 0 and 2 are always the left output and lanes 1 and 3 the right,
+// and a voice's control values land in a lane pair.
+//
+// GCC vector extensions rather than intrinsics: gcc, clang and the MinGW and
+// arm64 builds all take them, and there is no second scalar code path to keep
+// in step (which for a chaotic engine would mean two different sounds).
+typedef float  f4 __attribute__((vector_size(16)));
+typedef int32_t i4 __attribute__((vector_size(16)));
+// the same thing, but allowed to alias the float arrays it is loaded from
+typedef float  f4a __attribute__((vector_size(16), may_alias));
+
+static const int NGRP = NLEV / 4;
+
+inline f4 f4set(float a) { return (f4){a, a, a, a}; }
+
+// lane-wise "m ? a : b", with m the all-ones/all-zeros mask a comparison gives
+inline f4 f4sel(i4 m, f4 a, f4 b) {
+    return (f4)((m & (i4)a) | (~m & (i4)b));
+}
+inline f4 f4min(f4 a, f4 b) { return f4sel(a < b, a, b); }
+inline f4 f4max(f4 a, f4 b) { return f4sel(a > b, a, b); }
+inline f4 f4abs(f4 a) { return f4max(a, -a); }
+inline f4 f4clamp(f4 x, float lo, float hi) {
+    return f4min(f4max(x, f4set(lo)), f4set(hi));
+}
+
+// truncation towards zero, then a step down for the negatives that needed it
+inline f4 f4floor(f4 x) {
+    const f4 t = __builtin_convertvector(__builtin_convertvector(x, i4), f4);
+    return f4sel(t > x, t - f4set(1.f), t);
+}
+
+// 2^x, four at a time, to the same polynomial as the scalar one above.
+inline f4 f4exp2(f4 x) {
+    x = f4clamp(x, -60.f, 60.f);
+    const f4 xi = f4floor(x);
+    const f4 f = x - xi;
+    const f4 p = f4set(1.f) + f * (f4set(0.6931472f) + f * (f4set(0.2402265f) +
+                 f * (f4set(0.0555041f) + f * f4set(0.0096181f))));
+    const i4 e = (__builtin_convertvector(xi, i4) + 127) << 23;
+    return p * (f4)e;
+}
+
+inline f4 f4tanh(f4 x) {
+    const f4 c = f4clamp(x, -3.f, 3.f);
+    const f4 x2 = c * c;
+    return c * (f4set(27.f) + x2) / (f4set(27.f) + f4set(9.f) * x2);
+}
+
+// One polyBLEP correction at a discontinuity, branchless so it vectorises.
+inline f4 f4polyBlep(f4 t, f4 dt) {
+    const i4 lo = t < dt;
+    const i4 hi = t > (f4set(1.f) - dt);
+    const f4 a = t / dt;
+    const f4 b = (t - f4set(1.f)) / dt;
+    const f4 va = a + a - a * a - f4set(1.f);
+    const f4 vb = b * b + b + b + f4set(1.f);
+    return f4sel(lo, va, f4sel(hi, vb, f4set(0.f)));
+}
+
 // Stand-in for REAKTOR's Multi 2-Pole, whose insides are closed: a
 // topology-preserving state variable filter with the integrator states
 // soft-limited. Three simultaneous outputs, cutoff as a pitch, resonance
@@ -142,30 +229,42 @@ inline float polyBlep(float t, float dt) {
 // point: a linear filter in this loop just rings, a saturating one folds the
 // loop's trajectory back on itself and the bank goes chaotic.
 struct SatSVF {
-    float ic1 = 0.f, ic2 = 0.f;
-    float lp = 0.f, bp = 0.f, hp = 0.f;
+    f4 ic1 = {}, ic2 = {};
+    f4 lp = {}, bp = {}, hp = {};
 
-    void reset() { ic1 = ic2 = lp = bp = hp = 0.f; }
+    void reset() { ic1 = ic2 = lp = bp = hp = f4set(0.f); }
 
-    // g = tan(pi * fc / sr), k = 1/Q.
-    void process(float v0, float g, float k) {
-        const float a1 = 1.f / (1.f + g * (g + k));
-        const float a2 = g * a1;
-        const float a3 = g * a2;
-        const float v3 = v0 - ic2;
-        bp = a1 * ic1 + a2 * v3;
-        lp = ic2 + a2 * ic1 + a3 * v3;
-        hp = v0 - k * bp - lp;
-        ic1 = fastTanh(2.f * bp - ic1);
-        ic2 = fastTanh(2.f * lp - ic2);
+    // The three coefficients are functions of g = tan(pi*fc/sr) and k = 1/Q,
+    // both of which only move at control rate, so they are worked out once per
+    // control tick in Coefs rather than once per sample here.
+    struct Coefs {
+        f4 a1 = {}, a2 = {}, a3 = {}, k = {};
+        // one voice's g into a lane pair, since a group is two voices
+        void set(float gA, float gB, float kk) {
+            const f4 g = (f4){gA, gA, gB, gB};
+            a1 = f4set(1.f) / (f4set(1.f) + g * (g + f4set(kk)));
+            a2 = g * a1;
+            a3 = g * a2;
+            k = f4set(kk);
+        }
+    };
+
+    void process(f4 v0, const Coefs& c) {
+        const f4 v3 = v0 - ic2;
+        bp = c.a1 * ic1 + c.a2 * v3;
+        lp = ic2 + c.a2 * ic1 + c.a3 * v3;
+        hp = v0 - c.k * bp - lp;
+        ic1 = f4tanh(bp + bp - ic1);
+        ic2 = f4tanh(lp + lp - ic2);
     }
 
     // The `lbh` bar, doubled, is the Pos of a Selector over the filter's
     // three outputs in the order LP, BP, HP -- which is what the letters of
     // its name stand for.
-    float morph(float typ) const {
-        if (typ <= 1.f) return lp + (bp - lp) * typ;
-        return bp + (hp - bp) * (typ - 1.f);
+    f4 morph(f4 typ) const {
+        const f4 one = f4set(1.f);
+        return f4sel(typ <= one, lp + (bp - lp) * typ,
+                                 bp + (hp - bp) * (typ - one));
     }
 };
 
@@ -178,23 +277,21 @@ struct SatSVF {
 // bounds the loop: whatever goes in, what comes out cannot exceed 1, which is
 // why a feedback bar at the top of its travel is safe and needs no limiter.
 struct Normalizer {
-    float env = 0.f, sm = 1.f;
+    f4 env = {}, sm = {};
 
-    void reset() { env = 0.f; sm = 1.f; }
+    void reset() { env = f4set(0.f); sm = f4set(1.f); }
 
     // `relCoef` and `smCoef` are not constants here. In the ensemble both
     // times come out of the `smooth` macro as the channel's own delay time
     // multiplied by `smt`, so a long loop gets a slow normalizer and a short
     // one a fast one.
-    float process(float x, float nrm, float relCoef, float smCoef) {
-        const float a = std::fabs(x);
-        env = a > env ? a : env * relCoef;          // Peak Detector, zero attack
-        float e = env;                               // Clipper: Max, Min, In
-        if (e < nrm) e = nrm;
-        if (e > 300.f) e = 300.f;
-        sm += (e - sm) * smCoef;                     // HP/LP 1-Pole
-        if (sm < 1e-6f) sm = 1e-6f;
-        return x / sm;                               // Divide
+    f4 process(f4 x, float nrm, float relCoef, float smCoef) {
+        const f4 a = f4abs(x);
+        env = f4max(a, env * f4set(relCoef));   // Peak Detector, zero attack
+        f4 e = f4clamp(env, nrm, 300.f);        // Clipper: Max, Min, In
+        sm += (e - sm) * f4set(smCoef);         // HP/LP 1-Pole
+        sm = f4max(sm, f4set(1e-6f));
+        return x / sm;                          // Divide
     }
 };
 
@@ -259,19 +356,26 @@ struct Engine {
     float sr = 48000.f;
     int topology = TOPO_LOOP;
 
-    // smoothed running values, one per lever
-    float hz[NLEV], cutG[NLEV], lpG[NLEV], delSmp[NLEV], fbk[NLEV],
-          typ[NLEV], fmP[NLEV], amP[NLEV], amp[NLEV];
+    // Smoothed running values. These are per **voice**, not per lever: the
+    // ensemble feeds both levers of a voice from the same bars through the
+    // same smoother, so the two can never hold different values and keeping
+    // sixteen copies of eight numbers only cost cache.
+    float hz[NCH], delSmp[NCH], fbk[NCH], typ[NCH], fmP[NCH], amP[NCH],
+          amp[NCH];
+    // filter coefficients, worked out once per control tick, one set per
+    // four-lever group (which is two voices)
+    SatSVF::Coefs cutC[NGRP], lpC[NGRP];
+    float cutG[NCH], lpG[NCH];
     float fmLog = 0.f, amD = 0.f, filtK = 2.f;
     float relCoef = 0.999f, smCoef = 0.01f;
     // `nrm`, the Clipper's Min inside every normalizer, set by flow.
     float curNrm = 0.5f;
-    float phase[NLEV];
+    alignas(16) float phase[NLEV];
 
-    float y[NLEV];       // each lever's output, this sample
-    float yPrev[NLEV];   // ...and the previous one, what the couplings read
-    SatSVF fa[NLEV], fb2[NLEV];
-    Normalizer norm[NLEV];
+    alignas(16) float y[NLEV];      // each lever's output, this sample
+    alignas(16) float yPrev[NLEV];  // ...and the previous, what couplings read
+    SatSVF fa[NGRP], fb2[NGRP];
+    Normalizer norm[NGRP];
     DelayLine line[NLEV];
 
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
@@ -292,17 +396,23 @@ struct Engine {
     }
 
     void reset() {
+        for (int c = 0; c < NCH; c++) {
+            hz[c] = 110.f; cutG[c] = 0.1f; lpG[c] = 0.3f; delSmp[c] = 1000.f;
+            fbk[c] = 0.f; typ[c] = 0.f; amp[c] = 0.f;
+            fmP[c] = (float)c; amP[c] = (float)c;
+        }
+        for (int g = 0; g < NGRP; g++) {
+            cutC[g].set(cutG[2*g], cutG[2*g+1], 2.f);
+            lpC[g].set(lpG[2*g], lpG[2*g+1], 2.f);
+            fa[g].reset();
+            fb2[g].reset();
+            norm[g].reset();
+        }
         for (int i = 0; i < NLEV; i++) {
-            hz[i] = 110.f; cutG[i] = 0.1f; lpG[i] = 0.3f; delSmp[i] = 1000.f;
-            fbk[i] = 0.f; typ[i] = 0.f; amp[i] = 0.f;
-            fmP[i] = (float)(i / LPC); amP[i] = (float)(i / LPC);
             // Start the phases spread out. Identical phases are a fixed point
             // of the coupled bank and it would take a while to leave them.
             phase[i] = (float)i / (float)NLEV;
             y[i] = yPrev[i] = 0.f;
-            fa[i].reset();
-            fb2[i].reset();
-            norm[i].reset();
             line[i].reset();
         }
         dcxL = dcyL = dcxR = dcyR = 0.f;
@@ -355,144 +465,170 @@ struct Engine {
             const float gLp = std::tan(3.14159265f *
                 std::min(t.lpHz[ch], 0.45f * sr) / sr);
 
-            for (int k = 0; k < LPC; k++) {
-                const int i = lev(ch, k);
-                hz[i]     += (t.hz[ch]     - hz[i])     * fCoef;
-                delSmp[i] += (t.delMs[ch] * 0.001f * sr - delSmp[i]) * dCoef;
-                cutG[i]   += (gCut         - cutG[i])   * c;
-                lpG[i]    += (gLp          - lpG[i])    * c;
-                fbk[i]    += (t.fbk[ch]    - fbk[i])    * c;
-                amp[i]    += (t.amp[ch]    - amp[i])    * c;
-                typ[i]    += (t.typ[ch]    - typ[i])    * c;
-                fmP[i]    += (t.fmPos[ch]  - fmP[i])    * c;
-                amP[i]    += (t.amPos[ch]  - amP[i])    * c;
-            }
-        }
-    }
+            hz[ch]     += (t.hz[ch]     - hz[ch])     * fCoef;
+            delSmp[ch] += (t.delMs[ch] * 0.001f * sr - delSmp[ch]) * dCoef;
+            cutG[ch]   += (gCut         - cutG[ch])   * c;
+            lpG[ch]    += (gLp          - lpG[ch])    * c;
+            fbk[ch]    += (t.fbk[ch]    - fbk[ch])    * c;
+            amp[ch]    += (t.amp[ch]    - amp[ch])    * c;
+            typ[ch]    += (t.typ[ch]    - typ[ch])    * c;
+            fmP[ch]    += (t.fmPos[ch]  - fmP[ch])    * c;
+            amP[ch]    += (t.amPos[ch]  - amP[ch])    * c;
 
-    // Reaktor's Selector: an integer Pos forwards that channel, a fractional
-    // one blends the two either side of it. `crossvoice` multiplies the bar
-    // by a constant 8 before it gets here, so the top eighth of a bar's
-    // travel all lands on the last voice.
-    inline float selectVoice(float pos, int slot) const {
-        if (pos < 0.f) pos = 0.f;
-        if (pos > (float)(NCH - 1)) pos = (float)(NCH - 1);
-        const int i0 = (int)pos;
-        const int i1 = i0 < NCH - 1 ? i0 + 1 : i0;
-        const float f = pos - (float)i0;
-        const float a = yPrev[lev(i0, slot)];
-        const float b = yPrev[lev(i1, slot)];
-        return a + (b - a) * f;
+        }
+        for (int g = 0; g < NGRP; g++) {
+            cutC[g].set(cutG[2*g], cutG[2*g+1], filtK);
+            lpC[g].set(lpG[2*g], lpG[2*g+1], filtK);
+        }
     }
 
     void process(float in, float* outL, float* outR, float* cv) {
         std::memcpy(yPrev, y, sizeof(yPrev));
 
-        float sumL = 0.f, sumR = 0.f, sumY = 0.f;
         const float sT = 1.f / sr;
+        const f4 vIn = f4set(in);
+        // lanes 0,1 are voice 2g and lanes 2,3 voice 2g+1, so the alternating
+        // sign the chaos CV wants is the same constant in every group
+        static const f4 cvSign = {1.f, 1.f, -1.f, -1.f};
+        f4 accL = {}, accR = {}, accY = {};
 
-        for (int ch = 0; ch < NCH; ch++) {
-            for (int k = 0; k < LPC; k++) {
-                const int i = lev(ch, k);
+        for (int g = 0; g < NGRP; g++) {
+            const int c0 = 2 * g, c1 = c0 + 1, base = 4 * g;
 
-                // crossvoice: eight From Voice modules into a Selector whose
-                // Pos is the fm (or am) bar. The bar does not set how hard
-                // this lever is modulated, it picks **which voice modulates
-                // it**; depth comes from flow, one value for the whole bank.
-                // The source is the partner lever of the chosen voice:
-                // crossed within the pair, selected across voices.
-                const int slot = 1 - k;
-                const float mf = selectVoice(fmP[i], slot);
-                const float ma = selectVoice(amP[i], slot);
+            // a voice's control value fills its lane pair
+            const f4 vHz  = {hz[c0], hz[c0], hz[c1], hz[c1]};
+            const f4 vAmp = {amp[c0], amp[c0], amp[c1], amp[c1]};
+            const f4 vFbk = {fbk[c0], fbk[c0], fbk[c1], fbk[c1]};
+            const f4 vTyp = {typ[c0], typ[c0], typ[c1], typ[c1]};
 
-                // FM as the ensemble does it, which is neither of the two
-                // obvious things. The fm depth is a frequency *ratio* between
-                // 1 and 16, and the modulator picks a point on a geometric
-                // interpolation between its reciprocal and itself: the
-                // oscillator's frequency is multiplied by ratio^m, m running
-                // -1 to 1. At depth 1 there is no modulation at all, at 16
-                // it is four octaves either way. In the file this is a
-                // Reciprocal and two Log modules into a Selector whose Pos is
-                // the modulator halved and offset, then an Exp; the whole
-                // thing multiplies the oscillator's linear F input while P
-                // sits pinned at -300.
-                const float freq = hz[i] * std::exp2(fmLog * mf);
-                float inc = freq * sT;
-                if (inc >  0.45f) inc =  0.45f;
-                if (inc < -0.45f) inc = -0.45f;
-
-                phase[i] += inc;
-                phase[i] -= std::floor(phase[i]);   // correct for inc < 0
-                const float dt = std::fabs(inc) + 1e-9f;
-
-                float osc;
-                if (topology == TOPO_BARE) {
-                    // Parabolic wave: smooth, and much fatter at the bottom
-                    // than the pulse, which is what makes this the calm one.
-                    const float x = 2.f * phase[i] - 1.f;
-                    osc = -4.f * x * (std::fabs(x) - 1.f);
+            // crossvoice: the Selector's index arithmetic belongs to the
+            // voice, and the two levers of a pair differ only in which slot of
+            // the chosen voice they take -- lane 0 and 2 read slot 1, lanes 1
+            // and 3 read slot 0.
+            float mfv[4], mav[4];
+            for (int q = 0; q < 2; q++) {
+                const int ch = c0 + q;
+                float pf = fmP[ch];
+                if (pf < 0.f) pf = 0.f;
+                if (pf > (float)(NCH - 1)) pf = (float)(NCH - 1);
+                const int f0 = (int)pf, f1 = f0 < NCH - 1 ? f0 + 1 : f0;
+                const float ff = pf - (float)f0;
+                float pa = amP[ch];
+                if (pa < 0.f) pa = 0.f;
+                if (pa > (float)(NCH - 1)) pa = (float)(NCH - 1);
+                const int a0 = (int)pa, a1 = a0 < NCH - 1 ? a0 + 1 : a0;
+                const float af = pa - (float)a0;
+                for (int k = 0; k < LPC; k++) {
+                    const int slot = 1 - k;
+                    const float fA = yPrev[lev(f0, slot)], fB = yPrev[lev(f1, slot)];
+                    const float aA = yPrev[lev(a0, slot)], aB = yPrev[lev(a1, slot)];
+                    mfv[2 * q + k] = fA + (fB - fA) * ff;
+                    mav[2 * q + k] = aA + (aB - aA) * af;
                 }
-                else {
-                    float p2 = phase[i] + 0.5f;
-                    if (p2 >= 1.f) p2 -= 1.f;
-                    // Band-limited, as REAKTOR's own oscillators are: the
-                    // module reference notes that waveforms with strong
-                    // transients "have anti-aliasing in REAKTOR".
-                    osc = phase[i] < 0.5f ? 1.f : -1.f;
-                    osc += polyBlep(phase[i], dt);
-                    osc -= polyBlep(p2, dt);
-                }
-
-                // Amplitude is A * (1 + am * AM): a Mult/Add taking the AM
-                // signal, the A bar times the am depth, and the A bar. With
-                // am up past 1 the product goes negative and it is ring
-                // modulation, which is where a lot of the harshness lives.
-                osc *= amp[i] * (1.f + amD * ma);
-
-                // The loop, in the order the ensemble wires it. The delay
-                // comes *before* the normalizer, and the normalizer's output
-                // is both what the lever puts out and what feeds back, so the
-                // oscillator is never heard directly. Where the filter sits
-                // is what separates the three tone generators.
-                const float d = line[i].read(delSmp[i]);
-                float r = norm[i].process(d, curNrm, relCoef, smCoef);
-
-                float s = osc + in;
-                float sum;
-                if (topology == TOPO_PRE) {
-                    // osc -> multimode filter -> summer -> delay
-                    fa[i].process(s, cutG[i], filtK);
-                    sum = fa[i].morph(typ[i]) + r * fbk[i];
-                }
-                else if (topology == TOPO_BARE) {
-                    sum = s + r * fbk[i];
-                }
-                else {
-                    // summer -> 2-pole HP -> 2-pole LP -> delay, the pair
-                    // inside the loop and both taking the same resonance
-                    const float m = s + r * fbk[i];
-                    fa[i].process(m, cutG[i], filtK);
-                    fb2[i].process(fa[i].hp, lpG[i], filtK);
-                    sum = fb2[i].lp;
-                }
-
-                if (!std::isfinite(sum) || !std::isfinite(r)) {
-                    sum = r = 0.f;
-                    fa[i].reset();
-                    fb2[i].reset();
-                    norm[i].reset();
-                    line[i].reset();
-                }
-
-                line[i].write(sum);
-                y[i] = r;
-
-                // The tone generator's L output is its first lever and R is
-                // its second; Reaktor sums the eight voices into each.
-                if (k == 0) sumL += r; else sumR += r;
-                sumY += (ch & 1) ? -r : r;
             }
+            const f4 mf = {mfv[0], mfv[1], mfv[2], mfv[3]};
+            const f4 ma = {mav[0], mav[1], mav[2], mav[3]};
+
+            // FM as the ensemble does it, which is neither of the two obvious
+            // things. The depth is a frequency *ratio* between 1 and 16, and
+            // the modulator picks a point on a geometric interpolation between
+            // its reciprocal and itself, so the frequency is multiplied by
+            // ratio^m with m running -1 to 1. At depth 1 there is no
+            // modulation at all, at 16 it is four octaves either way. In the
+            // file this is a Reciprocal and two Log modules into a Selector
+            // whose Pos is the modulator halved and offset, then an Exp; the
+            // whole thing multiplies the oscillator's linear F input while P
+            // sits pinned at -300.
+            const f4 freq = vHz * f4exp2(f4set(fmLog) * mf);
+            const f4 inc = f4clamp(freq * f4set(sT), -0.45f, 0.45f);
+
+            // the increment is bounded, so the wrap is a pair of selects and
+            // never needs a floor
+            f4 ph = (f4)(*(const f4a*)&phase[base]) + inc;
+            ph = f4sel(ph < f4set(0.f), ph + f4set(1.f), ph);
+            ph = f4sel(ph >= f4set(1.f), ph - f4set(1.f), ph);
+            *(f4a*)&phase[base] = (f4a)ph;
+            const f4 dt = f4abs(inc) + f4set(1e-9f);
+
+            f4 osc;
+            if (topology == TOPO_BARE) {
+                // Parabolic wave: smooth, and much fatter at the bottom than
+                // the pulse, which is what makes this the calm one.
+                const f4 x = ph + ph - f4set(1.f);
+                osc = f4set(-4.f) * x * (f4abs(x) - f4set(1.f));
+            }
+            else {
+                f4 p2 = ph + f4set(0.5f);
+                p2 = f4sel(p2 >= f4set(1.f), p2 - f4set(1.f), p2);
+                // Band-limited, as REAKTOR's own oscillators are: the module
+                // reference notes that waveforms with strong transients "have
+                // anti-aliasing in REAKTOR".
+                osc = f4sel(ph < f4set(0.5f), f4set(1.f), f4set(-1.f));
+                osc += f4polyBlep(ph, dt);
+                osc -= f4polyBlep(p2, dt);
+            }
+
+            // Amplitude is A * (1 + am * AM): a Mult/Add taking the AM signal,
+            // the A bar times the am depth, and the A bar. With am up past 1
+            // the product goes negative and it is ring modulation, which is
+            // where a lot of the harshness lives.
+            osc *= vAmp * (f4set(1.f) + f4set(amD) * ma);
+
+            // The loop, in the order the ensemble wires it. The delay comes
+            // *before* the normalizer, and the normalizer's output is both
+            // what the lever puts out and what feeds back, so the oscillator
+            // is never heard directly. Where the filter sits is what separates
+            // the three tone generators. The lines are the one part that stays
+            // scalar: four buffers, two read offsets, no way to widen it.
+            const float dA = delSmp[c0], dB = delSmp[c1];
+            const f4 d = {line[base + 0].read(dA), line[base + 1].read(dA),
+                          line[base + 2].read(dB), line[base + 3].read(dB)};
+            f4 r = norm[g].process(d, curNrm, relCoef, smCoef);
+
+            const f4 sIn = osc + vIn;
+            f4 sum;
+            if (topology == TOPO_PRE) {
+                // osc -> multimode filter -> summer -> delay
+                fa[g].process(sIn, cutC[g]);
+                sum = fa[g].morph(vTyp) + r * vFbk;
+            }
+            else if (topology == TOPO_BARE) {
+                sum = sIn + r * vFbk;
+            }
+            else {
+                // summer -> 2-pole HP -> 2-pole LP -> delay, the pair inside
+                // the loop and both taking the same resonance
+                fa[g].process(sIn + r * vFbk, cutC[g]);
+                fb2[g].process(fa[g].hp, lpC[g]);
+                sum = fb2[g].lp;
+            }
+
+            // A lane that has gone non-finite takes its whole group's state
+            // down with it, which is the cheap thing to do and happens about
+            // never.
+            const f4 chk = sum + r;
+            if (!std::isfinite(chk[0] + chk[1] + chk[2] + chk[3])) {
+                sum = r = f4set(0.f);
+                fa[g].reset();
+                fb2[g].reset();
+                norm[g].reset();
+                for (int q = 0; q < 4; q++) line[base + q].reset();
+            }
+
+            for (int q = 0; q < 4; q++) line[base + q].write(sum[q]);
+            *(f4a*)&y[base] = (f4a)r;
+
+            // The tone generator's L output is its first lever and R its
+            // second; Reaktor sums the eight voices into each. Lanes 0 and 2
+            // are firsts, lanes 1 and 3 seconds.
+            accL += r;
+            accR += r;
+            accY += r * cvSign;
         }
+
+        const float sumL = accL[0] + accL[2];
+        const float sumR = accR[1] + accR[3];
+        const float sumY = accY[0] + accY[1] + accY[2] + accY[3];
 
         // DC blockers. Not in the ensemble -- neither is a patch cable, and
         // REAKTOR's audio interface does not have to keep a Rack rail clean.

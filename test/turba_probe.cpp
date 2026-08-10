@@ -135,11 +135,16 @@ static void collectState(Turba& m, std::vector<float*>& v) {
     for (int i = 0; i < turba_dsp::NLEV; i++) {
         v.push_back(&e.phase[i]);
         v.push_back(&e.y[i]);
-        v.push_back(&e.fa[i].ic1);  v.push_back(&e.fa[i].ic2);
-        v.push_back(&e.fb2[i].ic1); v.push_back(&e.fb2[i].ic2);
-        v.push_back(&e.norm[i].env); v.push_back(&e.norm[i].sm);
         for (size_t k = 0; k < e.line[i].buf.size(); k++)
             v.push_back(&e.line[i].buf[k]);
+    }
+    // the filter and normalizer states are four-lane vectors
+    for (int g = 0; g < turba_dsp::NGRP; g++) {
+        float* p[6] = {(float*)&e.fa[g].ic1,  (float*)&e.fa[g].ic2,
+                       (float*)&e.fb2[g].ic1, (float*)&e.fb2[g].ic2,
+                       (float*)&e.norm[g].env, (float*)&e.norm[g].sm};
+        for (int q = 0; q < 6; q++)
+            for (int lane = 0; lane < 4; lane++) v.push_back(p[q] + lane);
     }
 }
 
