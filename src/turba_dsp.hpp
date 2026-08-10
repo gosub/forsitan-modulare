@@ -381,6 +381,14 @@ struct Engine {
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
     float cvLp = 0.f;
 
+    // The Lissajous has its own pair of taps in the ensemble, not L and R.
+    // Each tone generator carries `X` and `Y` outputs alongside them, and each
+    // is a Selector between its two levers positioned by `scX` / `scY`, which
+    // come from dragging the small XY pad on the panel. At 0 and 1 they are
+    // exactly L and R, which is where they start.
+    float scX = 0.f, scY = 1.f;
+    float scopeX = 0.f, scopeY = 0.f;
+
     Engine() {
         setSampleRate(48000.f);
         reset();
@@ -638,6 +646,9 @@ struct Engine {
 
         *outL = dcyL;
         *outR = dcyR;
+
+        scopeX = dcyL + (dcyR - dcyL) * scX;
+        scopeY = dcyL + (dcyR - dcyL) * scY;
 
         // A slow read of the bank's own wandering, for patching out. The
         // levers are summed with alternating sign so the common motion

@@ -102,8 +102,12 @@ static const int CONTROL_PERIOD = 32;
 static const float OUT_VOLTS = 0.9f;
 
 // Lissajous history, written by the audio thread and read by the widget.
-static const int SCOPE_POINTS = 512;
-static const int SCOPE_DECIM = 12;
+// Long and dense: what makes a Lissajous worth looking at is the figure being
+// drawn faster than it fades, and 2048 points at every fourth sample is about
+// 170 ms of trail at 48 kHz -- long enough to close a figure at 10 Hz and
+// short enough that the shape still moves.
+static const int SCOPE_POINTS = 2048;
+static const int SCOPE_DECIM = 4;
 static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
 
 struct Turba : Module {
@@ -122,6 +126,8 @@ struct Turba : Module {
         FLOW_ATT_PARAM,
         LEVEL_PARAM,
         RAND_PARAM,
+        SCOPE_X_PARAM,     // no widget: dragged on the display itself
+        SCOPE_Y_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -198,6 +204,18 @@ struct Turba : Module {
         configParam(LEVEL_PARAM, turba_dsp::K_OUT_MIN_DB, turba_dsp::K_OUT_MAX_DB,
                     0.f, "Output level", " dB");
         configButton(RAND_PARAM, "Randomize channels");
+
+        // Skrewell's XY pad. It is a Reaktor XY element, which is a display
+        // and a mouse control at once: dragging it emits MX and MY, two
+        // one-poles at about 0.8 Hz smooth them, and they become `scX` and
+        // `scY` -- the positions of two Selectors that choose which lever of
+        // the running tone generator drives each axis of the Lissajous. It
+        // changes what you are looking at, not what you are hearing. Here you
+        // drag the Lissajous itself; at 0 and 1 the axes are L and R.
+        configParam(SCOPE_X_PARAM, 0.f, 1.f, 0.f, "Scope X source");
+        configParam(SCOPE_Y_PARAM, 0.f, 1.f, 1.f, "Scope Y source");
+        getParamQuantity(SCOPE_X_PARAM)->randomizeEnabled = false;
+        getParamQuantity(SCOPE_Y_PARAM)->randomizeEnabled = false;
 
         configInput(PITCH_CV_INPUT, "Pitch mapping CV");
         configInput(CUTOFF_CV_INPUT, "Cutoff mapping CV");
@@ -334,6 +352,9 @@ struct Turba : Module {
         }
         if (++controlPhase >= CONTROL_PERIOD) controlPhase = 0;
 
+        eng.scX = params[SCOPE_X_PARAM].getValue();
+        eng.scY = params[SCOPE_Y_PARAM].getValue();
+
         const float in = inputs[AUDIO_INPUT].getVoltage() * 0.1f;
         float l = 0.f, r = 0.f, cv = 0.f;
         eng.process(in, &l, &r, &cv);
@@ -358,9 +379,10 @@ struct Turba : Module {
         lights[RIGHT_LIGHT].setBrightness(clamp(envR * 0.4f, 0.f, 1.f));
 
         if ((args.frame % SCOPE_DECIM) == 0) {
-            const float sc = 0.2f * scopeScales[scopeScale];
-            scopeX[scopeHead] = clamp(l * sc, -1.f, 1.f);
-            scopeY[scopeHead] = clamp(r * sc, -1.f, 1.f);
+            // The display's own taps, not L and R -- see SCOPE_X_PARAM.
+            const float sc = 0.2f * scopeScales[scopeScale] * gain;
+            scopeX[scopeHead] = clamp(eng.scopeX * sc, -1.f, 1.f);
+            scopeY[scopeHead] = clamp(eng.scopeY * sc, -1.f, 1.f);
             scopeHead = (scopeHead + 1) % SCOPE_POINTS;
             if (scopeCount < SCOPE_POINTS) scopeCount++;
         }
@@ -601,49 +623,161 @@ struct TurbaEditArea : OpaqueWidget {
 
 // ------------------------------------------------------------- scope ---
 
-struct TurbaScope : TransparentWidget {
+// The Lissajous, after the one on Skrewell's panel: a phosphor trail rather
+// than a single flat polyline. The trail is drawn oldest to newest in bands,
+// each band twice -- a wide dim pass for the bloom and a narrow bright one for
+// the filament -- with alpha and colour ramping from a dim amber at the tail
+// to near-white at the head. That is what a CRT does, and it is the difference
+// between "a shape" and "a shape being drawn".
+//
+// It is also the panel's XY control: drag it to move `scX` and `scY`, the two
+// Selectors that choose which lever of the running tone generator feeds each
+// axis. See SCOPE_X_PARAM.
+struct TurbaScope : OpaqueWidget {
     Turba* module = NULL;
+    Vec dragPos;
+    bool dragging = false;
+
+    static const int NSEG = 20;
+
+    void onButton(const ButtonEvent& e) override {
+        if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT) {
+            e.consume(this);
+            dragPos = e.pos;
+            dragging = true;
+            return;
+        }
+        // right-click falls through to the module's own menu
+        Widget::onButton(e);
+    }
+
+    void onDragMove(const DragMoveEvent& e) override {
+        if (!module || e.button != GLFW_MOUSE_BUTTON_LEFT) return;
+        const float zoom = getAbsoluteZoom();
+        const Vec d = e.mouseDelta.div(zoom == 0.f ? 1.f : zoom);
+        dragPos = dragPos.plus(d);
+        module->params[Turba::SCOPE_X_PARAM].setValue(
+            clamp(dragPos.x / box.size.x, 0.f, 1.f));
+        module->params[Turba::SCOPE_Y_PARAM].setValue(
+            clamp(1.f - dragPos.y / box.size.y, 0.f, 1.f));
+    }
+
+    void onDragEnd(const DragEndEvent& e) override { dragging = false; }
+
+    void onDoubleClick(const DoubleClickEvent& e) override {
+        if (!module) return;
+        module->params[Turba::SCOPE_X_PARAM].setValue(0.f);
+        module->params[Turba::SCOPE_Y_PARAM].setValue(1.f);
+        e.consume(this);
+    }
 
     void draw(const DrawArgs& args) override {
         const float w = box.size.x, h = box.size.y;
 
         nvgBeginPath(args.vg);
         nvgRoundedRect(args.vg, 0, 0, w, h, 3.f);
-        nvgFillColor(args.vg, nvgRGB(0x10, 0x10, 0x10));
+        nvgFillColor(args.vg, nvgRGB(0x0b, 0x0b, 0x0b));
         nvgFill(args.vg);
         nvgStrokeColor(args.vg, nvgRGB(0x55, 0x55, 0x55));
         nvgStrokeWidth(args.vg, 1.f);
         nvgStroke(args.vg);
 
-        // crosshair
+        nvgScissor(args.vg, 1, 1, w - 2, h - 2);
+
+        // graticule: crosshair, a half-scale box and a unit circle, all faint
         nvgBeginPath(args.vg);
         nvgMoveTo(args.vg, w / 2, 3);
         nvgLineTo(args.vg, w / 2, h - 3);
         nvgMoveTo(args.vg, 3, h / 2);
         nvgLineTo(args.vg, w - 3, h / 2);
-        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0x14));
+        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0x16));
         nvgStrokeWidth(args.vg, 0.7f);
         nvgStroke(args.vg);
 
-        if (!module || module->scopeCount < 2) return;
+        nvgBeginPath(args.vg);
+        nvgRect(args.vg, w * 0.25f, h * 0.25f, w * 0.5f, h * 0.5f);
+        nvgCircle(args.vg, w / 2, h / 2, std::min(w, h) * 0.5f - 3.f);
+        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0x0c));
+        nvgStrokeWidth(args.vg, 0.6f);
+        nvgStroke(args.vg);
 
-        nvgScissor(args.vg, 1, 1, w - 2, h - 2);
+        if (!module || module->scopeCount < 4) {
+            nvgResetScissor(args.vg);
+            OpaqueWidget::draw(args);
+            return;
+        }
+
         const int n = module->scopeCount;
         const int head = module->scopeHead;
-        nvgBeginPath(args.vg);
-        for (int i = 0; i < n; i++) {
-            const int idx = (head - n + i + SCOPE_POINTS * 2) % SCOPE_POINTS;
-            const float x = (module->scopeX[idx] * 0.5f + 0.5f) * (w - 6.f) + 3.f;
-            const float y = (0.5f - module->scopeY[idx] * 0.5f) * (h - 6.f) + 3.f;
-            if (i == 0) nvgMoveTo(args.vg, x, y);
-            else nvgLineTo(args.vg, x, y);
-        }
-        nvgStrokeColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0xb0));
-        nvgStrokeWidth(args.vg, 1.f);
+        const float px = w - 6.f, py = h - 6.f;
+
         nvgLineCap(args.vg, NVG_ROUND);
         nvgLineJoin(args.vg, NVG_ROUND);
-        nvgStroke(args.vg);
+
+        // oldest band first so the bright head is laid over the dim tail
+        for (int seg = 0; seg < NSEG; seg++) {
+            const int i0 = (int)((int64_t)n * seg / NSEG);
+            // one point of overlap, so the bands join without a gap
+            const int i1 = (int)((int64_t)n * (seg + 1) / NSEG);
+            if (i1 - i0 < 2) continue;
+
+            nvgBeginPath(args.vg);
+            for (int i = i0; i <= i1 && i < n; i++) {
+                const int idx = (head - n + i + SCOPE_POINTS * 2) % SCOPE_POINTS;
+                const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
+                const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
+                if (i == i0) nvgMoveTo(args.vg, x, y);
+                else nvgLineTo(args.vg, x, y);
+            }
+
+            // age: 0 at the tail, 1 at the head
+            const float age = (float)(seg + 1) / (float)NSEG;
+            const float a2 = age * age;
+
+            // bloom
+            nvgStrokeColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.16f * a2));
+            nvgStrokeWidth(args.vg, 3.4f);
+            nvgStroke(args.vg);
+
+            // filament, whitening towards the head
+            const float wht = a2 * a2;
+            nvgStrokeColor(args.vg, nvgRGBAf(1.f,
+                                             0.84f + 0.16f * wht,
+                                             0.10f + 0.75f * wht,
+                                             0.10f + 0.90f * a2));
+            nvgStrokeWidth(args.vg, 0.9f + 0.5f * age);
+            nvgStroke(args.vg);
+        }
+
+        // the newest sample as a bright dot, so the beam has a visible head
+        {
+            const int idx = (head - 1 + SCOPE_POINTS) % SCOPE_POINTS;
+            const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
+            const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
+            nvgBeginPath(args.vg);
+            nvgCircle(args.vg, x, y, 1.6f);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xe0, 0xdd));
+            nvgFill(args.vg);
+        }
+
+        // say what the axes are looking at, but only when it is not L and R
+        const float sx = module->params[Turba::SCOPE_X_PARAM].getValue();
+        const float sy = module->params[Turba::SCOPE_Y_PARAM].getValue();
+        if (dragging || sx > 0.001f || sy < 0.999f) {
+            std::shared_ptr<window::Font> font = APP->window->loadFont(
+                asset::system("res/fonts/ShareTechMono-Regular.ttf"));
+            if (font) {
+                nvgFontFaceId(args.vg, font->handle);
+                nvgFontSize(args.vg, 9.f);
+                nvgFillColor(args.vg, nvgRGBA(0xff, 0xd5, 0x00, 0x99));
+                nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_BOTTOM);
+                nvgText(args.vg, 4.f, h - 3.f,
+                        string::f("x %.2f  y %.2f", sx, sy).c_str(), NULL);
+            }
+        }
+
         nvgResetScissor(args.vg);
+        OpaqueWidget::draw(args);
     }
 };
 
