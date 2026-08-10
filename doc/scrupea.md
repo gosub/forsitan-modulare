@@ -426,16 +426,24 @@ first is small:
 - a **DC blocker** and a **±10 V clamp** on the outputs, which REAKTOR does
   not need because it is not driving a Rack cable.
 
-The second pile is the one to be honest about: **where inside each range the
-original's knobs sat**. Every Min and Max in this module is the ensemble's,
-read out of the knob records — pitch and cutoff span 127 semitones, FM 1 to
-16, AM 0 to 5, RES 0 to 1, SMT 1 to 20, NRM 1 to 0.01, the output fader −36 to
-+18 dB. Where the factory presets left each of those knobs is in the snapshot
-blocks, and those are packed: consecutive blocks differ in length and in three
-quarters of their words, and no run of plausible floats appears anywhere in
-one. So the settings are this module's, they are collected as `SET_` constants
-in one place in `src/scrupea_dsp.hpp`, and the pitch, cutoff and delay ones were
-chosen to land on the ranges scrupea had already measured its way to.
+The second pile is **where inside each range the original's knobs sat**.
+Every Min and Max in this module is the ensemble's, read out of the knob
+records — pitch and cutoff span 127 semitones, FM 1 to 16, AM 0 to 5, RES 0 to
+1, SMT 1 to 20, NRM 1 to 0.01, the output fader −36 to +18 dB. The settings
+inside those ranges are collected as `SET_` constants in one place in
+`src/scrupea_dsp.hpp`, and the pitch, cutoff and delay ones were chosen to
+land on the ranges scrupea had already measured its way to.
+
+The snapshots were supposed to be the unrecoverable part, and they are not:
+they decoded on 2026-08-10, and 48 of the factory presets now read out whole,
+64 bars and every knob (see *Attribution*). What they say is that this module
+is **brighter and shorter** than the original was usually set. The factory
+oscillator range runs lower and tops out around pitch 60 rather than 132, its
+cutoffs sit down near 740 Hz rather than sweeping to 20 kHz, and its delays
+reach fifteen seconds where scrupea stops at 312 ms. Only the `SMT` pair
+matches exactly, at 1 and 20. Those numbers have deliberately **not** been
+adopted: taking them changes the sound substantially, and every measurement in
+this manual would have to be redone against them.
 
 The **jacks** are the last exception, and a deliberate one. Skrewell has no
 audio input, no CV inputs and no CV output — it is a generator with four
@@ -646,8 +654,32 @@ needed four of the last few: **113 Reciprocal**, **120 Log (F-to-P)**,
 **127 Sqrt** and **117 Exp (P-to-F)**, which between them spell out
 `freq = F × fm^m` and the shaper's `v⁴ … v … ⁴√v`.
 
+**And the snapshots came out.** They live in the tail, one block per snapshot,
+each ending with its own name — the same "name at the end" convention the
+module records use, which is what made them hard to find from the front.
+Inside, one record per snapshot-enabled control:
+
+```
+    9, 2, <type>, [<count>], 1, 1, 1, 1, 1,
+    { <float32 value> <u32 flag> } x count,
+    <control id>, 40
+```
+
+The run of **five 1s** is the marker to scan for. `count` is eight for a
+`snapvalue x 8`, which is how a polycontrol's eight per-voice bars are held,
+and absent for a plain knob. **The values are normalised 0 to 1**, so the real
+number is `min + v × (max − min)` using that knob's own Min and Max: the
+snapshot table plus the knob table gives every number the ensemble was saved
+with. The control id in the trailer is stable from snapshot to snapshot.
+
+It had looked packed, and that was a wrong window rather than a wrong theory.
+A block is mostly integer bookkeeping with the floats scattered through it at
+an eight-byte stride, so scanning the wrong span finds a dozen of them and
+concludes the rest is compressed. Nothing in there is compressed, and 48 of
+Skrewell's snapshots decode whole.
+
 The notes and the scripts are in `~/dl/temp/reaktor-ens-tools/` rather than in
 this repository, since they are a file-format reader and not a Rack module.
-Anyone wanting to go further should start with the snapshot blocks, or, far
-more cheaply, build one Reaktor ensemble holding one instance of each module
-of interest in a known order and read the class ids straight off it.
+What is left is the last 35 module class ids, and the cheap way to get those
+is to build one Reaktor ensemble holding one instance of each module of
+interest in a known order and read the ids straight off it.
