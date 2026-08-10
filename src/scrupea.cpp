@@ -135,6 +135,8 @@ struct Scrupea : Module {
         FLOW_ATT_PARAM,
         LEVEL_PARAM,
         RAND_PARAM,
+        MORPH_PARAM,
+        MORPH_TIME_PARAM,
         SCOPE_X_PARAM,     // no widget: dragged on the display itself
         SCOPE_Y_PARAM,
         PARAMS_LEN
@@ -146,6 +148,7 @@ struct Scrupea : Module {
         FLOW_CV_INPUT,
         AUDIO_INPUT,
         RAND_INPUT,
+        MORPH_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -166,6 +169,14 @@ struct Scrupea : Module {
     dsp::SchmittTrigger randTrig;
     dsp::BooleanTrigger randBtn;
     float envL = 0.f, envR = 0.f;
+
+    // morph: every bar walking to a destination of its own, the way a rand
+    // drag moves them, but on a gate and at a time you set rather than at the
+    // speed of your hand
+    float morphTarget[NFUNC][NCH] = {};
+    float morphInc[NFUNC][NCH] = {};
+    int morphLeft[NFUNC][NCH] = {};
+    bool morphing = false;
 
     // scope ring buffer, one point per voice per slot
     float scopeX[SCOPE_POINTS][NCH] = {};
@@ -209,6 +220,10 @@ struct Scrupea : Module {
         configParam(LEVEL_PARAM, scrupea_dsp::K_OUT_MIN_DB, scrupea_dsp::K_OUT_MAX_DB,
                     0.f, "Output level", " dB");
         configButton(RAND_PARAM, "Randomize channels");
+        configButton(MORPH_PARAM, "Morph");
+        // time for a bar to reach wherever it is going, 0.1 s to 30 s
+        configParam(MORPH_TIME_PARAM, 0.f, 1.f, 0.5f, "Morph time", " s",
+                    300.f, 0.1f);
 
         // Skrewell's XY pad. It is a Reaktor XY element, which is a display
         // and a mouse control at once: dragging it emits MX and MY, two
@@ -228,6 +243,7 @@ struct Scrupea : Module {
         configInput(FLOW_CV_INPUT, "Flow CV");
         configInput(AUDIO_INPUT, "Audio (into all eight loops)");
         configInput(RAND_INPUT, "Randomize trigger");
+        configInput(MORPH_INPUT, "Morph gate");
         configOutput(LEFT_OUTPUT, "Left");
         configOutput(RIGHT_OUTPUT, "Right");
         configOutput(CV_OUTPUT, "Chaos CV");
@@ -252,6 +268,40 @@ struct Scrupea : Module {
     }
 
     static float lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+    // Morph: every bar walks to a destination of its own, the way a rand
+    // drag moves them, but driven by a gate and at a time you set rather than
+    // by the speed of your hand. Each leg takes the same time whatever its
+    // distance, so the whole bank arrives together and immediately sets off
+    // somewhere new -- a fresh bank every `time`, not a jitter.
+    void startMorph(float secs, float sr) {
+        const int n = std::max(1, (int)(secs * sr / CONTROL_PERIOD));
+        for (int f = 0; f < NFUNC; f++)
+            for (int c = 0; c < NCH; c++)
+                aimMorph(f, c, n);
+    }
+
+    void aimMorph(int f, int c, int ticks) {
+        const float here = params[CH_PARAM + f * NCH + c].getValue();
+        morphTarget[f][c] = random::uniform();
+        morphInc[f][c] = (morphTarget[f][c] - here) / (float)ticks;
+        morphLeft[f][c] = ticks;
+    }
+
+    void morphStep(float secs, float sr) {
+        const int n = std::max(1, (int)(secs * sr / CONTROL_PERIOD));
+        for (int f = 0; f < NFUNC; f++) {
+            for (int c = 0; c < NCH; c++) {
+                Param& p = params[CH_PARAM + f * NCH + c];
+                if (--morphLeft[f][c] <= 0) {
+                    p.setValue(clamp(morphTarget[f][c], 0.f, 1.f));
+                    aimMorph(f, c, n);   // the trimpot bites on the next leg
+                } else {
+                    p.setValue(clamp(p.getValue() + morphInc[f][c], 0.f, 1.f));
+                }
+            }
+        }
+    }
 
     void randomizeChannels() {
         // All 64, as the original's does: "sends random values to all 64
@@ -350,6 +400,16 @@ struct Scrupea : Module {
             randomizeChannels();
 
         if (controlPhase == 0) {
+            // morph runs at the control rate, like everything else that moves
+            // sixty-four parameters at once
+            const bool want = inputs[MORPH_INPUT].getVoltage() > 1.f
+                              || params[MORPH_PARAM].getValue() > 0.5f;
+            const float msecs = std::pow(300.f,
+                params[MORPH_TIME_PARAM].getValue()) * 0.1f;
+            if (want && !morphing) startMorph(msecs, args.sampleRate);
+            if (want) morphStep(msecs, args.sampleRate);
+            morphing = want;
+
             eng.topology = (int)std::round(params[MODE_PARAM].getValue());
             updateTargets(args.sampleRate);
             eng.glide(tgt, CONTROL_PERIOD);
@@ -856,14 +916,17 @@ struct ScrupeaWidget : ModuleWidget {
 // @elem CUTOFF_CV_INPUT PJ301MPort 4.01 input "" 0.0 44.00 98.00
 // @elem DELAY_CV_INPUT PJ301MPort 4.01 input "" 0.0 72.00 98.00
 // @elem FLOW_CV_INPUT PJ301MPort 4.01 input "" 0.0 100.00 98.00
-// @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0 12.00 111.00
-// @elem RAND_INPUT PJ301MPort 4.01 input "" 0.0 30.00 111.00
-// @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0 76.00 111.00
+// @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0 10.00 111.00
+// @elem RAND_INPUT PJ301MPort 4.01 input "" 0.0 20.00 111.00
+// @elem MORPH_INPUT PJ301MPort 4.01 input "" 0.0 30.00 111.00
+// @elem MORPH_PARAM TL1105 2.6 param "" 0.0 42.00 111.00
+// @elem MORPH_TIME_PARAM Trimpot 2.5 param "" 0.0 52.00 111.00
+// @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0 78.00 111.00
 // @elem LEFT_OUTPUT PJ301MPort 4.01 output "" 0.0 94.00 111.00
 // @elem RIGHT_OUTPUT PJ301MPort 4.01 output "" 0.0 110.00 111.00
 // @elem LEFT_LIGHT SmallLight 1.0 light "" 0.0 99.00 108.00
 // @elem RIGHT_LIGHT SmallLight 1.0 light "" 0.0 115.00 108.00
-// @elem BOX_CV panel_box 7.0 box "" 0.0 76.00 113.00
+// @elem BOX_CV panel_box 7.0 box "" 0.0 78.00 113.00
 // @elem BOX_LEFT panel_box 7.0 box "" 0.0 94.00 113.00
 // @elem BOX_RIGHT panel_box 7.0 box "" 0.0 110.00 113.00
 // @elem LABEL_FUNC label 0.0 label "function" 0.0 16.00 61.50
@@ -875,9 +938,11 @@ struct ScrupeaWidget : ModuleWidget {
 // @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 44.00 84.50
 // @elem LABEL_DELAY label 0.0 label "delay" 0.0 72.00 84.50
 // @elem LABEL_FLOW label 0.0 label "flow" 0.0 100.00 84.50
-// @elem LABEL_AUDIO label 0.0 label "in" 0.0 12.00 118.50
-// @elem LABEL_RAND_INPUT label 0.0 label "rand" 0.0 30.00 118.50
-// @elem LABEL_CV label 0.0 label "cv" 0.0 76.00 118.50
+// @elem LABEL_AUDIO label 0.0 label "in" 0.0 10.00 118.50
+// @elem LABEL_RAND_INPUT label 0.0 label "rand" 0.0 20.00 118.50
+// @elem LABEL_MORPH_PARAM label 0.0 label "morph" 0.0 36.00 118.50
+// @elem LABEL_MORPH_TIME label 0.0 label "time" 0.0 52.00 118.50
+// @elem LABEL_CV label 0.0 label "cv" 0.0 78.00 118.50
 // @elem LABEL_LEFT label 0.0 label "L" 0.0 94.00 118.50
 // @elem LABEL_RIGHT label 0.0 label "R" 0.0 110.00 118.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 60.96 122.50
@@ -903,9 +968,12 @@ struct ScrupeaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 98.00f)), module, Scrupea::CUTOFF_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 98.00f)), module, Scrupea::DELAY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.00f, 98.00f)), module, Scrupea::FLOW_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.00f, 111.00f)), module, Scrupea::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.00f, 111.00f)), module, Scrupea::RAND_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 111.00f)), module, Scrupea::CV_OUTPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 111.00f)), module, Scrupea::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.00f, 111.00f)), module, Scrupea::RAND_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.00f, 111.00f)), module, Scrupea::MORPH_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(42.00f, 111.00f)), module, Scrupea::MORPH_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(52.00f, 111.00f)), module, Scrupea::MORPH_TIME_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(78.00f, 111.00f)), module, Scrupea::CV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 111.00f)), module, Scrupea::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(110.00f, 111.00f)), module, Scrupea::RIGHT_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 108.00f)), module, Scrupea::LEFT_LIGHT));

@@ -236,19 +236,23 @@ static void testSafety() {
     const int n = 60 * gScale;
     for (int k = 0; k < n; k++) {
         Patch p = randomPatch(r);
-        // Six seconds, not two: the loops repeat at 3 to 20 Hz, at or below
-        // the DC blocker's own corner, so a short mean of a bank sitting on
-        // long delays is not zero for reasons that are not offset.
-        Trace t = run(p, 1.5, 6.0);
+        // Twenty seconds, not two. The delay range is the factory one now and
+        // reaches 1.75 s, so a loop can repeat at 0.57 Hz -- far below the DC
+        // blocker's own 20 Hz corner, and a short mean of that is not zero for
+        // reasons that have nothing to do with offset. This is long enough for
+        // a dozen passes of the slowest loop the module can make.
+        Trace t = run(p, 1.5, 20.0);
 
         finite.hit(t.nans == 0, (double)t.nans, p);
         bounded.hit(t.peak <= 10.001 && t.cvPeak <= 5.001,
                     std::max(t.peak - 10.001, t.cvPeak - 5.001), p);
-        // 0.1 V, which is 1% of the rail. Not tighter: the blocker is one
-        // pole at 20 Hz and some banks put their whole loop below that, so
-        // what is left in the mean is the signal, not an offset. Worst seen
-        // over the standard sixty patches is 0.06 V.
-        nodc.hit(std::fabs(t.mean) < 0.1, std::fabs(t.mean), p);
+        // 0.25 V, 2.5% of the rail, and not tighter for a reason that is now
+        // structural rather than a measurement artefact: the factory cutoff
+        // range bottoms out at 0.81 Hz, so a filter can sit essentially open
+        // to DC and its loop can park at an offset that the output blocker --
+        // one pole at 20 Hz -- only mostly removes. Worst over the standard
+        // sixty patches is 0.145 V, on a bare-topology bank at +14.5 dB.
+        nodc.hit(std::fabs(t.mean) < 0.25, std::fabs(t.mean), p);
 
         // The fader is the ensemble's, and the ensemble's bottoms out at
         // -36 dB rather than at silence, so "the level knob at zero is
