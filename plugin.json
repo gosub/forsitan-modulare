@@ -109,7 +109,6 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.3/doc/draen.md",
       "tags": [
         "Oscillator",
-        "Drone",
         "Synth Voice"
       ]
     },
@@ -143,7 +142,6 @@
       "tags": [
         "Sampler",
         "Effect",
-        "Tape",
         "Polyphonic"
       ]
     },
@@ -187,7 +185,6 @@
       "description": "Feedback drone synthesizer: a self-exciting Karplus-Strong string (Audrey II port).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.3/doc/vorax.md",
       "tags": [
-        "Drone",
         "Synth Voice",
         "Physical modeling"
       ]
@@ -211,8 +208,7 @@
       "tags": [
         "Sampler",
         "Random",
-        "Granular",
-        "Drone"
+        "Granular"
       ]
     },
     {
@@ -232,7 +228,6 @@
       "description": "Chaotic resonator drone: a Duffing oscillator through 48 resonant filters (Gutter Synthesis port).",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.13.3/doc/guttur.md",
       "tags": [
-        "Drone",
         "Physical modeling",
         "Distortion"
       ]
