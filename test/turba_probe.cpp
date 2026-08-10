@@ -115,56 +115,93 @@ static void probeMacros() {
     }
 }
 
-// Two engines from the same state, one nudged by 1e-6 on a single channel's
-// phase. If the bank is chaotic the difference grows exponentially; the
-// slope of log|diff| is a largest-Lyapunov-exponent estimate in nepers per
-// second. Positive means chaos, near zero means it is only quasi-periodic.
+// Two engines from the same state, one displaced by a small amount along a
+// random direction in the WHOLE state space -- every oscillator phase, every
+// filter and normalizer state, and every sample sitting in the sixteen delay
+// lines. If the bank is chaotic that displacement grows exponentially; the
+// mean log growth per second is a largest-Lyapunov estimate in nepers.
+//
+// The size of the displacement is not a free choice. An earlier version of
+// this probe nudged one oscillator phase by 1e-6 and renormalised only the
+// output array, which is written afresh every sample: spread over fifty
+// thousand float32 state words that displacement is below the resolution of
+// the type, so it neither grew nor shrank and every reading came out zero.
+// It also reported 645/s for a much earlier engine, which was the same
+// artefact from the other side. Treat any lambda from before 2026-08-10 as
+// unmeasured.
+static void collectState(Turba& m, std::vector<float*>& v) {
+    turba_dsp::Engine& e = m.eng;
+    v.clear();
+    for (int i = 0; i < turba_dsp::NLEV; i++) {
+        v.push_back(&e.phase[i]);
+        v.push_back(&e.y[i]);
+        v.push_back(&e.fa[i].ic1);  v.push_back(&e.fa[i].ic2);
+        v.push_back(&e.fb2[i].ic1); v.push_back(&e.fb2[i].ic2);
+        v.push_back(&e.norm[i].env); v.push_back(&e.norm[i].sm);
+        for (size_t k = 0; k < e.line[i].buf.size(); k++)
+            v.push_back(&e.line[i].buf[k]);
+    }
+}
+
 static void probeLyapunov() {
     printf("\n== divergence (largest Lyapunov estimate) ==\n");
-    printf("flow    lambda(1/s)   verdict\n");
-    for (int i = 0; i <= 4; i++) {
-        const float f = i / 4.f;
-        Turba a, b;
-        a.params[Turba::FLOW_PARAM].setValue(f);
-        b.params[Turba::FLOW_PARAM].setValue(f);
-        long fa = 0, fb = 0;
-        settle(a, fa, 4.0);
-        settle(b, fb, 4.0);
-        // copy a's engine state into b, then nudge
-        b.eng = a.eng;
-        b.eng.phase[0] += 1e-6f;
+    printf("topo   flow    lambda(1/s)   verdict\n");
+    static const char* tn[3] = {"loop", "pre", "bare"};
+    for (int t = 0; t < 3; t++) {
+        for (int i = 0; i <= 4; i++) {
+            const float f = i / 4.f;
+            Turba a, b;
+            a.params[Turba::MODE_PARAM].setValue((float)t);
+            b.params[Turba::MODE_PARAM].setValue((float)t);
+            a.params[Turba::FLOW_PARAM].setValue(f);
+            b.params[Turba::FLOW_PARAM].setValue(f);
+            long fa = 0, fb = 0;
+            settle(a, fa, 6.0);
+            b.eng = a.eng;
 
-        const double d0 = 1e-6;
-        double sum = 0.0;
-        int renorms = 0;
-        const int step = (int)(0.02 * SR);
-        for (int seg = 0; seg < 150; seg++) {
-            for (int n = 0; n < step; n++) {
-                a.process(makeArgs(fa++));
-                b.process(makeArgs(fb++));
+            std::vector<float*> pa, pb;
+            collectState(a, pa);
+            collectState(b, pb);
+
+            // a random unit direction, scaled to something float32 can hold
+            const double d0 = 1e-2;
+            uint32_t rs = 0x9e3779b9u;
+            std::vector<double> dir(pa.size());
+            double n2 = 0;
+            for (size_t k = 0; k < pa.size(); k++) {
+                rs ^= rs << 13; rs ^= rs >> 17; rs ^= rs << 5;
+                dir[k] = (double)(rs >> 8) / 16777216.0 - 0.5;
+                n2 += dir[k] * dir[k];
             }
-            double d = 0;
-            for (int c = 0; c < NCH; c++) {
-                const double e = a.eng.y[c] - b.eng.y[c];
-                d += e * e;
-            }
-            d = std::sqrt(d);
-            if (d < 1e-14) d = 1e-14;
-            if (d > 1e-3) {
-                // renormalise back onto the reference trajectory
+            const double s0 = d0 / std::sqrt(n2);
+            for (size_t k = 0; k < pa.size(); k++)
+                *pb[k] = (float)(*pa[k] + dir[k] * s0);
+
+            const int segs = 120;
+            const int step = (int)(0.05 * SR);
+            double sum = 0;
+            for (int seg = 0; seg < segs; seg++) {
+                for (int n = 0; n < step; n++) {
+                    a.process(makeArgs(fa++));
+                    b.process(makeArgs(fb++));
+                }
+                double d = 0;
+                for (size_t k = 0; k < pa.size(); k++) {
+                    const double x = (double)*pa[k] - *pb[k];
+                    d += x * x;
+                }
+                d = std::sqrt(d);
+                if (d < 1e-20) d = 1e-20;
                 sum += std::log(d / d0);
-                renorms++;
-                const double scale = d0 / d;
-                for (int c = 0; c < NCH; c++)
-                    b.eng.y[c] = a.eng.y[c] + (b.eng.y[c] - a.eng.y[c]) * scale;
+                const double sc = d0 / d;
+                for (size_t k = 0; k < pa.size(); k++)
+                    *pb[k] = (float)(*pa[k] + ((double)*pb[k] - *pa[k]) * sc);
             }
+            const double lambda = sum / (segs * 0.05);
+            printf("%-5s  %4.2f  %11.1f   %s\n", tn[t], f, lambda,
+                   lambda > 5.0 ? "chaotic" : (lambda > 0.5 ? "weakly chaotic"
+                                                            : "not chaotic"));
         }
-        const double seconds = 150 * 0.02;
-        const double lambda = sum / seconds;
-        printf("%+5.2f  %11.2f   %s\n", f, lambda,
-               lambda > 1.0 ? "chaotic" : (lambda > 0.05 ? "weakly chaotic"
-                                                         : "not chaotic"));
-        (void)renorms;
     }
 }
 
