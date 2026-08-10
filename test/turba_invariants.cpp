@@ -62,7 +62,6 @@ struct Patch {
     float ch[NFUNC][NCH];
     float pitch = 0.f, cutoff = 0.f, delay = 0.f, flow = 0.f, level = 0.5f;
     int topology = 0;
-    bool ring = true;
 };
 
 static Patch randomPatch(Rng& r) {
@@ -75,15 +74,14 @@ static Patch randomPatch(Rng& r) {
     p.flow = r.range(-1.f, 1.f);
     p.level = r.range(0.f, 1.f);
     p.topology = r.pick(3);
-    p.ring = r.pick(8) != 0;
     return p;
 }
 
 static void describe(const Patch& p, char* out, size_t n) {
     snprintf(out, n,
-             "topo %d ring %d pitch %+.3f cutoff %+.3f delay %+.3f "
+             "topo %d pitch %+.3f cutoff %+.3f delay %+.3f "
              "flow %+.3f level %.3f bars[0] %.2f %.2f %.2f %.2f",
-             p.topology, (int)p.ring, p.pitch, p.cutoff, p.delay, p.flow,
+             p.topology, p.pitch, p.cutoff, p.delay, p.flow,
              p.level, p.ch[0][0], p.ch[0][1], p.ch[0][2], p.ch[0][3]);
 }
 
@@ -97,7 +95,6 @@ static void apply(Turba& m, const Patch& p) {
     m.params[Turba::FLOW_PARAM].setValue(p.flow);
     m.params[Turba::LEVEL_PARAM].setValue(p.level);
     m.params[Turba::MODE_PARAM].setValue((float)p.topology);
-    m.ringCoupling = p.ring;
 }
 
 struct Trace {

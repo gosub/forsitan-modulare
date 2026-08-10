@@ -55,21 +55,21 @@ The oscillators never stop and there is no gate and no pitch input. Like the
 original, you switch it on and it runs.
 
 What makes it more than sixteen parallel drones is the coupling, and its shape
-was read off the ensemble rather than invented. The `crossvoice` macro beside
-each lever turns out to contain **eight From Voice modules feeding a nine-input
-adder**: a lever is modulated by its partner's output *summed across all eight
-channels*. So the coupling is all-to-all between channels and crossed within
-the pair, not a ring between neighbours. Every loop is part of one system, and
-with the filter saturating inside it that system is genuinely chaotic — see
-*Is it actually chaotic* below.
+is read off the ensemble. The `crossvoice` macro beside each lever holds
+**eight From Voice modules wired to the channel inputs of a selector**, and
+the `fm` and `am` bars drive that selector's position. So a bar does not say
+*how hard* a lever is modulated — it says **which channel modulates it**,
+blending between two adjacent channels when it sits between them. The source
+is the partner lever of the chosen channel: crossed within the pair, selected
+across the bank.
 
-Switching **crossvoice** off in the context menu drops the channel sum and
-leaves each lever hearing only its own partner: sixteen loops in eight
-independent pairs, much tamer.
+The two bars therefore draw a **coupling topology**, sixteen values deciding
+who listens to whom, and that is the instrument. Depth is one global amount
+on the **flow** knob. Every loop ends up part of one system, and with the
+filter saturating inside it that system is genuinely chaotic — see *Is it
+actually chaotic* below.
 
-Lever pairs can be switched off in the context menu, which halves the CPU and
-is not just an economy: see the note there, it is the setting that evolves
-most.
+Both levers always run, as they do in the ensemble.
 
 ### Through-zero FM
 
@@ -94,44 +94,6 @@ from 1052 Hz to 1607 Hz.
 The port order that makes the wiring consistent is **P, F, A, W**, which also
 matches AlbertoZ's account on the Cycling '74 thread from the other side:
 "the width W inlet is not used… and the P inlet is fixed to -300".
-
-### Two-state switching
-
-The thing that makes the bank evolve with nobody touching it — and, unlike
-almost everything else here, **an invention rather than a reading**. It went
-in on colB's remark that *"there are some parameters that have two settings
-that get switched between… it does that thing where components of the sound
-toggle chaotically between two states"*, taken as a description of Skrewell's
-structure. Reading the patch afterwards showed it is not.
-
-There is no switch, no comparator and nothing clocked anywhere in a LEVER.
-What colB was pointing at turns out to be the `flow` macro, where each of the
-five parameters it controls (`fm`, `am`, `res`, `smt`, `nrm`) is a Selector
-blending between **two knobs** — two settings per parameter, crossfaded by one
-control. The chaotic toggling he describes hearing is emergent, which is what
-a feedback system near a bifurcation does on its own.
-
-So this is a mechanism of this module's own, kept because it works: it is what
-takes the spectral wander from 0.19 octaves to 0.97, and without it the bank
-sits still. But it is not what the original does, and the section below is
-where it belongs as much as here.
-
-Once per pass of its own delay line — so every 30 to 300 ms, at eight
-different rates — each channel latches one bit from the sign of another
-channel's loop signal, and that bit picks between two values of its filter
-cutoff. Nothing drifts and there is no LFO: the sound *flips*, and eight
-channels flipping out of step with each other is what keeps it moving.
-
-It has to be the **cutoff** that switches. Measured over an untouched minute,
-switching the cutoff takes the spectral wander from 0.19 to 0.97 octaves;
-switching the pitch or the delay time instead makes it *worse*, 0.10 to 0.14,
-because those move the sound without moving where its energy sits. In the
-bare topology, which has no filter, the switch shortens the delay instead.
-
-Depth is in the context menu, off / light / normal / wild, defaulting to
-normal. The switch clock never runs faster than 10 ms however short the
-delays get: past that it stops being a change of state and becomes an
-audio-rate modulator.
 
 ### Three topologies
 
@@ -161,11 +123,11 @@ the module, and they are visible over [limen](limen.md) as
 |----------|-------|---|
 | **pitch** | 8 Hz – 16 kHz, exponential | the oscillator |
 | **cutoff** | 20 Hz – 20 kHz, exponential | the filter (**loop** and **pre** only) |
-| **type** | low → band → high | the filter's *shape*, morphing continuously. Each channel can sit on a different slope. This is the ensemble's `lbh` parameter, and it is the eighth bar there too — resonance is not a bar in Skrewell and is not one here |
+| **type** | low → band → high | the filter's *shape*. The ensemble's `lbh`: the `Pos` of a selector over the Multi 2-Pole's three outputs, blending between adjacent ones, so each channel can sit on a different slope |
 | **time** | 0.15 ms – 307 ms, exponential | the delay. At the short end the loop is a comb rather than an echo |
 | **fbk** | 0 – 102% | loop gain. Over unity the normalizer holds it |
-| **fm** | 0 – 250% | how hard the crossvoice bus drives this oscillator's frequency. **Linear and through zero**: the frequency is `base × (1 + fm × mod)`, so past about 40% the modulator drags it negative and the oscillator runs backwards. That is what the ensemble does, and it is most of why this module is harsh |
-| **am** | 0 – 100% | how hard the other neighbour amplitude-modulates it |
+| **fm** | channel 1 – 8 | **which channel frequency-modulates this one.** Not a depth: it is the position of an eight-way selector over the bank, blending between two adjacent channels when set between them. Depth comes from **flow** |
+| **am** | channel 1 – 8 | the same, for amplitude modulation. The two bars together draw the bank's coupling: which channel listens to which |
 | **level** | 0 – 100% | this channel's contribution to the mix. Channels are panned across the field in order, channel 1 hard left |
 
 The **edit** switch is Skrewell's three mouse behaviours:
@@ -218,12 +180,17 @@ the REAKTOR manual describes as adjusting "various amounts of modulation… turn
 to the left for less modulation and more inertia, turn to the right for the
 opposite". Here it does three things at once:
 
-1. maps the **fm** and **am** bars, the same way the other macros map theirs;
-2. sets the **resonance** of every filter, **inverted** — right takes it down.
-   Resonance has no bar of its own, here or in the ensemble, where `res` is an
-   input the tone generator feeds its levers;
-3. sets the engine's inertia, the glide on every internal control, from 1 s at
-   hard left to 2.5 ms at hard right.
+**flow is not a bar mapping** like the other three. In the ensemble it is the
+`Pos` of five selectors, each blending between **two knobs**, so it crossfades
+a handful of global settings between a low and a high value. Here it sets:
+
+1. the **depth** of the frequency modulation, 4% to 240%;
+2. the **depth** of the amplitude modulation, 0 to 95%;
+3. the **resonance** of every filter, **inverted** — right takes it down.
+   Resonance has no bar, here or in the ensemble, where `res` is an input the
+   tone generator feeds its levers;
+4. the engine's **inertia**, the glide on every internal control, 1 s at hard
+   left to 2.5 ms at hard right.
 
 The inversion in (2) is the interesting one, and it is not an affectation. The
 Max porter's finding was that what tips Skrewell into chaos is "the resonance
@@ -279,12 +246,7 @@ precessing figure is the interesting middle.
 
 | item | |
 |------|---|
-| **Crossvoice (all channels)** | on, a lever is modulated by its partner's output summed across all eight channels, which is what the ensemble does. Off, it hears only its own partner: eight independent pairs rather than one coupled system, much tamer, and useful as a bank of droning comb resonators |
-| **Lever pairs** | both loops of every channel, on by default because it is what the ensemble does. Off, each channel is a single lever: half the CPU, a thinner and more separated bank, and — this is the awkward part — **more** self-evolution, 0.82 octaves of spectral wander against 0.34. Two chaotic loops summed into one voice average each other out, and no amount of coupling weight recovers it (measured at six settings from 0 to 0.85). On is denser, rougher and more faithful; off moves more. There is no setting that is both |
-| **Randomize all functions** | off makes the rand button and trigger randomize only the function currently on screen, which is far more controllable than rolling all 64 |
 | **Display scale** | 1× to 8× on the Lissajous, the original's "Display Control". 1× is ±5 V filling the box; turn it up when the bank is running quietly |
-| **Randomize channels** | the button, from the menu |
-| **Reset channels to default** | all 64 bars back to the starting bank |
 
 ## Tips
 
@@ -355,17 +317,11 @@ the normalizer, it is that the oscillators never stop.
 behaviour, but arrived at deliberately here rather than as a side effect of a
 closed filter.
 
-**Two-state switching is invented.** See the section above: the patch has no
-switch in it. It is here because it makes the bank evolve on its own and the
-bank otherwise does not.
-
-**The fm and am bars mean something different in the original.** Here they are
-modulation depths. There they are the `Pos` of an eight-way Selector inside
-`crossvoice` — they choose *which voice* modulates this one, blending between
-two adjacent voices when set between them, while `flow` supplies the depth.
-That makes the bank's coupling a topology the bars draw, which is a
-considerably more interesting instrument than a set of depths, and it is the
-biggest thing still unimplemented here.
+Beyond those two, what is left is the parts whose behaviour the file does not
+give up: the normalizer's gain law after its envelope, the delay's
+interpolation, and the arithmetic of the modulation chain, where 49 of the
+ensemble's 57 module classes are still unidentified. Those are designed here,
+not read.
 
 Smaller ones: the filter is a topology-preserving 2-pole SVF with its
 integrator states soft-limited, not a model of whatever REAKTOR uses; the
@@ -392,17 +348,21 @@ how much they matter:
 
 | | |
 |---|---|
-| **two-state switching** | the biggest one, and the only one that is not a property of the patch. See above; off it is 0.19 octaves, wild it is 1.02 |
 | **long delays** | below about 10 ms a loop is a comb and settles in a few passes; up at 100–300 ms it takes a tenth of a second per pass and its state survives long enough to evolve |
 | **feedback near unity** | at 0.5 every loop is safely damped and nothing ever builds. Push the **fbk** bars to 0.9–1.0 and loops build, saturate against the limiter and collapse, which is where the lurching comes from |
 | **pitches close together** | eight channels spread over three octaves beat against each other at audio rate, which is timbre. Eight inside a fifth beat *slowly*, and the cross-modulation turns those slow beats into slow movement |
+| **the coupling** | the **fm** and **am** bars decide who modulates whom. A bank where every channel listens to the same one behaves quite differently from a bank wired in a cycle |
 
 The default bank is set that way — delays 30–307 ms, every loop between 0.88
 and 1.0, pitches within a fifth — which is worth knowing if you wonder why it
-sounds nothing like eight independent oscillators. An earlier default with
-half the feedback and 2–40 ms delays, and no switching, measured 0.04 octaves
-of wander; with both it measures **0.82 in the loop topology**, against 0.75
-for a reference recording of Skrewell standing still.
+sounds nothing like eight independent oscillators. An earlier default with half the feedback and 2–40 ms delays measured 0.04
+octaves of wander; the current one measures **0.32 in the loop topology**,
+against 0.75 for a reference recording of Skrewell standing still — and that
+is with nothing invented propping it up. An earlier draft of this module had a
+chaotically clocked two-state switch on each filter, which got the figure to
+0.97 but is not in the patch anywhere; once the `fm` and `am` bars became
+selectors and the bank could route its own modulation, the switch turned out
+to be unnecessary as well as unfaithful, and it is gone.
 
 Two honest caveats. **flow at either extreme kills it** — 0.29 octaves hard
 left, 0.21 hard right, against 0.82 at noon. Left is the ordered, periodic
@@ -446,9 +406,6 @@ Recorded so nobody spends the afternoon again:
   crossvoice against the ring. Swept from 0 (levers ignore their partner) to
   0.85 (they barely hear anything else): 0.48 down to 0.30 octaves, against
   0.82 with a single lever. It is the summing that does it, not the coupling.
-- **Switching the pitch or the delay time** instead of the cutoff, once the
-  two-state mechanism was in. Both made the wander worse than no switching at
-  all.
 
 ## Cost
 
@@ -471,8 +428,8 @@ have been. The architecture came from the
 the Cycling '74 thread
 [Problem rebuilding Reaktors Skrewell in Max/Gen](https://cycling74.com/forums/problem-rebuilding-the-reaktors-skrewell-in-maxgen),
 where zangpa, Matteo Marson and AlbertoZ compare notes on why it will not
-port. The two-state switching, the oscillator pairs and the count of filters
-and delays come from **colB**'s reverse engineering of the ensemble in
+port. The oscillator pairs and the count of filters and delays come from
+**colB**'s reverse engineering of the ensemble in
 [SKREWELL - Hardware synth equivalent ideas? What is the structure of
 Skrewell?](https://community.native-instruments.com/discussion/14722/skrewell-hardware-synth-equivalent-ideas-what-is-the-structure-of-skrewell),
 which is the only public account of the structure written by somebody who

@@ -85,7 +85,6 @@ static const int CONTROL_PERIOD = 32;
 static const int SCOPE_POINTS = 512;
 static const int SCOPE_DECIM = 12;
 static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
-static const float bifDepths[4] = {0.f, 1.25f, 2.5f, 3.5f};
 
 struct Turba : Module {
     enum ParamId {
@@ -139,17 +138,6 @@ struct Turba : Module {
     int scopeHead = 0, scopeCount = 0;
 
     // context menu options
-    bool ringCoupling = true;
-    // Depth of the two-state switch, in octaves of filter cutoff. Index into
-    // bifDepths; see turba_dsp.hpp for what it does and why it is the cutoff
-    // that gets switched.
-    int bifIndex = 2;
-    // Both levers of each channel. On by default because it is the actual
-    // structure of the ensemble -- every tone generator in Skrewell holds two
-    // LEVER macros with a crossvoice between them -- and off it halves the
-    // CPU and gives a thinner, more separated version of the same bank.
-    bool oscPairs = true;
-    bool randomizeAllFuncs = true;
     // Skrewell's "Display Control", which scales the Lissajous. Index into
     // scopeScales below; 1x means +/-5 V fills the box.
     int scopeScale = 0;
@@ -204,11 +192,7 @@ struct Turba : Module {
 
     void onReset() override {
         eng.reset();
-        ringCoupling = true;
-        randomizeAllFuncs = true;
         scopeScale = 0;
-        bifIndex = 2;
-        oscPairs = true;
         scopeCount = 0;
     }
 
@@ -229,9 +213,9 @@ struct Turba : Module {
     }
 
     void randomizeChannels() {
-        const int lo = randomizeAllFuncs ? 0 : (int)params[FUNC_PARAM].getValue();
-        const int hi = randomizeAllFuncs ? NFUNC : lo + 1;
-        for (int f = lo; f < hi; f++)
+        // All 64, as the original's does: "sends random values to all 64
+        // columns", in carloskleiber's words.
+        for (int f = 0; f < NFUNC; f++)
             for (int c = 0; c < NCH; c++)
                 params[CH_PARAM + f * NCH + c].setValue(random::uniform());
     }
@@ -241,7 +225,21 @@ struct Turba : Module {
         const float gC = std::pow(5.f, -macro(CUTOFF_PARAM, CUTOFF_ATT_PARAM, CUTOFF_CV_INPUT));
         const float gD = std::pow(5.f, -macro(DELAY_PARAM, DELAY_ATT_PARAM, DELAY_CV_INPUT));
         const float flow = macro(FLOW_PARAM, FLOW_ATT_PARAM, FLOW_CV_INPUT);
-        const float gF = std::pow(5.f, -flow);
+
+        // Flow is not a bar mapping like the other three. In the ensemble it
+        // is the Pos of five Selectors, each blending between two knobs, so
+        // it crossfades a handful of global settings between a low and a high
+        // value. Here: how hard the crossvoice modulates, the resonance of
+        // every filter, and the engine's inertia.
+        const float fw = clamp(flow * 0.5f + 0.5f, 0.f, 1.f);
+        tgt.fmDepth = 0.04f + fw * 2.4f;
+        tgt.amDepth = fw * 0.95f;
+        // Resonance runs the other way: high Q rings on one band and stays
+        // orderly, an open one hands the loop broadband gain for the
+        // saturator to fold, and the bank tips over. That inversion is what
+        // stumped the people porting it. Measured: 0/s below flow -0.5,
+        // 670/s above centre.
+        const float flowQ = 12.f + fw * (0.7f - 12.f);
 
         // Flow also sets how quickly the engine chases its own controls:
         // "less modulation and more inertia" at one end, twitchy at the other.
@@ -264,29 +262,17 @@ struct Turba : Module {
             if (fc > nyq) fc = nyq;
             tgt.g[c] = std::tan((float)M_PI * fc / sr);
 
-            // Resonance is not a bar. In the ensemble `res` is an input the
-            // tone generator feeds its levers, and no bar carries it -- the
-            // eight bars are F, A, cut, lbh, DEL, FB, fm, am. Here it comes
-            // from flow, and mapped the *other* way: flow to the right takes
-            // the resonance down. A high-Q loop filter rings on one narrow
-            // band and stays orderly; open it out and the loop gets broadband
-            // gain, the saturator starts folding it, and the bank tips over
-            // into chaos. That inversion is what stumped the people porting
-            // it, and it is measurable here: 0/s below flow -0.5, 670/s above.
-            const float qf = mapValue(0.55f, 1.f / gF);
-            const float Q = 0.6f + qf * qf * 18.f;
-            tgt.k[c] = 1.f / Q;
+            tgt.k[c] = 1.f / flowQ;
             tgt.typ[c] = y;
 
             const float ms = 0.15f * std::exp2(mapValue(t, gD) * 11.f);
             tgt.dly[c] = ms * 0.001f * sr;
 
             tgt.fbk[c] = b * 1.02f;
-            // FM is now a linear depth, not an octave count: the
-            // oscillator frequency is base * (1 + fm * mod), so past 1 the
-            // modulator drags it through zero and the oscillator reverses.
-            tgt.fm[c]  = mapValue(m, gF) * 2.5f;
-            tgt.am[c]  = mapValue(a, gF);
+            // The fm and am bars are Selector positions, not depths: they
+            // choose which of the eight channels modulates this one.
+            tgt.fmPos[c] = m * (float)(NCH - 1);
+            tgt.amPos[c] = a * (float)(NCH - 1);
             tgt.lvl[c] = l * l;
         }
     }
@@ -298,9 +284,6 @@ struct Turba : Module {
 
         if (controlPhase == 0) {
             eng.topology = (int)std::round(params[MODE_PARAM].getValue());
-            eng.ringCoupling = ringCoupling;
-            eng.bifurcate = bifDepths[bifIndex];
-            eng.pairs = oscPairs;
             updateTargets(args.sampleRate);
             eng.glide(tgt, CONTROL_PERIOD);
         }
@@ -339,25 +322,14 @@ struct Turba : Module {
 
     json_t* dataToJson() override {
         json_t* root = json_object();
-        json_object_set_new(root, "ringCoupling", json_boolean(ringCoupling));
-        json_object_set_new(root, "randomizeAllFuncs", json_boolean(randomizeAllFuncs));
         json_object_set_new(root, "scopeScale", json_integer(scopeScale));
-        json_object_set_new(root, "bifIndex", json_integer(bifIndex));
-        json_object_set_new(root, "oscPairs", json_boolean(oscPairs));
         return root;
     }
 
     void dataFromJson(json_t* root) override {
-        json_t* j = json_object_get(root, "ringCoupling");
-        if (j) ringCoupling = json_boolean_value(j);
-        j = json_object_get(root, "randomizeAllFuncs");
-        if (j) randomizeAllFuncs = json_boolean_value(j);
+        json_t* j = NULL;
         j = json_object_get(root, "scopeScale");
         if (j) scopeScale = clamp((int)json_integer_value(j), 0, 3);
-        j = json_object_get(root, "bifIndex");
-        if (j) bifIndex = clamp((int)json_integer_value(j), 0, 3);
-        j = json_object_get(root, "oscPairs");
-        if (j) oscPairs = json_boolean_value(j);
     }
 };
 
@@ -730,28 +702,10 @@ struct TurbaWidget : ModuleWidget {
         Turba* module = getModule<Turba>();
 
         menu->addChild(new MenuSeparator);
-        menu->addChild(createBoolPtrMenuItem("Crossvoice (all channels)", "", &module->ringCoupling));
-        menu->addChild(createBoolPtrMenuItem("Randomize all functions", "",
-                                             &module->randomizeAllFuncs));
-        menu->addChild(createBoolPtrMenuItem("Lever pairs (both loops per channel)", "",
-                                             &module->oscPairs));
-        menu->addChild(createIndexSubmenuItem("Two-state switching",
-            {"off", "light", "normal", "wild"},
-            [=]() { return module->bifIndex; },
-            [=](int idx) { module->bifIndex = idx; }));
         menu->addChild(createIndexSubmenuItem("Display scale",
             {"1x (+/-5 V)", "2x", "4x", "8x"},
             [=]() { return module->scopeScale; },
             [=](int idx) { module->scopeScale = idx; }));
-        menu->addChild(createMenuItem("Randomize channels", "", [=]() {
-            module->randomizeChannels();
-        }));
-        menu->addChild(createMenuItem("Reset channels to default", "", [=]() {
-            for (int f = 0; f < NFUNC; f++)
-                for (int c = 0; c < NCH; c++)
-                    module->params[Turba::CH_PARAM + f * NCH + c]
-                        .setValue(chDefault[f][c]);
-        }));
     }
 };
 

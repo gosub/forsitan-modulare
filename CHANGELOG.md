@@ -201,17 +201,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     saturator to fold. Measured as a largest-Lyapunov estimate, there is a
     real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
 
-    Each channel also carries a **two-state switch**, which is what makes the
-    bank evolve with nobody touching it, and which is this module's own
-    invention rather than a reading of the original -- see doc/turba.md. Once per pass of its own delay line,
-    so every 30-300 ms at eight different rates, a channel latches one bit
-    from the sign of another channel's loop signal, and that bit picks between
-    two values of its filter cutoff. Nothing drifts and there is no LFO: the
-    sound flips. It has to be the cutoff -- switching pitch or delay time
-    instead measures *worse* than not switching at all, because those move the
-    sound without moving where its energy sits. Off/light/normal/wild in the
-    context menu.
-
     The default bank is set where the thing actually moves: delays 30-307 ms,
     every loop between 0.88 and 1.0 so it builds and collapses against the
     limiter, and the eight pitches inside a fifth so they beat slowly against
@@ -240,6 +229,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     8 oscillators". Resonance has no bar in Skrewell -- `res` is an input the
     tone generator feeds its levers -- and it has none here either; flow sets
     it, as it already did.
+
+    The **fm** and **am** bars are not depths, they are selector positions:
+    inside `crossvoice` eight From Voice modules feed the channel inputs of a
+    Selector and those two bars drive its Pos, so a bar picks **which channel
+    modulates this one**, blending between adjacent channels when set between
+    them. Sixteen bars therefore draw the bank's coupling topology, and depth
+    is a single global amount on flow. Flow itself is not a bar mapping like
+    the other three macros: in the ensemble it is the Pos of five selectors
+    each blending between two knobs, so here it crossfades FM depth, AM depth,
+    resonance and inertia between a low and a high value.
 
     The channel is a **pair of levers**, sixteen loops in all. That comes from
     reading the ensembles rather than the forums: every tone generator in

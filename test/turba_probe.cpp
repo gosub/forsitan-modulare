@@ -273,24 +273,21 @@ struct RenderSetting {
     int topology;
     float flow;
     bool randomize;
-    bool pairs;
     float pitch;
 };
 
 static void probeRender(const char* dir, double seconds) {
     static const RenderSetting settings[] = {
-        // `default_*` are the module's own defaults, lever pairs included.
-        {"default_loop",   0,  0.0f, false, true,  0.f},
-        {"default_pre",    1,  0.0f, false, true,  0.f},
-        {"default_bare",   2,  0.0f, false, true,  0.f},
-        {"flow_left",      0, -1.0f, false, true,  0.f},
-        {"flow_right",     0,  1.0f, false, true,  0.f},
-        {"rand_loop",      0,  0.5f, true,  true,  0.f},
-        {"rand_pre",       1,  0.5f, true,  true,  0.f},
-        {"rand_bare",      2,  0.5f, true,  true,  0.f},
-        {"single_loop",    0,  0.0f, false, false, 0.f},
-        {"single_bare",    2,  0.0f, false, false, 0.f},
-        {"pitch_up_loop",  0,  0.0f, false, true,  0.6f},
+        // Both levers always run, as they do in the ensemble.
+        {"default_loop",   0,  0.0f, false, 0.f},
+        {"default_pre",    1,  0.0f, false, 0.f},
+        {"default_bare",   2,  0.0f, false, 0.f},
+        {"flow_left",      0, -1.0f, false, 0.f},
+        {"flow_right",     0,  1.0f, false, 0.f},
+        {"rand_loop",      0,  0.5f, true, 0.f},
+        {"rand_pre",       1,  0.5f, true, 0.f},
+        {"rand_bare",      2,  0.5f, true, 0.f},
+        {"pitch_up_loop",  0,  0.0f, false, 0.6f},
     };
     const int count = (int)(sizeof(settings) / sizeof(settings[0]));
     printf("\n== render, %.1f s each, into %s ==\n", seconds, dir);
@@ -299,7 +296,6 @@ static void probeRender(const char* dir, double seconds) {
         m.params[Turba::MODE_PARAM].setValue((float)settings[s].topology);
         m.params[Turba::FLOW_PARAM].setValue(settings[s].flow);
         m.params[Turba::LEVEL_PARAM].setValue(0.5f);
-        m.oscPairs = settings[s].pairs;
         m.params[Turba::PITCH_PARAM].setValue(settings[s].pitch);
         if (settings[s].randomize) m.randomizeChannels();
 

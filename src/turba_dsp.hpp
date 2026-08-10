@@ -162,11 +162,6 @@ struct DelayLine {
     }
 };
 
-// The largest filter coefficient the SVF is ever handed, tan(pi*0.45), i.e.
-// a cutoff at 0.45 of the sample rate. The two-state switch multiplies the
-// coefficient, so it needs a ceiling of its own.
-static const float G_MAX = 6.3138f;
-
 // How the second lever of a pair differs from the first. Both are driven by
 // the same eight bars -- there is one bar per channel, not one per lever --
 // so without an offset the pair would be one loop played twice.
@@ -182,8 +177,10 @@ struct Targets {
     float typ[NCH];    // filter type, 0 low / 0.5 band / 1 high
     float dly[NCH];    // delay time in samples
     float fbk[NCH];    // loop gain
-    float fm[NCH];     // FM index in octaves
-    float am[NCH];     // AM depth 0..1
+    float fmPos[NCH];  // which voice modulates this one, 0..NCH-1, fractional
+    float amPos[NCH];  // the same for AM
+    float fmDepth;     // how hard, from flow -- one value for the whole bank
+    float amDepth;
     float lvl[NCH];    // channel level 0..1
 };
 
@@ -193,16 +190,10 @@ struct Engine {
 
     // smoothed running values, one per channel
     float oct[NLEV], gc[NLEV], kc[NLEV], dly[NLEV], fbk[NLEV], fm[NLEV],
-          am[NLEV], tp[NLEV];
+          tp[NLEV], fmP[NLEV], amP[NLEV];
+    float fmD = 0.f, amD = 0.f;
     float lvl[NCH];
     float phase[NLEV];
-    // Both levers of every pair run unless this is off, in which case only
-    // the first does and the module costs half as much.
-    bool pairs = true;
-    // How much of a lever's cross-modulation comes from its partner in the
-    // pair (the ensemble's `crossvoice`) against the ring on to the next
-    // channel. Tuned by measurement.
-    float pairWeight = 0.35f;
 
     float y[NLEV];       // each lever's loop output, this sample
     float yPrev[NLEV];   // ...and the previous one, what the ring reads
@@ -211,31 +202,9 @@ struct Engine {
     DelayLine line[NLEV];
     float panL[NCH], panR[NCH];
 
-    // Two-state switching, the mechanism colB found when he took Skrewell
-    // apart: "parameters that have two settings that get switched between...
-    // components of the sound toggle chaotically between two states". Once
-    // per pass of its own delay line, each channel latches a bit from the
-    // sign of another channel's loop signal, and that bit picks between two
-    // values of a parameter. It is not drift and it is not an LFO: the sound
-    // *flips*, and eight channels flipping at eight different rates is what
-    // makes the bank evolve with nobody touching it.
-    //
-    // The parameter switched is the filter cutoff, in octaves. That is the
-    // one that works: measured over an untouched minute, switching the cutoff
-    // takes the spectral wander from 0.19 to 0.97 octaves, while switching
-    // pitch or delay time instead makes it *worse* (0.10-0.14). Where there
-    // is no filter to switch, the bare topology, it shortens the delay
-    // instead, which is the next best thing there.
-    float bifurcate = 0.f;
-    int flip[NLEV];
-    float flipS[NLEV];       // glided, so a flip is a swoop and not a click
-    float flipCount[NLEV];
-    float flipGlide = 0.f;
-
     float smooth = 0.01f;   // one-pole coefficient, set from the inertia time
     float dcxL = 0.f, dcyL = 0.f, dcxR = 0.f, dcyR = 0.f;
     float cvLp = 0.f;
-    bool ringCoupling = true;
 
     Engine() {
         setSampleRate(48000.f);
@@ -251,7 +220,6 @@ struct Engine {
             norm[i].setSampleRate(sr);
         }
         setInertia(0.05f);
-        flipGlide = 1.f - std::exp(-1.f / (0.008f * sr));
     }
 
     void setInertia(float seconds) {
@@ -262,14 +230,12 @@ struct Engine {
     void reset() {
         for (int i = 0; i < NLEV; i++) {
             oct[i] = 4.f; gc[i] = 0.1f; kc[i] = 1.f; dly[i] = 1000.f;
-            fbk[i] = 0.f; fm[i] = 0.f; am[i] = 0.f; tp[i] = 0.f;
+            fbk[i] = 0.f; tp[i] = 0.f;
+            fmP[i] = (float)(i / LPC); amP[i] = (float)(i / LPC);
             // Start the phases spread out. Identical phases are a fixed point
             // of the coupled ring and the bank would take a while to leave it.
             phase[i] = (float)i / (float)NLEV;
             y[i] = yPrev[i] = 0.f;
-            flip[i] = 0;
-            flipS[i] = 0.f;
-            flipCount[i] = 0.f;
             filt[i].reset();
             norm[i].reset();
             line[i].reset();
@@ -290,6 +256,8 @@ struct Engine {
     // setting still reaches its target, just later.
     void glide(const Targets& t, int frames) {
         const float c = 1.f - std::pow(1.f - smooth, (float)frames);
+        fmD += (t.fmDepth - fmD) * c;
+        amD += (t.amDepth - amD) * c;
         for (int ch = 0; ch < NCH; ch++) {
             lvl[ch] += (t.lvl[ch] - lvl[ch]) * c;
             for (int k = 0; k < LPC; k++) {
@@ -302,11 +270,24 @@ struct Engine {
                 kc[i]  += (t.k[ch]   - kc[i])  * c;
                 dly[i] += (dlyT      - dly[i]) * c;
                 fbk[i] += (t.fbk[ch] - fbk[i]) * c;
-                fm[i]  += (t.fm[ch]  - fm[i])  * c;
-                am[i]  += (t.am[ch]  - am[i])  * c;
-                tp[i]  += (t.typ[ch] - tp[i])  * c;
+                fmP[i] += (t.fmPos[ch] - fmP[i]) * c;
+                amP[i] += (t.amPos[ch] - amP[i]) * c;
+                tp[i]  += (t.typ[ch]   - tp[i])  * c;
             }
         }
+    }
+
+    // Reaktor's Selector: an integer Pos forwards that channel, a fractional
+    // one blends the two either side of it.
+    inline float selectVoice(float pos, int slot) const {
+        if (pos < 0.f) pos = 0.f;
+        if (pos > (float)(NCH - 1)) pos = (float)(NCH - 1);
+        const int i0 = (int)pos;
+        const int i1 = i0 < NCH - 1 ? i0 + 1 : i0;
+        const float f = pos - (float)i0;
+        const float a = yPrev[lev(i0, slot)];
+        const float b = yPrev[lev(i1, slot)];
+        return a + (b - a) * f;
     }
 
     void process(float in, float* outL, float* outR, float* cv) {
@@ -314,15 +295,7 @@ struct Engine {
 
         float sumL = 0.f, sumR = 0.f, sumY = 0.f;
         const float sT = 1.f / sr;
-        const int levers = pairs ? LPC : 1;
-
-        // The crossvoice bus, one per lever slot: every channel's lever k,
-        // averaged. Averaged rather than summed because eight of them at
-        // full tilt would be eight times the modulation the amounts expect.
-        float bus[LPC] = {0.f, 0.f};
-        for (int c = 0; c < NCH; c++)
-            for (int q = 0; q < levers; q++) bus[q] += yPrev[lev(c, q)];
-        for (int q = 0; q < LPC; q++) bus[q] *= 1.f / (float)NCH;
+        const int levers = LPC;
 
         for (int ch = 0; ch < NCH; ch++) {
             float voice = 0.f;
@@ -333,27 +306,17 @@ struct Engine {
                 // crossvoice, as the ensemble calls it. The partner is the
                 // other lever of this pair and it is the main modulator; the
                 // ring on to the next channel is the weaker, second one.
-                // What the ensemble actually does, read off its graph: the
-                // `crossvoice` macro beside each lever holds eight From Voice
-                // modules feeding a nine-input adder, so a lever is modulated
-                // by its partner's output *summed across all eight channels*,
-                // not by a neighbour. All-to-all between channels, crossed
-                // within the pair. `bus` below is that sum, taken once.
-                const float partner = pairs ? yPrev[lev(ch, 1 - k)] : yPrev[i];
-                const float mf = ringCoupling ? bus[pairs ? 1 - k : k] : partner;
-                const float ma = mf;
-
-                // One tick per pass of this lever's delay line, but never
-                // faster than 10 ms: past that the switch stops being a
-                // change of state and becomes an audio-rate modulator.
-                float period = dly[i];
-                if (period < 0.010f * sr) period = 0.010f * sr;
-                flipCount[i] += 1.f;
-                if (flipCount[i] >= period) {
-                    flipCount[i] -= period;
-                    flip[i] = yPrev[lev((ch + 5) & (NCH - 1), k)] > 0.f ? 1 : 0;
-                }
-                flipS[i] += ((float)flip[i] - flipS[i]) * flipGlide;
+                // crossvoice, read properly. The macro holds eight From
+                // Voice modules wired to the *channel* inputs of a Selector,
+                // and the fm and am bars drive its Pos. So a bar does not set
+                // how hard this lever is modulated, it picks **which channel
+                // modulates it**, blending between two neighbours when it
+                // sits between them. Depth comes from flow, one value for the
+                // whole bank. The source is the partner lever of the chosen
+                // channel: crossed within the pair, selected across channels.
+                const int slot = 1 - k;
+                const float mf = selectVoice(fmP[i], slot);
+                const float ma = selectVoice(amP[i], slot);
 
                 // Linear, through-zero FM, which is what the ensemble does
                 // and is not a detail. Its oscillators are the FM variants of
@@ -367,7 +330,7 @@ struct Engine {
                 // module used to do, cannot cross zero and is a far smoother
                 // thing.
                 const float base = 8.f * std::exp2(oct[i]);
-                const float freq = base * (1.f + fm[i] * mf);
+                const float freq = base * (1.f + fmD * mf);
                 float inc = freq * sT;
                 if (inc >  0.45f) inc =  0.45f;
                 if (inc < -0.45f) inc = -0.45f;
@@ -395,21 +358,8 @@ struct Engine {
                 }
 
                 // AM from the partner, never all the way to silence.
-                const float amp = 1.f - am[i] * 0.5f * (1.f - ma);
+                const float amp = 1.f - amD * 0.5f * (1.f - ma);
                 float s = osc * amp * 0.5f + in;
-
-                // The switch moves the cutoff where there is a filter, and
-                // the delay time where there is not.
-                float gEff = gc[i];
-                float dEff = dly[i];
-                if (bifurcate > 0.f) {
-                    if (topology == TOPO_BARE)
-                        dEff *= 1.f - std::min(bifurcate * 0.25f, 0.8f) * flipS[i];
-                    else {
-                        gEff *= std::exp2(bifurcate * flipS[i]);
-                        if (gEff > G_MAX) gEff = G_MAX;
-                    }
-                }
 
                 // The loop, in the order the ensemble wires it: the delay
                 // comes *before* the normalizer, and the normalizer's output
@@ -418,13 +368,13 @@ struct Engine {
                 // the output through the delay line. Where the filter sits is
                 // the only difference between the three topologies, and it is
                 // the difference the manual describes.
-                const float d = line[i].read(dEff);
+                const float d = line[i].read(dly[i]);
                 float r = norm[i].process(d, 1.0f);
 
                 float sum;
                 if (topology == TOPO_PRE) {
                     // osc -> filter -> summer -> delay
-                    s = filt[i].process(s, gEff, kc[i], tp[i]);
+                    s = filt[i].process(s, gc[i], kc[i], tp[i]);
                     sum = s + r * fbk[i];
                 }
                 else if (topology == TOPO_BARE) {
@@ -432,7 +382,7 @@ struct Engine {
                 }
                 else {
                     // summer -> filter -> delay, the filter inside the loop
-                    sum = filt[i].process(s + r * fbk[i], gEff, kc[i], tp[i]);
+                    sum = filt[i].process(s + r * fbk[i], gc[i], kc[i], tp[i]);
                 }
 
                 if (!std::isfinite(sum) || !std::isfinite(r)) {
@@ -446,7 +396,7 @@ struct Engine {
                 y[i] = r;
                 voice += r;
             }
-            if (levers > 1) voice *= 0.5f;
+            voice *= 0.5f;
 
             sumL += voice * lvl[ch] * panL[ch];
             sumR += voice * lvl[ch] * panR[ch];
