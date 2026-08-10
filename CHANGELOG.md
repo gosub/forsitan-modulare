@@ -191,9 +191,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     Every voice has its own value for each of eight functions, 64 in all,
     edited as eight bars with Skrewell's three mouse behaviours: **draw** sets
-    a bar, **wrap** shifts all eight and mirrors them back at the ends,
-    **rand** jogs all eight at once. Beside it is a Lissajous of the output,
-    as on the original panel.
+    a bar, **wrap** shifts all eight and mirrors them back at the ends, and
+    **rand** sends each bar off towards a destination of its own, travelling
+    as far as you move the mouse and picking a new destination whenever it
+    arrives. Beside it is a Lissajous of the output, as on the original panel.
 
     The **fm** and **am** bars are not depths, they are selector positions:
     inside `crossvoice` eight From Voice modules feed the channel inputs of a
@@ -263,9 +264,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     choosing which lever of the running tone generator drives each axis. Every
     tone generator carries X and Y outputs alongside L and R for exactly this.
     Drag the display to move them, double-click to put them back to L and R.
-    It is drawn as a phosphor trail -- 170 ms of history in twenty bands, dim
-    amber at the tail through to near-white at the head -- so the figure shows
-    which way and how fast it is being drawn, not only its shape.
+    It plots points and not lines, as the original does: joining consecutive
+    samples draws an outline, scattering them draws where the signal spends
+    its time, which is where Skrewell's squares, curves and little curls come
+    from. Phosphor on top -- a quarter second of dots in twelve age bands,
+    each drawn twice for a bloom and a grain, dim amber at the tail through to
+    near-white at the head.
 
     The jacks are the deliberate exception, since Skrewell has none: an audio
     input into all sixteen loops, an attenuverter and CV per macro, a chaos CV
