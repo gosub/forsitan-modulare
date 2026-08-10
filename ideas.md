@@ -361,12 +361,12 @@ frequency-dependent infinite tails.
 
 ### S7. skrewell-inspired chaos (no spectral core needed)
 
-> **BUILT, 2026-08-09, as `turba`.** 24 HP, branch `turba`, for 2.14.0. Built
+> **BUILT, 2026-08-09, as `scrupea`.** 24 HP, branch `scrupea`, for 2.14.0. Built
 > as inspired-by exactly as advised below, from the REAKTOR factory library
 > manual's description (section 7.2) rather than from the patch. The
 > self-competition worry the library check raises turned out to be misplaced:
 > the interface is the module, not the chaos. bulla, rete and guttur are all
-> knobs-and-jacks modules, and turba is 64 bars in an edit area with four
+> knobs-and-jacks modules, and scrupea is 64 bars in an edit area with four
 > macros that *map* those bars rather than offsetting them. Nothing in this
 > collection or in the library works that way.
 >
@@ -381,7 +381,7 @@ frequency-dependent infinite tails.
 > rings there; open the Q and the loop gets broadband gain for the saturator
 > to fold. Measured, over the whole state space: a largest-Lyapunov estimate
 > of 0.5/s at flow 0 rising to 67/s at flow 1. See
-> [doc/turba.md](doc/turba.md).
+> [doc/scrupea.md](doc/scrupea.md).
 
 Pulse oscillator bank, cross FM/AM, several resonant 2-pole filters, feedback,
 and one FLOW macro sweeping all of it at once. Squarely the rete / bulla /
@@ -512,7 +512,7 @@ form, break and reform.
 - **Self-competition**: imber already has 8 players on drunk clocks. The
   distinction is that imber's clocks wander independently and these listen to
   each other. If that distinction cannot be heard, this is an imber mode.
-- Name candidates: concentus, turba.
+- Name candidates: concentus, scrupea.
 
 ### SC4. residuum, Xenakis sieves
 

@@ -9,7 +9,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
-                cartilago turba
+                cartilago scrupea
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
@@ -17,11 +17,11 @@ SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 # The invariant harnesses are property-based rather than per-point: they
 # randomize and sweep the whole control space and assert invariants over it.
 CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
-             cartilago_invariants turba_invariants
+             cartilago_invariants scrupea_invariants
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
-     turba_probe $(SMOKE_BINS) $(CROSS_BINS)
+     scrupea_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -82,7 +82,7 @@ tundo_invariants: tundo_invariants.cpp smoke_harness.hpp ../src/tundo.cpp ../src
 cartilago_invariants: cartilago_invariants.cpp smoke_harness.hpp ../src/cartilago.cpp $(wildcard ../src/guttur/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
-turba_invariants: turba_invariants.cpp smoke_harness.hpp ../src/turba.cpp ../src/turba_dsp.hpp
+scrupea_invariants: scrupea_invariants.cpp smoke_harness.hpp ../src/scrupea.cpp ../src/scrupea_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
@@ -109,7 +109,7 @@ smoke_tundo: ../src/tundo_dsp.hpp
 # Measurement harness for the chaotic bank: levels per topology, what the
 # macros do to level and brightness, a largest-Lyapunov estimate that says
 # whether the bank is really chaotic, and CPU. Built by `make all`.
-turba_probe: turba_probe.cpp smoke_harness.hpp ../src/turba.cpp ../src/turba_dsp.hpp
+scrupea_probe: scrupea_probe.cpp smoke_harness.hpp ../src/scrupea.cpp ../src/scrupea_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 check: $(SMOKE_BINS) $(CROSS_BINS)

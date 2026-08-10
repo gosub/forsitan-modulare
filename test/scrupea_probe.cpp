@@ -1,6 +1,6 @@
-// turba_probe — measurement harness for the chaotic bank.
+// scrupea_probe — measurement harness for the chaotic bank.
 //
-// Not run by `make check`; this is the bench that the numbers in doc/turba.md
+// Not run by `make check`; this is the bench that the numbers in doc/scrupea.md
 // come from. It measures:
 //   levels    output RMS/peak and the CV out range, per topology
 //   flow      what the flow macro does to level, brightness and chaos
@@ -15,11 +15,11 @@
 // settings. Those are for listening to, and for measuring against reference
 // recordings of the instrument this module takes after.
 //
-// Usage: ./turba_probe [levels|flow|macros|lyapunov|wander|cpu|all]
-//        ./turba_probe render <directory> [seconds]
+// Usage: ./scrupea_probe [levels|flow|macros|lyapunov|wander|cpu|all]
+//        ./scrupea_probe render <directory> [seconds]
 
 #include "smoke_harness.hpp"
-#include "../src/turba.cpp"
+#include "../src/scrupea.cpp"
 
 #include <cstdint>
 #include <cstdlib>
@@ -27,7 +27,7 @@
 #include <algorithm>
 #include <vector>
 
-static void settle(Turba& m, long& frame, double seconds) {
+static void settle(Scrupea& m, long& frame, double seconds) {
     const int n = (int)(seconds * SR);
     for (int i = 0; i < n; i++) m.process(makeArgs(frame++));
 }
@@ -38,15 +38,15 @@ struct Meas {
 
 // Spectral centroid the cheap way: the ratio of the RMS of the first
 // difference to the RMS of the signal is proportional to a mean frequency.
-static Meas measure(Turba& m, long& frame, double seconds) {
+static Meas measure(Scrupea& m, long& frame, double seconds) {
     const int n = (int)(seconds * SR);
     double s2 = 0, d2 = 0, cv2 = 0;
     double peak = 0, cvPeak = 0;
     float prev = 0.f;
     for (int i = 0; i < n; i++) {
         m.process(makeArgs(frame++));
-        const float v = m.outputs[Turba::LEFT_OUTPUT].getVoltage();
-        const float c = m.outputs[Turba::CV_OUTPUT].getVoltage();
+        const float v = m.outputs[Scrupea::LEFT_OUTPUT].getVoltage();
+        const float c = m.outputs[Scrupea::CV_OUTPUT].getVoltage();
         s2 += (double)v * v;
         const float d = v - prev;
         d2 += (double)d * d;
@@ -72,8 +72,8 @@ static void probeLevels() {
     printf("topology       rms      peak     centroid  cv_rms   cv_peak\n");
     static const char* name[3] = {"loop", "pre", "bare"};
     for (int t = 0; t < 3; t++) {
-        Turba m;
-        m.params[Turba::MODE_PARAM].setValue((float)t);
+        Scrupea m;
+        m.params[Scrupea::MODE_PARAM].setValue((float)t);
         long frame = 0;
         settle(m, frame, 3.0);
         Meas r = measure(m, frame, 8.0);
@@ -87,8 +87,8 @@ static void probeFlow() {
     printf("flow      rms      peak    centroid\n");
     for (int i = 0; i <= 8; i++) {
         const float f = i / 8.f;
-        Turba m;
-        m.params[Turba::FLOW_PARAM].setValue(f);
+        Scrupea m;
+        m.params[Scrupea::FLOW_PARAM].setValue(f);
         long frame = 0;
         settle(m, frame, 4.0);
         Meas r = measure(m, frame, 8.0);
@@ -98,14 +98,14 @@ static void probeFlow() {
 
 static void probeMacros() {
     printf("\n== the other three macros ==\n");
-    static const int knob[3] = {Turba::PITCH_PARAM, Turba::CUTOFF_PARAM,
-                                Turba::DELAY_PARAM};
+    static const int knob[3] = {Scrupea::PITCH_PARAM, Scrupea::CUTOFF_PARAM,
+                                Scrupea::DELAY_PARAM};
     static const char* name[3] = {"pitch", "cutoff", "delay"};
     for (int k = 0; k < 3; k++) {
         printf("%-8s  knob      rms    centroid\n", name[k]);
         for (int i = 0; i <= 4; i++) {
             const float f = i / 4.f;
-            Turba m;
+            Scrupea m;
             m.params[knob[k]].setValue(f);
             long frame = 0;
             settle(m, frame, 3.0);
@@ -129,17 +129,17 @@ static void probeMacros() {
 // It also reported 645/s for a much earlier engine, which was the same
 // artefact from the other side. Treat any lambda from before 2026-08-10 as
 // unmeasured.
-static void collectState(Turba& m, std::vector<float*>& v) {
-    turba_dsp::Engine& e = m.eng;
+static void collectState(Scrupea& m, std::vector<float*>& v) {
+    scrupea_dsp::Engine& e = m.eng;
     v.clear();
-    for (int i = 0; i < turba_dsp::NLEV; i++) {
+    for (int i = 0; i < scrupea_dsp::NLEV; i++) {
         v.push_back(&e.phase[i]);
         v.push_back(&e.y[i]);
         for (size_t k = 0; k < e.line[i].buf.size(); k++)
             v.push_back(&e.line[i].buf[k]);
     }
     // the filter and normalizer states are four-lane vectors
-    for (int g = 0; g < turba_dsp::NGRP; g++) {
+    for (int g = 0; g < scrupea_dsp::NGRP; g++) {
         float* p[6] = {(float*)&e.fa[g].ic1,  (float*)&e.fa[g].ic2,
                        (float*)&e.fb2[g].ic1, (float*)&e.fb2[g].ic2,
                        (float*)&e.norm[g].env, (float*)&e.norm[g].sm};
@@ -155,11 +155,11 @@ static void probeLyapunov() {
     for (int t = 0; t < 3; t++) {
         for (int i = 0; i <= 4; i++) {
             const float f = i / 4.f;
-            Turba a, b;
-            a.params[Turba::MODE_PARAM].setValue((float)t);
-            b.params[Turba::MODE_PARAM].setValue((float)t);
-            a.params[Turba::FLOW_PARAM].setValue(f);
-            b.params[Turba::FLOW_PARAM].setValue(f);
+            Scrupea a, b;
+            a.params[Scrupea::MODE_PARAM].setValue((float)t);
+            b.params[Scrupea::MODE_PARAM].setValue((float)t);
+            a.params[Scrupea::FLOW_PARAM].setValue(f);
+            b.params[Scrupea::FLOW_PARAM].setValue(f);
             long fa = 0, fb = 0;
             settle(a, fa, 6.0);
             b.eng = a.eng;
@@ -223,10 +223,10 @@ static void probeWander() {
     static const char* name[3] = {"loop", "pre", "bare"};
     for (int t = 0; t < 3; t++) {
         for (float flow : {0.f, 0.5f, 1.f}) {
-            Turba m;
-            m.params[Turba::MODE_PARAM].setValue((float)t);
-            m.params[Turba::FLOW_PARAM].setValue(flow);
-            m.params[Turba::LEVEL_PARAM].setValue(0.f);   // 0 dB
+            Scrupea m;
+            m.params[Scrupea::MODE_PARAM].setValue((float)t);
+            m.params[Scrupea::FLOW_PARAM].setValue(flow);
+            m.params[Scrupea::LEVEL_PARAM].setValue(0.f);   // 0 dB
             long frame = 0;
             settle(m, frame, 6.0);
 
@@ -237,7 +237,7 @@ static void probeWander() {
                 float prev = 0.f;
                 for (int i = 0; i < W; i++) {
                     m.process(makeArgs(frame++));
-                    float v = m.outputs[Turba::LEFT_OUTPUT].getVoltage();
+                    float v = m.outputs[Scrupea::LEFT_OUTPUT].getVoltage();
                     if (!std::isfinite(v)) v = 0.f;
                     s2 += (double)v * v;
                     const float d = v - prev;
@@ -273,7 +273,7 @@ static void probeWander() {
 
 static void probeCpu() {
     printf("\n== cpu ==\n");
-    Turba m;
+    Scrupea m;
     long frame = 0;
     settle(m, frame, 1.0);
     const int n = (int)(20 * SR);
@@ -334,11 +334,11 @@ static void probeRender(const char* dir, double seconds) {
     const int count = (int)(sizeof(settings) / sizeof(settings[0]));
     printf("\n== render, %.1f s each, into %s ==\n", seconds, dir);
     for (int s = 0; s < count; s++) {
-        Turba m;
-        m.params[Turba::MODE_PARAM].setValue((float)settings[s].topology);
-        m.params[Turba::FLOW_PARAM].setValue(settings[s].flow);
-        m.params[Turba::LEVEL_PARAM].setValue(0.f);   // 0 dB
-        m.params[Turba::PITCH_PARAM].setValue(settings[s].pitch);
+        Scrupea m;
+        m.params[Scrupea::MODE_PARAM].setValue((float)settings[s].topology);
+        m.params[Scrupea::FLOW_PARAM].setValue(settings[s].flow);
+        m.params[Scrupea::LEVEL_PARAM].setValue(0.f);   // 0 dB
+        m.params[Scrupea::PITCH_PARAM].setValue(settings[s].pitch);
         if (settings[s].randomize) m.randomizeChannels();
 
         long frame = 0;
@@ -348,11 +348,11 @@ static void probeRender(const char* dir, double seconds) {
         l.reserve(n); r.reserve(n);
         for (int i = 0; i < n; i++) {
             m.process(makeArgs(frame++));
-            l.push_back(m.outputs[Turba::LEFT_OUTPUT].getVoltage());
-            r.push_back(m.outputs[Turba::RIGHT_OUTPUT].getVoltage());
+            l.push_back(m.outputs[Scrupea::LEFT_OUTPUT].getVoltage());
+            r.push_back(m.outputs[Scrupea::RIGHT_OUTPUT].getVoltage());
         }
         char path[512];
-        snprintf(path, sizeof(path), "%s/turba_%s.wav", dir, settings[s].name);
+        snprintf(path, sizeof(path), "%s/scrupea_%s.wav", dir, settings[s].name);
         writeWav(path, l, r);
         printf("  %-14s %s\n", settings[s].name, path);
     }

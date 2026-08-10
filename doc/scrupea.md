@@ -1,13 +1,16 @@
-# turba
+# scrupea
 
-![turba](../img/turba.png)
+![scrupea](../img/scrupea.png)
 
 **Sixteen oscillators, sixteen feedback combs, each one modulated by
 whichever of them you point it at. One knob decides whether it drones or
 shatters.**
 
-*turba* is Latin for uproar, tumult, commotion; a disorderly crowd. The module
-takes its architecture and its interface from **Skrewell**, the chaotic sound
+*scrupea* is Latin for jagged, rough, made of sharp stones — Virgil's
+*scrupea saxa*, and from the same root as *scrupus*, a stone in the shoe and
+so a nagging unease. It is also as near as a real Latin word gets to the
+sound of **Skrewell**, which is the point. The module takes its architecture
+and its interface from Skrewell, the chaotic sound
 generator in the REAKTOR factory library — "an intuitive and
 visual sound design workstation whose soundscapes can range from meditative
 atmospheres to crackling harshness", in the manual's words.
@@ -249,7 +252,7 @@ land the bifurcation where it is heard.
 
 ### Is it actually chaotic
 
-Yes, and `test/turba_probe lyapunov` measures it. Two copies of the engine are
+Yes, and `test/scrupea_probe lyapunov` measures it. Two copies of the engine are
 started from identical state, one displaced along a random direction through
 the **whole** state space — every oscillator phase, every filter and
 normalizer state, and every sample in the sixteen delay lines — and the growth
@@ -280,7 +283,7 @@ that were chaotic and a large number for one that was diverging.
 
 | jack | |
 |------|---|
-| **in** | audio, injected into **all sixteen loops** at once. The original has no input at all; this is the addition that makes turba usable as a processor. A signal in here is filtered, delayed, saturated and cross-modulated sixteen ways, and it also becomes part of what the bank modulates itself with |
+| **in** | audio, injected into **all sixteen loops** at once. The original has no input at all; this is the addition that makes scrupea usable as a processor. A signal in here is filtered, delayed, saturated and cross-modulated sixteen ways, and it also becomes part of what the bank modulates itself with |
 | **rand** | trigger, randomizes the whole bank. Same as the button |
 | **L**, **R** | the mix, through the ensemble's output fader: −36 to +18 dB, defaulting three quarters up at +4.5 dB, which puts the starting bank at about 2.2 V RMS. The channels are the ensemble's own: **L is the first lever of every voice and R the second**, eight voices summed into each. There is no panning. The two sides are genuinely different because the two levers of a voice take their modulation from opposite sides of the bank, which is what gives the Lissajous something to draw |
 | **cv** | the bank's own slow wander, ±5 V. The sixteen levers summed with alternating sign and lowpassed at 25 Hz, so common motion cancels and what is left is how unevenly they are behaving |
@@ -335,7 +338,7 @@ diagonal, because both axes are then watching the same lever.
   voice at zero is silent but still part of the system.
 - **rand** with "Randomize all functions" off, sitting on the **pitch**
   function, is a fast way to re-roll a chord without losing the patch.
-- turba is a fine source for [lustro](lustro.md) or [quadrare](quadrare.md),
+- scrupea is a fine source for [lustro](lustro.md) or [quadrare](quadrare.md),
   and the **cv** out drives anything that wants a lazy unpredictable voltage.
 
 ## The normalizer
@@ -420,8 +423,8 @@ read out of the knob records — pitch and cutoff span 127 semitones, FM 1 to
 blocks, and those are packed: consecutive blocks differ in length and in three
 quarters of their words, and no run of plausible floats appears anywhere in
 one. So the settings are this module's, they are collected as `SET_` constants
-in one place in `src/turba_dsp.hpp`, and the pitch, cutoff and delay ones were
-chosen to land on the ranges turba had already measured its way to.
+in one place in `src/scrupea_dsp.hpp`, and the pitch, cutoff and delay ones were
+chosen to land on the ranges scrupea had already measured its way to.
 
 The **jacks** are the last exception, and a deliberate one. Skrewell has no
 audio input, no CV inputs and no CV output — it is a generator with four
@@ -432,7 +435,7 @@ instrument.
 
 ## Making it wander
 
-turba has two quite different kinds of motion in it and they are worth
+scrupea has two quite different kinds of motion in it and they are worth
 separating, because only one of them is automatic.
 
 The **fast** one is the chaos: at flow hard right the largest-Lyapunov
@@ -444,7 +447,7 @@ statistics* — it can be violent and still not go anywhere.
 The **slow** one is the bank moving through its own range, and that is a
 property of where you put the bars, not something the engine does by itself.
 The measure is the spread of the spectral centroid over a long untouched run,
-in octaves (`test/turba_probe wander`). Three things control it, in order of
+in octaves (`test/scrupea_probe wander`). Three things control it, in order of
 how much they matter:
 
 | | |

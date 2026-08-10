@@ -156,7 +156,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     attenuator and one filter per channel, one LFO for all of them, as it is
     one modulator in one box.
 
-  - **turba**, a 24 HP chaotic bank taking its architecture and its interface
+  - **scrupea**, a 24 HP chaotic bank taking its architecture and its interface
     from **Skrewell**, the sound generator in the REAKTOR factory library.
     Not a port and not for want of trying by other people: Skrewell's chaos
     lives inside REAKTOR's built-in filters, which cannot be opened, and every

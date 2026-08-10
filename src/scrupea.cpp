@@ -1,7 +1,8 @@
-// turba.cpp — VCV Rack 2 module
-// turba (Latin: "uproar, tumult"; a disorderly crowd) takes after Skrewell,
-// John Nowak's chaotic sound generator in the REAKTOR factory library, whose
-// user interface is eight vertical bars and four knobs and whose output is
+// scrupea.cpp — VCV Rack 2 module
+// scrupea (Latin: jagged, made of sharp stones -- Virgil's scrupea saxa; and
+// about as close as a real Latin word gets to the sound of Skrewell) takes
+// after Skrewell, the chaotic sound generator in the REAKTOR factory library,
+// whose interface is eight vertical bars and four knobs and whose output is
 // anything from a meditative drone to crackling harshness. This is not a
 // port: Skrewell's chaos lives inside REAKTOR's closed built-in filters and
 // people who tried to reproduce it elsewhere found that the smallest
@@ -25,7 +26,7 @@
 // global settings between a calm end and a chaotic one.
 //
 // The mapping laws, the loop order and every numeric range here are read out
-// of Skrewell's own ensemble file; see the header of turba_dsp.hpp for what
+// of Skrewell's own ensemble file; see the header of scrupea_dsp.hpp for what
 // that read did and did not recover.
 //
 // Controls:
@@ -40,9 +41,9 @@
 //   Light : L and R output level
 
 #include "forsitan.hpp"
-#include "turba_dsp.hpp"
+#include "scrupea_dsp.hpp"
 
-using turba_dsp::NCH;
+using scrupea_dsp::NCH;
 
 static const int NFUNC = 8;
 
@@ -90,7 +91,7 @@ enum FuncId { F_PITCH, F_FM, F_AMP, F_AM, F_CUTOFF, F_TYPE, F_TIME, F_FBK };
 // parameters and a mode switch must not silently drop them, but the edit area
 // says so rather than letting you draw into a function that does nothing.
 static bool funcActive(int func, int topology) {
-    if (topology != turba_dsp::TOPO_BARE) return true;
+    if (topology != scrupea_dsp::TOPO_BARE) return true;
     return func != F_CUTOFF && func != F_TYPE;
 }
 
@@ -110,7 +111,7 @@ static const int SCOPE_POINTS = 2048;
 static const int SCOPE_DECIM = 4;
 static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
 
-struct Turba : Module {
+struct Scrupea : Module {
     enum ParamId {
         CH_PARAM,                        // NFUNC * NCH of them, func-major
         FUNC_PARAM = CH_PARAM + NFUNC * NCH,
@@ -151,8 +152,8 @@ struct Turba : Module {
         LIGHTS_LEN
     };
 
-    turba_dsp::Engine eng;
-    turba_dsp::Targets tgt;
+    scrupea_dsp::Engine eng;
+    scrupea_dsp::Targets tgt;
     int controlPhase = 0;
     dsp::SchmittTrigger randTrig;
     dsp::BooleanTrigger randBtn;
@@ -168,7 +169,7 @@ struct Turba : Module {
     // scopeScales below; 1x means +/-5 V fills the box.
     int scopeScale = 0;
 
-    Turba() {
+    Scrupea() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
         for (int f = 0; f < NFUNC; f++)
@@ -203,9 +204,9 @@ struct Turba : Module {
         // The ensemble's output stage is a dB fader with exactly this travel.
         // Three quarters up it, which is +4.5 dB: unity was too quiet to be a
         // useful default for a module you patch straight into a mixer.
-        configParam(LEVEL_PARAM, turba_dsp::K_OUT_MIN_DB, turba_dsp::K_OUT_MAX_DB,
-                    turba_dsp::K_OUT_MIN_DB + 0.75f *
-                    (turba_dsp::K_OUT_MAX_DB - turba_dsp::K_OUT_MIN_DB),
+        configParam(LEVEL_PARAM, scrupea_dsp::K_OUT_MIN_DB, scrupea_dsp::K_OUT_MAX_DB,
+                    scrupea_dsp::K_OUT_MIN_DB + 0.75f *
+                    (scrupea_dsp::K_OUT_MAX_DB - scrupea_dsp::K_OUT_MIN_DB),
                     "Output level", " dB");
         configButton(RAND_PARAM, "Randomize channels");
 
@@ -262,7 +263,7 @@ struct Turba : Module {
     }
 
     void updateTargets(float sr) {
-        using namespace turba_dsp;
+        using namespace scrupea_dsp;
 
         const float mOsc = macro(PITCH_PARAM, PITCH_ATT_PARAM, PITCH_CV_INPUT);
         const float mFil = macro(CUTOFF_PARAM, CUTOFF_ATT_PARAM, CUTOFF_CV_INPUT);
@@ -409,18 +410,18 @@ struct Turba : Module {
 
 // One drag over the edit area is one undo step, covering all eight bars of
 // the function that was on screen.
-struct TurbaEditAction : history::ModuleAction {
+struct ScrupeaEditAction : history::ModuleAction {
     int func = 0;
     float before[NCH] = {};
     float after[NCH] = {};
 
-    TurbaEditAction() { name = "turba edit"; }
+    ScrupeaEditAction() { name = "scrupea edit"; }
 
     void apply(const float* v) {
         engine::Module* m = APP->engine->getModule(moduleId);
         if (!m) return;
         for (int c = 0; c < NCH; c++)
-            APP->engine->setParamValue(m, Turba::CH_PARAM + func * NCH + c, v[c]);
+            APP->engine->setParamValue(m, Scrupea::CH_PARAM + func * NCH + c, v[c]);
     }
     void undo() override { apply(before); }
     void redo() override { apply(after); }
@@ -428,34 +429,34 @@ struct TurbaEditAction : history::ModuleAction {
 
 // ---------------------------------------------------------- edit area ---
 
-struct TurbaEditArea : OpaqueWidget {
-    Turba* module = NULL;
+struct ScrupeaEditArea : OpaqueWidget {
+    Scrupea* module = NULL;
     Vec dragPos;
     bool dragging = false;
     float dragBefore[NCH] = {};
 
     int func() const {
         if (!module) return 0;
-        return clamp((int)std::round(module->params[Turba::FUNC_PARAM].getValue()),
+        return clamp((int)std::round(module->params[Scrupea::FUNC_PARAM].getValue()),
                      0, NFUNC - 1);
     }
     int topology() const {
         if (!module) return 0;
-        return clamp((int)std::round(module->params[Turba::MODE_PARAM].getValue()),
+        return clamp((int)std::round(module->params[Scrupea::MODE_PARAM].getValue()),
                      0, 2);
     }
     int editMode() const {
         if (!module) return 0;
-        return clamp((int)std::round(module->params[Turba::EDIT_PARAM].getValue()),
+        return clamp((int)std::round(module->params[Scrupea::EDIT_PARAM].getValue()),
                      0, 2);
     }
     float bar(int c) const {
         if (!module) return chDefault[0][c];
-        return module->params[Turba::CH_PARAM + func() * NCH + c].getValue();
+        return module->params[Scrupea::CH_PARAM + func() * NCH + c].getValue();
     }
     void setBar(int c, float v) {
         if (!module) return;
-        module->params[Turba::CH_PARAM + func() * NCH + c].setValue(clamp(v, 0.f, 1.f));
+        module->params[Scrupea::CH_PARAM + func() * NCH + c].setValue(clamp(v, 0.f, 1.f));
     }
 
     // Fold a value back into 0..1 by reflection, so a wrap drag that runs
@@ -478,7 +479,7 @@ struct TurbaEditArea : OpaqueWidget {
     void endEdit() {
         if (!module || !dragging) return;
         dragging = false;
-        TurbaEditAction* a = new TurbaEditAction;
+        ScrupeaEditAction* a = new ScrupeaEditAction;
         a->moduleId = module->id;
         a->func = func();
         bool changed = false;
@@ -609,7 +610,7 @@ struct TurbaEditArea : OpaqueWidget {
             nvgFillColor(args.vg, active ? nvgRGBA(0xff, 0xd5, 0x00, 0x99)
                                          : nvgRGBA(0xff, 0xd5, 0x00, 0x44));
             nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
-            const char* nm = (topology() == turba_dsp::TOPO_LOOP)
+            const char* nm = (topology() == scrupea_dsp::TOPO_LOOP)
                              ? funcNameLoop[func()] : funcName[func()];
             if (active)
                 nvgText(args.vg, 4.f, 3.f, nm, NULL);
@@ -637,8 +638,8 @@ struct TurbaEditArea : OpaqueWidget {
 // It is also the panel's XY control: drag it to move `scX` and `scY`, the two
 // Selectors that choose which lever of the running tone generator feeds each
 // axis. See SCOPE_X_PARAM.
-struct TurbaScope : OpaqueWidget {
-    Turba* module = NULL;
+struct ScrupeaScope : OpaqueWidget {
+    Scrupea* module = NULL;
     Vec dragPos;
     bool dragging = false;
 
@@ -660,9 +661,9 @@ struct TurbaScope : OpaqueWidget {
         const float zoom = getAbsoluteZoom();
         const Vec d = e.mouseDelta.div(zoom == 0.f ? 1.f : zoom);
         dragPos = dragPos.plus(d);
-        module->params[Turba::SCOPE_X_PARAM].setValue(
+        module->params[Scrupea::SCOPE_X_PARAM].setValue(
             clamp(dragPos.x / box.size.x, 0.f, 1.f));
-        module->params[Turba::SCOPE_Y_PARAM].setValue(
+        module->params[Scrupea::SCOPE_Y_PARAM].setValue(
             clamp(1.f - dragPos.y / box.size.y, 0.f, 1.f));
     }
 
@@ -670,8 +671,8 @@ struct TurbaScope : OpaqueWidget {
 
     void onDoubleClick(const DoubleClickEvent& e) override {
         if (!module) return;
-        module->params[Turba::SCOPE_X_PARAM].setValue(0.f);
-        module->params[Turba::SCOPE_Y_PARAM].setValue(1.f);
+        module->params[Scrupea::SCOPE_X_PARAM].setValue(0.f);
+        module->params[Scrupea::SCOPE_Y_PARAM].setValue(1.f);
         e.consume(this);
     }
 
@@ -765,8 +766,8 @@ struct TurbaScope : OpaqueWidget {
         }
 
         // say what the axes are looking at, but only when it is not L and R
-        const float sx = module->params[Turba::SCOPE_X_PARAM].getValue();
-        const float sy = module->params[Turba::SCOPE_Y_PARAM].getValue();
+        const float sx = module->params[Scrupea::SCOPE_X_PARAM].getValue();
+        const float sy = module->params[Scrupea::SCOPE_Y_PARAM].getValue();
         if (dragging || sx > 0.001f || sy < 0.999f) {
             std::shared_ptr<window::Font> font = APP->window->loadFont(
                 asset::system("res/fonts/ShareTechMono-Regular.ttf"));
@@ -787,24 +788,24 @@ struct TurbaScope : OpaqueWidget {
 
 // ------------------------------------------------------------ widget ---
 
-struct TurbaWidget : ModuleWidget {
-    TurbaWidget(Turba* module) {
+struct ScrupeaWidget : ModuleWidget {
+    ScrupeaWidget(Scrupea* module) {
         setModule(module);
-        setPanel(createPanel(asset::plugin(pluginInstance, "res/turba.svg")));
+        setPanel(createPanel(asset::plugin(pluginInstance, "res/scrupea.svg")));
 
-        TurbaEditArea* edit = new TurbaEditArea();
+        ScrupeaEditArea* edit = new ScrupeaEditArea();
         edit->module = module;
         edit->box.pos = mm2px(Vec(4.f, 10.f));
         edit->box.size = mm2px(Vec(78.f, 36.f));
         addChild(edit);
 
-        TurbaScope* scope = new TurbaScope();
+        ScrupeaScope* scope = new ScrupeaScope();
         scope->module = module;
         scope->box.pos = mm2px(Vec(86.f, 10.f));
         scope->box.size = mm2px(Vec(32.f, 32.f));
         addChild(scope);
 
-// @layout:begin turba 121.92 128.5
+// @layout:begin scrupea 121.92 128.5
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
@@ -856,35 +857,35 @@ struct TurbaWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(114.30f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(114.30f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.00f, 53.00f)), module, Turba::FUNC_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(42.00f, 53.00f)), module, Turba::MODE_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(64.00f, 53.00f)), module, Turba::EDIT_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(82.00f, 53.00f)), module, Turba::RAND_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(100.00f, 53.00f)), module, Turba::LEVEL_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(16.00f, 73.00f)), module, Turba::PITCH_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(44.00f, 73.00f)), module, Turba::CUTOFF_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(72.00f, 73.00f)), module, Turba::DELAY_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(100.00f, 73.00f)), module, Turba::FLOW_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(16.00f, 89.00f)), module, Turba::PITCH_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(44.00f, 89.00f)), module, Turba::CUTOFF_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(72.00f, 89.00f)), module, Turba::DELAY_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(100.00f, 89.00f)), module, Turba::FLOW_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.00f, 98.00f)), module, Turba::PITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 98.00f)), module, Turba::CUTOFF_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 98.00f)), module, Turba::DELAY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.00f, 98.00f)), module, Turba::FLOW_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.00f, 111.00f)), module, Turba::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.00f, 111.00f)), module, Turba::RAND_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 111.00f)), module, Turba::CV_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 111.00f)), module, Turba::LEFT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(110.00f, 111.00f)), module, Turba::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 108.00f)), module, Turba::LEFT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(115.00f, 108.00f)), module, Turba::RIGHT_LIGHT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.00f, 53.00f)), module, Scrupea::FUNC_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(42.00f, 53.00f)), module, Scrupea::MODE_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(64.00f, 53.00f)), module, Scrupea::EDIT_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(82.00f, 53.00f)), module, Scrupea::RAND_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(100.00f, 53.00f)), module, Scrupea::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(16.00f, 73.00f)), module, Scrupea::PITCH_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(44.00f, 73.00f)), module, Scrupea::CUTOFF_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(72.00f, 73.00f)), module, Scrupea::DELAY_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(100.00f, 73.00f)), module, Scrupea::FLOW_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(16.00f, 89.00f)), module, Scrupea::PITCH_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(44.00f, 89.00f)), module, Scrupea::CUTOFF_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(72.00f, 89.00f)), module, Scrupea::DELAY_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(100.00f, 89.00f)), module, Scrupea::FLOW_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.00f, 98.00f)), module, Scrupea::PITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 98.00f)), module, Scrupea::CUTOFF_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 98.00f)), module, Scrupea::DELAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.00f, 98.00f)), module, Scrupea::FLOW_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.00f, 111.00f)), module, Scrupea::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.00f, 111.00f)), module, Scrupea::RAND_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 111.00f)), module, Scrupea::CV_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 111.00f)), module, Scrupea::LEFT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(110.00f, 111.00f)), module, Scrupea::RIGHT_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 108.00f)), module, Scrupea::LEFT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(115.00f, 108.00f)), module, Scrupea::RIGHT_LIGHT));
         // @layout:end
     }
 
     void appendContextMenu(Menu* menu) override {
-        Turba* module = getModule<Turba>();
+        Scrupea* module = getModule<Scrupea>();
 
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexSubmenuItem("Display scale",
@@ -894,4 +895,4 @@ struct TurbaWidget : ModuleWidget {
     }
 };
 
-Model* modelTurba = createModel<Turba, TurbaWidget>("turba");
+Model* modelScrupea = createModel<Scrupea, ScrupeaWidget>("scrupea");

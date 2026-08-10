@@ -39,7 +39,7 @@ A collection of VCV Rack modules.
 | [raucus](doc/raucus.md) | Big Muff Pi: four transistor stages, feedback diode clipping solved rather than limited, and the passive tone stack's notch where it belongs | [doc/raucus.md](doc/raucus.md) |
 | [tundo](doc/tundo.md) | Parameterized digital drum voice: six additive oscillators, morphing waves, prime-series spread and an infinite folder (Basimilus Iteritas Alter clone) | [doc/tundo.md](doc/tundo.md) |
 | [cartilago](doc/cartilago.md) | Gristleizer: one LFO into a FET attenuator that never quite closes, or into a swept filter; ticks like the hardware and ring-modulates at audio rate | [doc/cartilago.md](doc/cartilago.md) |
-| [turba](doc/turba.md) | Sixteen oscillators into tuned feedback combs, each modulated by whichever of them you point it at; one knob decides whether it drones or shatters (inspired by Reaktor's Skrewell) | [doc/turba.md](doc/turba.md) |
+| [scrupea](doc/scrupea.md) | Sixteen oscillators into tuned feedback combs, each modulated by whichever of them you point it at; one knob decides whether it drones or shatters (inspired by Reaktor's Skrewell) | [doc/scrupea.md](doc/scrupea.md) |
 
 ## Tools
 
@@ -99,7 +99,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **raucus** | hoarse, harsh — the root of "raucous" (Electro-Harmonix's Big Muff Pi) |
 | **tundo** | I beat, I pound — *tundere*, to strike repeatedly, whose repetition winks at the *iteritas* of the Basimilus Iteritas Alter it is built after |
 | **cartilago** | gristle, cartilage — Roy Gwinn's Gristleizer, by way of Throbbing Gristle |
-| **turba** | uproar, tumult — a disorderly crowd, which is what sixteen cross-modulating loops are (after Skrewell) |
+| **scrupea** | jagged, made of sharp stones (Virgil's *scrupea saxa*); the root *scrupus* is also the stone in the shoe. Chosen to sound like Skrewell, which it is after |
 
 ## Author
 

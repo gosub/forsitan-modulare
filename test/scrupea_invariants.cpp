@@ -1,9 +1,9 @@
-// turba_invariants — property-based checks for the chaotic bank.
+// scrupea_invariants — property-based checks for the chaotic bank.
 //
-// smoke_turba checks a handful of fixed points; turba_probe measures
+// smoke_scrupea checks a handful of fixed points; scrupea_probe measures
 // character. This harness checks properties that must hold *everywhere*, by
 // randomizing the whole 64-bar control space plus the macros and the
-// topology, and asserting invariants over it. turba is sixteen saturating
+// topology, and asserting invariants over it. scrupea is sixteen saturating
 // feedback loops modulating each other, all of them reachable from a single
 // button press, so "does it ever blow up" is not a rhetorical question.
 //
@@ -41,7 +41,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include "../src/turba.cpp"
+#include "../src/scrupea.cpp"
 
 static int gScale = 1;          // --long multiplies the patch counts
 static uint32_t gSeed = 0x5bf03635u;
@@ -72,7 +72,7 @@ static Patch randomPatch(Rng& r) {
     p.cutoff = r.uni();
     p.delay = r.uni();
     p.flow = r.uni();
-    p.level = r.range(turba_dsp::K_OUT_MIN_DB, turba_dsp::K_OUT_MAX_DB);
+    p.level = r.range(scrupea_dsp::K_OUT_MIN_DB, scrupea_dsp::K_OUT_MAX_DB);
     p.topology = r.pick(3);
     return p;
 }
@@ -85,16 +85,16 @@ static void describe(const Patch& p, char* out, size_t n) {
              p.level, p.ch[0][0], p.ch[0][1], p.ch[0][2], p.ch[0][3]);
 }
 
-static void apply(Turba& m, const Patch& p) {
+static void apply(Scrupea& m, const Patch& p) {
     for (int f = 0; f < NFUNC; f++)
         for (int c = 0; c < NCH; c++)
-            m.params[Turba::CH_PARAM + f * NCH + c].setValue(p.ch[f][c]);
-    m.params[Turba::PITCH_PARAM].setValue(p.pitch);
-    m.params[Turba::CUTOFF_PARAM].setValue(p.cutoff);
-    m.params[Turba::DELAY_PARAM].setValue(p.delay);
-    m.params[Turba::FLOW_PARAM].setValue(p.flow);
-    m.params[Turba::LEVEL_PARAM].setValue(p.level);
-    m.params[Turba::MODE_PARAM].setValue((float)p.topology);
+            m.params[Scrupea::CH_PARAM + f * NCH + c].setValue(p.ch[f][c]);
+    m.params[Scrupea::PITCH_PARAM].setValue(p.pitch);
+    m.params[Scrupea::CUTOFF_PARAM].setValue(p.cutoff);
+    m.params[Scrupea::DELAY_PARAM].setValue(p.delay);
+    m.params[Scrupea::FLOW_PARAM].setValue(p.flow);
+    m.params[Scrupea::LEVEL_PARAM].setValue(p.level);
+    m.params[Scrupea::MODE_PARAM].setValue((float)p.topology);
 }
 
 struct Trace {
@@ -107,7 +107,7 @@ struct Trace {
 static Trace run(const Patch& p, double warm, double keep,
                  float sampleRate = SR, const float* input = NULL,
                  long inputLen = 0) {
-    Turba m;
+    Scrupea m;
     Module::SampleRateChangeEvent sre;
     sre.sampleRate = sampleRate;
     sre.sampleTime = 1.f / sampleRate;
@@ -123,16 +123,16 @@ static Trace run(const Patch& p, double warm, double keep,
     double s2 = 0, s1 = 0;
     long frame = 0;
     for (long i = 0; i < nw + nk; i++) {
-        if (input) m.inputs[Turba::AUDIO_INPUT].setVoltage(input[i % inputLen]);
+        if (input) m.inputs[Scrupea::AUDIO_INPUT].setVoltage(input[i % inputLen]);
         Module::ProcessArgs a;
         a.sampleRate = sampleRate;
         a.sampleTime = 1.f / sampleRate;
         a.frame = frame++;
         m.process(a);
         if (i < nw) continue;
-        const float lv = m.outputs[Turba::LEFT_OUTPUT].getVoltage();
-        const float rv = m.outputs[Turba::RIGHT_OUTPUT].getVoltage();
-        const float cv = m.outputs[Turba::CV_OUTPUT].getVoltage();
+        const float lv = m.outputs[Scrupea::LEFT_OUTPUT].getVoltage();
+        const float rv = m.outputs[Scrupea::RIGHT_OUTPUT].getVoltage();
+        const float cv = m.outputs[Scrupea::CV_OUTPUT].getVoltage();
         if (!std::isfinite(lv) || !std::isfinite(rv) || !std::isfinite(cv))
             t.nans++;
         else {
@@ -219,7 +219,7 @@ struct Inv {
         }
     }
     void done() {
-        report("turba", name, failed ? worst : (double)checked, failed == 0);
+        report("scrupea", name, failed ? worst : (double)checked, failed == 0);
         if (failed)
             fprintf(stderr, "  %s: %ld/%ld failed, worst %g at [%s]\n",
                     name, failed, checked, worst, worstPatch);
@@ -257,12 +257,12 @@ static void testSafety() {
         // deterministic, so the two runs differ by the gain and nothing else
         // -- unless the rail is clipping, which is what this catches.
         Patch qlo = p, qhi = p;
-        qlo.level = turba_dsp::K_OUT_MIN_DB;
-        qhi.level = turba_dsp::K_OUT_MAX_DB;
+        qlo.level = scrupea_dsp::K_OUT_MIN_DB;
+        qhi.level = scrupea_dsp::K_OUT_MAX_DB;
         Trace slo = run(qlo, 0.5, 0.3);
         Trace shi = run(qhi, 0.5, 0.3);
         const double want = std::pow(10.0,
-            (turba_dsp::K_OUT_MAX_DB - turba_dsp::K_OUT_MIN_DB) * 0.05);
+            (scrupea_dsp::K_OUT_MAX_DB - scrupea_dsp::K_OUT_MIN_DB) * 0.05);
         const double got = shi.peak / std::max(slo.peak, 1e-12);
         // clipped at the rail from above, so only the lower bound is firm
         silent.hit(got > 0.5 * want || shi.peak > 9.99, got / want, qlo);
@@ -326,7 +326,7 @@ static void testEngine() {
         Patch hot = p;
         hot.pitch = hot.cutoff = hot.delay = hot.flow = 1.f;
 
-        Turba m;
+        Scrupea m;
         apply(m, hot);
         long frame = 0;
         for (int i = 0; i < (int)(2 * SR); i++) m.process(makeArgs(frame++));
@@ -334,7 +334,7 @@ static void testEngine() {
         Stats s;
         for (int i = 0; i < (int)(3 * SR); i++) {
             m.process(makeArgs(frame++));
-            s.add(m.outputs[Turba::LEFT_OUTPUT].getVoltage());
+            s.add(m.outputs[Scrupea::LEFT_OUTPUT].getVoltage());
         }
         recovers.hit(s.nans == 0 && s.peak < 10.001 && s.rms() > 0.005,
                      s.rms(), p, false);
@@ -361,14 +361,14 @@ static void testMacros() {
         bool ok = true;
         for (int i = 0; i <= 20; i++) {
             const float knob = i / 20.f;
-            const float mapped = turba_dsp::shape(v, knob);
+            const float mapped = scrupea_dsp::shape(v, knob);
             if (mapped < prev - 1e-6f) ok = false;
             prev = mapped;
         }
         monotone.hit(ok, v, p);
         // The centre of the knob is the identity curve.
-        identity.hit(std::fabs(turba_dsp::shape(v, 0.5f) - v) < 1e-6f,
-                     std::fabs(turba_dsp::shape(v, 0.5f) - v), p);
+        identity.hit(std::fabs(scrupea_dsp::shape(v, 0.5f) - v) < 1e-6f,
+                     std::fabs(scrupea_dsp::shape(v, 0.5f) - v), p);
     }
 
     // Each macro has to do something audible on its own. Compare a run at
@@ -397,7 +397,7 @@ static void testMacros() {
         for (int q = 0; q < 4; q++) {
             // The bare topology has no filter, so the cutoff macro has
             // nothing to map there and being inaudible is correct.
-            if (q == 1 && base.topology == turba_dsp::TOPO_BARE) continue;
+            if (q == 1 && base.topology == scrupea_dsp::TOPO_BARE) continue;
             Patch lo = base, hi = base;
             float* slot[4] = {&lo.pitch, &lo.cutoff, &lo.delay, &lo.flow};
             float* slotH[4] = {&hi.pitch, &hi.cutoff, &hi.delay, &hi.flow};
@@ -428,7 +428,7 @@ static void testMacros() {
         const double rate = liveN[q] ? (double)liveOk[q] / liveN[q] : 0.0;
         char name[48];
         snprintf(name, sizeof(name), "inv_M3_live_%s", label[q]);
-        report("turba", name, rate, rate >= 0.95);
+        report("scrupea", name, rate, rate >= 0.95);
         if (rate < 0.95)
             fprintf(stderr, "  %s: %ld/%ld moved the output, quietest %g\n",
                     name, liveOk[q], liveN[q], liveWorst[q]);
@@ -444,12 +444,12 @@ static void testRobustness() {
     // Every macro CV driven at audio rate, attenuverters wide open.
     for (int k = 0; k < 15 * gScale; k++) {
         Patch p = randomPatch(r);
-        Turba m;
+        Scrupea m;
         apply(m, p);
-        m.params[Turba::PITCH_ATT_PARAM].setValue(1.f);
-        m.params[Turba::CUTOFF_ATT_PARAM].setValue(-1.f);
-        m.params[Turba::DELAY_ATT_PARAM].setValue(1.f);
-        m.params[Turba::FLOW_ATT_PARAM].setValue(-1.f);
+        m.params[Scrupea::PITCH_ATT_PARAM].setValue(1.f);
+        m.params[Scrupea::CUTOFF_ATT_PARAM].setValue(-1.f);
+        m.params[Scrupea::DELAY_ATT_PARAM].setValue(1.f);
+        m.params[Scrupea::FLOW_ATT_PARAM].setValue(-1.f);
         long frame = 0;
         Stats s, c;
         float ph[4] = {0.f, 0.25f, 0.5f, 0.75f};
@@ -458,12 +458,12 @@ static void testRobustness() {
             for (int j = 0; j < 4; j++) {
                 ph[j] += f[j] / SR;
                 if (ph[j] >= 1.f) ph[j] -= 1.f;
-                m.inputs[Turba::PITCH_CV_INPUT + j]
+                m.inputs[Scrupea::PITCH_CV_INPUT + j]
                     .setVoltage(5.f * std::sin(2.f * (float)M_PI * ph[j]));
             }
             m.process(makeArgs(frame++));
-            s.add(m.outputs[Turba::LEFT_OUTPUT].getVoltage());
-            c.add(m.outputs[Turba::CV_OUTPUT].getVoltage());
+            s.add(m.outputs[Scrupea::LEFT_OUTPUT].getVoltage());
+            c.add(m.outputs[Scrupea::CV_OUTPUT].getVoltage());
         }
         cvsafe.hit(s.nans + c.nans == 0 && s.peak <= 10.001 && c.peak <= 5.001,
                    std::max(s.peak - 10.001, c.peak - 5.001), p);
@@ -509,7 +509,7 @@ int main(int argc, char** argv) {
     }
     rack::random::init();
     if (header) printf("module,check,value,pass\n");
-    fprintf(stderr, "turba_invariants: seed 0x%08x, scale %d\n", gSeed, gScale);
+    fprintf(stderr, "scrupea_invariants: seed 0x%08x, scale %d\n", gSeed, gScale);
 
     testSafety();
     testEngine();

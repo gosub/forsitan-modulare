@@ -1,4 +1,4 @@
-// turba_dsp.hpp -- the eight-channel chaotic engine behind turba.
+// scrupea_dsp.hpp -- the eight-channel chaotic engine behind scrupea.
 //
 // Eight voices, each holding two identical "levers". A lever is an oscillator
 // into a tuned feedback comb with a normalizer in it, and -- in two of the
@@ -14,7 +14,7 @@
 // constants marked SET_ below are the one thing the file does not give up:
 // where inside those ranges the factory snapshots left each knob is packed
 // or compressed in the snapshot blocks and is not recoverable. Those, and
-// only those, are turba's choice.
+// only those, are scrupea's choice.
 //
 // Header-only and free of Rack types so the offline harnesses in test/ can
 // drive it directly.
@@ -26,7 +26,7 @@
 #include <cstring>
 #include <vector>
 
-namespace turba_dsp {
+namespace scrupea_dsp {
 
 static const int NCH = 8;
 
@@ -76,10 +76,10 @@ static const float K_OUT_MIN_DB = -36.f, K_OUT_MAX_DB = 18.f;
 // ------------------------------------------------------- knob settings ---
 //
 // Where inside those ranges this module leaves each knob. Not recoverable
-// from the file. The pitch, cutoff and delay endpoints are the ones turba
+// from the file. The pitch, cutoff and delay endpoints are the ones scrupea
 // measured its way to before the ensemble was read, expressed in the
 // ensemble's units; the flow endpoints are the knob extremes except for RES,
-// which is set to reproduce a measured bifurcation (see doc/turba.md).
+// which is set to reproduce a measured bifurcation (see doc/scrupea.md).
 static const float SET_PITCH_LO   =   0.f;    // 8.18 Hz
 static const float SET_PITCH_HI   = 132.f;    // 16.6 kHz
 static const float SET_CUT_LO     =  15.f;    // 20 Hz
@@ -225,7 +225,7 @@ inline f4 f4polyBlep(f4 t, f4 dt) {
 // topology-preserving state variable filter with the integrator states
 // soft-limited. Three simultaneous outputs, cutoff as a pitch, resonance
 // 0..1 with 1 at self-oscillation, and -- as the reference specifies for the
-// original -- unity pass-band gain. The saturation is turba's, and it is the
+// original -- unity pass-band gain. The saturation is scrupea's, and it is the
 // point: a linear filter in this loop just rings, a saturating one folds the
 // loop's trajectory back on itself and the bank goes chaotic.
 struct SatSVF {
@@ -658,4 +658,4 @@ struct Engine {
     }
 };
 
-} // namespace turba_dsp
+} // namespace scrupea_dsp
