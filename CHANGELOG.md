@@ -270,6 +270,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     one channel, sharing its filter and delay -- written before the ensembles
     were read.
 
+    The normalizer's envelope follower is Reaktor's Peak Detector to the
+    letter: rectify, **zero attack** -- the reference says so outright -- and
+    a release quoted as the time to fall to a tenth, 230 ms at the Rel 40 used
+    here. The gain law after it is still this module's own. And REAKTOR's
+    oscillators are themselves anti-aliased, so the raw option is a deviation
+    rather than fidelity; whatever aliasing the original has comes from its FM
+    sidebands, not its edges.
+
     Two deliberate departures. The normalizer only turns a loop **down**;
     built as a true normalizer, holding every channel at one level, the
     macros stop changing how loud anything is (the RMS span of the cutoff

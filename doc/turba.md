@@ -269,7 +269,7 @@ precessing figure is the interesting middle.
 |------|---|
 | **Crossvoice (all channels)** | on, a lever is modulated by its partner's output summed across all eight channels, which is what the ensemble does. Off, it hears only its own partner: eight independent pairs rather than one coupled system, much tamer, and useful as a bank of droning comb resonators |
 | **Lever pairs** | both loops of every channel, on by default because it is what the ensemble does. Off, each channel is a single lever: half the CPU, a thinner and more separated bank, and — this is the awkward part — **more** self-evolution, 0.82 octaves of spectral wander against 0.34. Two chaotic loops summed into one voice average each other out, and no amount of coupling weight recovers it (measured at six settings from 0 to 0.85). On is denser, rougher and more faithful; off moves more. There is no setting that is both |
-| **Raw oscillators (aliasing)** | drops the band-limiting from the pulses so every edge folds its harmonics back down the spectrum. colB puts part of Skrewell's character down to it being "digital with aliasing and quantization". Measured, it is a **small** effect here and honesty demands saying so: at the default bank the centroid moves 1052 → 1092 Hz and the spectral flatness 0.011 → 0.013. It shows up properly only with the pitch macro up, where the flatness goes 0.041 → 0.051. The reason is that most of this engine's aliasing never came from the waveform edges in the first place — exponential FM at audio rate throws sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was never correcting those. It also costs nothing; raw is cheaper than band-limited |
+| **Raw oscillators (aliasing)** | drops the band-limiting from the pulses so every edge folds its harmonics back down the spectrum. colB puts part of Skrewell's character down to it being "digital with aliasing and quantization" — though the module reference says REAKTOR's own oscillators *are* anti-aliased, so this is a deviation rather than fidelity, and whatever aliasing the original has comes from its FM sidebands rather than its edges. Measured, it is a **small** effect here and honesty demands saying so: at the default bank the centroid moves 1052 → 1092 Hz and the spectral flatness 0.011 → 0.013. It shows up properly only with the pitch macro up, where the flatness goes 0.041 → 0.051. The reason is that most of this engine's aliasing never came from the waveform edges in the first place — exponential FM at audio rate throws sidebands past Nyquist whatever shape the oscillator is, and polyBLEP was never correcting those. It also costs nothing; raw is cheaper than band-limited |
 | **Bit crush** | 12, 10 or 8 bits, quantizing each loop signal on its way into the delay. The other half of "aliasing and quantization", and similarly small on its own: 8 bit moves the centroid 1052 → 1123 Hz and doubles the energy above 5 kHz |
 | **Randomize all functions** | off makes the rand button and trigger randomize only the function currently on screen, which is far more controllable than rolling all 64 |
 | **Display scale** | 1× to 8× on the Lissajous, the original's "Display Control". 1× is ±5 V filling the box; turn it up when the bank is running quietly |
@@ -291,6 +291,25 @@ precessing figure is the interesting middle.
   function, is a fast way to re-roll a chord without losing the patch.
 - turba is a fine source for [lustro](lustro.md) or [quadrare](quadrare.md),
   and the **cv** out drives anything that wants a lazy unpredictable voltage.
+
+## The normalizer
+
+Each loop carries one, and its envelope follower is no longer a design of
+mine. colB spotted "some sort of compression set up using peak detectors and
+clippers on the post oscillator delay feedback sections", the `norm` macro in
+the file confirms it, and the module reference then pins the behaviour down.
+REAKTOR's Peak Detector rectifies the signal, **"the attack time of peak
+detection is zero"**, and its release is quoted as the time for a peak to fall
+to a tenth of its value: `Rel` 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, 60 is
+2300 ms, a decade per twenty on the knob.
+
+So the attack here is instantaneous rather than the couple of milliseconds it
+had before, which is audible — a transient pulls the gain down on the sample
+it arrives on. The release runs at `Rel = 40`, 230 ms.
+
+What happens *after* the envelope is still mine: the gain law, the ceiling,
+and the saturator. The macro's five primitives are mapped but their classes
+are unidentified, so that part is designed rather than read.
 
 ## Differences from Skrewell
 
