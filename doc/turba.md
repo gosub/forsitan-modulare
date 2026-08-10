@@ -430,8 +430,25 @@ DEL FB` for the multimode one, `F fm A am hp lp DEL FB` for the bandpass one,
 and `F fm A am DEL FB` — six — for the one with no filter. That is where the
 **type** bar and the absence of a resonance bar in this module come from.
 
-So: the parts list, the grouping and every macro's interface are read from the
-ensemble and can be relied on. **The signal flow between them is not.** What modulates what, in
+The wiring is in there too, and it took the right file to see it. Connections
+are not objects — there is no cable class — they are stored as an *output's
+fan-out*: a `KOutPort` payload ends in a count followed by that many
+`(target, port)` pairs, where `target` indexes the enclosing macro's child
+list. In a 4.5 MB patch with 1077 modules that is invisible; in a 33 KB test
+instrument from
+[github.com/fukuroder/Reaktor_Files](https://github.com/fukuroder/Reaktor_Files)
+with twenty modules and twenty connections it is obvious. Skrewell yields 1308
+connection entries, 1102 of them with a plausible target and port, and the
+LEVER's insides read straight out: the `-300` constant goes to input 0 of a
+class-188 module whose output feeds the filter macro's audio input, which is
+AlbertoZ's fixed P inlet and identifies class 188 as the pulse oscillator.
+
+What is not finished is resolving every target: a nested macro's own children
+shift the sibling numbering, so subtrees have to be skipped when counting, and
+outputs with flag 4 (instrument boundaries, core-cell edges) use a different
+layout. The notes and the four scripts are in `~/dl/temp/reaktor-ens-tools/`
+rather than in this repository, since they are a file-format reader and not a
+Rack module. What modulates what, in
 what order, with what scaling, is still this module's own design, informed by
 the factory manual's description and by the forum accounts. Anyone wanting to
 go further should start by working out the layout of those blobs.
