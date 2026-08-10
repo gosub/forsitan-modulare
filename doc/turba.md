@@ -337,8 +337,14 @@ architecture:
 - the **filter** is a topology-preserving 2-pole SVF with soft-limited
   integrator states, matched to the Multi 2-Pole's described behaviour rather
   than modelled from it;
-- the **arithmetic of the modulation chain** — 49 of the ensemble's 57 module
-  classes are still unnamed, so how depth scales is inference;
+- the **arithmetic of the modulation chain**. Matching port counts against
+  the module reference and disambiguating by what the graph wires them to has
+  since named several — the feedback summer is a **Mult/Add**, computing
+  `norm × FB + filter`, which is what this module already did; the envelope in
+  the normalizer is a **Peak Detector**, and its smoother a **1-pole**; the
+  frequency path runs through an **Exp (P-to-F)**. But 43 classes are still
+  unnamed, and one of them decides whether FM depth scales the frequency or
+  offsets it in hertz;
 - the **delay's interpolation**, and the **panning** across the eight
   channels, which the file does not specify.
 
