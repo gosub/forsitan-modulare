@@ -173,7 +173,11 @@ The **edit** switch is Skrewell's three mouse behaviours:
 - **wrap** — drag anywhere and all eight bars move together, keeping their
   shape. A bar that runs off an end **mirrors** back rather than piling up
   against it, so a long drag folds the whole bank through the range.
-- **rand** — drag and all eight bars jog randomly, by as much as you moved.
+- **rand** — drag and all eight bars set off towards destinations of their
+  own, travelling as far as you move the mouse. When a bar arrives it picks
+  somewhere else and carries on. Because the eight start at different
+  distances they arrive at different times, so the shape keeps reorganising
+  itself for as long as you keep moving, rather than shivering in place.
 
 Double-click the edit area to put the current function back to its default
 shape. One drag is one undo step.
@@ -296,10 +300,17 @@ the bank is doing: a single closed loop means the two axes are correlated and
 the bank is behaving, a filled square means it has gone to noise, and a slowly
 precessing figure is the interesting middle.
 
-It is drawn as a phosphor trail rather than a flat outline — 170 ms of history
-in twenty bands, each stroked twice, dim amber at the tail through to
-near-white at the head, with the newest sample as a bright dot. So you can see
-which way the figure is being drawn and how fast, not just its shape.
+It plots **points, not lines**, as the original does, and that is not a
+detail. Joining consecutive samples draws a closed outline; scattering them
+draws where the signal *spends its time*. It is what gives Skrewell's display
+its squares, its curves and its little curls — a pair of square-ish waves
+piles the dots into four dense corners instead of drawing a box, and a slow
+drift in one frequency smears a curl where a line would have drawn a ribbon.
+
+Phosphor on top: a quarter-second of dots in twelve age bands, each drawn
+twice for a bloom and a grain, dim amber at the tail through to near-white at
+the head, with the newest sample as a bright dot. So you can see which way the
+figure is being drawn and how fast, not only its shape.
 
 ### The X/Y pad
 

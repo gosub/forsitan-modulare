@@ -103,12 +103,11 @@ static const int CONTROL_PERIOD = 32;
 static const float OUT_VOLTS = 0.9f;
 
 // Lissajous history, written by the audio thread and read by the widget.
-// Long and dense: what makes a Lissajous worth looking at is the figure being
-// drawn faster than it fades, and 2048 points at every fourth sample is about
-// 170 ms of trail at 48 kHz -- long enough to close a figure at 10 Hz and
-// short enough that the shape still moves.
+// 2048 samples at every sixth one is a quarter of a second at 48 kHz, which
+// is long enough to close a figure down at 8 Hz and short enough that the
+// shape still visibly moves.
 static const int SCOPE_POINTS = 2048;
-static const int SCOPE_DECIM = 4;
+static const int SCOPE_DECIM = 6;
 static const float scopeScales[4] = {1.f, 2.f, 4.f, 8.f};
 
 struct Scrupea : Module {
@@ -431,6 +430,8 @@ struct ScrupeaEditArea : OpaqueWidget {
     Vec dragPos;
     bool dragging = false;
     float dragBefore[NCH] = {};
+    // rand mode: where each bar is currently heading
+    float randTarget[NCH] = {};
 
     int func() const {
         if (!module) return 0;
@@ -470,7 +471,10 @@ struct ScrupeaEditArea : OpaqueWidget {
     void beginEdit() {
         if (!module || dragging) return;
         dragging = true;
-        for (int c = 0; c < NCH; c++) dragBefore[c] = bar(c);
+        for (int c = 0; c < NCH; c++) {
+            dragBefore[c] = bar(c);
+            randTarget[c] = random::uniform();
+        }
     }
 
     void endEdit() {
@@ -504,10 +508,33 @@ struct ScrupeaEditArea : OpaqueWidget {
                 for (int i = 0; i < NCH; i++) setBar(i, mirror(bar(i) + d));
                 break;
             }
-            default: {  // rand: jog every bar, by how far the mouse moved
-                const float amt = (std::fabs(delta.x) + std::fabs(delta.y)) / h;
-                for (int i = 0; i < NCH; i++)
-                    setBar(i, bar(i) + (random::uniform() - 0.5f) * amt * 2.f);
+            default: {  // rand: every bar walks to a destination of its own
+                // Not a jitter. Each bar picks somewhere to go and travels
+                // there while you move the mouse, at a rate set by how far you
+                // move it; when it arrives it picks somewhere else. Eight bars
+                // set off at once and, being different distances away, arrive
+                // at different times, so the shape keeps reorganising rather
+                // than shivering in place.
+                const float step = (std::fabs(delta.x) + std::fabs(delta.y))
+                                   / h * 0.8f;
+                for (int i = 0; i < NCH; i++) {
+                    float v = bar(i);
+                    float left = step;
+                    // a fast drag can cross several destinations in one move
+                    for (int guard = 0; guard < 4 && left > 0.f; guard++) {
+                        const float d = randTarget[i] - v;
+                        const float dist = std::fabs(d);
+                        if (dist <= left) {
+                            v = randTarget[i];
+                            left -= dist;
+                            randTarget[i] = random::uniform();
+                        } else {
+                            v += d > 0.f ? left : -left;
+                            left = 0.f;
+                        }
+                    }
+                    setBar(i, v);
+                }
                 break;
             }
         }
@@ -625,12 +652,18 @@ struct ScrupeaEditArea : OpaqueWidget {
 
 // ------------------------------------------------------------- scope ---
 
-// The Lissajous, after the one on Skrewell's panel: a phosphor trail rather
-// than a single flat polyline. The trail is drawn oldest to newest in bands,
-// each band twice -- a wide dim pass for the bloom and a narrow bright one for
-// the filament -- with alpha and colour ramping from a dim amber at the tail
-// to near-white at the head. That is what a CRT does, and it is the difference
-// between "a shape" and "a shape being drawn".
+// The Lissajous, after the one on Skrewell's panel, which plots **points and
+// not lines**. That is not a detail: joining consecutive samples draws a
+// closed outline, while scattering them draws where the signal *spends its
+// time*, and those are different pictures. It is what gives the original its
+// squares, its curves and its little curls -- a pair of square-ish waves
+// piles the dots into four dense corners rather than drawing a box, and a
+// slow frequency drift smears a curl instead of a smooth ribbon.
+//
+// Phosphor on top: the dots are drawn oldest to newest in bands, each band
+// twice -- a wide dim pass for the bloom and a small bright one for the grain
+// -- with alpha and colour ramping from a dim amber at the tail to near-white
+// at the head.
 //
 // It is also the panel's XY control: drag it to move `scX` and `scY`, the two
 // Selectors that choose which lever of the running tone generator feeds each
@@ -640,7 +673,7 @@ struct ScrupeaScope : OpaqueWidget {
     Vec dragPos;
     bool dragging = false;
 
-    static const int NSEG = 20;
+    static const int NSEG = 12;
 
     void onButton(const ButtonEvent& e) override {
         if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -713,52 +746,49 @@ struct ScrupeaScope : OpaqueWidget {
         const int head = module->scopeHead;
         const float px = w - 6.f, py = h - 6.f;
 
-        nvgLineCap(args.vg, NVG_ROUND);
-        nvgLineJoin(args.vg, NVG_ROUND);
+        // Dots, batched: one path of little squares per age band and a single
+        // fill for each, twice over. Squares rather than circles because a
+        // circle is four beziers and there are two thousand of these.
+        for (int pass = 0; pass < 2; pass++) {
+            const float sz = pass == 0 ? 2.6f : 1.2f;   // bloom, then grain
+            const float half = sz * 0.5f;
+            for (int seg = 0; seg < NSEG; seg++) {
+                const int i0 = (int)((int64_t)n * seg / NSEG);
+                const int i1 = (int)((int64_t)n * (seg + 1) / NSEG);
+                if (i1 <= i0) continue;
 
-        // oldest band first so the bright head is laid over the dim tail
-        for (int seg = 0; seg < NSEG; seg++) {
-            const int i0 = (int)((int64_t)n * seg / NSEG);
-            // one point of overlap, so the bands join without a gap
-            const int i1 = (int)((int64_t)n * (seg + 1) / NSEG);
-            if (i1 - i0 < 2) continue;
+                nvgBeginPath(args.vg);
+                for (int i = i0; i < i1; i++) {
+                    const int idx = (head - n + i + SCOPE_POINTS * 2) % SCOPE_POINTS;
+                    const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
+                    const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
+                    nvgRect(args.vg, x - half, y - half, sz, sz);
+                }
 
-            nvgBeginPath(args.vg);
-            for (int i = i0; i <= i1 && i < n; i++) {
-                const int idx = (head - n + i + SCOPE_POINTS * 2) % SCOPE_POINTS;
-                const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
-                const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
-                if (i == i0) nvgMoveTo(args.vg, x, y);
-                else nvgLineTo(args.vg, x, y);
+                // age: 0 at the tail, 1 at the head
+                const float age = (float)(seg + 1) / (float)NSEG;
+                const float a2 = age * age;
+                if (pass == 0) {
+                    nvgFillColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.05f * a2));
+                } else {
+                    const float wht = a2 * a2;
+                    nvgFillColor(args.vg, nvgRGBAf(1.f,
+                                                   0.84f + 0.16f * wht,
+                                                   0.10f + 0.75f * wht,
+                                                   0.18f + 0.72f * a2));
+                }
+                nvgFill(args.vg);
             }
-
-            // age: 0 at the tail, 1 at the head
-            const float age = (float)(seg + 1) / (float)NSEG;
-            const float a2 = age * age;
-
-            // bloom
-            nvgStrokeColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.16f * a2));
-            nvgStrokeWidth(args.vg, 3.4f);
-            nvgStroke(args.vg);
-
-            // filament, whitening towards the head
-            const float wht = a2 * a2;
-            nvgStrokeColor(args.vg, nvgRGBAf(1.f,
-                                             0.84f + 0.16f * wht,
-                                             0.10f + 0.75f * wht,
-                                             0.10f + 0.90f * a2));
-            nvgStrokeWidth(args.vg, 0.9f + 0.5f * age);
-            nvgStroke(args.vg);
         }
 
-        // the newest sample as a bright dot, so the beam has a visible head
+        // the newest sample, so the beam has a visible head
         {
             const int idx = (head - 1 + SCOPE_POINTS) % SCOPE_POINTS;
             const float x = (module->scopeX[idx] * 0.5f + 0.5f) * px + 3.f;
             const float y = (0.5f - module->scopeY[idx] * 0.5f) * py + 3.f;
             nvgBeginPath(args.vg);
-            nvgCircle(args.vg, x, y, 1.6f);
-            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xe0, 0xdd));
+            nvgCircle(args.vg, x, y, 1.5f);
+            nvgFillColor(args.vg, nvgRGBA(0xff, 0xff, 0xe0, 0xee));
             nvgFill(args.vg);
         }
 
