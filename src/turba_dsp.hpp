@@ -101,20 +101,27 @@ struct SatSVF {
 // this bank is not the normalizer, it is that the oscillators never stop.
 struct Normalizer {
     float env = 0.f, gain = 1.f;
-    float atk = 0.01f, rel = 0.0005f, down = 0.05f, up = 0.0005f;
+    float relCoef = 0.999f, down = 0.05f, up = 0.0005f;
+    // The envelope follower is Reaktor's Peak Detector, and its reference
+    // entry is specific: the signal is rectified, "the attack time of peak
+    // detection is zero", and the release is quoted as the time for a peak to
+    // fall to a tenth of its value -- Rel 0 is 2.3 ms, 20 is 23 ms, 40 is
+    // 230 ms, 60 is 2300 ms, a decade per twenty on the knob. So the attack
+    // is instantaneous rather than a one-pole, which is audible: a transient
+    // pulls the gain down on the sample it arrives, not a few ms later.
+    float relT = 0.230f;        // Rel = 40
 
     void reset() { env = 0.f; gain = 1.f; }
 
     void setSampleRate(float sr) {
-        atk  = 1.f - std::exp(-1.f / (0.002f * sr));
-        rel  = 1.f - std::exp(-1.f / (0.100f * sr));
+        relCoef = std::exp(-2.302585093f / (relT * sr));   // ln(10) per relT
         down = 1.f - std::exp(-1.f / (0.001f * sr));
         up   = 1.f - std::exp(-1.f / (0.250f * sr));
     }
 
     float process(float x, float ceiling) {
         const float a = std::fabs(x);
-        env += (a - env) * (a > env ? atk : rel);
+        env = a > env ? a : env * relCoef;      // zero attack, per the spec
         float want = 1.f;
         if (env > ceiling) {
             want = ceiling / env;
