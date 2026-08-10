@@ -317,7 +317,10 @@ struct Turba : Module {
         float l = 0.f, r = 0.f, cv = 0.f;
         eng.process(in, &l, &r, &cv);
 
-        const float gain = params[LEVEL_PARAM].getValue() * 10.f;
+        // 14 rather than 10 since the loop was rewired: the output is now
+        // the normalizer's take on the *delayed* signal, which sits about
+        // 5 dB below the pre-delay sum the old order put on the jack.
+        const float gain = params[LEVEL_PARAM].getValue() * 14.f;
         l *= gain;
         r *= gain;
 

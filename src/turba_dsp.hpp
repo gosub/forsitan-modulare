@@ -405,22 +405,32 @@ struct Engine {
                     }
                 }
 
+                // The loop, in the order the ensemble wires it: the delay
+                // comes *before* the normalizer, and the normalizer's output
+                // is both what the lever puts out and what feeds back. So the
+                // oscillator is never heard directly -- everything reaches
+                // the output through the delay line. Where the filter sits is
+                // the only difference between the three topologies, and it is
+                // the difference the manual describes.
                 const float d = line[i].read(dEff);
-                float v;
+                float r = norm[i].process(d, 1.0f);
+
+                float sum;
                 if (topology == TOPO_PRE) {
+                    // osc -> filter -> summer -> delay
                     s = filt[i].process(s, gEff, kc[i], tp[i]);
-                    v = norm[i].process(s + d * fbk[i], 1.0f);
+                    sum = s + r * fbk[i];
                 }
                 else if (topology == TOPO_BARE) {
-                    v = norm[i].process(s + d * fbk[i], 1.0f);
+                    sum = s + r * fbk[i];
                 }
                 else {
-                    v = filt[i].process(s + d * fbk[i], gEff, kc[i], tp[i]);
-                    v = norm[i].process(v, 1.0f);
+                    // summer -> filter -> delay, the filter inside the loop
+                    sum = filt[i].process(s + r * fbk[i], gEff, kc[i], tp[i]);
                 }
 
-                if (!std::isfinite(v)) {
-                    v = 0.f;
+                if (!std::isfinite(sum) || !std::isfinite(r)) {
+                    sum = r = 0.f;
                     filt[i].reset();
                     norm[i].reset();
                     line[i].reset();
@@ -428,12 +438,12 @@ struct Engine {
 
                 if (crushBits > 0) {
                     const float steps = (float)(1 << (crushBits - 1));
-                    v = std::floor(v * steps + 0.5f) / steps;
+                    sum = std::floor(sum * steps + 0.5f) / steps;
                 }
 
-                line[i].write(v);
-                y[i] = v;
-                voice += v;
+                line[i].write(sum);
+                y[i] = r;
+                voice += r;
             }
             if (levers > 1) voice *= 0.5f;
 
@@ -454,7 +464,7 @@ struct Engine {
         // channels are summed with alternating sign so the common motion
         // cancels and what is left is how unevenly the eight are behaving.
         cvLp += (sumY - cvLp) * (25.f * 6.2831853f / sr);
-        *cv = cvLp;
+        *cv = cvLp * 2.5f;
     }
 };
 

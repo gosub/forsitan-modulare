@@ -33,18 +33,23 @@ second offset a tritone up with a shorter loop so the pair is two loops and
 not one played twice. Each lever:
 
 ```
-              ┌──────────── FM from the channel to its right ───┐
-              │                                                 │
-              v                                                 │
-  pulse osc ──> x AM from the channel to its left ──> (+) ──> filter ──┐
-                                                       ^              │
-                                                       │              v
-                                            x feedback │        normalizer
-                                                       │              │
-                                                       └── delay <────┤
-                                                                      │
-                                                       y ─────────────┴──> mix
+   pulse osc ──> x AM ──> [filter, in pre] ──> (+) ──> [filter, in loop]
+                                                ^                │
+                                     x feedback │                v
+                                                │              delay
+                                                │                │
+                                                └── normalizer <─┘
+                                                        │
+                                                        └──> y, to the mix
+                                                             and to the ring
 ```
+
+Read off the ensemble rather than guessed, and the order matters. The **delay
+comes before the normalizer**, and the normalizer's output is both what the
+lever puts out and what feeds back. So the oscillator is never heard directly:
+everything reaches the output through the delay line, however short it is set.
+The three topologies differ only in where the filter sits, which is exactly
+what the factory manual says and now also what the patch says.
 
 The oscillators never stop and there is no gate and no pitch input. Like the
 original, you switch it on and it runs.
@@ -96,8 +101,8 @@ sinusoid (par FM)"*, only one pair live at a time.
 
 | mode | | |
 |------|---|---|
-| **loop** | pulse oscillator, filter **inside** the feedback loop | the harshest of the three: everything that recirculates is filtered and saturated again on every pass |
-| **pre** | pulse oscillator, filter **in front of** the delay | the filter shapes what enters the loop once and then leaves it alone; more tonal, more delay-like |
+| **loop** | pulse oscillator, filter **inside** the loop, between the summer and the delay | the harshest of the three: everything that recirculates is filtered and saturated again on every pass. This is the ensemble's bandpass generator, the one with separate HP and LP |
+| **pre** | pulse oscillator, filter **between the oscillator and the summer** | the filter colours what enters the loop once and then leaves it alone; more tonal, more delay-like. The ensemble's multimode generator, the one with cutoff and type |
 | **bare** | **parabolic** oscillator, **no filter** | the calm one. A parabolic wave is much rounder than a pulse and with no filter in the way the loops behave like plain combs. Measured centroid ~276 Hz against ~574 Hz for **loop** |
 
 The cutoff macro and the resonance bars do nothing in **bare**, which has no
@@ -443,12 +448,20 @@ LEVER's insides read straight out: the `-300` constant goes to input 0 of a
 class-188 module whose output feeds the filter macro's audio input, which is
 AlbertoZ's fixed P inlet and identifies class 188 as the pulse oscillator.
 
-What is not finished is resolving every target: a nested macro's own children
-shift the sibling numbering, so subtrees have to be skipped when counting, and
-outputs with flag 4 (instrument boundaries, core-cell edges) use a different
-layout. The notes and the four scripts are in `~/dl/temp/reaktor-ens-tools/`
-rather than in this repository, since they are a file-format reader and not a
-Rack module. What modulates what, in
+Both loose ends are now tied off. The hierarchy is in the file after all: the
+gap following a module's record begins `2, N, 1, 2` where **N is its child
+count**, which reconstructs the tree and makes the sibling indices resolve —
+`Pitch Gate` in the test instrument declares 7 and has exactly 7 children,
+`snapvalue x 8` declares 24, being eight values and their sixteen terminals.
+And the flag word's **bit 1 means "a connection list follows"**; without it
+the record runs straight on to the port name, which is why the flag-4 outputs
+looked like garbage. With both, 1069 of Skrewell's connections resolve to a
+real target and a real input, 97.3% of them, and the rest are two macros whose
+child count parses wrong.
+
+That is where the loop order above comes from. The notes and the scripts are
+in `~/dl/temp/reaktor-ens-tools/` rather than in this repository, since they
+are a file-format reader and not a Rack module. What modulates what, in
 what order, with what scaling, is still this module's own design, informed by
 the factory manual's description and by the forum accounts. Anyone wanting to
 go further should start by working out the layout of those blobs.

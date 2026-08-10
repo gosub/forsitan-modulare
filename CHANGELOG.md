@@ -164,7 +164,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     that. What is taken is the structure the factory library manual describes.
 
     Eight parallel channels, each an oscillator into a feedback delay with a
-    normalizer in the loop, mixed to stereo. Three topologies differing only
+    normalizer in the loop, mixed to stereo. The loop order is read off the
+    ensemble: the delay comes *before* the normalizer, and the normalizer's
+    output is both what the lever puts out and what feeds back, so the
+    oscillator is never heard directly -- everything reaches the output
+    through the delay line. Three topologies differing only
     in where the filter sits: inside the loop, in front of the delay, or
     absent, with a parabolic oscillator instead of the pulse. The channels are
     cross-coupled in a ring, each oscillator frequency-modulated by its
