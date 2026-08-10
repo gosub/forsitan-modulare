@@ -300,17 +300,28 @@ the bank is doing: a single closed loop means the two axes are correlated and
 the bank is behaving, a filled square means it has gone to noise, and a slowly
 precessing figure is the interesting middle.
 
-It plots **points, not lines**, as the original does, and that is not a
-detail. Joining consecutive samples draws a closed outline; scattering them
-draws where the signal *spends its time*. It is what gives Skrewell's display
-its squares, its curves and its little curls — a pair of square-ish waves
-piles the dots into four dense corners instead of drawing a box, and a slow
-drift in one frequency smears a curl where a line would have drawn a ribbon.
+It plots **points, not lines**, and it plots **eight figures, not one**. Both
+matter, and the second is the one that makes it legible at all.
 
-Phosphor on top: a quarter-second of dots in twelve age bands, each drawn
-twice for a bloom and a grain, dim amber at the tail through to near-white at
-the head, with the newest sample as a bright dot. So you can see which way the
-figure is being drawn and how fast, not only its shape.
+Reaktor hands a panel display a *poly* signal, so the XY element draws one
+point per voice. The proof is in the display module's own record, which keeps
+Min and Max at the same payload words a knob does: they are **−1.2 and +1.2**,
+which is one lever's range — each normalizer bounds its lever to 1 — and
+nowhere near the range of an eight-voice sum. Draw the sum instead and you get
+a Gaussian blob, because two sums of eight uncorrelated oscillators always
+are one, at any sampling rate. Draw the voices and you get Skrewell's display:
+at low **flow** each voice traces loops and curls inside the frame, and as
+flow comes up each one fills its square and squares off hard against the
+±1.2 edges. That is where the squares and the curls both come from.
+
+The points are sampled at Reaktor's own event rate — the audio rate over 64,
+so about 750 a second — because a panel element is fed events and not audio.
+Phosphor on top: half a second of dots in twelve age bands, each drawn twice
+for a bloom and a grain, the alpha cubed with age so the current figure
+carries and the rest is a ghost of where it has been.
+
+The taps come off the levers **ahead of the output fader**, as they do in the
+ensemble, so turning the level down does not empty the display.
 
 ### The X/Y pad
 
@@ -322,17 +333,16 @@ choose **which lever drives which axis** — every tone generator carries `X`
 and `Y` outputs alongside its `L` and `R` for exactly this. It changes what
 you are looking at and not one thing about what you are hearing.
 
-Here the Lissajous is that pad. Drag it: left-right moves the X source, up-down
-the Y source, each crossfading between the voice's first and second lever. At
-`x 0.00  y 1.00` — where it starts, and where a double-click puts it back —
-the axes are L and R. Push both to the same end and the figure collapses to a
-diagonal, because both axes are then watching the same lever.
+Here the Lissajous is that pad. Drag it: left-right sets the gain on the X
+axis, up-down on the Y, from 0 to 4×. Unity on both is where it starts and
+where a double-click puts it back. Turn them up to see what a quiet bank is
+doing, or down to pull a loud one back inside the frame. That is the whole of
+the original's "Display Control", so there is no context menu.
 
 ## Context menu
 
-| item | |
-|------|---|
-| **Display scale** | 1× to 8× on the Lissajous. 1× is ±5 V filling the box; turn it up when the bank is running quietly |
+There isn't one. The only display control the original has is the X/Y pad
+above, and that is on the panel.
 
 ## Tips
 
@@ -435,15 +445,22 @@ inside those ranges are collected as `SET_` constants in one place in
 land on the ranges scrupea had already measured its way to.
 
 The snapshots were supposed to be the unrecoverable part, and they are not:
-they decoded on 2026-08-10, and 48 of the factory presets now read out whole,
-64 bars and every knob (see *Attribution*). What they say is that this module
-is **brighter and shorter** than the original was usually set. The factory
-oscillator range runs lower and tops out around pitch 60 rather than 132, its
-cutoffs sit down near 740 Hz rather than sweeping to 20 kHz, and its delays
-reach fifteen seconds where scrupea stops at 312 ms. Only the `SMT` pair
-matches exactly, at 1 and 20. Those numbers have deliberately **not** been
-adopted: taking them changes the sound substantially, and every measurement in
-this manual would have to be redone against them.
+they decoded on 2026-08-10, and 48 of the factory presets read out whole (see
+*Attribution*). That did **not** settle these constants, and the reason is
+worth recording.
+
+The *values* come out cleanly. Which control each one belongs to does not: the
+eight bar banks are attributed by a stable id in their record, but the
+individual knobs are matched by zipping the ensemble's knob list against the
+snapshot's values in order. Wiring in the factory medians under that
+attribution moved the spectral centroid from 540 Hz to **33 Hz**, took the
+largest Lyapunov exponent from 65 to 5, and pinned the chaos CV against its
+rail — a sub-bass rumble, not Skrewell. And shifting the attribution by one
+slot either way is worse: it makes `min` come out above `max`, which cannot
+be. So the attribution is wrong rather than the module, and the constants stay
+where measurement put them until the snapshot control ids are resolved to
+modules properly instead of matched by order. That is the next thing to do
+with the format.
 
 The **jacks** are the last exception, and a deliberate one. Skrewell has no
 audio input, no CV inputs and no CV output — it is a generator with four
