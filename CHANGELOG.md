@@ -157,128 +157,110 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     one modulator in one box.
 
   - **turba**, a 24 HP chaotic bank taking its architecture and its interface
-    from **Skrewell**, John Nowak's sound generator in the REAKTOR factory
-    library. Not a port and not for want of trying by other people: Skrewell's
-    chaos lives inside REAKTOR's built-in filters, which cannot be opened, and
-    every attempt to rebuild it in Max/gen~ or Pd has run aground on exactly
-    that. What is taken is the structure the factory library manual describes.
+    from **Skrewell**, the sound generator in the REAKTOR factory library.
+    Not a port and not for want of trying by other people: Skrewell's chaos
+    lives inside REAKTOR's built-in filters, which cannot be opened, and every
+    attempt to rebuild it in Max/gen~ or Pd has run aground on exactly that.
 
-    Eight parallel channels, each an oscillator into a feedback delay with a
-    normalizer in the loop, mixed to stereo. The loop order is read off the
-    ensemble: the delay comes *before* the normalizer, and the normalizer's
-    output is both what the lever puts out and what feeds back, so the
-    oscillator is never heard directly -- everything reaches the output
-    through the delay line. Three topologies differing only
-    in where the filter sits: inside the loop, in front of the delay, or
-    absent, with a parabolic oscillator instead of the pulse. The channels are
-    cross-coupled in a ring, each oscillator frequency-modulated by its
-    right-hand neighbour's loop signal and amplitude-modulated by its
-    left-hand one, so the eight loops are one system. There is no gate and no
-    pitch input; like the original it simply runs.
+    What *is* here is read out of the ensemble file. Reaktor's `.ens` turned
+    out to be legible: records are `[`, a length-prefixed class name, a
+    payload, `]`, with the instance name at the end and the parent/child
+    structure implied by order; connections are stored as an output's fan-out
+    inside the `KOutPort` records; and a knob keeps its **Min and Max as
+    float32 in its own payload**. So the signal flow, the mapping laws and
+    every numeric range in this module are the original's, not a guess.
 
-    Every channel has its own value for each of eight functions, 64 in all,
-    edited as eight bars in the edit area with Skrewell's three mouse
-    behaviours: **draw** sets a bar, **wrap** shifts all eight and mirrors
-    them back at the ends, **rand** jogs all eight at once. Beside it is a
-    Lissajous of the output, as on the original panel.
+    Eight voices of two levers each, sixteen loops in all. A lever is an
+    oscillator into a feedback comb with a normalizer in it, and the loop
+    order is the ensemble's: the delay comes *before* the normalizer, and the
+    normalizer's output is both what the lever puts out and what feeds back,
+    so the oscillator is never heard directly. The delay time is set as a
+    **pitch** and taken as `1000 / f`, so every loop is a comb tuned to a
+    note. Left is the first lever of every voice and right the second, which
+    is what the ensemble's tone generators put on their `L` and `R`. There is
+    no gate and no pitch input; like the original it simply runs.
 
-    The four macro knobs are the part worth knowing about. They do not offset
-    the bars, they **map** them, applying `v^γ` to all eight at once with
-    `γ = 5^-knob`: centre is the identity, hard left crushes the bank so only
-    the tallest bars survive, hard right lifts the whole thing. One knob asks
-    how much of a parameter the bank gets, of eight channels at once, and
-    keeps their order. **pitch** moves the measured centroid from 71 Hz to
-    1385 Hz, **cutoff** from 83 Hz to 1862 Hz, **delay** slides all eight
-    loops from 0.17 ms (comb, ring modulation) to 134 ms (echo).
-
-    **flow** maps the FM and AM bars, sets the engine's inertia from 1 s to
-    2.5 ms, and maps resonance **backwards**: right takes the Q down. That
-    inversion is Skrewell's own, and it is the thing the Max porter found and
-    could not explain, "the resonance parameter in a 2-pole filter being
-    turned down… a pretty surprising behavior". It is reasonable in a
-    feedback loop: high Q hands the loop gain in one narrow band and it rings
-    there, orderly; open it out and the loop has broadband gain for the
-    saturator to fold. Measured as a largest-Lyapunov estimate, there is a
-    real bifurcation on the knob: 0/s below flow -0.5, 670/s above centre.
-
-    The default bank is set where the thing actually moves: delays 30-307 ms,
-    every loop between 0.88 and 1.0 so it builds and collapses against the
-    limiter, and the eight pitches inside a fifth so they beat slowly against
-    each other rather than at audio rate. Those three, in that order, are what
-    decide whether the bank wanders on its own; an earlier default at half the
-    feedback with 2-40 ms delays measured 0.04 octaves of spectral wander over
-    an untouched minute; with the new bank and the switch it measures 0.82,
-    against 0.75 for a reference recording of Skrewell standing still.
-
-    The FM is **linear and through-zero**, not exponential. Skrewell's
-    oscillators are the FM variants of Reaktor's primary set, whose F input
-    the manual calls "linear frequency control, which is added to the
-    frequency of the P input", and every LEVER pins P to a constant -300 -- a
-    MIDI pitch low enough to be silence. So the whole frequency arrives
-    through F in hertz and can go negative, running the oscillator backwards.
-    `freq = base * (1 + fm * mod)`. That nearly triples the energy above 2 kHz
-    at the default bank, 0.137 -> 0.381, and is most of what makes this thing
-    harsh rather than smooth.
-
-    The eighth per-channel function is **filter type**, a continuous low →
-    band → high morph, not resonance. That is the ensemble's `lbh` parameter:
-    reading each tone generator's own input list gives its eight bars exactly
-    -- `F fm A am cut lbh DEL FB` for the multimode one, `F fm A am hp lp DEL
-    FB` for the bandpass one, and `F fm A am DEL FB`, six of them, for the one
+    Three topologies, differing in what the filter is and where: a multimode
+    2-pole in front of the summer, a 2-pole HP into a 2-pole LP inside the
+    loop, or none at all with a parabolic oscillator instead of the pulse.
+    The three share one set of eight bars and read two of them differently --
+    `F fm A am cut lbh DEL FB`, `F fm A am hp lp DEL FB`, and six for the one
     with no filter, which is precisely carloskleiber's "8 (or 6) parameters of
-    8 oscillators". Resonance has no bar in Skrewell -- `res` is an input the
-    tone generator feeds its levers -- and it has none here either; flow sets
-    it, as it already did.
+    8 oscillators". In the bandpass mapping the HP corner is the LP corner
+    multiplied by the second bar, so the band can never close.
+
+    Every voice has its own value for each of eight functions, 64 in all,
+    edited as eight bars with Skrewell's three mouse behaviours: **draw** sets
+    a bar, **wrap** shifts all eight and mirrors them back at the ends,
+    **rand** jogs all eight at once. Beside it is a Lissajous of the output,
+    as on the original panel.
 
     The **fm** and **am** bars are not depths, they are selector positions:
     inside `crossvoice` eight From Voice modules feed the channel inputs of a
-    Selector and those two bars drive its Pos, so a bar picks **which channel
-    modulates this one**, blending between adjacent channels when set between
-    them. Sixteen bars therefore draw the bank's coupling topology, and depth
-    is a single global amount on flow. Flow itself is not a bar mapping like
-    the other three macros: in the ensemble it is the Pos of five selectors
-    each blending between two knobs, so here it crossfades FM depth, AM depth,
-    resonance and inertia between a low and a high value.
+    Selector and those two bars drive its Pos, so a bar picks **which voice
+    modulates this one**. Sixteen bars therefore draw the bank's coupling
+    topology, and depth is global, on flow.
 
-    The channel is a **pair of levers**, sixteen loops in all. That comes from
-    reading the ensembles rather than the forums: every tone generator in
-    Skrewell holds exactly two `LEVER` macros with a `crossvoice` between
-    them, and a LEVER is not an oscillator but a whole channel -- oscillator,
-    filter, resonance, normalizer, delay, feedback. Both levers of a channel
-    are driven by the same bar, the second offset a tritone up with a shorter
-    loop. Pairs can be switched off, which halves the CPU and, awkwardly,
-    evolves more: two chaotic loops summed into one voice average each other
-    out, 0.82 octaves of wander against 0.34, and reweighting the crossvoice
-    against the ring does not recover it (swept at six settings). On is
-    denser, rougher and faithful; off moves more; there is no setting that is
-    both.
+    The FM law is the one thing the graph contradicted the forums about. The
+    `P` input of every oscillator is pinned to a constant -300, which does
+    mean the frequency arrives entirely through the linear `F` input -- but
+    `F` is then multiplied by an Exp fed from a Selector between `Log(1/fm)`
+    and `Log(fm)`. The reciprocal and the logarithms cancel, so the law is
+    `freq = F * fm^m`: a frequency **ratio**, geometric and symmetric, with
+    `fm` running 1 to 16 because those are the Min and Max of the FM knob. At
+    1 there is no modulation at all. AM is `A * (1 + am * M)` with `am` up to
+    5, so past 1 it inverts into ring modulation.
 
-    Superseded by the above and removed, **oscillator pairs** makes each channel
-    two oscillators cross-FM'ing and cross-AM'ing each other rather than one,
-    was a weaker approximation of the same idea -- a second oscillator inside
-    one channel, sharing its filter and delay -- written before the ensembles
-    were read.
+    The four macro knobs do not offset the bars, they **map** them, and the
+    curve is the ensemble's `shaper`: a Selector over `v^4`, `v` and the
+    fourth root of `v`. Centre is the identity, hard left crushes the bank so
+    only the tallest bars survive, hard right lifts the whole thing. The knobs
+    run 0 to 1, as they do in the original.
 
-    The normalizer is read whole: Peak Detector (rectify, zero attack, release
-    quoted as the time to fall to a tenth) into a Clipper holding the envelope
-    at or above **nrm**, into a one-pole, and the signal divided by the
-    result. A real normalizer rather than the limiter earlier drafts carried,
-    with the Clipper's floor as what stops it flattening everything -- an
-    envelope below it is not tracked, so a quiet loop is scaled rather than
-    dragged to full. Flow drives the floor. REAKTOR's
-    oscillators are themselves anti-aliased, so these are too, and whatever
-    aliasing the original has comes from its FM sidebands rather than its
-    edges.
+    **flow** is the Pos of exactly five Selectors, each crossfading a pair of
+    knobs, and the five pairs are FM 1-16, AM 0-5, resonance 0-1, a smoothing
+    multiplier 1-20 and the normalizer's floor 1-0.01. So its left stop is
+    eight plain oscillators through resonant filters into tuned combs and its
+    right stop is four octaves of FM with ring modulation on top. Measured as
+    a largest-Lyapunov estimate over the whole state space there is a clean
+    bifurcation at that left stop: 0.5/s at flow 0, rising monotonically to
+    67/s (loop), 27/s (pre) and 24/s (bare) at flow 1. Resonance falls as flow
+    rises, which is the thing the Max porter found and could not explain --
+    "the resonance parameter in a 2-pole filter being turned down… a pretty
+    surprising behavior" -- and is reasonable in a feedback loop: high Q hands
+    the loop gain one narrow band and it rings there, open it out and the loop
+    has broadband gain for the saturator to fold.
 
-    Two deliberate departures. The normalizer only turns a loop **down**;
-    built as a true normalizer, holding every channel at one level, the
-    macros stop changing how loud anything is (the RMS span of the cutoff
-    macro goes from 0.05-1.06 to 0.50-1.45) and the crest factor drops from
-    3.2 to 2.7. The timbre still responds either way, so this is the narrower
-    claim: a bank where nothing can be quiet has one dynamic. And the
-    additions a Rack module wants and the original has none of: an audio
-    input into all eight loops, an attenuverter and CV per macro, a chaos CV
-    out, and a rand trigger. 1.15 % of a core at 48 kHz.
+    The normalizer is read whole: Peak Detector (rectify, zero attack) into a
+    Clipper holding the envelope at or above **nrm**, into a one-pole, and the
+    signal divided by the result. A real normalizer rather than the limiter
+    earlier drafts carried, with the Clipper's floor as what stops it
+    flattening everything. Both its times, and both control glides, come out
+    of the `smooth` macro as functions of the lever's **own** delay time: the
+    release is `DEL * smt` and the smoother `1000 / (DEL * smt)` hertz, so a
+    long loop gets a slow normalizer and a short one a fast one. It also
+    bounds every lever to 1 by construction, which is why the feedback bar can
+    reach exactly unity and needs no limiter behind it. REAKTOR's oscillators
+    are themselves anti-aliased, so these are too, and whatever aliasing the
+    original has comes from its FM sidebands rather than its edges.
+
+    **Nothing is in the engine that is not in the ensemble.** Several things
+    that measured well were taken out again for that reason: a chaotically
+    clocked two-state switch on the filters, a raw-oscillator option, a bit
+    crush, menu switches for the lever pairs and the crossvoice, a tritone
+    detune on the second lever, an equal-power pan across the voices, a
+    feedback bar reaching 102%, a global inertia on flow, and an output
+    saturator. The context menu is one item and that item is in the original.
+    What is left that the file does not give up is the filter itself (a
+    saturating SVF standing in for the closed Multi 2-Pole), the delay's
+    interpolation, and -- the honest one -- **where inside each range the
+    original's knobs sat**, since the snapshots are packed and did not decode.
+    Those settings are collected as `SET_` constants in one place.
+
+    The jacks are the deliberate exception, since Skrewell has none: an audio
+    input into all sixteen loops, an attenuverter and CV per macro, a chaos CV
+    out, and a rand trigger. The output stage is the ensemble's dB fader,
+    -36 to +18 dB. 3.0 % of a core at 48 kHz.
 
 ### Fixed
   - **sylla**'s GEN light answering almost none of the presses it acted on.

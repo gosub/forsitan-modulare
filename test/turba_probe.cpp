@@ -258,7 +258,7 @@ static void probeWander() {
             std::vector<double> so = oct, sd = db;
             std::sort(so.begin(), so.end());
             std::sort(sd.begin(), sd.end());
-            printf("%-9s %+5.1f  %8.2f %7.3f %7.2f\n", name[t], flow,
+            printf("%-9s %+5.1f  %9.3f %7.3f %7.2f\n", name[t], flow,
                    so[(int)(0.9 * (so.size() - 1))] - so[(int)(0.1 * (so.size() - 1))],
                    acc / (oct.size() - 1),
                    sd[(int)(0.9 * (sd.size() - 1))] - sd[(int)(0.1 * (sd.size() - 1))]);
