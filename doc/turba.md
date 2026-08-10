@@ -369,18 +369,27 @@ how much they matter:
 | **long delays** | below about 10 ms a loop is a comb and settles in a few passes; up at 100–300 ms it takes a tenth of a second per pass and its state survives long enough to evolve |
 | **feedback near unity** | at 0.5 every loop is safely damped and nothing ever builds. Push the **fbk** bars to 0.9–1.0 and loops build, saturate against the limiter and collapse, which is where the lurching comes from |
 | **pitches close together** | eight channels spread over three octaves beat against each other at audio rate, which is timbre. Eight inside a fifth beat *slowly*, and the cross-modulation turns those slow beats into slow movement |
-| **the coupling** | the **fm** and **am** bars decide who modulates whom. A bank where every channel listens to the same one behaves quite differently from a bank wired in a cycle |
+| **the coupling** | the **fm** and **am** bars decide who modulates whom. A bank where every channel listens to the same one behaves quite differently from a bank wired in a cycle. This is the one the original gives you and this module did not, until it did |
 
 The default bank is set that way — delays 30–307 ms, every loop between 0.88
 and 1.0, pitches within a fifth — which is worth knowing if you wonder why it
 sounds nothing like eight independent oscillators. An earlier default with half the feedback and 2–40 ms delays measured 0.04
-octaves of wander; the current one measures **0.32 in the loop topology**,
-against 0.75 for a reference recording of Skrewell standing still — and that
-is with nothing invented propping it up. An earlier draft of this module had a
-chaotically clocked two-state switch on each filter, which got the figure to
-0.97 but is not in the patch anywhere; once the `fm` and `am` bars became
-selectors and the bank could route its own modulation, the switch turned out
-to be unnecessary as well as unfaithful, and it is gone.
+octaves; the current one measures **0.18 in the loop topology and 0.22 in
+pre**, against 0.75 for a reference recording of Skrewell standing still.
+
+That is lower than this module used to claim, and the reason is worth stating
+plainly. An earlier draft carried a chaotically clocked two-state switch on
+each filter which got the figure to 0.97, and it has been removed because it
+is not in the patch — see *The rule*. Routing the modulation through the
+`fm` and `am` selectors did not recover what the switch was providing: it is
+0.18 with the selectors and was about 0.19 before any of this, so the honest
+accounting is that **the switch was carrying the self-evolution, and without
+it the bank moves about as much as it did at the start**.
+
+Which leaves the gap to the reference open. The likeliest place it is hiding
+is the arithmetic of the modulation chain, where 49 of the ensemble's 57
+module classes are still unnamed — the parts that decide how the selectors'
+output is scaled before it reaches the oscillator.
 
 Two honest caveats. **flow at either extreme kills it** — 0.29 octaves hard
 left, 0.21 hard right, against 0.82 at noon. Left is the ordered, periodic
