@@ -75,30 +75,37 @@ static const float K_OUT_MIN_DB = -36.f, K_OUT_MAX_DB = 18.f;
 
 // ------------------------------------------------------- knob settings ---
 //
-// Where inside those ranges this module leaves each knob. The endpoints are
-// the ones scrupea measured its way to, expressed in the ensemble's units.
+// Where inside those ranges the knobs sit: the **median of the 48 factory
+// snapshots**, which decoded on 2026-08-10. Not guesses any more.
 //
-// The snapshots decoded on 2026-08-10 and it was hoped these could come out
-// of them instead, but they cannot yet: the *values* read out cleanly, and
-// which control each one belongs to does not. Wiring the factory medians in
-// under the best available attribution moved the spectral centroid from
-// 540 Hz to 33 Hz, took the largest Lyapunov exponent from 65 to 5, and
-// pinned the chaos CV against its rail -- a sub-bass rumble, not Skrewell.
-// Shifting the attribution by one either way is worse still: it makes `min`
-// come out above `max`, which cannot be. So the attribution is wrong, not the
-// module, and these stay put until the snapshot control ids are resolved to
-// modules properly rather than matched by order. See doc/scrupea.md.
-static const float SET_PITCH_LO   =   0.f;    // 8.18 Hz
-static const float SET_PITCH_HI   = 132.f;    // 16.6 kHz
-static const float SET_CUT_LO     =  15.f;    // 20 Hz
-static const float SET_CUT_HI     = 135.f;    // 20 kHz
-static const float SET_DEL_SHORT  = 116.f;    // 0.15 ms
-static const float SET_DEL_LONG   = -16.f;    // 312 ms
-static const float SET_FM_LO  = K_FM_MIN,  SET_FM_HI  = K_FM_MAX;
-static const float SET_AM_LO  = K_AM_MIN,  SET_AM_HI  = K_AM_MAX;
-static const float SET_RES_LO = 0.95f,     SET_RES_HI = 0.30f;
-static const float SET_SMT_LO = K_SMT_MAX, SET_SMT_HI = K_SMT_MIN;
-static const float SET_NRM_LO = K_NRM_MIN, SET_NRM_HI = K_NRM_MAX;
+// A first attempt at this produced a sub-bass rumble, because the controls
+// were being matched to the snapshot's values by *param index* order. The
+// file writes them in **module order**, and the two differ -- by index the
+// bandpass generator's knobs come before the multimode one's, in the file it
+// is the other way round. Matched in module order, 42 knobs line up against
+// 42 values in every one of the 48 presets and the numbers come out musical.
+//
+// One deviation, forced: the factory median for `long` is pitch -50, a delay
+// of 2.2 seconds, and sixteen lines that long want seven megabytes. Capped
+// here at pitch -46, 1.75 s.
+//
+// The flow pairs are the ensemble's channel 0 and channel 1, read off the
+// `flow` macro's child order, and they say the same thing the manual does:
+// modulation rises to the right (FM 2.1 to 12.2, AM 2.0 to 4.05) while
+// resonance falls slightly (0.73 to 0.42), which is the bifurcation the Max
+// porter found and could not explain. Where three tone generators disagree
+// the median of the three is used.
+static const float SET_PITCH_LO   = -60.f;    // 13.8 Hz
+static const float SET_PITCH_HI   = 112.f;    // 6.6 kHz
+static const float SET_CUT_LO     = -40.f;    // 0.81 Hz
+static const float SET_CUT_HI     = 136.f;    // 21 kHz, the knob's own top
+static const float SET_DEL_SHORT  = 136.f;    // 0.047 ms
+static const float SET_DEL_LONG   = -46.f;    // 1.75 s (capped, see below)
+static const float SET_FM_LO  = 2.1f,   SET_FM_HI  = 12.2f;
+static const float SET_AM_LO  = 2.0f,   SET_AM_HI  = 4.05f;
+static const float SET_RES_LO = 0.73f,  SET_RES_HI = 0.42f;
+static const float SET_SMT_LO = 1.0f,   SET_SMT_HI = 20.0f;
+static const float SET_NRM_LO = 1.0f,   SET_NRM_HI = 0.50f;
 
 // Reaktor's Expon.(P) and Log.(F), which the ensemble uses everywhere a
 // frequency is set: pitch in, hertz out, and back.
@@ -414,8 +421,8 @@ struct Engine {
     void setSampleRate(float rate) {
         sr = rate;
         // `long` at the top of its travel is a 22 second delay; the setting
-        // this module uses is 312 ms, and half a second of line covers it.
-        const int n = (int)(0.5f * sr) + 8;
+        // this module uses is 1.75 s.
+        const int n = (int)(1.8f * sr) + 8;
         for (int i = 0; i < NLEV; i++)
             line[i].setSize(n);
     }

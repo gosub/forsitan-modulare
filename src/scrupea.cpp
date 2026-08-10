@@ -375,7 +375,10 @@ struct Scrupea : Module {
         // too, but the fader reaches +18 dB. Rack still needs a rail.
         outputs[LEFT_OUTPUT].setVoltage(clamp(l, -10.f, 10.f));
         outputs[RIGHT_OUTPUT].setVoltage(clamp(r, -10.f, 10.f));
-        outputs[CV_OUTPUT].setVoltage(clamp(cv * 2.f, -5.f, 5.f));
+        // The bank runs a good deal slower than it used to now the delay and
+        // pitch ranges are the factory ones, so there is more below 25 Hz for
+        // this to pick up; it was pinning against the rail at 2x.
+        outputs[CV_OUTPUT].setVoltage(clamp(cv * 0.6f, -5.f, 5.f));
 
         envL += (std::fabs(l) - envL) * 0.002f;
         envR += (std::fabs(r) - envR) * 0.002f;
@@ -748,45 +751,46 @@ struct ScrupeaScope : OpaqueWidget {
         const int head = module->scopeHead;
         const float px = w - 6.f, py = h - 6.f;
 
-        // Dots, batched: one path of little squares per age band and a
-        // single fill for each, twice over. Squares rather than circles
-        // because a circle is four beziers and there are three thousand of
-        // these -- eight voices at every slot.
-        for (int pass = 0; pass < 2; pass++) {
-            const float sz = pass == 0 ? 3.0f : 1.5f;   // bloom, then grain
-            const float half = sz * 0.5f;
-            for (int seg = 0; seg < NSEG; seg++) {
-                const int i0 = (int)((int64_t)n * seg / NSEG);
-                const int i1 = (int)((int64_t)n * (seg + 1) / NSEG);
-                if (i1 <= i0) continue;
+        // One polyline per voice per age band, stroked twice -- a wide dim
+        // pass for the bloom and a narrow bright one for the filament. Lines
+        // and not a scatter: a voice's samples are consecutive in time, so
+        // joining them is what draws the curve, and eight of them keep their
+        // own shapes instead of pooling into one cloud. Bands run oldest
+        // first so the bright head is laid over the dim tail, and they
+        // overlap by a point so there are no gaps at the joins.
+        nvgLineCap(args.vg, NVG_ROUND);
+        nvgLineJoin(args.vg, NVG_ROUND);
+        for (int seg = 0; seg < NSEG; seg++) {
+            const int i0 = (int)((int64_t)n * seg / NSEG);
+            const int i1 = (int)((int64_t)n * (seg + 1) / NSEG);
+            if (i1 - i0 < 1) continue;
 
+            // age: 0 at the tail, 1 at the head, cubed so the current figure
+            // carries and the rest is a ghost of where it has been
+            const float age = (float)(seg + 1) / (float)NSEG;
+            const float a3 = age * age * age;
+            const float wht = a3 * a3;
+
+            for (int c = 0; c < NCH; c++) {
                 nvgBeginPath(args.vg);
-                for (int i = i0; i < i1; i++) {
+                for (int i = i0; i <= i1 && i < n; i++) {
                     const int idx = (head - n + i + SCOPE_POINTS * 2) % SCOPE_POINTS;
-                    for (int c = 0; c < NCH; c++) {
-                        const float x = (module->scopeX[idx][c] * 0.5f + 0.5f)
-                                        * px + 3.f;
-                        const float y = (0.5f - module->scopeY[idx][c] * 0.5f)
-                                        * py + 3.f;
-                        nvgRect(args.vg, x - half, y - half, sz, sz);
-                    }
+                    const float x = (module->scopeX[idx][c] * 0.5f + 0.5f)
+                                    * px + 3.f;
+                    const float y = (0.5f - module->scopeY[idx][c] * 0.5f)
+                                    * py + 3.f;
+                    if (i == i0) nvgMoveTo(args.vg, x, y);
+                    else nvgLineTo(args.vg, x, y);
                 }
-
-                // age: 0 at the tail, 1 at the head. Cubed, so the last
-                // moment carries the figure and the rest is a ghost of where
-                // it has been.
-                const float age = (float)(seg + 1) / (float)NSEG;
-                const float a3 = age * age * age;
-                if (pass == 0) {
-                    nvgFillColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.10f * a3));
-                } else {
-                    const float wht = a3 * a3;
-                    nvgFillColor(args.vg, nvgRGBAf(1.f,
-                                                   0.84f + 0.16f * wht,
-                                                   0.10f + 0.80f * wht,
-                                                   0.10f + 0.85f * a3));
-                }
-                nvgFill(args.vg);
+                nvgStrokeColor(args.vg, nvgRGBAf(1.f, 0.86f, 0.15f, 0.07f * a3));
+                nvgStrokeWidth(args.vg, 3.0f);
+                nvgStroke(args.vg);
+                nvgStrokeColor(args.vg, nvgRGBAf(1.f,
+                                                 0.84f + 0.16f * wht,
+                                                 0.10f + 0.80f * wht,
+                                                 0.08f + 0.80f * a3));
+                nvgStrokeWidth(args.vg, 0.9f);
+                nvgStroke(args.vg);
             }
         }
 
