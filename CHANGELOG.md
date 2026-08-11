@@ -288,6 +288,57 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     two voices with left on lanes 0 and 2 and right on 1 and 3. RMS, centroid
     and the whole Lyapunov ladder land within a percent of the scalar version.
 
+  - **viginti**, an 8 HP model of the **KORG35 Rev. 2** lowpass, the OTA-based
+    filter of the later MS-20 revisions. Not a filter with a waveshaper after
+    it: the circuit's three series diodes sit inside the resonance feedback
+    loop, so it is the resonance that distorts, and the whole character of the
+    thing is that it is a different filter at every level.
+
+    The model is the published one, from Danish, Bilbao and Ducceschi,
+    "Applications of Port Hamiltonian Methods to Non-Iterative Stable
+    Simulations of the KORG35 and MOOG 4-Pole VCF" (DAFx20in21, section 3.1):
+    a two-state nonlinear system in normalised capacitor voltages with the
+    diode branch solved in closed form through the Lambert W function. The
+    paper leaves the circuit parameters as symbols, so they come from its own
+    reference for the hardware, Stinchcombe's 2006 study of the MS-10 and
+    MS-20 filters: the feedback amplifier is 1 + 10k/3.3k = 4.03, the
+    resonance pot divides by at most 10/(8.2+10), and the diode string is
+    1N4148s. Those give the circuit's resonance parameter a hard ceiling of
+    2.21 against a self-oscillation threshold of 2.0005, which is why the real
+    thing only sings at the very top of its peak knob. Nothing was tuned by
+    ear.
+
+    Two integrators, and they are checked against each other: the real-time
+    path is the paper's non-iterative discrete-gradient scheme with the 2x2
+    solve written out in scalars, and beside it sits an RK4 integration of the
+    same continuous equations whose only job is to be the oracle.
+    `test/viginti_invariants` holds the production scheme to 4.1e-3 normalised
+    RMS of the reference at 44.1 kHz and requires the error to fall with the
+    sample rate; it also checks the Lambert-W identity over 24 decades, the
+    small-signal and asymptotic limits of the diode function, and that the
+    2x2 determinant stays above 0.99 over the knob's range. Cross-checked
+    once more against the paper authors' own published renders: 0.9994
+    correlation in the linear regime and 0.9987 in the nonlinear one.
+
+    The level dependence, measured at the cutoff with the resonance a little
+    past noon: peak gain x9.95 at 5 mV in, x4.95 at 0.5 V, x1.30 at 5 V. The
+    peak falls by twelve times across the range a modular signal covers, which
+    is what **drive** is for. Past that the diodes are fully on, the feedback
+    amplifier is back to unity gain and the distortion falls again, so the
+    dirt lives in the middle of the knob rather than at the end of it.
+
+    The resonance knob is exponential in Q rather than linear in the circuit
+    parameter, 0.5 to 50 over its first 85 % and self-oscillating over the
+    rest, all in one mapping function that the DSP never sees. Self
+    oscillation needs a noise floor to start from, since the ideal model at
+    rest sits exactly at zero forever; it gets 8 uV, less than the real
+    circuit has. Polyphonic, one filter state per channel. Oversampling
+    1x to 16x, default 2x, which is where the alias floor stops improving
+    (-40 dB at 1x, -73 dB at 2x, nothing measurable beyond). 1.3 % of a core
+    at 48 kHz for one channel at the default.
+
+    The MS-20's highpass is a different circuit and is not modelled.
+
 ### Fixed
   - **sylla**'s GEN light answering almost none of the presses it acted on.
     A sample renders in 0.01 to 15 ms and the light was on for exactly as
