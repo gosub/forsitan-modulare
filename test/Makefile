@@ -21,7 +21,7 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
-     scrupea_probe $(SMOKE_BINS) $(CROSS_BINS)
+     scrupea_probe viginti_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
@@ -112,6 +112,18 @@ smoke_tundo: ../src/tundo_dsp.hpp
 scrupea_probe: scrupea_probe.cpp smoke_harness.hpp ../src/scrupea.cpp ../src/scrupea_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
+# Measurement harness for the KORG35 filter: the Lambert-W solver, the limits
+# of the diode nonlinearity, the production scheme against the RK4 reference
+# across sample rates, frequency response, level dependence, the
+# self-oscillation threshold and CPU. Built by `make all`.
+# Neither of the two viginti harnesses links Rack: the DSP header is free of
+# Rack headers, so they build straight from it.
+viginti_probe: viginti_probe.cpp ../src/viginti_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@
+
+viginti_invariants: viginti_invariants.cpp ../src/viginti_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@
+
 check: $(SMOKE_BINS) $(CROSS_BINS)
 	@echo "module,check,value,pass"; \
 	rc=0; \
@@ -121,6 +133,7 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
 	      caligo_probe raucus_probe tundo_probe cartilago_probe \
+	      textor_probe scrupea_probe viginti_probe \
 	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
