@@ -61,8 +61,13 @@ SVG_ONLY = ('label', 'logo', 'box')
 # ── parse ─────────────────────────────────────────────────────────────────────
 # The optional `title=MM` overrides the default title cap height. Use it only
 # when a panel is too crowded for the standard size (see CLAUDE.md).
+# The optional `titley=MM` moves the title's baseline down from its default of
+# 3.5 + cap height. A title that clears the screw band gets the whole panel
+# width to sit in, which is how a long name keeps the house size on a narrow
+# panel instead of being shrunk to fit between the screws.
 LAYOUT_HEAD_RE = re.compile(
-    r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)(?:\s+title=([\d.]+))?')
+    r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)'
+    r'(?:\s+title=([\d.]+))?(?:\s+titley=([\d.]+))?')
 # @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  — X Y optional for SVG-only kinds
 # A box may carry `box=WxH` to override the default 14x14 badge, for panels
 # whose output row is too wide to wrap each jack in its own badge (quadrare).
@@ -88,6 +93,7 @@ def parse_cpp(path):
     panel_w     = float(mh.group(2))
     panel_h     = float(mh.group(3))
     title_size  = float(mh.group(4)) if mh.group(4) else None
+    title_y     = float(mh.group(5)) if mh.group(5) else None
 
     block_m = re.search(
         r'(//\s*@layout:begin.*?//\s*@layout:end)', text, re.DOTALL)
@@ -144,6 +150,7 @@ def parse_cpp(path):
         'panel_w':  panel_w,
         'panel_h':  panel_h,
         'title_size': title_size,
+        'title_y': title_y,
         'elements': elements,
         'widget_visuals': WIDGET_VISUALS,
         'kind_fill': KIND_FILL,
@@ -184,9 +191,12 @@ def generate_block(layout):
     w = layout['panel_w']
     h = layout['panel_h']
     ts = layout.get('title_size')
+    ty = layout.get('title_y')
     head = f'// @layout:begin {m} {w} {h}'
     if ts:
         head += f' title={ts}'
+    if ty:
+        head += f' titley={ty}'
     lines = [head]
     for e in layout['elements']:
         if e['kind'] in SVG_ONLY:
@@ -222,6 +232,35 @@ def write_cpp(path, layout):
 # Default title cap height, in mm. Every panel uses this unless its
 # @layout:begin line overrides it with `title=`.
 TITLE_CAP_MM = 3.2
+
+# The four corner screws sit at (5.08, 2.54) with a 3.5mm radius, so they own
+# the panel down to y = 6.04. A title level with them has to fit between them;
+# one whose top clears them has the full width, less a margin off each edge.
+SCREW_BAND_MM = 6.1
+TITLE_SIDE_BESIDE_SCREWS = 12.1   # screw zone + clearance
+TITLE_SIDE_BELOW_SCREWS = 2.5
+
+
+def title_metrics(layout, text_w):
+    """(cap height, baseline, width) of a panel's title.
+
+    `text_w(txt, size)` measures OCR-A. The size shrinks only if the name does
+    not fit the width available at its baseline, which is why `titley` is the
+    fix for a long name on a narrow panel rather than a smaller `title`.
+    """
+    W = layout['panel_w']
+    size = layout.get('title_size') or TITLE_CAP_MM
+    baseline = layout.get('title_y') or (3.5 + size)
+    side = (TITLE_SIDE_BELOW_SCREWS if baseline - size >= SCREW_BAND_MM
+            else TITLE_SIDE_BESIDE_SCREWS)
+    avail = W - 2 * side
+    w = text_w(layout['module'], size)
+    if w > avail:
+        size *= avail / w
+        if not layout.get('title_y'):
+            baseline = 3.5 + size
+        w = text_w(layout['module'], size)
+    return size, baseline, w
 
 FONT_PATH = os.path.expanduser(
     '~/dl/audio/ocr-a/OCR-A Regular/OCR-A Regular.otf')
@@ -326,12 +365,8 @@ def regen_svg(layout, svg_path):
     # module name title at top. TITLE_CAP_MM is the house size for every
     # panel; a crowded panel may override it with `title=` on the @layout:begin
     # line. Long names still shrink to clear the screw zones (MMCCCXCIX).
-    title_sz = layout.get('title_size') or TITLE_CAP_MM
-    avail = W - 2 * 12.1   # panel width minus screw zones + clearance
-    w = text_w(mod, title_sz)
-    if w > avail:
-        title_sz *= avail / w
-    d = text_path(mod, W/2, 3.5 + title_sz, title_sz)
+    title_sz, title_base, _ = title_metrics(layout, text_w)
+    d = text_path(mod, W/2, title_base, title_sz)
     if d:
         lines.append(f'  <path d="{d}" fill="#dcdcdc"/>')
 
