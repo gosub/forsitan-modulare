@@ -38,3 +38,4 @@ extern Model* modelRaucus;
 extern Model* modelTundo;
 extern Model* modelCartilago;
 extern Model* modelScrupea;
+extern Model* modelViginti;

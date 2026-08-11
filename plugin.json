@@ -106,7 +106,7 @@
     },
     {
       "slug": "draen",
-      "name": "dr\u00e6n",
+      "name": "dræn",
       "description": "Drone synthesizer: two banks of 37 engines, each played from just a fundamental and a level.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/draen.md",
       "tags": [
@@ -339,6 +339,18 @@
         "Synth voice",
         "Effect",
         "Random"
+      ]
+    },
+    {
+      "slug": "viginti",
+      "name": "viginti",
+      "description": "MS-20 lowpass (KORG35 Rev.2): the diodes clip inside the resonance loop.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.14.0/doc/viginti.md",
+      "tags": [
+        "Filter",
+        "Hardware clone",
+        "Polyphonic",
+        "Distortion"
       ]
     }
   ]
