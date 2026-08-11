@@ -216,10 +216,10 @@ struct VigintiWidget : ModuleWidget {
 // @elem LABEL_FM label 0.0 label "fm" 0.0 29.14 52.50
 // @elem LABEL_DRIVE label 0.0 label "drive" 0.0 11.50 73.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 29.14 73.50
-// @elem LABEL_IN label 0.0 label "in" 0.0 8.00 94.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 11.50 111.00
 // @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 20.32 94.50
 // @elem LABEL_FMIN label 0.0 label "fm" 0.0 32.64 94.50
-// @elem LABEL_RESCV label 0.0 label "res" 0.0 11.50 111.00
+// @elem LABEL_RESCV label 0.0 label "res" 0.0 8.00 94.50
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 29.14 105.50
 // @elem LABEL_OUT label 0.0 label "out" 0.0 29.14 111.00
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 20.32 122.50
@@ -233,10 +233,10 @@ struct VigintiWidget : ModuleWidget {
         addParam(createParamCentered<Trimpot>(mm2px(Vec(29.14f, 46.00f)), module, Viginti::FM_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 65.00f)), module, Viginti::DRIVE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 65.00f)), module, Viginti::LEVEL_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.00f, 87.00f)), module, Viginti::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 103.50f)), module, Viginti::AUDIO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32f, 87.00f)), module, Viginti::VOCT_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.64f, 87.00f)), module, Viginti::FM_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 103.50f)), module, Viginti::RES_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.00f, 87.00f)), module, Viginti::RES_CV_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(29.14f, 103.50f)), module, Viginti::AUDIO_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(34.14f, 100.50f)), module, Viginti::LEVEL_LIGHT));
         // @layout:end
