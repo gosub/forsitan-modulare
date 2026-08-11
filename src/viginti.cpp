@@ -195,7 +195,7 @@ struct VigintiWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/viginti.svg")));
 
-// @layout:begin viginti 40.64 128.5
+// @layout:begin viginti 40.64 128.5 titley=10.0
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
@@ -211,11 +211,11 @@ struct VigintiWidget : ModuleWidget {
 // @elem RES_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.0 light "" 0.0
-// @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 20.32 32.50
-// @elem LABEL_RES label 0.0 label "res" 0.0 11.50 52.50
-// @elem LABEL_FM label 0.0 label "fm" 0.0 29.14 52.50
-// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 11.50 73.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 29.14 73.50
+// @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 20.32 35.00
+// @elem LABEL_RES label 0.0 label "res" 0.0 11.50 54.50
+// @elem LABEL_FM label 0.0 label "fm" 0.0 29.14 54.50
+// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 11.50 74.00
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 29.14 74.00
 // @elem LABEL_IN label 0.0 label "in" 0.0 11.50 111.00
 // @elem LABEL_VOCT label 0.0 label "v/oct" 0.0 20.32 94.50
 // @elem LABEL_FMIN label 0.0 label "fm" 0.0 32.64 94.50
@@ -228,11 +228,11 @@ struct VigintiWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(33.02f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(33.02f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(20.32f, 21.00f)), module, Viginti::CUTOFF_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 44.00f)), module, Viginti::RES_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(29.14f, 46.00f)), module, Viginti::FM_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 65.00f)), module, Viginti::DRIVE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 65.00f)), module, Viginti::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(20.32f, 23.50f)), module, Viginti::CUTOFF_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 46.00f)), module, Viginti::RES_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(29.14f, 48.00f)), module, Viginti::FM_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 65.50f)), module, Viginti::DRIVE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(29.14f, 65.50f)), module, Viginti::LEVEL_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.50f, 103.50f)), module, Viginti::AUDIO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32f, 87.00f)), module, Viginti::VOCT_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.64f, 87.00f)), module, Viginti::FM_INPUT));
