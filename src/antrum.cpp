@@ -400,68 +400,68 @@ struct AntrumWidget : ModuleWidget {
 // @elem CV_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LEVEL_L_LIGHT SmallLight 1.5 light "" 0.0
 // @elem LEVEL_R_LIGHT SmallLight 1.5 light "" 0.0
-// @elem LABEL_SIZE label 0.0 label "size" 0.0 14.80 33.50
-// @elem LABEL_PREDELAY label 0.0 label "pre-delay" 0.0 38.80 33.50
-// @elem LABEL_DECAY label 0.0 label "decay" 0.0 62.80 33.50
-// @elem LABEL_ABSORB label 0.0 label "absorb" 0.0 86.80 33.50
-// @elem LABEL_DEPTH label 0.0 label "depth" 0.0 14.80 73.50
-// @elem LABEL_SPEED label 0.0 label "speed" 0.0 38.80 73.50
-// @elem LABEL_TILT label 0.0 label "tilt" 0.0 62.80 73.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 86.80 73.50
-// @elem LABEL_INL label 0.0 label "in l" 0.0 6.50 113.50
-// @elem LABEL_INR label 0.0 label "in r" 0.0 17.50 113.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 28.50 113.50
-// @elem LABEL_GATE label 0.0 label "gate" 0.0 39.50 113.50
-// @elem LABEL_REV label 0.0 label "rev" 0.0 49.50 113.00
-// @elem LABEL_CV label 0.0 label "cv" 0.0 61.40 113.50
-// @elem LABEL_L label 0.0 label "L" 0.0 77.00 113.50
-// @elem LABEL_R label 0.0 label "R" 0.0 92.60 113.50
-// @elem BOX_CV panel_box 7.0 box "" 0.0 61.40 108.00
-// @elem BOX_L panel_box 7.0 box "" 0.0 77.00 108.00
-// @elem BOX_R panel_box 7.0 box "" 0.0 92.60 108.00
+// @elem LABEL_SIZE label 0.0 label "size" 0.0 14.80 35.50
+// @elem LABEL_PREDELAY label 0.0 label "pre-delay" 0.0 38.80 35.50
+// @elem LABEL_DECAY label 0.0 label "decay" 0.0 62.80 35.50
+// @elem LABEL_ABSORB label 0.0 label "absorb" 0.0 86.80 35.50
+// @elem LABEL_DEPTH label 0.0 label "depth" 0.0 14.80 74.50
+// @elem LABEL_SPEED label 0.0 label "speed" 0.0 38.80 74.50
+// @elem LABEL_TILT label 0.0 label "tilt" 0.0 62.80 74.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 86.80 74.50
+// @elem LABEL_INL label 0.0 label "in l" 0.0 6.50 112.50
+// @elem LABEL_INR label 0.0 label "in r" 0.0 17.50 112.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 28.50 112.50
+// @elem LABEL_GATE label 0.0 label "gate" 0.0 39.50 112.50
+// @elem LABEL_REV label 0.0 label "rev" 0.0 49.50 112.00
+// @elem LABEL_CV label 0.0 label "cv" 0.0 61.40 112.50
+// @elem LABEL_L label 0.0 label "L" 0.0 77.00 112.50
+// @elem LABEL_R label 0.0 label "R" 0.0 92.60 112.50
+// @elem BOX_CV panel_box 7.0 box "" 0.0 61.40 107.00
+// @elem BOX_L panel_box 7.0 box "" 0.0 77.00 107.00
+// @elem BOX_R panel_box 7.0 box "" 0.0 92.60 107.00
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 50.80 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(93.98f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(93.98f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(14.80f, 22.00f)), module, Antrum::SIZE_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(38.80f, 22.00f)), module, Antrum::PREDELAY_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(62.80f, 22.00f)), module, Antrum::DECAY_PARAM));
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(86.80f, 22.00f)), module, Antrum::ABSORB_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(9.80f, 40.00f)), module, Antrum::SIZE_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.80f, 40.00f)), module, Antrum::PREDELAY_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(57.80f, 40.00f)), module, Antrum::DECAY_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(81.80f, 40.00f)), module, Antrum::ABSORB_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.30f, 40.00f)), module, Antrum::SIZE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.30f, 40.00f)), module, Antrum::PREDELAY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(67.30f, 40.00f)), module, Antrum::DECAY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(91.30f, 40.00f)), module, Antrum::ABSORB_CV_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.80f, 65.00f)), module, Antrum::DEPTH_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.80f, 65.00f)), module, Antrum::SPEED_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(62.80f, 65.00f)), module, Antrum::TILT_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(86.80f, 65.00f)), module, Antrum::MIX_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(9.80f, 83.00f)), module, Antrum::DEPTH_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.80f, 83.00f)), module, Antrum::SPEED_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(57.80f, 83.00f)), module, Antrum::TILT_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(81.80f, 83.00f)), module, Antrum::MIX_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.30f, 83.00f)), module, Antrum::DEPTH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.30f, 83.00f)), module, Antrum::SPEED_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(67.30f, 83.00f)), module, Antrum::TILT_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(91.30f, 83.00f)), module, Antrum::MIX_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(6.50f, 106.00f)), module, Antrum::LEFT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.50f, 106.00f)), module, Antrum::RIGHT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(28.50f, 106.00f)), module, Antrum::CLOCK_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(39.50f, 106.00f)), module, Antrum::REVERSE_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(49.50f, 106.00f)), module, Antrum::REVERSE_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(61.40f, 106.00f)), module, Antrum::CV_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(77.00f, 106.00f)), module, Antrum::LEFT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.60f, 106.00f)), module, Antrum::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(44.30f, 59.50f)), module, Antrum::SPEED_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(52.50f, 103.00f)), module, Antrum::REVERSE_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(66.40f, 103.00f)), module, Antrum::CV_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(82.00f, 103.00f)), module, Antrum::LEVEL_L_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(97.60f, 103.00f)), module, Antrum::LEVEL_R_LIGHT));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(14.80f, 24.00f)), module, Antrum::SIZE_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(38.80f, 24.00f)), module, Antrum::PREDELAY_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(62.80f, 24.00f)), module, Antrum::DECAY_PARAM));
+        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(86.80f, 24.00f)), module, Antrum::ABSORB_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(9.80f, 42.00f)), module, Antrum::SIZE_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.80f, 42.00f)), module, Antrum::PREDELAY_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(57.80f, 42.00f)), module, Antrum::DECAY_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(81.80f, 42.00f)), module, Antrum::ABSORB_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.30f, 42.00f)), module, Antrum::SIZE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.30f, 42.00f)), module, Antrum::PREDELAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(67.30f, 42.00f)), module, Antrum::DECAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(91.30f, 42.00f)), module, Antrum::ABSORB_CV_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.80f, 66.00f)), module, Antrum::DEPTH_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(38.80f, 66.00f)), module, Antrum::SPEED_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(62.80f, 66.00f)), module, Antrum::TILT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(86.80f, 66.00f)), module, Antrum::MIX_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(9.80f, 81.00f)), module, Antrum::DEPTH_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.80f, 81.00f)), module, Antrum::SPEED_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(57.80f, 81.00f)), module, Antrum::TILT_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(81.80f, 81.00f)), module, Antrum::MIX_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.30f, 81.00f)), module, Antrum::DEPTH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.30f, 81.00f)), module, Antrum::SPEED_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(67.30f, 81.00f)), module, Antrum::TILT_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(91.30f, 81.00f)), module, Antrum::MIX_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(6.50f, 105.00f)), module, Antrum::LEFT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.50f, 105.00f)), module, Antrum::RIGHT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(28.50f, 105.00f)), module, Antrum::CLOCK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(39.50f, 105.00f)), module, Antrum::REVERSE_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(49.50f, 105.00f)), module, Antrum::REVERSE_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(61.40f, 105.00f)), module, Antrum::CV_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(77.00f, 105.00f)), module, Antrum::LEFT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.60f, 105.00f)), module, Antrum::RIGHT_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(44.30f, 60.50f)), module, Antrum::SPEED_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(52.50f, 102.00f)), module, Antrum::REVERSE_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(66.40f, 102.00f)), module, Antrum::CV_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(82.00f, 102.00f)), module, Antrum::LEVEL_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(97.60f, 102.00f)), module, Antrum::LEVEL_R_LIGHT));
         // @layout:end
     }
 

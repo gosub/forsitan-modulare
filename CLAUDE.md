@@ -211,14 +211,21 @@ When laying out a panel (by hand or generated), follow these rules:
   trimpot left of the knob's centre line, CV jack right of it — so knob,
   trimpot and jack form a triangle, with the knob's own label between them.
   Canonical offsets from the knob centre `(x, y)`, as first used on caligo:
-  trimpot `(x − 5, y + 18)`, jack `(x + 4.5, y + 18)`. Tighten the
-  horizontal spread when the column pitch is narrow (tundo runs `± 4.35` on
-  a 17.4mm pitch), but keep ≥1.5mm between the trimpot and its own jack
-  *and* between that jack and the next column's trimpot — with real radii
-  those two gaps are what a narrow pitch runs out of first. Stack them
-  vertically only when the panel genuinely has no room for the triangle.
-  The row it replaces is free space: redistribute it rather than leaving a
-  dead band. Modules following this: caligo, antrum, tundo, guttur, scrupea.
+  trimpot `(x − 5, …)`, jack `(x + 4.5, …)`. The row's `y` **follows the
+  label, not the knob**: it sits far enough down that the trimpot's top edge
+  clears the label baseline by ~4mm, which is `y + 18` under a
+  `RoundBigBlackKnob` (label at +11.5) and `y + 15` under a `RoundBlackKnob`
+  (label at +8.5). Using one offset for both knob sizes is the mistake to
+  avoid — it makes the big-knob rows visibly tighter than the small-knob
+  ones on the same panel. Tighten the horizontal spread when the column
+  pitch is narrow (tundo runs `± 4.35` on a 17.4mm pitch), but keep ≥1.5mm
+  between the trimpot and its own jack *and* between that jack and the next
+  column's trimpot — with real radii those two gaps are what a narrow pitch
+  runs out of first. Stack them vertically only when the panel genuinely has
+  no room for the triangle. The row it replaces is free space: redistribute
+  it over the whole panel rather than leaving one fat dead band, and check
+  that the bands between control rows come out equal.
+  Modules following this: caligo, antrum, tundo, guttur, scrupea.
 - **LEDs**: never free-floating. An output-level LED sits 2mm inset from
   the top-right corner of its output badge (box center +5,−5 — see
   scando). A stereo output pair always gets one level LED per badge —
