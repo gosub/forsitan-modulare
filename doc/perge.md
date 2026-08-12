@@ -98,7 +98,7 @@ suddenly dry, and the next press is another surprise.
 | **clock** | external tempo; measured between rising edges, released ~10 s after the clock stops (the LED by the jack flashes on every grid tick) |
 | **frz** | freeze gate |
 | **tilt** | tilt gate (momentary) |
-| **out l / out r** | stereo output; with only *out l* patched the two channels are summed |
+| **L / R** | stereo output; with only *L* patched the two channels are summed |
 
 ## Tips
 
