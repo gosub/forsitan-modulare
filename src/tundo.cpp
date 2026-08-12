@@ -373,9 +373,9 @@ struct TundoWidget : ModuleWidget {
 // @elem LABEL_HARM label 0.0 label "harm" 0.0 26.86 30.50
 // @elem LABEL_SPREAD label 0.0 label "spread" 0.0 44.26 30.50
 // @elem LABEL_MORPH label 0.0 label "morph" 0.0 61.66 30.50
-// @elem LABEL_FOLD label 0.0 label "fold" 0.0 18.16 66.50
-// @elem LABEL_ATTACK label 0.0 label "attack" 0.0 35.56 66.50
-// @elem LABEL_DECAY label 0.0 label "decay" 0.0 52.96 66.50
+// @elem LABEL_FOLD label 0.0 label "fold" 0.0 18.16 65.50
+// @elem LABEL_ATTACK label 0.0 label "attack" 0.0 35.56 65.50
+// @elem LABEL_DECAY label 0.0 label "decay" 0.0 52.96 65.50
 // @elem LABEL_MODE label 0.0 label "mode" 0.0 8.50 101.00
 // @elem LABEL_MODECV label 0.0 label "cv" 0.0 19.50 101.00
 // @elem LABEL_TRIG label 0.0 label "trig" 0.0 30.56 101.00
@@ -396,23 +396,23 @@ struct TundoWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(26.86f, 22.00f)), module, Tundo::HARM_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(44.26f, 22.00f)), module, Tundo::SPREAD_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.66f, 22.00f)), module, Tundo::MORPH_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(5.11f, 40.00f)), module, Tundo::PITCH_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(22.51f, 40.00f)), module, Tundo::HARM_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(39.91f, 40.00f)), module, Tundo::SPREAD_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(57.31f, 40.00f)), module, Tundo::MORPH_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.81f, 40.00f)), module, Tundo::PITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.21f, 40.00f)), module, Tundo::HARM_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(48.61f, 40.00f)), module, Tundo::SPREAD_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.01f, 40.00f)), module, Tundo::MORPH_CV_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(18.16f, 58.00f)), module, Tundo::FOLD_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.56f, 58.00f)), module, Tundo::ATTACK_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(52.96f, 58.00f)), module, Tundo::DECAY_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(13.81f, 76.00f)), module, Tundo::FOLD_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(31.21f, 76.00f)), module, Tundo::ATTACK_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(48.61f, 76.00f)), module, Tundo::DECAY_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.51f, 76.00f)), module, Tundo::FOLD_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(39.91f, 76.00f)), module, Tundo::ATTACK_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(57.31f, 76.00f)), module, Tundo::DECAY_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(5.11f, 37.00f)), module, Tundo::PITCH_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(22.51f, 37.00f)), module, Tundo::HARM_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(39.91f, 37.00f)), module, Tundo::SPREAD_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(57.31f, 37.00f)), module, Tundo::MORPH_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.81f, 37.00f)), module, Tundo::PITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.21f, 37.00f)), module, Tundo::HARM_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(48.61f, 37.00f)), module, Tundo::SPREAD_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.01f, 37.00f)), module, Tundo::MORPH_CV_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(18.16f, 57.00f)), module, Tundo::FOLD_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.56f, 57.00f)), module, Tundo::ATTACK_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(52.96f, 57.00f)), module, Tundo::DECAY_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(13.81f, 72.00f)), module, Tundo::FOLD_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(31.21f, 72.00f)), module, Tundo::ATTACK_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(48.61f, 72.00f)), module, Tundo::DECAY_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.51f, 72.00f)), module, Tundo::FOLD_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(39.91f, 72.00f)), module, Tundo::ATTACK_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(57.31f, 72.00f)), module, Tundo::DECAY_CV_INPUT));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(8.50f, 92.50f)), module, Tundo::MODE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.50f, 92.50f)), module, Tundo::MODE_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(30.56f, 92.50f)), module, Tundo::TRIG_INPUT));
