@@ -560,10 +560,9 @@ struct SyllaWidget : ModuleWidget {
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 12.60 68.50
 // @elem LABEL_LOOP label 0.0 label "loop" 0.0 24.00 68.50
 // @elem LABEL_GATE label 0.0 label "gate" 0.0 35.00 68.50
-// @elem LABEL_GENIN label 0.0 label "gen" 0.0 8.00 87.50
-// @elem LABEL_SPD label 0.0 label "spd" 0.0 20.32 87.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 32.60 87.50
-// @elem LABEL_PLAY label 0.0 label "play" 0.0 32.60 99.00
+// @elem LABEL_GENIN label 0.0 label "gen" 0.0 14.16 85.50
+// @elem LABEL_SPD label 0.0 label "spd" 0.0 26.48 85.50
+// @elem LABEL_PLAY label 0.0 label "play" 0.0 20.32 99.50
 // @elem LABEL_OUT label 0.0 label "out" 0.0 12.40 114.00
 // @elem LABEL_EOC label 0.0 label "eoc" 0.0 28.20 114.00
 // @elem BOX_OUT panel_box 7.0 box "" 0.0 12.40 108.50
@@ -576,15 +575,15 @@ struct SyllaWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(30.48f, 123.42f)))); // SCREW_BR
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.60f, 21.00f)), module, Sylla::FAMILY_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(30.00f, 19.00f)), module, Sylla::GEN_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(32.60f, 92.00f)), module, Sylla::TRIG_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(24.57f, 92.00f)), module, Sylla::TRIG_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.60f, 41.00f)), module, Sylla::SPEED_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(28.00f, 41.00f)), module, Sylla::LEN_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.60f, 60.00f)), module, Sylla::LEVEL_PARAM));
         addParam(createParamCentered<CKSS>(mm2px(Vec(24.00f, 60.00f)), module, Sylla::LOOP_PARAM));
         addParam(createParamCentered<CKSS>(mm2px(Vec(35.00f, 60.00f)), module, Sylla::GATE_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.00f, 80.00f)), module, Sylla::GEN_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.32f, 80.00f)), module, Sylla::SPEED_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.60f, 80.00f)), module, Sylla::TRIG_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.16f, 78.00f)), module, Sylla::GEN_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.48f, 78.00f)), module, Sylla::SPEED_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.07f, 92.00f)), module, Sylla::TRIG_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(12.40f, 106.50f)), module, Sylla::OUT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(28.20f, 106.50f)), module, Sylla::EOC_OUTPUT));
         addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(33.20f, 15.80f)), module, Sylla::BUSY_LIGHT));
