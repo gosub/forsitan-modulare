@@ -715,12 +715,12 @@ struct GutturWidget : ModuleWidget {
 // @elem LABEL_DAMP label 0.0 label "damp" 0.0 61.00 33.50
 // @elem LABEL_RATE label 0.0 label "rate" 0.0 85.00 33.50
 // @elem LABEL_SMOOTH label 0.0 label "smooth" 0.0 109.00 33.50
-// @elem LABEL_FILT label 0.0 label "filters" 0.0 109.00 53.70
-// @elem LABEL_BANKA label 0.0 label "bank a" 0.0 13.00 71.50
-// @elem LABEL_BANKB label 0.0 label "bank b" 0.0 37.00 71.50
-// @elem LABEL_PITCH label 0.0 label "pitch" 0.0 61.00 71.50
-// @elem LABEL_Q label 0.0 label "q" 0.0 85.00 71.50
-// @elem LABEL_SPREAD label 0.0 label "spread" 0.0 109.00 71.50
+// @elem LABEL_FILT label 0.0 label "filters" 0.0 109.00 48.50
+// @elem LABEL_BANKA label 0.0 label "bank a" 0.0 13.00 66.50
+// @elem LABEL_BANKB label 0.0 label "bank b" 0.0 37.00 66.50
+// @elem LABEL_PITCH label 0.0 label "pitch" 0.0 61.00 66.50
+// @elem LABEL_Q label 0.0 label "q" 0.0 85.00 66.50
+// @elem LABEL_SPREAD label 0.0 label "spread" 0.0 109.00 66.50
 // @elem LABEL_GAINA label 0.0 label "gain a" 0.0 13.00 102.50
 // @elem LABEL_GAINB label 0.0 label "gain b" 0.0 37.00 102.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 61.00 102.50
@@ -742,29 +742,29 @@ struct GutturWidget : ModuleWidget {
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(61.00f, 22.00f)), module, Guttur::DAMP_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(85.00f, 22.00f)), module, Guttur::RATE_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(109.00f, 22.00f)), module, Guttur::SMOOTH_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(13.00f, 40.50f)), module, Guttur::DRIVE_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(37.00f, 40.50f)), module, Guttur::TONE_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(61.00f, 40.50f)), module, Guttur::DAMP_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(85.00f, 40.50f)), module, Guttur::RATE_ATT_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 63.00f)), module, Guttur::BANKA_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.00f, 63.00f)), module, Guttur::BANKB_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.00f, 63.00f)), module, Guttur::PITCH_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(85.00f, 63.00f)), module, Guttur::Q_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(109.00f, 63.00f)), module, Guttur::SPREAD_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(8.00f, 40.00f)), module, Guttur::DRIVE_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(32.00f, 40.00f)), module, Guttur::TONE_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.00f, 40.00f)), module, Guttur::DAMP_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(80.00f, 40.00f)), module, Guttur::RATE_ATT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 58.00f)), module, Guttur::BANKA_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.00f, 58.00f)), module, Guttur::BANKB_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.00f, 58.00f)), module, Guttur::PITCH_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(85.00f, 58.00f)), module, Guttur::Q_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(109.00f, 58.00f)), module, Guttur::SPREAD_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 94.00f)), module, Guttur::GAINA_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.00f, 94.00f)), module, Guttur::GAINB_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.00f, 94.00f)), module, Guttur::LEVEL_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(85.00f, 94.00f)), module, Guttur::DIST_PARAM));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(109.00f, 45.50f)), module, Guttur::FILT_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(109.00f, 40.00f)), module, Guttur::FILT_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(109.00f, 94.00f)), module, Guttur::RESET_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.00f, 50.00f)), module, Guttur::DRIVE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.00f, 50.00f)), module, Guttur::TONE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 50.00f)), module, Guttur::DAMP_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(85.00f, 50.00f)), module, Guttur::RATE_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.00f, 79.00f)), module, Guttur::BANKA_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.00f, 79.00f)), module, Guttur::BANKB_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 79.00f)), module, Guttur::PITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(85.00f, 79.00f)), module, Guttur::Q_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.50f, 40.00f)), module, Guttur::DRIVE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.50f, 40.00f)), module, Guttur::TONE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.50f, 40.00f)), module, Guttur::DAMP_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(89.50f, 40.00f)), module, Guttur::RATE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.00f, 74.00f)), module, Guttur::BANKA_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.00f, 74.00f)), module, Guttur::BANKB_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 74.00f)), module, Guttur::PITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(85.00f, 74.00f)), module, Guttur::Q_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(13.00f, 109.50f)), module, Guttur::GAINA_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.00f, 109.50f)), module, Guttur::GAINB_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 109.50f)), module, Guttur::AUDIO_INPUT));
