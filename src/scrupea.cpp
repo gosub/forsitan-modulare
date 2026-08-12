@@ -916,19 +916,19 @@ struct ScrupeaWidget : ModuleWidget {
 // @elem CUTOFF_CV_INPUT PJ301MPort 4.01 input "" 0.0 48.50 91.00
 // @elem DELAY_CV_INPUT PJ301MPort 4.01 input "" 0.0 76.50 91.00
 // @elem FLOW_CV_INPUT PJ301MPort 4.01 input "" 0.0 104.50 91.00
-// @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0 10.00 111.00
-// @elem RAND_INPUT PJ301MPort 4.01 input "" 0.0 20.00 111.00
-// @elem MORPH_INPUT PJ301MPort 4.01 input "" 0.0 40.00 111.00
-// @elem MORPH_PARAM TL1105 2.6 param "" 0.0 49.00 111.00
-// @elem MORPH_TIME_PARAM Trimpot 2.5 param "" 0.0 56.50 111.00
-// @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0 78.00 111.00
-// @elem LEFT_OUTPUT PJ301MPort 4.01 output "" 0.0 94.00 111.00
-// @elem RIGHT_OUTPUT PJ301MPort 4.01 output "" 0.0 110.00 111.00
-// @elem LEFT_LIGHT SmallLight 1.0 light "" 0.0 99.00 108.00
-// @elem RIGHT_LIGHT SmallLight 1.0 light "" 0.0 115.00 108.00
-// @elem BOX_CV panel_box 7.0 box "" 0.0 78.00 113.00
-// @elem BOX_LEFT panel_box 7.0 box "" 0.0 94.00 113.00
-// @elem BOX_RIGHT panel_box 7.0 box "" 0.0 110.00 113.00
+// @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0 10.00 107.00
+// @elem RAND_INPUT PJ301MPort 4.01 input "" 0.0 20.00 107.00
+// @elem MORPH_INPUT PJ301MPort 4.01 input "" 0.0 40.00 107.00
+// @elem MORPH_PARAM TL1105 2.6 param "" 0.0 49.00 107.00
+// @elem MORPH_TIME_PARAM Trimpot 2.5 param "" 0.0 56.50 107.00
+// @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0 78.00 107.00
+// @elem LEFT_OUTPUT PJ301MPort 4.01 output "" 0.0 94.00 107.00
+// @elem RIGHT_OUTPUT PJ301MPort 4.01 output "" 0.0 110.00 107.00
+// @elem LEFT_LIGHT SmallLight 1.0 light "" 0.0 99.00 104.00
+// @elem RIGHT_LIGHT SmallLight 1.0 light "" 0.0 115.00 104.00
+// @elem BOX_CV panel_box 7.0 box "" 0.0 78.00 109.00
+// @elem BOX_LEFT panel_box 7.0 box "" 0.0 94.00 109.00
+// @elem BOX_RIGHT panel_box 7.0 box "" 0.0 110.00 109.00
 // @elem LABEL_FUNC label 0.0 label "function" 0.0 16.00 61.50
 // @elem LABEL_MODE label 0.0 label "mode" 0.0 42.00 61.50
 // @elem LABEL_EDIT label 0.0 label "edit" 0.0 64.00 61.50
@@ -938,12 +938,12 @@ struct ScrupeaWidget : ModuleWidget {
 // @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 44.00 84.50
 // @elem LABEL_DELAY label 0.0 label "delay" 0.0 72.00 84.50
 // @elem LABEL_FLOW label 0.0 label "flow" 0.0 100.00 84.50
-// @elem LABEL_AUDIO label 0.0 label "in" 0.0 10.00 118.50
-// @elem LABEL_RAND_INPUT label 0.0 label "rand" 0.0 20.00 118.50
-// @elem LABEL_MORPH_PARAM label 0.0 label "morph" 0.0 47.50 118.50
-// @elem LABEL_CV label 0.0 label "cv" 0.0 78.00 118.50
-// @elem LABEL_LEFT label 0.0 label "L" 0.0 94.00 118.50
-// @elem LABEL_RIGHT label 0.0 label "R" 0.0 110.00 118.50
+// @elem LABEL_AUDIO label 0.0 label "in" 0.0 10.00 114.50
+// @elem LABEL_RAND_INPUT label 0.0 label "rand" 0.0 20.00 114.50
+// @elem LABEL_MORPH_PARAM label 0.0 label "morph" 0.0 47.50 114.50
+// @elem LABEL_CV label 0.0 label "cv" 0.0 78.00 114.50
+// @elem LABEL_LEFT label 0.0 label "L" 0.0 94.00 114.50
+// @elem LABEL_RIGHT label 0.0 label "R" 0.0 110.00 114.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 60.96 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -967,16 +967,16 @@ struct ScrupeaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(48.50f, 91.00f)), module, Scrupea::CUTOFF_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.50f, 91.00f)), module, Scrupea::DELAY_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(104.50f, 91.00f)), module, Scrupea::FLOW_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 111.00f)), module, Scrupea::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.00f, 111.00f)), module, Scrupea::RAND_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 111.00f)), module, Scrupea::MORPH_INPUT));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(49.00f, 111.00f)), module, Scrupea::MORPH_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.50f, 111.00f)), module, Scrupea::MORPH_TIME_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(78.00f, 111.00f)), module, Scrupea::CV_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 111.00f)), module, Scrupea::LEFT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(110.00f, 111.00f)), module, Scrupea::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 108.00f)), module, Scrupea::LEFT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(115.00f, 108.00f)), module, Scrupea::RIGHT_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 107.00f)), module, Scrupea::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.00f, 107.00f)), module, Scrupea::RAND_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 107.00f)), module, Scrupea::MORPH_INPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(49.00f, 107.00f)), module, Scrupea::MORPH_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(56.50f, 107.00f)), module, Scrupea::MORPH_TIME_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(78.00f, 107.00f)), module, Scrupea::CV_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 107.00f)), module, Scrupea::LEFT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(110.00f, 107.00f)), module, Scrupea::RIGHT_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 104.00f)), module, Scrupea::LEFT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(115.00f, 104.00f)), module, Scrupea::RIGHT_LIGHT));
         // @layout:end
     }
 
