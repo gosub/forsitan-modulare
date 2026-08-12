@@ -908,14 +908,14 @@ struct ScrupeaWidget : ModuleWidget {
 // @elem CUTOFF_PARAM RoundBigBlackKnob 7.62 param "" 0.0 44.00 73.00
 // @elem DELAY_PARAM RoundBigBlackKnob 7.62 param "" 0.0 72.00 73.00
 // @elem FLOW_PARAM RoundBigBlackKnob 7.62 param "" 0.0 100.00 73.00
-// @elem PITCH_ATT_PARAM Trimpot 2.5 param "" 0.0 16.00 89.00
-// @elem CUTOFF_ATT_PARAM Trimpot 2.5 param "" 0.0 44.00 89.00
-// @elem DELAY_ATT_PARAM Trimpot 2.5 param "" 0.0 72.00 89.00
-// @elem FLOW_ATT_PARAM Trimpot 2.5 param "" 0.0 100.00 89.00
-// @elem PITCH_CV_INPUT PJ301MPort 4.01 input "" 0.0 16.00 98.00
-// @elem CUTOFF_CV_INPUT PJ301MPort 4.01 input "" 0.0 44.00 98.00
-// @elem DELAY_CV_INPUT PJ301MPort 4.01 input "" 0.0 72.00 98.00
-// @elem FLOW_CV_INPUT PJ301MPort 4.01 input "" 0.0 100.00 98.00
+// @elem PITCH_ATT_PARAM Trimpot 2.5 param "" 0.0 11.00 91.00
+// @elem CUTOFF_ATT_PARAM Trimpot 2.5 param "" 0.0 39.00 91.00
+// @elem DELAY_ATT_PARAM Trimpot 2.5 param "" 0.0 67.00 91.00
+// @elem FLOW_ATT_PARAM Trimpot 2.5 param "" 0.0 95.00 91.00
+// @elem PITCH_CV_INPUT PJ301MPort 4.01 input "" 0.0 20.50 91.00
+// @elem CUTOFF_CV_INPUT PJ301MPort 4.01 input "" 0.0 48.50 91.00
+// @elem DELAY_CV_INPUT PJ301MPort 4.01 input "" 0.0 76.50 91.00
+// @elem FLOW_CV_INPUT PJ301MPort 4.01 input "" 0.0 104.50 91.00
 // @elem AUDIO_INPUT PJ301MPort 4.01 input "" 0.0 10.00 111.00
 // @elem RAND_INPUT PJ301MPort 4.01 input "" 0.0 20.00 111.00
 // @elem MORPH_INPUT PJ301MPort 4.01 input "" 0.0 40.00 111.00
@@ -959,14 +959,14 @@ struct ScrupeaWidget : ModuleWidget {
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(44.00f, 73.00f)), module, Scrupea::CUTOFF_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(72.00f, 73.00f)), module, Scrupea::DELAY_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(100.00f, 73.00f)), module, Scrupea::FLOW_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(16.00f, 89.00f)), module, Scrupea::PITCH_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(44.00f, 89.00f)), module, Scrupea::CUTOFF_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(72.00f, 89.00f)), module, Scrupea::DELAY_ATT_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(100.00f, 89.00f)), module, Scrupea::FLOW_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.00f, 98.00f)), module, Scrupea::PITCH_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 98.00f)), module, Scrupea::CUTOFF_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.00f, 98.00f)), module, Scrupea::DELAY_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.00f, 98.00f)), module, Scrupea::FLOW_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(11.00f, 91.00f)), module, Scrupea::PITCH_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(39.00f, 91.00f)), module, Scrupea::CUTOFF_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(67.00f, 91.00f)), module, Scrupea::DELAY_ATT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(95.00f, 91.00f)), module, Scrupea::FLOW_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.50f, 91.00f)), module, Scrupea::PITCH_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(48.50f, 91.00f)), module, Scrupea::CUTOFF_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.50f, 91.00f)), module, Scrupea::DELAY_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(104.50f, 91.00f)), module, Scrupea::FLOW_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 111.00f)), module, Scrupea::AUDIO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.00f, 111.00f)), module, Scrupea::RAND_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.00f, 111.00f)), module, Scrupea::MORPH_INPUT));
