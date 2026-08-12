@@ -339,6 +339,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     The MS-20's highpass is a different circuit and is not modelled.
 
+### Changed
+  - Panel layouts on seven modules. Nothing about the sound, the parameters
+    or the patch format changes, but jacks move, so a saved patch reopens
+    with its cables in different places on these panels.
+
+    **vestigia** and **guttur** had their main outputs buried mid-row:
+    vestigia's L/R sat ahead of mem/evt/env/chaos, and guttur's reset input
+    sat past duff and out. Both pairs now finish their row on the right.
+    guttur's reset button gains its own jack beside it on the control row,
+    and level and the audio input move to the left of the panel.
+    **perge**'s stereo out swaps places with the freeze and tilt buttons for
+    the same reason, and its badges read `L` / `R` like everywhere else.
+    **sylla**'s trig jack joins the play button on one row under a single
+    label, which recentres gen and spd on the panel midline.
+
+    **antrum**, **tundo**, **guttur** and **scrupea** now lay a knob's
+    attenuverter and CV jack side by side on one row under it, the way
+    caligo already did, instead of stacking them in two rows: knob, trimpot
+    and jack read as one triangle rather than a column of three. The row
+    that frees up is spread back over the panel, so the control rows sit
+    further apart and the bands between them come out even.
+
 ### Fixed
   - **sylla**'s GEN light answering almost none of the presses it acted on.
     A sample renders in 0.01 to 15 ms and the light was on for exactly as
