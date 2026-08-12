@@ -1077,18 +1077,18 @@ struct VestigiaWidget : ModuleWidget {
 // @elem LABEL_CLRIN label 0.0 label "clr" 0.0 123.00 101.50
 // @elem LABEL_IN label 0.0 label "in l" 0.0 10.00 117.00
 // @elem LABEL_INR label 0.0 label "in r" 0.0 22.00 117.00
-// @elem LABEL_OUTL label 0.0 label "L" 0.0 40.00 117.00
-// @elem LABEL_OUTR label 0.0 label "R" 0.0 56.80 117.00
-// @elem LABEL_MEMOUT label 0.0 label "mem" 0.0 73.60 117.00
-// @elem LABEL_EVTOUT label 0.0 label "evt" 0.0 90.40 117.00
-// @elem LABEL_ENVOUT label 0.0 label "env" 0.0 107.20 117.00
-// @elem LABEL_CHAOSOUT label 0.0 label "chaos" 0.0 124.00 117.00
-// @elem BOX_OUTL panel_box 7.0 box "" 0.0 40.00 111.00
-// @elem BOX_OUTR panel_box 7.0 box "" 0.0 56.80 111.00
-// @elem BOX_MEMOUT panel_box 7.0 box "" 0.0 73.60 111.00
-// @elem BOX_EVTOUT panel_box 7.0 box "" 0.0 90.40 111.00
-// @elem BOX_ENVOUT panel_box 7.0 box "" 0.0 107.20 111.00
-// @elem BOX_CHAOSOUT panel_box 7.0 box "" 0.0 124.00 111.00
+// @elem LABEL_OUTL label 0.0 label "L" 0.0 107.20 117.00
+// @elem LABEL_OUTR label 0.0 label "R" 0.0 124.00 117.00
+// @elem LABEL_MEMOUT label 0.0 label "mem" 0.0 40.00 117.00
+// @elem LABEL_EVTOUT label 0.0 label "evt" 0.0 56.80 117.00
+// @elem LABEL_ENVOUT label 0.0 label "env" 0.0 73.60 117.00
+// @elem LABEL_CHAOSOUT label 0.0 label "chaos" 0.0 90.40 117.00
+// @elem BOX_OUTL panel_box 7.0 box "" 0.0 107.20 111.00
+// @elem BOX_OUTR panel_box 7.0 box "" 0.0 124.00 111.00
+// @elem BOX_MEMOUT panel_box 7.0 box "" 0.0 40.00 111.00
+// @elem BOX_EVTOUT panel_box 7.0 box "" 0.0 56.80 111.00
+// @elem BOX_ENVOUT panel_box 7.0 box "" 0.0 73.60 111.00
+// @elem BOX_CHAOSOUT panel_box 7.0 box "" 0.0 90.40 111.00
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 66.04 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(5.08f, 0.00f)))); // SCREW_TL
@@ -1127,16 +1127,16 @@ struct VestigiaWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(123.00f, 94.00f)), module, Vestigia::CLEAR_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 109.00f)), module, Vestigia::IN_L_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.00f, 109.00f)), module, Vestigia::IN_R_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.00f, 109.00f)), module, Vestigia::OUT_L_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(56.80f, 109.00f)), module, Vestigia::OUT_R_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(73.60f, 109.00f)), module, Vestigia::MEMORY_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(90.40f, 109.00f)), module, Vestigia::EVENT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(107.20f, 109.00f)), module, Vestigia::ENV_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.00f, 109.00f)), module, Vestigia::CHAOS_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(107.20f, 109.00f)), module, Vestigia::OUT_L_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.00f, 109.00f)), module, Vestigia::OUT_R_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.00f, 109.00f)), module, Vestigia::MEMORY_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(56.80f, 109.00f)), module, Vestigia::EVENT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(73.60f, 109.00f)), module, Vestigia::ENV_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(90.40f, 109.00f)), module, Vestigia::CHAOS_OUTPUT));
         addChild(createLightCentered<SmallLight<YellowLight>>(mm2px(Vec(102.50f, 71.00f)), module, Vestigia::FREEZE_LIGHT));
         addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(114.50f, 71.00f)), module, Vestigia::EVENT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.00f, 106.00f)), module, Vestigia::LEVEL_L_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(61.80f, 106.00f)), module, Vestigia::LEVEL_R_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(112.20f, 106.00f)), module, Vestigia::LEVEL_L_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(129.00f, 106.00f)), module, Vestigia::LEVEL_R_LIGHT));
         // @layout:end
 
         VestigiaDisplay* disp = new VestigiaDisplay;
