@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.15.0] - 2026-08-14
+### Added
+  - **gradus**, an 8 HP stepped CV source: a discrete **cumuli**. Eight rows,
+    each one a value knob, a three-way mode switch and a trigger input, all
+    driving a single running output. A trigger applies its own row: **add**
+    the knob to the output, **subtract** it, or **jump** the output straight
+    to it. Where cumuli ramps for as long as a gate is open, gradus moves
+    only on an edge and only by the amount dialled in, so the output walks a
+    lattice of values you chose rather than sliding between them. A held gate
+    is one step, not a stream of them.
+
+    What happens when several triggers land in the same sample is the whole
+    design. A jump beats every add and subtract in that sample, discarding
+    them rather than landing beside them, since the row names an absolute
+    value. Among simultaneous jumps the lowest row on the panel wins, so
+    the panel reads as a priority order top to bottom. With no jump in the
+    sample, every simultaneous add and subtract is applied, which makes the
+    eight rows a small adder: fire rows 2, 3 and 7 together and the output
+    moves by their sum.
+
+    The value is held internally in 0-10V, and the context menu's bipolar
+    option subtracts 5V on the way out, so switching range never disturbs
+    where the output sits in its span. A step is always its knob in volts;
+    only a jump target reads shifted, and the knob's tooltip follows the mode
+    switch next to it to say which it is. The output value is saved with the
+    patch.
+
 ## [2.14.0] - 2026-08-14
 ### Added
   - **caligo**, a 24 HP port of **Greyhole**, Julian Parker's 2013 algorithm
