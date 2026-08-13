@@ -41,6 +41,7 @@ A collection of VCV Rack modules.
 | [cartilago](doc/cartilago.md) | Gristleizer: one LFO into a FET attenuator that never quite closes, or into a swept filter; ticks like the hardware and ring-modulates at audio rate | [doc/cartilago.md](doc/cartilago.md) |
 | [scrupea](doc/scrupea.md) | Sixteen oscillators into tuned feedback combs, each modulated by whichever of them you point it at; one knob decides whether it drones or shatters (inspired by Reaktor's Skrewell) | [doc/scrupea.md](doc/scrupea.md) |
 | [viginti](doc/viginti.md) | MS-20 lowpass: the KORG35 Rev.2 circuit solved as the nonlinear system it is, so the resonance itself distorts and collapses with level | [doc/viginti.md](doc/viginti.md) |
+| [gradus](doc/gradus.md) | Eight triggered steps into one CV: each row adds its knob to the output, subtracts it, or jumps straight to it | [doc/gradus.md](doc/gradus.md) |
 
 ## Tools
 
@@ -102,6 +103,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **cartilago** | gristle, cartilage — Roy Gwinn's Gristleizer, by way of Throbbing Gristle |
 | **scrupea** | jagged, made of sharp stones (Virgil's *scrupea saxa*); the root *scrupus* is also the stone in the shoe. Chosen to sound like Skrewell, which it is after |
 | **viginti** | twenty, for the MS-20 whose Rev. 2 lowpass this is (its diodes clip inside the resonance loop) |
+| **gradus** | a step, a stair, a degree (the output climbs and falls in steps you set, and a jump row sends it straight to a given degree) |
 
 ## Author
 

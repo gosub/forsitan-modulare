@@ -13,7 +13,7 @@ cutting a release. The essentials:
 - Keep `plugin.json` `"version"` in sync with the git tag, and update
   `CHANGELOG.md`
 - Every documentation URL in `plugin.json` (`manualUrl` at plugin level, one
-  per module, and `changelogUrl`, 28 in all) points at the **version's tag**,
+  per module, and `changelogUrl`, 34 in all) points at the **version's tag**,
   never a branch: the library serves whatever the installed build declares, so
   a branch URL shows a 2.9.0 user the manual for today's master. Never
   hand-edit them, run:
@@ -110,6 +110,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | tundo | Basimilus Iteritas Alter clone (six tonal oscillators + noise, spread from harmonic to prime ratios, harm decay/amplitude staging, morph, infinite folder with pulse train; skin/liquid/metal, bass/alto/treble, per-knob attenuverter + CV, env out; engine on its own power-of-two clock through a ZOH) | 71.12mm (14HP) |
 | cartilago | Gristleizer (one band-limited LFO of four shapes into a shunt-FET attenuator that never closes and ticks, or into a ZDF state-variable filter; depth past 100%, v/oct into the audio band for ring modulation, oversampled) | 60.96mm (12HP) |
 | scrupea | chaotic bank inspired by Reaktor's Skrewell (8 voices of 2 levers, oscillator into a tuned feedback comb, all-to-all coupling chosen by the bars, 3 topologies, 64 bars in an edit area, 4 macros that map rather than offset) | 121.92mm (24HP) |
+| gradus | stepped CV source, a discrete cumuli (8 rows of knob + mode switch + trigger, add/subtract/jump into one running output, jumps beat relatives and the lowest row wins) | 40.64mm (8HP) |
 
 ## limen module
 
