@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.14.0] - 2026-08-06
+## [2.14.0] - 2026-08-14
 ### Added
   - **caligo**, a 24 HP port of **Greyhole**, Julian Parker's 2013 algorithm
     from the DEIND project (named after the Eventide effect of a similar
