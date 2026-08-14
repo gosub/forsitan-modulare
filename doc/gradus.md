@@ -12,17 +12,22 @@ walks a lattice of values you chose rather than sliding between them.
 
 ## The panel
 
-Eight rows, numbered 1 at the top to 8 at the bottom. Each row is three
-things:
+Eight rows, numbered 1 at the top to 8 at the bottom. Every row is the same
+three things, left to right:
 
-| column | what it is |
-|--------|-----------|
-| **step** | the row's value, 0V to 10V. A step size in add and subtract, an absolute target in jump. |
-| **mode** | what the row does when it fires: **add** (up), **jump** (middle), **subtract** (down). |
-| **trig** | the row's trigger input. |
+| control | what it is |
+|---------|-----------|
+| **knob** | the row's value, 0V to 10V. A step size in add and subtract, an absolute target in jump. |
+| **switch** | what the row does when it fires: **add** (up), **jump** (middle), **subtract** (down). |
+| **jack** | the row's trigger input. |
 
-Below them, **out** carries the running value, with a lamp showing how high
-it sits in its range.
+The columns carry no printed headings, since eight identical rows do not
+need them repeated and the panel reads better without. Hovering any control
+names it: the knob's tooltip follows its own switch and says whether it is
+showing a step or a target.
+
+Below the rows, **out** carries the running value, with a lamp showing how
+high it sits in its range.
 
 Nothing else: no reset input, because a row in jump mode with its knob at
 zero *is* a reset, and no clock, because gradus never moves on its own.

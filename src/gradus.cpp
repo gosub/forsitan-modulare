@@ -188,9 +188,6 @@ struct GradusWidget : ModuleWidget {
 // @elem TRIG8_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem LEVEL_LIGHT SmallLight 1.0 light "" 0.0
-// @elem LABEL_STEP label 0.0 label "step" 0.0 12.00 10.00
-// @elem LABEL_MODE label 0.0 label "mode" 0.0 22.50 10.00
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 33.00 10.00
 // @elem LABEL_ROW1 label 0.0 label "1" 0.0 4.50 17.50
 // @elem LABEL_ROW2 label 0.0 label "2" 0.0 4.50 29.00
 // @elem LABEL_ROW3 label 0.0 label "3" 0.0 4.50 40.50
