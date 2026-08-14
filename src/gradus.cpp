@@ -22,8 +22,9 @@
 //     to bottom, and within a row the minus side after the plus side
 //   - with no jump, every simultaneous add is applied, signs and all
 //
-// The output is clipped by the clip knob, the module's one global control:
-// 0 to 10V, ±5V, ±10V, or nothing at all.
+// Two global controls sit under the rows: reset, which sends the output to
+// 0V and is read after every row, and clip, which is the range the output is
+// held to: 0 to 10V, ±5V, ±10V, or nothing at all.
 
 // The knob is a step size under the add switch and a target under jump, and
 // the tooltip follows the switch next to it rather than leaving the reader
@@ -52,6 +53,7 @@ struct Gradus : Module {
 		MINUS1_PARAM, MINUS2_PARAM, MINUS3_PARAM, MINUS4_PARAM,
 		MINUS5_PARAM, MINUS6_PARAM, MINUS7_PARAM, MINUS8_PARAM,
 		CLIP_PARAM,
+		RESET_PARAM,
 		NUM_PARAMS
 	};
 	enum InputIds {
@@ -59,6 +61,7 @@ struct Gradus : Module {
 		PLUS5_INPUT, PLUS6_INPUT, PLUS7_INPUT, PLUS8_INPUT,
 		MINUS1_INPUT, MINUS2_INPUT, MINUS3_INPUT, MINUS4_INPUT,
 		MINUS5_INPUT, MINUS6_INPUT, MINUS7_INPUT, MINUS8_INPUT,
+		RESET_INPUT,
 		NUM_INPUTS
 	};
 	enum OutputIds {
@@ -81,6 +84,8 @@ struct Gradus : Module {
 
 	dsp::SchmittTrigger plusTrig[ROWS], minusTrig[ROWS];
 	dsp::BooleanTrigger plusButton[ROWS], minusButton[ROWS];
+	dsp::SchmittTrigger resetTrig;
+	dsp::BooleanTrigger resetButton;
 
 	Gradus() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
@@ -98,6 +103,8 @@ struct Gradus : Module {
 		}
 		configSwitch(CLIP_PARAM, 0.f, 3.f, (float) CLIP_BI10, "Clip",
 			{"0 to 10 V", "±5 V", "±10 V", "no clip"});
+		configButton(RESET_PARAM, "Reset");
+		configInput(RESET_INPUT, "Reset trigger");
 		configOutput(CV_OUTPUT, "CV");
 	}
 
@@ -160,10 +167,17 @@ struct Gradus : Module {
 			}
 		}
 
+		// Reset sits below the rows, so reading order puts it last of all:
+		// it beats every jump as well as every add of the same sample.
+		bool reset = resetTrig.process(inputs[RESET_INPUT].getVoltage(), 0.1f, 1.f);
+		reset |= resetButton.process(params[RESET_PARAM].getValue() > 0.5f);
+
 		// A jump discards the relative moves of the same sample rather than
 		// landing next to them: the row names an absolute value, and that is
 		// where the output goes.
-		if (jumped)
+		if (reset)
+			value = 0.f;
+		else if (jumped)
 			value = jumpTarget;
 		else
 			value += delta;
@@ -241,6 +255,8 @@ struct GradusWidget : ModuleWidget {
 // @elem MINUS7_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem MINUS8_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem CLIP_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem RESET_PARAM TL1105 2.6 param "" 0.0
+// @elem RESET_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem LEVEL_LIGHT_GREEN SmallLight 1.0 light "" 0.0
 // @elem LABEL_PLUS label 0.0 label "+" 0.0 31.25 11.50
@@ -254,8 +270,9 @@ struct GradusWidget : ModuleWidget {
 // @elem LABEL_ROW7 label 0.0 label "7" 0.0 4.00 86.50
 // @elem LABEL_ROW8 label 0.0 label "8" 0.0 4.00 98.00
 // @elem LABEL_CLIP label 0.0 label "clip" 0.0 11.50 117.50
-// @elem BOX_CV panel_box 7.0 box "" 0.0 30.48 111.00
-// @elem LABEL_CV label 0.0 label "out" 0.0 30.48 116.50
+// @elem LABEL_RESET label 0.0 label "reset" 0.0 30.25 116.50
+// @elem BOX_CV panel_box 7.0 box "" 0.0 49.46 111.00
+// @elem LABEL_CV label 0.0 label "out" 0.0 49.46 116.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 30.48 122.50
 
 		addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -311,8 +328,10 @@ struct GradusWidget : ModuleWidget {
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(55.00f, 85.50f)), module, Gradus::MINUS7_INPUT));
 		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(55.00f, 97.00f)), module, Gradus::MINUS8_INPUT));
 		addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 109.00f)), module, Gradus::CLIP_PARAM));
-		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.48f, 109.00f)), module, Gradus::CV_OUTPUT));
-		addChild(createLightCentered<SmallLight<GreenRedLight>>(mm2px(Vec(35.48f, 106.00f)), module, Gradus::LEVEL_LIGHT_GREEN));
+		addParam(createParamCentered<TL1105>(mm2px(Vec(26.00f, 109.00f)), module, Gradus::RESET_PARAM));
+		addInput(createInputCentered<PJ301MPort>(mm2px(Vec(34.50f, 109.00f)), module, Gradus::RESET_INPUT));
+		addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(49.46f, 109.00f)), module, Gradus::CV_OUTPUT));
+		addChild(createLightCentered<SmallLight<GreenRedLight>>(mm2px(Vec(54.46f, 106.00f)), module, Gradus::LEVEL_LIGHT_GREEN));
 		// @layout:end
 	}
 };

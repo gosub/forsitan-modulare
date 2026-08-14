@@ -53,6 +53,15 @@ static void press(Gradus& m, long& frame, int row, Side side) {
     m.params[base + row].setValue(0.f);
 }
 
+// One press and release of the reset button.
+static void pressReset(Gradus& m, long& frame) {
+    m.params[Gradus::RESET_PARAM].setValue(0.f);
+    m.process(makeArgs(frame++));
+    m.params[Gradus::RESET_PARAM].setValue(1.f);
+    m.process(makeArgs(frame++));
+    m.params[Gradus::RESET_PARAM].setValue(0.f);
+}
+
 static float out(Gradus& m) {
     return m.outputs[Gradus::CV_OUTPUT].getVoltage();
 }
@@ -222,6 +231,45 @@ static void testClipNarrows() {
     report(MOD, "clip_narrowing_pulls_in", out(m), near(out(m), 5.f));
 }
 
+// Reset sits below the rows and is read last of all, so it beats whatever
+// else lands in its sample.
+static void testReset() {
+    Gradus m; long fr = 0;
+    setRow(m, 0, 4.f, Gradus::MODE_ADD);
+    fire(m, fr, {{0, PLUS}});
+    pressReset(m, fr);
+    report(MOD, "reset_button_zeroes", out(m), near(out(m), 0.f));
+
+    fire(m, fr, {{0, MINUS}});
+    m.inputs[Gradus::RESET_INPUT].setVoltage(0.f);
+    m.process(makeArgs(fr++));
+    m.inputs[Gradus::RESET_INPUT].setVoltage(5.f);
+    m.process(makeArgs(fr++));
+    report(MOD, "reset_input_zeroes", out(m), near(out(m), 0.f));
+    m.inputs[Gradus::RESET_INPUT].setVoltage(0.f);
+
+    // a jump and a reset in the same sample: reset is read after the rows
+    setRow(m, 5, 9.f, Gradus::MODE_JUMP);
+    for (int i = 0; i < Gradus::ROWS; i++) {
+        m.inputs[Gradus::PLUS1_INPUT + i].setVoltage(0.f);
+        m.inputs[Gradus::MINUS1_INPUT + i].setVoltage(0.f);
+    }
+    m.process(makeArgs(fr++));
+    m.inputs[Gradus::PLUS1_INPUT + 5].setVoltage(5.f);
+    m.params[Gradus::RESET_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    m.inputs[Gradus::PLUS1_INPUT + 5].setVoltage(0.f);
+    m.params[Gradus::RESET_PARAM].setValue(0.f);
+    report(MOD, "reset_beats_jump", out(m), near(out(m), 0.f));
+
+    // held, it is one event: the rows keep working underneath it
+    m.inputs[Gradus::RESET_INPUT].setVoltage(5.f);
+    m.process(makeArgs(fr++));
+    fire(m, fr, {{0, PLUS}});
+    report(MOD, "held_reset_does_not_pin", out(m), near(out(m), 4.f));
+    m.inputs[Gradus::RESET_INPUT].setVoltage(0.f);
+}
+
 // The output survives a patch save and reload.
 static void testPatchRoundTrip() {
     Gradus m; long fr = 0;
@@ -285,5 +333,5 @@ static void testFuzz() {
 
 SMOKE_MAIN(testHold, testPlusMinusAdd, testPlusMinusJump, testEdgeNotLevel,
            testButtons, testJumpBeatsAdd, testLastJumpWins, testAddsSum,
-           testClip, testClipNarrows, testPatchRoundTrip, testPatchClamps,
+           testClip, testClipNarrows, testReset, testPatchRoundTrip, testPatchClamps,
            testFuzz)
