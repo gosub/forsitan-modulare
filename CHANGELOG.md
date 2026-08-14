@@ -7,30 +7,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.15.0] - 2026-08-14
 ### Added
-  - **gradus**, an 8 HP stepped CV source: a discrete **cumuli**. Eight rows,
-    each one a value knob, a three-way mode switch and a trigger input, all
-    driving a single running output. A trigger applies its own row: **add**
-    the knob to the output, **subtract** it, or **jump** the output straight
-    to it. Where cumuli ramps for as long as a gate is open, gradus moves
-    only on an edge and only by the amount dialled in, so the output walks a
-    lattice of values you chose rather than sliding between them. A held gate
-    is one step, not a stream of them.
+  - **gradus**, a 12 HP stepped CV source: a discrete **cumuli**. Eight rows,
+    each one a value knob, an add/jump switch and two triggers, all driving a
+    single running output. Where cumuli ramps for as long as a gate is open,
+    gradus moves only on an edge and only by the amount dialled in, so the
+    output walks a lattice of values you chose rather than sliding between
+    them. A held gate is one step, not a stream of them.
+
+    Every row has a **+** and a **-** side, each a button beside a trigger
+    input, so one knob is four moves: under **add** the sides step the output
+    up and down by the knob, under **jump** they send it straight to plus or
+    minus the knob. A knob at 1V is up a volt, down a volt, snap to +1V and
+    snap to -1V.
 
     What happens when several triggers land in the same sample is the whole
-    design. A jump beats every add and subtract in that sample, discarding
-    them rather than landing beside them, since the row names an absolute
-    value. Among simultaneous jumps the lowest row on the panel wins, so
-    the panel reads as a priority order top to bottom. With no jump in the
-    sample, every simultaneous add and subtract is applied, which makes the
-    eight rows a small adder: fire rows 2, 3 and 7 together and the output
-    moves by their sum.
+    design. A jump beats every add in that sample, discarding the relative
+    moves rather than landing beside them, since the row names an absolute
+    value. Among simultaneous jumps the last in reading order wins, rows top
+    to bottom and a row's plus side before its minus, so the panel reads as a
+    priority order. With no jump in the sample, every add is applied signs and
+    all, which makes the rows a small adder: fire 2, 3 and 7 together and the
+    output moves by their sum.
 
-    The value is held internally in 0-10V, and the context menu's bipolar
-    option subtracts 5V on the way out, so switching range never disturbs
-    where the output sits in its span. A step is always its knob in volts;
-    only a jump target reads shifted, and the knob's tooltip follows the mode
-    switch next to it to say which it is. The output value is saved with the
-    patch.
+    The **clip** knob is the one global control: **0 to 10 V**, **±5 V**,
+    **±10 V** or **no clip**. ±10V is the default, since there every jump
+    target is reachable and the knob's number is the output's number, with no
+    arithmetic in between. Narrowing the setting pulls the current value in at
+    once. **no clip** has no rails at all, for using gradus as an accumulator
+    whose numbers matter more than its volts. The output value is saved with
+    the patch.
 
 ## [2.14.0] - 2026-08-14
 ### Added

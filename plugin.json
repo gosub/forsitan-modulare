@@ -356,7 +356,7 @@
     {
       "slug": "gradus",
       "name": "gradus",
-      "description": "Eight triggered steps into one CV: add, subtract or jump to a knob.",
+      "description": "Eight rows of one knob and four moves: step the CV up or down, or jump to plus or minus it.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/gradus.md",
       "tags": [
         "Sequencer",
