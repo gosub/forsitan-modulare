@@ -26,6 +26,18 @@
 // 0V and is read after every row, and clip, which is the range the output is
 // held to: 0 to 10V, ±5V, ±10V, or nothing at all.
 
+// The knobs are square-law rather than linear: 0V and 10V still sit at the
+// two stops, but the values worth dialling by hand are the small ones, and
+// on a linear 0..10 knob a semitone is the first 0.8% of the sweep. Squaring
+// puts 1V a third of the way round and 0.1V a tenth, which is where fingers
+// can find them, and costs the top end precision it does not need.
+static float gradusVolts(float knob) {
+	return 10.f * knob * knob;
+}
+static float gradusKnob(float volts) {
+	return std::sqrt(math::clamp(volts, 0.f, 10.f) / 10.f);
+}
+
 // The knob is a step size under the add switch and a target under jump, and
 // the tooltip follows the switch next to it rather than leaving the reader
 // to guess which one is on show.
@@ -35,6 +47,12 @@ struct GradusStepQuantity : ParamQuantity {
 
 	bool isTarget() {
 		return module && (int) std::round(module->params[modeParam].getValue()) == 0;
+	}
+	float getDisplayValue() override {
+		return gradusVolts(getValue());
+	}
+	void setDisplayValue(float v) override {
+		setValue(gradusKnob(v));
 	}
 	std::string getLabel() override {
 		return string::f("Row %d %s", row + 1, isTarget() ? "target" : "step");
@@ -89,9 +107,14 @@ struct Gradus : Module {
 
 	Gradus() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
+		// A ladder from fine to coarse, read down the panel. Every row does
+		// something different from the start, and the two you reach for most
+		// are there: row 5 is a volt, row 1 a twentieth of one.
+		static const float defaults[ROWS] =
+			{0.05f, 0.1f, 0.25f, 0.5f, 1.f, 2.f, 3.f, 5.f};
 		for (int i = 0; i < ROWS; i++) {
 			GradusStepQuantity* q = configParam<GradusStepQuantity>(
-				STEP1_PARAM + i, 0.f, 10.f, 1.f, "", " V");
+				STEP1_PARAM + i, 0.f, 1.f, gradusKnob(defaults[i]), "", " V");
 			q->row = i;
 			q->modeParam = MODE1_PARAM + i;
 			configSwitch(MODE1_PARAM + i, 0.f, 1.f, 1.f,
@@ -155,7 +178,7 @@ struct Gradus : Module {
 			if (!plus && !minus)
 				continue;
 
-			float knob = params[STEP1_PARAM + i].getValue();
+			float knob = gradusVolts(params[STEP1_PARAM + i].getValue());
 			bool jump = (int) std::round(params[MODE1_PARAM + i].getValue()) == MODE_JUMP;
 			if (plus) {
 				if (jump) { jumped = true; jumpTarget = knob; }

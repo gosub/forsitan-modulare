@@ -14,8 +14,9 @@ static const char* MOD = "gradus";
 // Which side of a row a trigger arrives on.
 enum Side { PLUS, MINUS };
 
-static void setRow(Gradus& m, int row, float knob, int mode) {
-    m.params[Gradus::STEP1_PARAM + row].setValue(knob);
+// Knobs are set in volts: the param itself is the square-law position.
+static void setRow(Gradus& m, int row, float volts, int mode) {
+    m.params[Gradus::STEP1_PARAM + row].setValue(gradusKnob(volts));
     m.params[Gradus::MODE1_PARAM + row].setValue((float) mode);
 }
 
@@ -80,6 +81,45 @@ static void testHold() {
     report(MOD, "holds_between_triggers", out(m) - afterTrig,
            out(m) == afterTrig && std::isfinite(out(m)));
     report(MOD, "hold_value", afterTrig, near(afterTrig, 2.f));
+}
+
+// The knobs are square-law: both stops are exact, and the small values that
+// get dialled by hand sit where fingers can find them.
+static void testTaper() {
+    report(MOD, "taper_zero", gradusVolts(0.f), near(gradusVolts(0.f), 0.f));
+    report(MOD, "taper_full", gradusVolts(1.f), near(gradusVolts(1.f), 10.f));
+    report(MOD, "taper_tenth_at_tenth", gradusVolts(0.1f),
+           near(gradusVolts(0.1f), 0.1f));
+    report(MOD, "taper_volt_at_third", gradusKnob(1.f),
+           std::fabs(gradusKnob(1.f) - 0.3162f) < 1e-3f);
+    // round trip: what the tooltip shows is what the module reads
+    bool roundTrips = true;
+    for (float v = 0.f; v <= 10.f; v += 0.05f)
+        if (!near(gradusVolts(gradusKnob(v)), v)) roundTrips = false;
+    report(MOD, "taper_round_trip", roundTrips ? 1 : 0, roundTrips);
+    // monotone, so turning the knob up never lowers the step
+    bool monotone = true;
+    for (float x = 0.f; x < 1.f; x += 0.001f)
+        if (gradusVolts(x + 0.001f) <= gradusVolts(x)) monotone = false;
+    report(MOD, "taper_monotone", monotone ? 1 : 0, monotone);
+}
+
+// The defaults are a fine-to-coarse ladder, every row different.
+static void testDefaults() {
+    Gradus m;
+    static const float want[8] = {0.05f, 0.1f, 0.25f, 0.5f, 1.f, 2.f, 3.f, 5.f};
+    bool ok = true;
+    for (int i = 0; i < Gradus::ROWS; i++) {
+        float v = gradusVolts(m.params[Gradus::STEP1_PARAM + i].getValue());
+        if (!near(v, want[i])) ok = false;
+        // and every row starts on add, so a first trigger nudges, not jumps
+        if ((int) m.params[Gradus::MODE1_PARAM + i].getValue() != Gradus::MODE_ADD)
+            ok = false;
+    }
+    report(MOD, "default_ladder", ok ? 1 : 0, ok);
+    report(MOD, "default_clip_is_bi10",
+           m.params[Gradus::CLIP_PARAM].getValue(),
+           (int) m.params[Gradus::CLIP_PARAM].getValue() == Gradus::CLIP_BI10);
 }
 
 // One knob, two directions: the minus side subtracts what the plus adds.
@@ -331,7 +371,6 @@ static void testFuzz() {
     report(MOD, "fuzz_in_range", s.peak, inRange);
 }
 
-SMOKE_MAIN(testHold, testPlusMinusAdd, testPlusMinusJump, testEdgeNotLevel,
+SMOKE_MAIN(testHold, testTaper, testDefaults, testPlusMinusAdd, testPlusMinusJump, testEdgeNotLevel,
            testButtons, testJumpBeatsAdd, testLastJumpWins, testAddsSum,
-           testClip, testClipNarrows, testReset, testPatchRoundTrip, testPatchClamps,
-           testFuzz)
+           testClip, testClipNarrows, testReset, testPatchRoundTrip, testPatchClamps, testFuzz)
