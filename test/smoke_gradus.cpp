@@ -345,6 +345,87 @@ static void testPatchClamps() {
     json_decref(k);
 }
 
+// The factory presets are checked against the module rather than trusted:
+// a preset file is a list of param ids, and nothing else notices when the
+// ids move.
+static bool loadPreset(Gradus& m, const char* name) {
+    char path[256];
+    snprintf(path, sizeof(path), "../presets/gradus/%s.vcvm", name);
+    json_error_t err;
+    json_t* root = json_load_file(path, 0, &err);
+    if (!root) {
+        snprintf(path, sizeof(path), "presets/gradus/%s.vcvm", name);
+        root = json_load_file(path, 0, &err);
+    }
+    if (!root)
+        return false;
+    json_t* params = json_object_get(root, "params");
+    size_t i;
+    json_t* p;
+    json_array_foreach(params, i, p) {
+        int id = json_integer_value(json_object_get(p, "id"));
+        float v = json_number_value(json_object_get(p, "value"));
+        if (id >= 0 && id < Gradus::NUM_PARAMS)
+            m.params[id].setValue(v);
+    }
+    json_decref(root);
+    return true;
+}
+
+static void testPresets() {
+    // binary: the eight rows are bits, so firing them all in one sample is
+    // the all-ones word, which is exactly full scale
+    Gradus b; long fr = 0;
+    if (!loadPreset(b, "4_binary")) {
+        report(MOD, "presets_found", 0, false);
+        return;
+    }
+    fire(b, fr, {{0, PLUS}, {1, PLUS}, {2, PLUS}, {3, PLUS},
+                 {4, PLUS}, {5, PLUS}, {6, PLUS}, {7, PLUS}});
+    report(MOD, "binary_all_bits_is_full_scale", out(b), std::fabs(out(b) - 10.f) < 1e-3f);
+    // and the top bit alone is 128 of the 255 steps, not half of ten
+    pressReset(b, fr);
+    fire(b, fr, {{7, PLUS}});
+    report(MOD, "binary_top_bit", out(b),
+           std::fabs(out(b) - 10.f * 128.f / 255.f) < 1e-3f);
+
+    // scale: row 8 is the octave, and its minus side the octave below
+    Gradus s; long fr2 = 0;
+    loadPreset(s, "1_scale");
+    fire(s, fr2, {{7, PLUS}});
+    report(MOD, "scale_octave_up", out(s), near(out(s), 1.f));
+    fire(s, fr2, {{7, MINUS}});
+    report(MOD, "scale_octave_down", out(s), near(out(s), -1.f));
+    // a jump preset lands on its degree from wherever it was
+    fire(s, fr2, {{4, PLUS}});
+    report(MOD, "scale_fifth", out(s), std::fabs(out(s) - 7.f / 12.f) < 1e-4f);
+
+    // fader: the coarse row steps a volt, and the levels are absolute
+    Gradus f; long fr3 = 0;
+    loadPreset(f, "6_fader");
+    fire(f, fr3, {{2, PLUS}});
+    fire(f, fr3, {{2, PLUS}});
+    report(MOD, "fader_coarse_steps_a_volt", out(f), near(out(f), 2.f));
+    fire(f, fr3, {{7, PLUS}});
+    report(MOD, "fader_top_level", out(f), near(out(f), 10.f));
+    // clip is unipolar here, so the minus side of a level cannot go below 0
+    fire(f, fr3, {{7, MINUS}});
+    report(MOD, "fader_stays_unipolar", out(f), near(out(f), 0.f));
+
+    // every preset loads and leaves the module in a sane state
+    static const char* names[6] = {"1_scale", "2_arpeggio", "3_transpose",
+                                   "4_binary", "5_drift", "6_fader"};
+    bool allOk = true;
+    for (int i = 0; i < 6; i++) {
+        Gradus g; long fr4 = 0;
+        if (!loadPreset(g, names[i])) { allOk = false; continue; }
+        for (int r = 0; r < Gradus::ROWS; r++) fire(g, fr4, {{r, PLUS}});
+        for (int r = 0; r < Gradus::ROWS; r++) fire(g, fr4, {{r, MINUS}});
+        if (!std::isfinite(out(g)) || std::fabs(out(g)) > 10.f + 1e-5f) allOk = false;
+    }
+    report(MOD, "all_presets_sane", allOk ? 1 : 0, allOk);
+}
+
 // Random triggers on random rows and sides, with the clip moving under
 // them: the output stays finite and inside whatever range is selected.
 static void testFuzz() {
@@ -373,4 +454,5 @@ static void testFuzz() {
 
 SMOKE_MAIN(testHold, testTaper, testDefaults, testPlusMinusAdd, testPlusMinusJump, testEdgeNotLevel,
            testButtons, testJumpBeatsAdd, testLastJumpWins, testAddsSum,
-           testClip, testClipNarrows, testReset, testPatchRoundTrip, testPatchClamps, testFuzz)
+           testClip, testClipNarrows, testReset, testPatchRoundTrip, testPatchClamps,
+           testPresets, testFuzz)
