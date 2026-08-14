@@ -36,6 +36,18 @@ That makes one knob four moves:
 So a knob at 1V gives you up a volt, down a volt, snap to +1V and snap to
 -1V, and the mode switch picks which pair of the four is live.
 
+The knobs are square-law rather than linear: both stops are exact, 0V and
+10V, but the sweep between them is stretched at the bottom where the useful
+values live. A volt sits about a third of the way round and a tenth of a
+volt a tenth of the way, instead of at 10% and 1% of a linear sweep, where a
+semitone would be almost impossible to dial. The tooltip always reads the
+volts, and typing a value in still works.
+
+Out of the box the rows are a ladder from fine to coarse, 0.05V at the top
+through 0.1, 0.25, 0.5, 1, 2 and 3 to 5V at the bottom, every switch on
+**add**. That makes a fresh gradus a general-purpose nudger: eight sizes of
+step, up or down, on any of sixteen buttons.
+
 Below the rows, three things: **clip** sets the output's range, **reset**
 sends the output to 0V from its own button or trigger input, and **out**
 carries the running value, with a lamp that reads green above zero and red
@@ -113,6 +125,20 @@ Changing the setting pulls the current value in immediately if the new
 range is narrower. The output value is saved with the patch, and so, being
 a knob, is the clip setting.
 
+## Factory presets
+
+Six, from the right-click menu, each one a use case rather than a variation
+on a sound:
+
+| preset | what it is |
+|--------|-----------|
+| **scale** | Eight jump rows on the degrees of a major scale, root to octave. A row per degree, and each row's minus side is the same degree below the root, so eight rows are sixteen notes. Trigger-addressed melody: patch eight gate outputs and the pattern picks the notes. |
+| **arpeggio** | The same idea on chord tones: a minor 7th spread over two octaves. Retriggered patterns come out as arpeggios that never land off the chord. |
+| **transpose** | Relative intervals on the top three rows (octave, fifth, semitone) and absolute jumps to one through five octaves below them. Sum a V/oct line with the output and the buttons transpose it, by ear or by trigger. |
+| **binary** | Eight add rows of 0.039V doubling to 5.02V: powers of two that sum to exactly 10V. Fire any subset of the plus triggers **in the same sample** and the output is that eight-bit number. A shift register, a Turing machine's expander or a logic patch becomes a stepped voltage. Reset before each word. |
+| **drift** | Six small add rows and two jump rails, clipped to ±5V. Random triggers wander the output; the rails snap it back when it strays. |
+| **fader** | Three step sizes and five absolute levels, clipped to 0-10V. gradus played by hand, which is the module [cumuli](cumuli.md) was written for: a fader for a controller that has only buttons. |
+
 ## How to use
 
 **A stepped voltage source.** Set a row to add with its knob at 1/12 V
@@ -140,3 +166,21 @@ exact the pitches repeat exactly whenever the pattern does.
 **By hand.** The buttons make gradus playable on its own: eight rows of two
 buttons is a small instrument for pushing a drone's pitch around, or for
 auditioning where a patch goes before wiring the triggers up.
+
+**A staircase oscillator.** Drive the eight plus inputs from eight
+phase-shifted clocks at audio rate, one per row, each firing a little after
+the last: a shift register clocked fast, a phase-offset LFO bank squared up,
+or eight outputs of a clock divider. gradus stops being a controller and
+becomes an oscillator.
+
+With every row on **jump** the eight rows are eight sample points and the
+output is a waveform the knobs draw, one cycle per turn of the clocks, at
+the pitch the clocks are running. Move a knob and you are drawing the wave
+while it sounds. With every row on **add** and a trigger into **reset** at
+the start of each cycle, the same eight clocks integrate into a staircase
+ramp whose slope is whatever the knobs say, which is a sawtooth you can bend
+into any monotone shape.
+
+It aliases, as any stepped source does at audio rate, and that is part of
+the sound. Eight steps is a coarse wave; the clip setting is what keeps it
+from running away in add mode if the reset ever misses.

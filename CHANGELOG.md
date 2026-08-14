@@ -29,6 +29,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     all, which makes the rows a small adder: fire 2, 3 and 7 together and the
     output moves by their sum.
 
+    The step knobs are square-law: both stops are exact, 0V and 10V, but the
+    sweep is stretched at the bottom where the useful values live, so a volt
+    sits a third of the way round rather than a tenth and a semitone can be
+    dialled by hand at all. They start as a ladder from fine to coarse, 0.05V
+    at the top through to 5V at the bottom, every switch on add, which makes
+    a fresh gradus a general-purpose nudger rather than eight copies of one
+    row.
+
+    Six factory presets, each a use case: **scale** and **arpeggio** address
+    notes by trigger, **transpose** mixes relative intervals with absolute
+    octaves, **binary** makes the eight rows powers of two that sum to 10V so
+    that eight gates in one sample are an eight-bit number, **drift** is a
+    drunk walk between two rails, and **fader** is the module played by hand.
+
     Two controls sit under the rows. **reset**, a button and a trigger input,
     sends the output to 0V; it is read after every row, so it beats whatever
     else lands in its sample, and it exists so that going home does not cost
