@@ -29,7 +29,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     all, which makes the rows a small adder: fire 2, 3 and 7 together and the
     output moves by their sum.
 
-    The **clip** knob is the one global control: **0 to 10 V**, **±5 V**,
+    Two controls sit under the rows. **reset**, a button and a trigger input,
+    sends the output to 0V; it is read after every row, so it beats whatever
+    else lands in its sample, and it exists so that going home does not cost
+    a whole row. **clip** is the output's range: **0 to 10 V**, **±5 V**,
     **±10 V** or **no clip**. ±10V is the default, since there every jump
     target is reachable and the knob's number is the output's number, with no
     arithmetic in between. Narrowing the setting pulls the current value in at

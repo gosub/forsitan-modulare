@@ -36,11 +36,14 @@ That makes one knob four moves:
 So a knob at 1V gives you up a volt, down a volt, snap to +1V and snap to
 -1V, and the mode switch picks which pair of the four is live.
 
-Below the rows, **clip** sets the output's range and **out** carries the
-running value, with a lamp that reads green above zero and red below.
+Below the rows, three things: **clip** sets the output's range, **reset**
+sends the output to 0V from its own button or trigger input, and **out**
+carries the running value, with a lamp that reads green above zero and red
+below.
 
-There is no reset input: a row in jump mode with its knob at zero is one,
-on either side.
+Reset is there so that going home does not cost a row. A row in jump mode
+with its knob at zero would do the same job, but it would be a whole row
+spent on the one value the module can always be asked for.
 
 ## What a trigger does
 
@@ -55,8 +58,8 @@ the output at 10V, not at 4V.
 
 ## When several triggers arrive together
 
-Sides and rows that fire in the same sample are resolved by three rules,
-and they are the reason gradus is a module rather than sixteen adders in a
+Sides and rows that fire in the same sample are resolved by four rules, and
+they are the reason gradus is a module rather than sixteen adders in a
 row.
 
 **A jump beats every add in that sample.** The relative moves are
@@ -75,6 +78,11 @@ rows 2, 3 and 7 together and the output moves by their sum, with each row
 contributing plus or minus its knob depending on which side fired. Both
 sides of one row at once in add mode cancel exactly, and the output holds.
 
+**Reset beats all of it.** It sits below the rows, so reading order puts it
+last of all: a reset landing in the same sample as any jump or any add
+sends the output to 0V regardless. Held high it is still one event, so the
+rows keep working underneath a reset gate that never falls.
+
 "The same sample" is exactly that: one audio frame. Triggers from a common
 clock divider or a logic module land together and are resolved by these
 rules; triggers a millisecond apart are two separate events, and a jump
@@ -82,8 +90,7 @@ then simply overwrites what the adds just did.
 
 ## clip
 
-The **clip** knob is the module's one global control, and it sets what
-range the output is held to:
+The **clip** knob sets what range the output is held to:
 
 | position | range |
 |----------|-------|
@@ -121,9 +128,9 @@ when two fire at once, which is where the character is: a run of
 overlapping gates plays the last row in reading order, not a mixture.
 
 **An accumulator with presets.** Mix the modes. Rows 1 to 6 add various
-amounts up and down, rows 7 and 8 jump to a floor and a ceiling. The patch
-wanders, and one trigger on 7 or 8 puts it back on a known value in a
-single sample, without waiting for a ramp.
+amounts up and down, rows 7 and 8 jump to a floor and a ceiling, and reset
+holds zero. The patch wanders, and one trigger puts it back on a known
+value in a single sample, without waiting for a ramp.
 
 **Rhythm into pitch.** Feed the trig inputs from a drum pattern's outputs,
 kicks to the plus side and snares to the minus. The CV output then tracks
