@@ -742,8 +742,8 @@ an eight-byte stride, so scanning the wrong span finds a dozen of them and
 concludes the rest is compressed. Nothing in there is compressed, and 48 of
 Skrewell's snapshots decode whole.
 
-The notes and the scripts are in `~/dl/temp/reaktor-ens-tools/` rather than in
-this repository, since they are a file-format reader and not a Rack module.
+The notes and the scripts are not in this repository, since they are a
+file-format reader and not a Rack module.
 What is left is the last 35 module class ids, and the cheap way to get those
 is to build one Reaktor ensemble holding one instance of each module of
 interest in a known order and read the ids straight off it.

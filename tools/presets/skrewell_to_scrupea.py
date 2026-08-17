@@ -10,11 +10,10 @@ and converting your own copy for your own use is a different thing from
 redistributing them. Point it at your Reaktor installation and you get your
 presets; nobody else gets them from us.
 
-The format it reads is documented in ~/dl/temp/reaktor-ens-tools/FORMAT.md.
-In short: one block per snapshot in the tail after the last KSModul record,
-each block ending with its name, and inside it one record per snapshot-enabled
-control, marked by a run of five 1s, holding one normalised value for a knob
-or eight for a polycontrol's per-voice bars.
+The format it reads, in short: one block per snapshot in the tail after the
+last KSModul record, each block ending with its name, and inside it one
+record per snapshot-enabled control, marked by a run of five 1s, holding one
+normalised value for a knob or eight for a polycontrol's per-voice bars.
 """
 import json
 import os
