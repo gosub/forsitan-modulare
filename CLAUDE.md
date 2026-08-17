@@ -59,12 +59,12 @@ cutting a release. The essentials:
 
 ```
 make                                      # build (RACK_DIR is set in .bashrc)
-HOME=/home/gg/dl/temp/rackhome/ make install
-cd ~/dl/audio/rack && HOME=/home/gg/dl/temp/rackhome/ ./Rack   # run Rack
+HOME=/home/gg/dl/audio/rackhome/ make install
+cd ~/dl/audio/rack && HOME=/home/gg/dl/audio/rackhome/ ./Rack   # run Rack
 ```
 
 - `make install` needs the fake `HOME` so Rack installs into
-  `~/dl/temp/rackhome/.local/share/Rack2/plugins-lin-x64/` and the real home
+  `~/dl/audio/rackhome/.local/share/Rack2/plugins-lin-x64/` and the real home
   stays clean. Run Rack itself with the same fake `HOME` so it loads that plugin.
 - Rack SDK is symlinked at `~/dl/audio/rack-sdk` → current SDK version.
 - `make dist` packages `res/` and `LICENSE*` plus the built plugin.

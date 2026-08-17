@@ -140,8 +140,8 @@ in front of users; a tag alone does not.
 ## Local install, for checking a build by hand
 
 ```
-HOME=/home/gg/dl/temp/rackhome/ make install
-cd ~/dl/audio/rack && HOME=/home/gg/dl/temp/rackhome/ ./Rack
+HOME=/home/gg/dl/audio/rackhome/ make install
+cd ~/dl/audio/rack && HOME=/home/gg/dl/audio/rackhome/ ./Rack
 ```
 
 The fake `HOME` keeps the real one clean; run Rack with the same one so it
