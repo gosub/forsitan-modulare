@@ -21,13 +21,19 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
-     scrupea_probe viginti_probe materiae_probe $(SMOKE_BINS) $(CROSS_BINS)
+     scrupea_probe viginti_probe materiae_probe materiae_presets $(SMOKE_BINS) $(CROSS_BINS)
 
 # Measurement and audition harness for the square-relation percussion voice.
 # It drives the engine header alone and needs no Rack. `ops` is the one that
 # earns its keep: the pairwise spectral distance between operators is what
 # says whether the operator set is worth its knob positions.
 materiae_probe: materiae_probe.cpp ../src/materiae_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Loads the factory presets back into a real module and measures them: audible,
+# inside the swing, finite, and no two of them the same sound.
+materiae_presets: materiae_presets.cpp smoke_harness.hpp ../src/materiae.cpp \
+                  ../src/materiae_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp

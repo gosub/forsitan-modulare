@@ -198,7 +198,7 @@ static std::vector<Setting> families() {
     v.push_back({"tom", p, -0.8f, 0.f, 0.2f, false});
 
     p = base();  // metal: irrational ratio into ring
-    p.f0 = 620.f; p.ratio = 3.14159265f; p.relation = 3.f; p.blend = 1.f;
+    p.f0 = 620.f; p.ratio = 3.14159265f; p.relation = 2.f; p.blend = 1.f;
     p.xmod = 0.35f; p.tilt = -0.4f;
     p.cutoff = 3800.f; p.reso = 0.55f; p.filterMode = 1;
     p.decay = 1.1f; p.curve = 0.8f; p.decay2 = 0.2f;

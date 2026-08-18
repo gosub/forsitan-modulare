@@ -1,0 +1,104 @@
+{
+  "plugin": "forsitan",
+  "model": "materiae",
+  "version": "2.15.0",
+  "params": [
+    {
+      "value": 0.750009,
+      "id": 0
+    },
+    {
+      "value": 6.0,
+      "id": 1
+    },
+    {
+      "value": 0.5,
+      "id": 2
+    },
+    {
+      "value": 0.67688,
+      "id": 3
+    },
+    {
+      "value": 1.0,
+      "id": 4
+    },
+    {
+      "value": 0.45,
+      "id": 5
+    },
+    {
+      "value": -0.5,
+      "id": 6
+    },
+    {
+      "value": 0.0,
+      "id": 7
+    },
+    {
+      "value": 3.0,
+      "id": 8
+    },
+    {
+      "value": 0.8,
+      "id": 9
+    },
+    {
+      "value": 0.374851,
+      "id": 10
+    },
+    {
+      "value": 0.85,
+      "id": 11
+    },
+    {
+      "value": 0.0,
+      "id": 12
+    },
+    {
+      "value": 0.730452,
+      "id": 13
+    },
+    {
+      "value": 0.4,
+      "id": 14
+    },
+    {
+      "value": 0.0,
+      "id": 15
+    },
+    {
+      "value": 0.780401,
+      "id": 16
+    },
+    {
+      "value": 0.35,
+      "id": 17
+    },
+    {
+      "value": -0.35,
+      "id": 18
+    },
+    {
+      "value": 0.5,
+      "id": 19
+    },
+    {
+      "value": 0.3,
+      "id": 20
+    },
+    {
+      "value": 0.0,
+      "id": 21
+    }
+  ],
+  "data": {
+    "freeRun": false,
+    "env2Free": false,
+    "trackCutoff": false,
+    "freeRatio": false,
+    "useVelocity": true,
+    "phaseIdx": 0,
+    "outputLevel": 1
+  }
+}
