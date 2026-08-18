@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     longer carries — tom, snare, hat, cymbal, bell, digital percussion, sub —
     are in doc/materiae.md.
 
+    The output saturator is antialiased, and Ctrl-R aims the filter at the
+    fundamental instead of randomizing it over its own range.
+
     A trigger arriving on a sounding voice is deferred: the output fades down,
     everything resets where it cannot be heard, and it fades back up, so a
     retrigger during the decay does not click.

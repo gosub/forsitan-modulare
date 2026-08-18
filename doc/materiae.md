@@ -189,6 +189,23 @@ from: the exciter provides the transient, the filter provides the weight. The
 context menu can make cutoff track pitch, which turns the whole voice into
 something playable from **v/o**.
 
+**gain** drives the saturator that ends the chain. It is not a volume control:
+the saturator asymptotes at full scale, so the first part of the knob makes the
+voice louder and the rest of it makes the voice dirtier, until a hit is closer
+to a square than to whatever the filter produced. Expect the level to stop
+climbing somewhere past the middle of the knob while the character keeps
+changing — that is what a drive control is. It sits *before* the VCA, so how
+hard the voice clips is a property of the patch rather than of where in the
+decay you happen to be; otherwise a hit would change character as it fell
+instead of simply getting quieter.
+
+The saturator is antialiased. A memoryless nonlinearity at the host rate makes
+harmonics above Nyquist and folds every one of them back down inharmonically,
+which driven hard is not warmth but grit and clicks — measured on a sine, 17.9%
+of the output energy at the top of the knob. Integrating the transfer curve
+across each sample interval instead of evaluating it at a point brings that to
+6.1%, for the cost of one logarithm a sample.
+
 ## Envelopes
 
 Two, with different jobs.
@@ -337,6 +354,24 @@ decay 180 ms, **crv** +0.4, **env 2 → pit** +0.5.
 cutoff 220 Hz, **reso** 85%, decay 900 ms, **crv** +0.35, dec 2 350 ms,
 **env 2 → pit** −0.35, **→ rel** +0.5, **→ cut** +0.3. The latch drifting
 through its own phase difference is what makes it move.
+
+## Randomize
+
+Ctrl-R does not randomize every knob over its whole range. Uniform randomization
+sounds like the fair thing to do and is not: measured over 600 tries it put 11%
+of patches below usable level, because a low pitch divided down further and read
+through a bandpass sitting well above it leaves nothing inside the band.
+
+So the filter mode is chosen first, cutoff is placed *relative to the
+fundamental* rather than anywhere on its own range, the bandpass gets a
+resonance floor and a tighter aim than the lowpass, and the divider is weighted
+away from its deep end. Decay keeps off its own floor, since a five-millisecond
+decay is a tick rather than a patch. Everything that merely changes the sound
+without being able to silence it — ratio, grid, xmod, tilt, relation, blend, the
+env 2 routing — is left alone and fully uniform.
+
+That takes the unusable fraction from 11% to 1%, and lifts the quietest
+twentieth of results by 17 dB. `test/materiae_random` is the measurement.
 
 ## Idle cost
 
