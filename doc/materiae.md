@@ -40,7 +40,7 @@ the VCA run at the host sample rate, downstream and deliberately clean.
 | **ratio** | osc B as a ratio of osc A. Nineteen steps: the just ratios (1:2, 2:3, 3:4, 5:4, 4:3, 3:2, 5:3, 7:4, 2:1, 5:2, 3:1, 4:1), a 1:1 and a 1:1 detuned by 1%, and four irrationals — √2, e, π, and the 1:4 at the bottom. The context menu swaps the knob for a free 0.25× to 4× sweep. |
 | **shape** | pulse-width skew. At centre both oscillators are square; turning it widens A and narrows B together. One knob, because what matters is the *difference* in duty, not either width on its own. |
 | **grid** | the rate the logic core runs at, from 8× the host rate down to 1.5 kHz. |
-| **div** | /1 /2 /4 /8 /16 on the cross-modulation path. A flip-flop chain on the source's rising edges, so /1 passes the square through with its own pulse width and every other tap is a half-duty square at a subharmonic. |
+| **div** | /1 /2 /4 /8 /16 on osc A. A flip-flop chain on A's rising edges: /1 passes it through with its own pulse width, and every other tap is a half-duty square a subharmonic below. |
 
 ### About ratio
 
@@ -51,6 +51,23 @@ timbre. On √2, e or π they never share one, so the pulse pattern keeps
 evolving for as long as the hit lasts — the same reason those four are there.
 1:1 detuned gives a slow beat between the two, and under the logic operators
 that beat is a rhythm rather than a tremolo.
+
+### About div
+
+The divider reads osc A everywhere A is read as a source: on the way into the
+relationship operator, and inside the A→B modulation cell. The operator half is
+the audible one — a divided A against an undivided B is not the same
+relationship an octave down, it is a different relationship, and the two
+stateful operators feel it hardest because they are then clocked at A/N against
+a B running N times faster.
+
+Only A is divided. Dividing both would drop the whole voice an octave, which is
+what **pitch** is for; dividing one operand is what makes a new pattern.
+
+One consequence worth knowing: above /1 the chain emits a half-duty square by
+construction, so **shape** stops skewing A and only narrows B. That is what a
+flip-flop does, and it is part of why division sounds digital rather than
+merely lower.
 
 ### About grid
 
@@ -216,7 +233,8 @@ bottom with **reso** almost full, **env 2 → pit** hard negative and a short
 else and arrive at ring.
 
 **Digital.** **relation** on **and**, **div** at /4, **grid** turned well down,
-short decay. The coarse grid is doing most of the work.
+short decay. The coarse grid and the subharmonic operand are doing the work
+between them; **xmod** can stay at zero.
 
 **Strange.** **xmod** near full with **tilt** off centre, **div** at /2,
 **dest** on both, **relation** low with **env 2 → rel** wide open, long

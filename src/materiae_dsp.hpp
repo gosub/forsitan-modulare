@@ -307,6 +307,7 @@ struct Engine {
     // logic core, at gridRate
     Osc oscA, oscB;
     Cell cellAB, cellBA;
+    Divider opDiv;
     Latch latch;
     ShiftReg sr;
     float prevA = 1.f, prevB = 1.f;
@@ -333,7 +334,7 @@ struct Engine {
     void reset() {
         oscA.reset(0.f); oscB.reset(0.f);
         cellAB.reset(); cellBA.reset();
-        latch.reset(); sr.reset();
+        opDiv.reset(); latch.reset(); sr.reset();
         prevA = prevB = 1.f;
         gridAcc = 0.f; held = 0.f;
         svf.reset();
@@ -352,7 +353,7 @@ struct Engine {
             oscA.reset(0.f);
             oscB.reset(phaseOffset);
             cellAB.reset(); cellBA.reset();
-            latch.reset(); sr.reset();
+            opDiv.reset(); latch.reset(); sr.reset();
             prevA = prevB = 1.f;
             // the grid accumulator too: left alone it carries a fractional
             // step across the trigger, which lands the core's first step at a
@@ -394,7 +395,20 @@ struct Engine {
 
         float a = oscA.step(clampf(dtA, 0.f, 0.5f), pwA);
         float b = oscB.step(clampf(dtB, 0.f, 0.5f), pwB);
-        prevA = a; prevB = b;
+        prevA = a; prevB = b;   // the feedback loop reads the undivided pair
+
+        // DIV divides osc A on the way into the operator, not only inside the
+        // cross-modulation cells. Confined to those cells it was a modifier of
+        // a modifier: with XMOD at zero -- the default -- it changed nothing at
+        // all, which `materiae_probe div` measured as a spectral distance of
+        // exactly 0.000 on every operator. Read here it is a subharmonic
+        // operand, so the two stateful operators are clocked at A/N against an
+        // undivided B and the pulse pattern changes outright.
+        //
+        // Only A. Dividing both would drop the whole voice an octave, which is
+        // what PITCH is for; dividing one is what makes a new relationship.
+        // At /1 the chain passes A through untouched, pulse width and all.
+        a = opDiv.process(a, p.divShift);
 
         // The stateful operators read edges, not levels, so they run from the
         // raw squares: gating their inputs would only mask the occasional edge

@@ -349,6 +349,38 @@ static int modeXmod() {
     return bad ? 1 : 0;
 }
 
+// How much does DIV actually change the sound, and under what conditions?
+// It only reaches the cross-modulation cells, so at XMOD 0 it can do nothing
+// at all; this prints the spectral distance from /1 across the cases.
+static int modeDiv() {
+    const char* opName[kNumOps] = {"and", "sum", "ring", "flip", "noise"};
+    const float xmods[] = {0.f, 0.35f, 0.7f, 1.f};
+    printf("op,xmod,div,rms,centroid_hz,dist_from_div1\n");
+    float best = 0.f;
+    for (int op = 0; op < kNumOps; op++) {
+        for (float xm : xmods) {
+            std::vector<float> ref;
+            for (int sh = 0; sh < kNumDiv; sh++) {
+                Params p = base();
+                p.relation = (float)op;
+                p.xmod = xm; p.divShift = sh;
+                p.f0 = 180.f; p.ratio = 1.5f; p.blend = 1.f;
+                p.cutoff = 12000.f; p.reso = 0.f; p.decay = 2.f; p.curve = 0.f;
+                std::vector<float> x = run(p, 0.4f);
+                Stats st = stats(x);
+                std::vector<float> m = spectrum(x);
+                if (sh == 0) ref = m;
+                float d = specDist(m, ref);
+                if (sh > 0) best = std::max(best, d);
+                printf("%s,%.2f,%d,%.4f,%.1f,%.3f\n", opName[op], xm, 1 << sh,
+                       st.rms, centroid(m), d);
+            }
+        }
+    }
+    printf("\nlargest distance any division reaches: %.3f\n", best);
+    return 0;
+}
+
 static int modeRatio() {
     printf("ratio,rms,peak,centroid_hz,high_frac\n");
     for (int i = 0; i < kNumRatios; i++) {
@@ -389,8 +421,9 @@ int main(int argc, char** argv) {
     if (!strcmp(mode, "ops")) return modeOps();
     if (!strcmp(mode, "grid")) return modeGrid();
     if (!strcmp(mode, "xmod")) return modeXmod();
+    if (!strcmp(mode, "div")) return modeDiv();
     if (!strcmp(mode, "ratio")) return modeRatio();
     if (!strcmp(mode, "render")) return modeRender(argc > 2 ? argv[2] : ".");
-    fprintf(stderr, "usage: %s ops|grid|xmod|ratio|render [dir]\n", argv[0]);
+    fprintf(stderr, "usage: %s ops|grid|xmod|div|ratio|render [dir]\n", argv[0]);
     return 2;
 }

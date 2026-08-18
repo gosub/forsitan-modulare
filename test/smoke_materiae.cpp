@@ -120,6 +120,43 @@ static void checkCrossMod() {
     report(MOD, "xmod_peak", worst, worst <= 5.01f);
 }
 
+// DIV has to do something with the cross-modulation switched off. It used to
+// live only inside the cross-modulation cells, which made it inert at the
+// default XMOD of zero -- measurably so, at a spectral distance of exactly
+// 0.000. This is the guard against that coming back.
+static void checkDivision() {
+    auto render = [](int div) {
+        Materiae m;
+        setDefaults(m);
+        m.params[Materiae::XMOD_PARAM].setValue(0.f);      // the point
+        m.params[Materiae::DIV_PARAM].setValue((float)div);
+        m.params[Materiae::RELATION_PARAM].setValue(2.f);  // ring
+        m.params[Materiae::CUTOFF_PARAM].setValue(1.f);
+        m.params[Materiae::DECAY_PARAM].setValue(0.6f);
+        std::vector<float> out;
+        long frame = 0;
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
+        m.process(makeArgs(frame++));
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f);
+        for (int i = 0; i < 32; i++) m.process(makeArgs(frame++));
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
+        for (int i = 0; i < 8000; i++) {
+            m.process(makeArgs(frame++));
+            out.push_back(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage());
+        }
+        return out;
+    };
+    std::vector<float> one = render(0);
+    double worst = 1e9;
+    for (int div = 1; div < kNumDiv; div++) {
+        std::vector<float> d = render(div);
+        double diff = 0;
+        for (size_t i = 0; i < one.size(); i++) diff += std::fabs(one[i] - d[i]);
+        worst = std::min(worst, diff / one.size());
+    }
+    report(MOD, "div_audible_at_xmod0", worst, worst > 0.05);
+}
+
 // Phase reset is what makes a hit repeatable. Two strikes of one patch must
 // come out sample-identical; with the menu's free-run they must not.
 static void checkRepeatable() {
@@ -218,4 +255,5 @@ static void checkPatchRoundTrip() {
 }
 
 SMOKE_MAIN(checkHit, checkSilence, checkOperators, checkGrid, checkCrossMod,
-           checkRepeatable, checkVelocity, checkEnv2, checkPatchRoundTrip)
+           checkDivision, checkRepeatable, checkVelocity, checkEnv2,
+           checkPatchRoundTrip)
