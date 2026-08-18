@@ -26,7 +26,28 @@ than a bad release.
    smoke binary per module and exits nonzero on any failure. Note the runs
    are not reproducible: the harnesses seed from the clock.
 
-3. **Panels are legal**, if any layout changed:
+3. **No two modules define the same symbol.**
+
+   ```
+   python3 tools/release/check_symbols.py
+   ```
+
+   Every module is its own translation unit linked into one plugin, so a
+   file-scope type in one `src/*.cpp` shares a namespace with one in another.
+   Two of the same name is an ODR violation, and what happens next is the
+   linker's choice rather than the code's: MinGW refuses to link and fails the
+   Windows job *after* the tag is pushed, while ELF merges them silently and
+   the loser's calls quietly run the winner's code.
+
+   That is not hypothetical -- it cost v2.15.0 a re-tag. caligo and materiae
+   both declared `TimeQuantity`; caligo defined its member out of line and
+   materiae in-class, so on every Linux build materiae's time tooltips ran
+   caligo's implementation. Nothing in the test suite touches a tooltip.
+
+   The check reads the object files rather than guessing from the source, so
+   it needs a built tree. Put anything file-local in an anonymous namespace.
+
+4. **Panels are legal**, if any layout changed:
 
    ```
    ~/dl/audio/fonttools-venv/bin/python tools/panel-editor/panel_audit.py
@@ -35,14 +56,14 @@ than a bad release.
    No arguments audits every `@layout` module. It checks overlap, label
    offsets, clearances and screw zones with true widget geometry.
 
-4. **Documentation matches the code.** Every module needs `doc/<slug>.md`,
+5. **Documentation matches the code.** Every module needs `doc/<slug>.md`,
    a row in the readme table, and a `plugin.json` entry. When a module was
    added this release, confirm all of it landed: `src/<name>.cpp`, the model
    declared in `src/forsitan.hpp`, registered in `src/forsitan.cpp`, the
    panel `res/<name>.svg`, the `plugin.json` entry with its `manualUrl`,
    `doc/<slug>.md`, and the readme row.
 
-5. **`plugin.json` metadata.** Every tag must be one Rack knows, and this is
+6. **`plugin.json` metadata.** Every tag must be one Rack knows, and this is
    not a matter of taste: the library rejects a manifest with an unknown tag,
    and it does so *after* the tag is pushed. That has already cost one
    release ([#19](https://github.com/gosub/forsitan-modulare/issues/19),
@@ -64,13 +85,13 @@ than a bad release.
    does not wrap it, so keep them under ~100 characters and leave behaviour to
    the manual.
 
-6. **Regenerate anything derived**, if its source changed:
+7. **Regenerate anything derived**, if its source changed:
 
    ```
    python3 tools/patches/gen_patches.py      # patches/*.vcv
    ```
 
-7. **Update the images** if any panel changed. Both kinds are generated,
+8. **Update the images** if any panel changed. Both kinds are generated,
    never screenshotted by hand:
 
    ```
@@ -81,11 +102,11 @@ than a bad release.
    `gen_collection.py` drives the running Rack through limen, so the plugin
    installed for it must speak limen protocol 2.
 
-8. **Write the CHANGELOG entry.** Heading `## [<version>] - <YYYY-MM-DD>`,
+9. **Write the CHANGELOG entry.** Heading `## [<version>] - <YYYY-MM-DD>`,
    at the top, grouped `### Added` / `### Changed` / `### Fixed`. `git log`
    since the previous tag is the raw material.
 
-9. **Bump `"version"` in `plugin.json`,** then make everything agree:
+10. **Bump `"version"` in `plugin.json`,** then make everything agree:
 
    ```
    python3 tools/release/sync_version.py
@@ -96,7 +117,7 @@ than a bad release.
    a branch so that someone running an older build opens the manual their
    build actually matches. Never hand-edit them.
 
-10. **Verify, then commit.**
+11. **Verify, then commit.**
 
     ```
     python3 tools/release/sync_version.py --check

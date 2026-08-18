@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.15.0] - 2026-08-18
+### Fixed
+  - **materiae**'s file-local helper types are in an anonymous namespace, where
+    they should have been all along. `TimeQuantity` collided with caligo's:
+    MinGW refused to link the Windows build, and ELF had been merging the two
+    silently, so on Linux materiae's attack and decay tooltips were running
+    caligo's implementation. `tools/release/check_symbols.py` now reads the
+    object files and fails on any name two modules both define.
+
 ### Added
   - **materiae**, a 24 HP percussion voice built from two square waves and
     nothing else. Both oscillators are naive squares; all of the complexity is

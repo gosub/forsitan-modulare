@@ -43,6 +43,17 @@ static const char* kRatioNames[kNumRatios] = {
 
 struct Materiae;
 
+// Everything below is file-local, and says so.
+//
+// These are the names a second module is most likely to reach for -- caligo
+// already had a TimeQuantity of its own -- and two file-scope classes of the
+// same name in two translation units is an ODR violation whatever the linker
+// decides to do about it. MinGW refuses to link. ELF does something worse: it
+// merges them silently, and since caligo defines its member out of line while
+// this file defined its own in-class, caligo's strong symbol won and materiae's
+// time tooltips were reading caligo's implementation on every Linux build.
+namespace {
+
 // The ratio knob reads as a table index; show what it actually selects.
 // Defined out of line below, because it has to ask the module which mode the
 // knob is in.
@@ -106,6 +117,8 @@ struct TimeQuantity : ParamQuantity {
         return s < 1.f ? string::f("%.1f ms", s * 1000.f) : string::f("%.2f s", s);
     }
 };
+
+}  // namespace
 
 struct Materiae : Module {
     enum ParamId {
@@ -454,7 +467,9 @@ struct Materiae : Module {
 };
 
 // RatioQuantity needs the module to know which mode the knob is in, so its
-// body waits until Materiae is a complete type.
+// body waits until Materiae is a complete type. Same namespace as its class.
+namespace {
+
 std::string RatioQuantity::getDisplayValueString() {
     Materiae* m = dynamic_cast<Materiae*>(module);
     float v = getValue();
@@ -465,6 +480,8 @@ std::string RatioQuantity::getDisplayValueString() {
     int i = clamp((int)std::lround(v), 0, kNumRatios - 1);
     return kRatioNames[i];
 }
+
+}  // namespace
 
 struct MateriaeWidget : ModuleWidget {
     MateriaeWidget(Materiae* module) {
