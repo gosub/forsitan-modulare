@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     seconds and a trigger pings it, so the square is the exciter and the filter
     supplies the weight that squares do not have. Two envelopes: env 1 on
     amplitude, env 2 on pitch, relation and cutoff through bipolar trimpots.
+    A trigger arriving on a sounding voice is deferred: the output fades down,
+    everything resets where it cannot be heard, and it fades back up, so a
+    retrigger during the decay does not click.
+
     Hits are repeatable by default (both oscillators reset phase on trigger,
     because with edge-reading operators the pattern is a function of the phase
     offset); free-running is in the menu. Velocity comes from trigger height,

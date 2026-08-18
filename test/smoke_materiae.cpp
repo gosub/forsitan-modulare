@@ -10,6 +10,8 @@
 #include "smoke_harness.hpp"
 #include "../src/materiae.cpp"
 
+#include <vector>
+
 static const char* MOD = "materiae";
 
 static void setDefaults(Materiae& m) {
@@ -157,52 +159,67 @@ static void checkDivision() {
     report(MOD, "div_audible_at_xmod0", worst, worst > 0.05);
 }
 
-// A retrigger during the decay must not click. The invariant that guarantees
-// it: the envelope has to pass through zero at the retrigger, so that the
-// oscillator phases, the latch and the shift register all reset underneath a
-// silent VCA instead of stepping a tone that is still sounding. Without the
-// retrigger attack floor the amplitude jumps from wherever the decay had got
-// to straight back to full.
+// A retrigger during the decay must not click.
+//
+// The invariant is about *slew*, not about level. An earlier version of this
+// check asserted only that the output passes through zero at the retrigger,
+// and it passed while the module was plainly clicking: the fade reached zero
+// by dropping there in a single sample. What matters is that the retrigger
+// introduces no step the signal was not already making on its own, so this
+// compares the largest one-sample jump in the window around the trigger
+// against the largest one in the five milliseconds just before it.
 static void checkRetrigger() {
     Materiae m;
     setDefaults(m);
     m.params[Materiae::ATTACK_PARAM].setValue(0.f);   // the worst case
-    m.params[Materiae::DECAY_PARAM].setValue(0.6f);
-    m.params[Materiae::RESO_PARAM].setValue(0.5f);
+    m.params[Materiae::DECAY_PARAM].setValue(0.72f);
+    m.params[Materiae::RESO_PARAM].setValue(0.7f);
+    m.params[Materiae::CUTOFF_PARAM].setValue(0.45f);
     m.params[Materiae::RELATION_PARAM].setValue(2.f);
+
     long frame = 0;
+    std::vector<float> v;
+    auto run = [&](int n) {
+        for (int i = 0; i < n; i++) {
+            m.process(makeArgs(frame++));
+            v.push_back(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage());
+        }
+    };
     auto fire = [&]() {
-        m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f);
-        for (int i = 0; i < 8; i++) m.process(makeArgs(frame++));
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f); run(1);
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f); run(4);
         m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
     };
-    m.process(makeArgs(frame++));
     fire();
-    // 100 ms into the decay, note how loud it is, then hit it again
-    float before = 0.f;
-    for (int i = 0; i < (int)(0.1f * SR); i++) {
-        m.process(makeArgs(frame++));
-        before = std::max(before, std::fabs(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage()));
-    }
-    // the level right before the second hit, which is what a step would be
-    // measured against
-    float atRetrig = 0.f;
-    for (int i = 0; i < (int)(0.005f * SR); i++) {
-        m.process(makeArgs(frame++));
-        atRetrig = std::max(atRetrig, std::fabs(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage()));
-    }
-    // the trigger's own samples are part of the window: the zero is at the
-    // instant of the edge, not a millisecond after it
+    run((int)(0.13f * SR));
+    size_t mark = v.size();
+    fire();
+    run(400);
+
+    auto maxStep = [&](size_t from, size_t to) {
+        float d = 0.f;
+        for (size_t i = from + 1; i < to && i < v.size(); i++)
+            d = std::max(d, std::fabs(v[i] - v[i - 1]));
+        return d;
+    };
+    // The window is the fade-out and the strike at the bottom of it, which is
+    // where a discontinuity would land -- roughly kRetrigFade plus a little.
+    // It deliberately stops before the fade back in, because what comes up
+    // there is a fresh hit, and a fresh hit is *supposed* to slew hard.
+    size_t fade = (size_t)(materiae_dsp::kRetrigFade * SR) + 8;
+    float before = maxStep(mark - (size_t)(0.005f * SR), mark);
+    float around = maxStep(mark, mark + fade);
+    report(MOD, "retrig_no_step", around / (before + 1e-9f), around < before * 2.f);
+
+    // and it should still get quiet in there, so the resets happen unheard
     float floorV = 1e9f;
-    m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f);
-    for (int i = 0; i < (int)(0.001f * SR); i++) {
-        m.process(makeArgs(frame++));
-        floorV = std::min(floorV, std::fabs(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage()));
-        if (i == 8) m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
-    }
-    (void)before;
-    report(MOD, "retrig_passes_zero", floorV / (atRetrig + 1e-9f),
-           floorV < atRetrig * 0.05f);
+    for (size_t i = mark; i < mark + fade && i < v.size(); i++)
+        floorV = std::min(floorV, std::fabs(v[i]));
+    float level = 0.f;
+    for (size_t i = mark - (size_t)(0.005f * SR); i < mark; i++)
+        level = std::max(level, std::fabs(v[i]));
+    report(MOD, "retrig_passes_zero", floorV / (level + 1e-9f),
+           floorV < level * 0.05f);
 }
 
 // Phase reset is what makes a hit repeatable. Two strikes of one patch must

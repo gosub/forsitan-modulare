@@ -246,12 +246,17 @@ while modulation histories overlap.
 A trigger that arrives while the voice is still sounding restarts the
 oscillator phases, the latch and the shift register, and jumps the envelope
 back to full: four discontinuities at once, landing on a tone that is already
-there. So a retrigger gets a half-millisecond linear fade on the VCA, which
-puts the output at zero for the instant everything underneath it resets. It is
-short enough to still read as a sharp hit, and a trigger from silence skips it
-entirely. The fade is separate from **att** on purpose — the attack shares the
-**crv** knob, and a concave curve is at a quarter of full scale one sample in,
-which is not a fade at all.
+there. So on a sounding voice the trigger does not take effect immediately. The
+output fades down over 0.4 ms, everything resets at the bottom where nothing
+can be heard, and it fades back up. A retrigger therefore sounds about
+0.8 ms late, which no drum part will notice, and a trigger from silence skips
+the whole thing.
+
+Two simpler versions of this do not work, in case it looks over-engineered. A
+minimum attack time does nothing, because the attack shares the **crv** knob
+and a concave curve is at a quarter of full scale one sample in. Ramping the
+VCA back up from zero fixes only half of it — arriving at zero instantly is
+itself a step, and a large one.
 
 ## Context menu
 

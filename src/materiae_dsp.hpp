@@ -95,14 +95,20 @@ constexpr float kCurveExp = 2.5f;   // curve knob -> pow exponent, in octaves
 // the envelope back to full -- four discontinuities at once, landing on a tone
 // that is already there. That is a retrigger click.
 //
-// The fix cannot be a minimum attack time, which was the first attempt: the
-// attack shares the CURVE knob, and a concave curve rises so steeply that even
-// half a millisecond is at a quarter of full scale after one sample. This is a
-// separate linear ramp on the VCA instead, independent of the envelope's shape,
-// so the voice is genuinely at zero for the instant everything resets and
-// comes back over half a millisecond. Short enough to still read as a sharp
-// hit; a trigger from silence skips it entirely.
-constexpr float kRetrigFade = 0.0005f;
+// Two earlier attempts at this were wrong and are worth recording. A minimum
+// attack time does nothing, because the attack shares the CURVE knob and a
+// concave curve is at a quarter of full scale one sample in. Ramping the VCA
+// back up from zero does nothing either -- it only fixes the second half of
+// the problem, and getting *to* zero instantly is itself a step: measured, the
+// output went from -1.40 V to -0.04 V in one sample, which is the click.
+//
+// So the reset waits. A trigger arriving on a sounding voice fades the VCA
+// down over kRetrigFade, and only when it reaches zero does anything actually
+// reset; then it fades back up. Both edges are ramps and the discontinuities
+// all happen while the output is silent. The cost is that a retrigger sounds
+// twice this late, which at 0.4 ms is under a millisecond and not something a
+// drum part can hear. A trigger from silence skips all of it.
+constexpr float kRetrigFade = 0.0004f;
 constexpr float kDCPole = 8.f;      // output DC blocker corner, Hz
 // The exciter is scaled so a plain hit peaks near unity, which leaves the
 // resonant filter's own boost somewhere to go: everything above 0.8 bends
@@ -342,6 +348,7 @@ struct Engine {
     float dcx = 0.f, dcy = 0.f;
     float velocity = 1.f;
     float retrigFade = 1.f;
+    bool pendingStrike = false;
 
     float sampleRate = 44100.f;
     bool freeRun = false;       // do not reset phase on trigger
@@ -365,14 +372,25 @@ struct Engine {
         env1.reset(); env2.reset();
         dcx = dcy = 0.f;
         retrigFade = 1.f;
+        pendingStrike = false;
     }
+
+    // Is anything actually coming out right now? A retrigger has to be hidden
+    // whenever it is, which includes the drone tap, where env 1 is not running
+    // but the voice is still sounding.
+    bool sounding() const { return env1.isRunning() || alwaysRun; }
 
     void trigger(const Params& p, float vel) {
         velocity = vel;
-        // interrupting a sounding voice: fade the VCA down for the instant
-        // everything underneath it resets. A hit from silence has nothing to
-        // interrupt and starts at full.
-        retrigFade = env1.isRunning() ? 0.f : 1.f;
+        if (sounding()) {
+            pendingStrike = true;   // process() strikes at the bottom of the fade
+            return;
+        }
+        strike(p);
+    }
+
+    // everything a trigger actually does, once it is safe to do it
+    void strike(const Params& p) {
         env1.trigger();
         if (!env2Free || !env2.isRunning()) env2.trigger();
         if (!freeRun) {
@@ -485,6 +503,24 @@ struct Engine {
     void process(const Params& p, float dt, float& audioOut, float& droneOut,
                  float& env2Out, float e2Pitch, float e2Relation,
                  float e2Cutoff, float voct) {
+        // the deferred strike, and the ramp either side of it
+        if (pendingStrike) {
+            if (!sounding()) {                  // it ended on its own meanwhile
+                retrigFade = 1.f;
+                pendingStrike = false;
+                strike(p);
+            } else {
+                retrigFade -= dt / kRetrigFade;
+                if (retrigFade <= 0.f) {
+                    retrigFade = 0.f;
+                    pendingStrike = false;
+                    strike(p);
+                }
+            }
+        } else if (retrigFade < 1.f) {
+            retrigFade = std::min(1.f, retrigFade + dt / kRetrigFade);
+        }
+
         float e1 = env1.process(dt, p.attack, p.decay, p.curve);
         float e2 = env2.process(dt, 0.f, p.decay2, p.curve2);
         env2Out = e2;
@@ -521,6 +557,7 @@ struct Engine {
             svf.reset();
             dcx = dcy = 0.f;
             held = 0.f;
+            retrigFade = 1.f;
             audioOut = 0.f;
             droneOut = 0.f;
             return;
@@ -589,12 +626,10 @@ struct Engine {
         dcx = sat;
         if (!std::isfinite(dcy)) { dcy = dcx = 0.f; svf.reset(); }
 
-        if (retrigFade < 1.f)
-            retrigFade = std::min(1.f, retrigFade + dt / kRetrigFade);
-
-        // the voice before env 1: the same sound, held open. No envelope means
-        // no retrigger fade either -- a drone tap has nothing to interrupt.
-        droneOut = softClip(dcy);
+        // the voice before env 1: the same sound, held open. It gets the
+        // retrigger fade too -- a trigger resets the oscillators underneath a
+        // drone just as abruptly as underneath a hit.
+        droneOut = softClip(dcy * retrigFade);
         audioOut = softClip(dcy * e1 * velocity * retrigFade);
     }
 };
