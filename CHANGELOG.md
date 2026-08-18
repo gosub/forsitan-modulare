@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.15.0] - 2026-08-14
+## [2.15.0] - 2026-08-18
 ### Added
   - **materiae**, a 24 HP percussion voice built from two square waves and
     nothing else. Both oscillators are naive squares; all of the complexity is
