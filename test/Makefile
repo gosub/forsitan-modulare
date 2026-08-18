@@ -9,7 +9,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
-                cartilago scrupea viginti gradus
+                cartilago scrupea viginti gradus materiae
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
@@ -111,6 +111,7 @@ smoke_antrum: ../src/antrum_dsp.hpp
 smoke_caligo: ../src/caligo_dsp.hpp
 smoke_tundo: ../src/tundo_dsp.hpp
 smoke_viginti: ../src/viginti_dsp.hpp
+smoke_materiae: ../src/materiae_dsp.hpp
 
 # Run every smoke test, printing one CSV header for the lot.
 # Fails if any binary does.
