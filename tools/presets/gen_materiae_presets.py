@@ -146,10 +146,11 @@ PRESETS = [
 
     ("moire", {
         # the latch, whose duty cycle *is* the phase difference between the two
-        # oscillators. At a 1% detune that difference sweeps a full cycle twice
+        # oscillators. At a 1% detune that difference sweeps a full cycle once
         # a second, so the timbre slides continuously without a knob moving:
-        # two regular grids overlaid slightly out of true
-        PITCH: pitch(200), RATIO: ratio("1:1 detuned"), RELATION: relation("flip"),
+        # two regular grids overlaid slightly out of true. The sweep rate is
+        # 1% of the pitch, so it tracks the tuning.
+        PITCH: pitch(100), RATIO: ratio("1:1 detuned"), RELATION: relation("flip"),
         CUTOFF: cutoff(3000), RESO: 0.35,
         DECAY: decay(2.2), CURVE: 0.1, DECAY2: decay2(0.3), CURVE2: 0.5,
     }),

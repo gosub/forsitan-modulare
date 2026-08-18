@@ -284,7 +284,7 @@ hear. Load one, then move the knob it is named after.
 | 2 | **click** | the other end of the envelope, twelve milliseconds long |
 | 3 | **precession** | **ratio** on an irrational. √2 means the two never share a period, so the pattern never comes back round — given a long enough decay to hear it not repeating |
 | 4 | **eclipse** | **shape**. One pulse width opens as the other closes, and AND is high only while they overlap: the knob sets how much of one disc covers the other |
-| 5 | **moire** | the **flip** operator, whose duty cycle *is* the phase difference between the oscillators. At a 1% detune that sweeps a full cycle twice a second, so the timbre slides with no knob moving |
+| 5 | **moire** | the **flip** operator, whose duty cycle *is* the phase difference between the oscillators. At a 1% detune that sweeps a full cycle once a second, so the timbre slides with no knob moving. The sweep rate is 1% of the pitch, so tuning it up speeds the slide and tuning it down slows it |
 | 6 | **lattice** | **grid** near the bottom. Every edge lands late by a different amount and the fold-down of that is the whole timbre |
 | 7 | **undertow** | **div** as a subharmonic operand, with no cross-modulation at all: 40 Hz A read against 320 Hz B |
 | 8 | **ouroboros** | **xmod** full with **tilt** centred — each oscillator modulating the other at full depth, both ways at once |
