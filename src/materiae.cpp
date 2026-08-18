@@ -242,7 +242,7 @@ struct Materiae : Module {
 
         p.shape = params[SHAPE_PARAM].getValue();
 
-        // GRID: 8x the host rate down to 1.5 kHz, logarithmic
+        // GRID: 4x the host rate down to 250 Hz, logarithmic
         float gk = clampf(params[GRID_PARAM].getValue(), 0.f, 1.f);
         float top = std::log2(sampleRate * kGridMaxMult);
         float bot = std::log2(kGridMin);

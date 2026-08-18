@@ -302,12 +302,16 @@ static float inharmFrac(const std::vector<float>& m, float f0) {
 }
 
 static int modeGrid() {
-    const float rates[] = {SR * 8.f, SR * 4.f, SR * 2.f, SR, 24000.f,
-                           12000.f, 6000.f, 3000.f, 1500.f};
+    // sweep the knob, through the module's own mapping, rather than a list of
+    // rates: what matters is how the change is distributed over the travel
+    const int kSteps = 16;
     const float f0 = 220.f;
-    std::vector<float> ref;
-    printf("grid_hz,rms,peak,centroid_hz,inharm_frac,dist_from_clean\n");
-    for (float g : rates) {
+    std::vector<float> ref, prev;
+    printf("knob,grid_hz,rms,peak,centroid_hz,inharm_frac,dist_from_clean,step\n");
+    for (int i = 0; i <= kSteps; i++) {
+        float k = (float)i / (float)kSteps;
+        float top = std::log2(SR * kGridMaxMult), bot = std::log2(kGridMin);
+        float g = std::pow(2.f, top + (bot - top) * k);
         Params p = base();
         p.gridRate = g;
         p.f0 = f0; p.ratio = 1.5f; p.relation = 2.f; p.blend = 1.f;
@@ -316,13 +320,35 @@ static int modeGrid() {
         Stats s = stats(x);
         std::vector<float> m = spectrum(x);
         if (ref.empty()) ref = m;
-        printf("%.0f,%.4f,%.4f,%.1f,%.4f,%.3f\n", g, s.rms, s.peak,
-               centroid(m), inharmFrac(m, f0), specDist(m, ref));
+        float step = prev.empty() ? 0.f : specDist(m, prev);
+        prev = m;
+        printf("%.3f,%.0f,%.4f,%.4f,%.1f,%.4f,%.3f,%.3f\n", k, g, s.rms,
+               s.peak, centroid(m), inharmFrac(m, f0), specDist(m, ref), step);
         if (!s.finite) { printf("NON-FINITE at grid %.0f\n", g); return 1; }
     }
-    return 0;
+
+    // the corner the range change opens up: the highest pitch on the coarsest
+    // grid, where dt runs to tens of cycles a step
+    printf("\npitch extremes at the bottom of the knob\n");
+    printf("f0_hz,rms,peak,finite\n");
+    const float pitches[] = {20.f, 110.f, 880.f, 4000.f, 12000.f};
+    int bad = 0;
+    for (float f : pitches) {
+        Params p = base();
+        p.gridRate = kGridMin;
+        p.f0 = f; p.ratio = 4.f; p.relation = 2.f; p.blend = 1.f;
+        p.xmod = 1.f; p.cutoff = 12000.f; p.reso = 0.8f; p.decay = 1.f;
+        std::vector<float> x = run(p, 0.5f);
+        Stats s = stats(x);
+        printf("%.0f,%.4f,%.4f,%d\n", f, s.rms, s.peak, s.finite ? 1 : 0);
+        if (!s.finite || s.peak > 1.01f) bad++;
+    }
+    printf("\nunstable corners: %d (want 0)\n", bad);
+    return bad ? 1 : 0;
 }
 
+// The whole feedback range, both destinations, every division: nothing here
+// may go non-finite or push past the output swing.
 static int modeXmod() {
     printf("xmod,tilt,dest,div,rms,peak,centroid_hz,finite\n");
     int bad = 0;
@@ -340,7 +366,7 @@ static int modeXmod() {
                     std::vector<float> m = spectrum(x);
                     printf("%.2f,%+.0f,%d,%d,%.4f,%.4f,%.1f,%d\n", xm, tilt, d,
                            1 << sh, s.rms, s.peak, centroid(m), s.finite ? 1 : 0);
-                    if (!s.finite || s.peak > 2.01f) bad++;
+                    if (!s.finite || s.peak > 1.01f) bad++;
                 }
             }
         }

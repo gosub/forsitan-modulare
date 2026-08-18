@@ -31,8 +31,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     well as into the modulation cell — so a divided A against an undivided B is
     a different relationship rather than the same one an octave down.
 
-    **grid** sets the rate the logic core runs at, from 8x the host rate down
-    to 1.5 kHz. Squares and logic cannot be band limited, so rather than hide
+    **grid** sets the rate the logic core runs at, from 4x the host rate down
+    to 250 Hz. Squares and logic cannot be band limited, so rather than hide
     that, the digital character is a knob: turned down the relationship is
     quantized onto a coarse time grid and the displaced edges fold; turned up
     the same patch is clean.

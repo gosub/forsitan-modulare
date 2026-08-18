@@ -19,11 +19,12 @@
 //   env 2 -> pitch, relation position, cutoff   (bipolar, per destination)
 //
 // Two rates. The logic core -- oscillators, cross-modulation, operator --
-// runs on its own clock at `gridRate`, which the GRID control sweeps from 8x
-// the host rate down to about 1.5 kHz. High, it is plain oversampling and the
-// voice is clean; low, the whole relationship is quantized onto a coarse grid
-// and the alias images become the timbre. That knob is the module's digital
-// character made tuneable instead of accidental.
+// runs on its own clock at `gridRate`, which the GRID control sweeps from 4x
+// the host rate down to 250 Hz. High, it is plain oversampling and the voice
+// is clean; low, the whole relationship is quantized onto a coarse grid, the
+// oscillators alias outright, and what is left of the relationship between
+// them is the timbre. That knob is the module's digital character made
+// tuneable instead of accidental.
 //
 // The filter and the VCA run at the host rate, downstream of the decimator,
 // and stay clean on purpose: the square is the exciter, the resonant filter
@@ -68,8 +69,15 @@ namespace materiae_dsp {
 constexpr int kNumOps = 5;          // and, sum, ring, flip, noise
 constexpr int kNumDiv = 5;          // /1 /2 /4 /8 /16
 
-constexpr float kGridMaxMult = 8.f; // top of the GRID knob, x host rate
-constexpr float kGridMin = 1500.f;  // bottom, in Hz
+// GRID's range, chosen from `materiae_probe grid`. The top used to be 8x the
+// host rate and the bottom 1500 Hz, which spent knob travel badly at both ends:
+// 8x to 4x measured 0.063 of spectral distance across a whole octave of the
+// knob, out of about 1.9 for the full sweep, while every octave below 1500 Hz
+// was still worth close to 1.0 a step. So the top comes down to 4x -- which
+// also halves the worst-case cost of the module -- and the bottom goes to
+// 250 Hz, where the grid rate is about to become a pitch of its own.
+constexpr float kGridMaxMult = 4.f; // top of the GRID knob, x host rate
+constexpr float kGridMin = 250.f;   // bottom, in Hz
 constexpr int kMaxGridSteps = 64;   // guard on the inner loop
 
 constexpr float kFMOct = 4.f;       // cross-modulation depth at XMOD full, octaves
@@ -393,8 +401,16 @@ struct Engine {
         float dtA = fA * fastExp2(modA * fm) / p.gridRate;
         float dtB = fB * fastExp2(modB * fm) / p.gridRate;
 
-        float a = oscA.step(clampf(dtA, 0.f, 0.5f), pwA);
-        float b = oscB.step(clampf(dtB, 0.f, 0.5f), pwB);
+        // dt is deliberately not held at half a cycle. Clamping it there made
+        // both oscillators degenerate to the same alternate-every-step square
+        // as soon as the grid rate fell below twice the pitch: A and B became
+        // identical, every operator collapsed to a constant, and the DC
+        // blocker turned the result into silence. Letting the phase alias
+        // instead keeps the two at different aliased frequencies, so the
+        // relationship survives -- messy and folded, which is the point of
+        // the bottom of the GRID knob.
+        float a = oscA.step(clampf(dtA, 0.f, 1024.f), pwA);
+        float b = oscB.step(clampf(dtB, 0.f, 1024.f), pwB);
         prevA = a; prevB = b;   // the feedback loop reads the undivided pair
 
         // DIV divides osc A on the way into the operator, not only inside the

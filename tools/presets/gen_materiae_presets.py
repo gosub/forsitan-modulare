@@ -32,7 +32,7 @@ NPARAM = 22
 # from materiae_dsp.hpp
 BASE_HZ = 32.703
 MIN_CUT, MAX_CUT = 20.0, 12000.0
-GRID_MAX_MULT, GRID_MIN = 8.0, 1500.0
+GRID_MAX_MULT, GRID_MIN = 4.0, 250.0
 
 FM, AM, BOTH = 0, 1, 2
 LP, BP = 0, 1

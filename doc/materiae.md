@@ -39,7 +39,7 @@ the VCA run at the host sample rate, downstream and deliberately clean.
 | **pitch** | osc A, −2 to +7 octaves from C1. **v/o** adds to it. |
 | **ratio** | osc B as a ratio of osc A. Nineteen steps: the just ratios (1:2, 2:3, 3:4, 5:4, 4:3, 3:2, 5:3, 7:4, 2:1, 5:2, 3:1, 4:1), a 1:1 and a 1:1 detuned by 1%, and four irrationals — √2, e, π, and the 1:4 at the bottom. The context menu swaps the knob for a free 0.25× to 4× sweep. |
 | **shape** | pulse-width skew. At centre both oscillators are square; turning it widens A and narrows B together. One knob, because what matters is the *difference* in duty, not either width on its own. |
-| **grid** | the rate the logic core runs at, from 8× the host rate down to 1.5 kHz. |
+| **grid** | the rate the logic core runs at, from 4× the host rate down to 250 Hz. |
 | **div** | /1 /2 /4 /8 /16 on osc A. A flip-flop chain on A's rising edges: /1 passes it through with its own pulse width, and every other tap is a half-duty square a subharmonic below. |
 
 ### About ratio
@@ -79,10 +79,20 @@ is run at its own rate and decimated.
 Turned down, the core rate falls below the host rate and the relationship
 between the two oscillators is quantized onto a coarse time grid. Edges land
 late, by an amount that changes every cycle, and the fold-down of those
-displaced edges is what a listener hears as *digital*. Turned up, the core runs
-at up to eight times the host rate, the decimator does its job, and the same
-patch comes out clean. The whole sweep is continuous and stable; there is no
-setting at which the module misbehaves, only settings at which it is dirtier.
+displaced edges is what a listener hears as *digital*. Past the point where the
+grid rate falls below twice the pitch the oscillators alias outright and what
+survives is whatever is left of the relationship between two folded squares.
+Turned up, the core runs at four times the host rate, the decimator does its
+job, and the same patch comes out clean.
+
+The range is 4× down to 250 Hz because that is where the change is. Measured as
+spectral distance, the old top octave — 8× to 4× — was worth 0.063 out of about
+1.9 for the whole sweep, while every octave below 1.5 kHz was still worth close
+to 1.0 from one step to the next. So the top came down, which also halves what
+the module costs at its cleanest, and the travel went to the bottom instead.
+
+The whole sweep is continuous and stable; there is no setting at which the
+module misbehaves, only settings at which it is dirtier.
 
 ## Cross-modulation
 
