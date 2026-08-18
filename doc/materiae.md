@@ -270,7 +270,36 @@ itself a step, and a large one.
 | **Velocity from trigger height** | on by default. |
 | **Output level** | 5, 10 or 14 Vpp. |
 
+## Factory presets
+
+Twelve, written by `tools/presets/gen_materiae_presets.py`. The first eight are
+named for what they are. The last four are named for what they are like — a
+thread the module's own name started, since chaff, glint, vigil and slag are all
+things made of matter — so here is what they actually do.
+
+| | preset | what it is |
+|---|--------|-----------|
+| 1 | **kick** | the filter as the body, struck by the square |
+| 2 | **tom** | the same, tuned up, with a longer pitch fall |
+| 3 | **metal** | π against 1, into ring, band-passed |
+| 4 | **digital** | AND on a coarse grid, divided |
+| 5 | **click** | two milliseconds of high square |
+| 6 | **cymbal** | the shift register, long and bright |
+| 7 | **bass** | the latch drifting through its own phase difference |
+| 8 | **strange** | asymmetric feedback, operator swept by env 2 |
+| 9 | **chaff** | a snare — noise pulled back toward the latch, so the rattle keeps a pattern in it |
+| 10 | **glint** | a hat — thirty-five milliseconds, where cymbal is nearly a second |
+| 11 | **vigil** | a drone, meant for the **drone** jack: free-running, everything slow, nothing settling |
+| 12 | **slag** | gain most of the way up and grid most of the way down, doing the damage between them |
+
+`vigil` works from **out** as a very long hit, but it is written for **drone**,
+where env 1 never closes and the only thing happening is the slow drift of two
+oscillators against each other.
+
 ## Patch notes
+
+Four of these are presets 1, 3, 4 and 8; the settings are worth knowing anyway.
+
 
 **Kick.** Pitch low, ratio 1:1, **blend** about a third, **cutoff** near the
 bottom with **reso** almost full, **env 2 → pit** hard negative and a short

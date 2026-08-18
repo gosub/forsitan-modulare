@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     seconds and a trigger pings it, so the square is the exciter and the filter
     supplies the weight that squares do not have. Two envelopes: env 1 on
     amplitude, env 2 on pitch, relation and cutoff through bipolar trimpots.
+    Twelve factory presets: kick, tom, metal, digital, click, cymbal, bass,
+    strange, and then chaff (a snare), glint (a hat), vigil (a drone for the
+    drone jack) and slag (gain up, grid down).
+
     A trigger arriving on a sounding voice is deferred: the output fades down,
     everything resets where it cannot be heard, and it fades back up, so a
     retrigger during the decay does not click.

@@ -3,7 +3,11 @@
 
     python3 tools/presets/gen_materiae_presets.py
 
-One preset per sound family the module is meant to cover. Every setting is
+One preset per sound family the module is meant to cover. The first eight are
+named for what they are; the last four are named for what they are like, which
+is a thread the module's own name started -- chaff, glint, vigil and slag are
+all things made of matter. doc/materiae.md carries the table that says which is
+the snare. Every setting is
 stated here the way it would be described out loud -- a pitch in Hz, a ratio by
 name, a cutoff in Hz, a decay in seconds, an operator by name -- and converted
 to knob positions on the way out through the same laws src/materiae.cpp uses to
@@ -90,6 +94,13 @@ def decay2(s):
     return seconds(s, 0.003, 9.4)
 
 
+# menu state every preset takes unless it says otherwise
+DEFAULT_DATA = {
+    "freeRun": False, "env2Free": False, "trackCutoff": False,
+    "freeRatio": False, "useVelocity": True,
+    "phaseIdx": 0, "outputLevel": 1,
+}
+
 PRESETS = [
     ("kick", {
         # the filter is the body: a near-self-oscillating sine at 62 Hz that
@@ -164,6 +175,48 @@ PRESETS = [
         DECAY: decay(1.4), CURVE: 0.2, DECAY2: decay2(0.55), CURVE2: -0.3,
         E2PITCH: -0.5, E2REL: 1.0, E2CUT: 0.6,
     }),
+    ("chaff", {  # a snare: dry husks beaten loose, a rattling scatter
+        # noise pulled back toward the latch, so the rattle keeps a pattern in
+        # it rather than being flat hiss, over a band-passed body
+        PITCH: pitch(190), RATIO: ratio("7:4"), SHAPE: 0.62,
+        RELATION: relation(("flip", "noise", 0.6)), XMOD: 0.3,
+        CUTOFF: cutoff(1800), RESO: 0.45, FILTER: BP, GAIN: 0.25,
+        DECAY: decay(0.22), CURVE: 0.7, DECAY2: decay2(0.05), CURVE2: 0.85,
+        E2CUT: 0.4, E2PITCH: -0.25,
+    }),
+
+    ("glint", {  # a hat: one brief flash and gone
+        # the short bright one the bank was missing: cymbal is nearly a second
+        # long, this is forty-five milliseconds
+        PITCH: pitch(3200), RATIO: ratio("e"), RELATION: relation("noise"),
+        XMOD: 0.4, GRID: grid(28000),
+        CUTOFF: cutoff(9000), RESO: 0.2, FILTER: BP, GAIN: 0.40,
+        ATTACK: attack(0.0002), DECAY: decay(0.045), CURVE: 0.9,
+        DECAY2: decay2(0.02), CURVE2: 0.7, E2CUT: 0.3,
+    }),
+
+    ("vigil", {  # a drone: a watch kept unbroken
+        # for the DRONE output, where env 1 never closes: everything is slow,
+        # nothing settles, and the oscillators free-run so it does not restart
+        # from the same place each time
+        PITCH: pitch(110), RATIO: ratio("sqrt2"), SHAPE: 0.4,
+        RELATION: relation(("ring", "flip", 0.2)), BLEND: 0.85,
+        XMOD: 0.5, TILT: -0.3, DIV: div(2), GRID: grid(15000),
+        CUTOFF: cutoff(1200), RESO: 0.65, GAIN: 0.2,
+        DECAY: decay(3.0), CURVE: -0.2, DECAY2: decay2(1.2), CURVE2: -0.4,
+        E2PITCH: -0.15, E2REL: 0.7, E2CUT: 0.3,
+        "data": {"freeRun": True, "env2Free": True},
+    }),
+
+    ("slag", {  # the coarse vitreous waste a furnace leaves behind
+        # gain most of the way up and the grid most of the way down: the
+        # saturator and the coarse clock doing the damage between them
+        PITCH: pitch(90), RATIO: ratio("4:3"), RELATION: relation("and"),
+        DIV: div(2), XMOD: 0.2, GRID: grid(1200),
+        CUTOFF: cutoff(3000), RESO: 0.5, GAIN: 0.85,
+        DECAY: decay(0.35), CURVE: 0.5, DECAY2: decay2(0.08), CURVE2: 0.8,
+        E2PITCH: -0.6, E2CUT: 0.25,
+    }),
 ]
 
 # knob defaults, for everything a preset does not mention
@@ -200,18 +253,17 @@ def main():
     version = json.load(open(os.path.join(repo, "plugin.json")))["version"]
     out = os.path.join(repo, "presets", "materiae")
     os.makedirs(out, exist_ok=True)
-    for n, (name, spec) in enumerate(PRESETS, start=1):
+    for n, entry in enumerate(PRESETS, start=1):
+        name, spec = entry[0], dict(entry[1])
+        data = dict(DEFAULT_DATA)
+        data.update(spec.pop("data", {}))
         preset = {
             "plugin": "forsitan",
             "model": "materiae",
             "version": version,
             "params": [{"value": v, "id": i} for i, v in enumerate(build(spec))],
             # the module's own menu state: every preset takes the defaults
-            "data": {
-                "freeRun": False, "env2Free": False, "trackCutoff": False,
-                "freeRatio": False, "useVelocity": True,
-                "phaseIdx": 0, "outputLevel": 1,
-            },
+            "data": data,
         }
         path = os.path.join(out, f"{n}_{name}.vcvm")
         with open(path, "w") as f:
