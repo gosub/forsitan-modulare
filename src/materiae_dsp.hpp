@@ -354,6 +354,11 @@ struct Engine {
             cellAB.reset(); cellBA.reset();
             latch.reset(); sr.reset();
             prevA = prevB = 1.f;
+            // the grid accumulator too: left alone it carries a fractional
+            // step across the trigger, which lands the core's first step at a
+            // different sub-sample offset on every hit. Small, but it is the
+            // whole of what "repeatable" means here.
+            gridAcc = 0.f; held = 0.f;
         }
         // ping the body. At zero resonance this adds nothing.
         svf.ic1 += 0.6f * p.reso;
@@ -431,6 +436,38 @@ struct Engine {
         float f0 = clampf(p.f0 * fastExp2(e2Pitch * e2 * 4.f), kMinF0, kMaxF0);
         float fA = f0;
         float fB = clampf(f0 * p.ratio, kMinF0, kMaxF0 * 2.f);
+
+        if (!env1.isRunning()) {
+            // Idle. Nothing can reach the output, so nothing downstream runs.
+            // The filter and the DC blocker are cleared rather than left to
+            // coast: the oscillators would otherwise keep driving the filter
+            // through the silence and every strike would inherit a different
+            // integrator state, which is exactly the non-repeatability that
+            // resetting the oscillator phase is there to prevent. It also
+            // costs nothing to render a voice that is not sounding, and a
+            // drum voice is idle most of the time.
+            if (freeRun) {
+                // ...except in free-run, where the phase relationship at the
+                // next trigger is the whole point, so the two oscillators keep
+                // turning even though no one is listening.
+                gridAcc += p.gridRate * dt;
+                int n = 0;
+                while (gridAcc >= 1.f && n < kMaxGridSteps) {
+                    gridAcc -= 1.f;
+                    oscA.step(clampf(fA / p.gridRate, 0.f, 0.5f), 0.5f);
+                    oscB.step(clampf(fB / p.gridRate, 0.f, 0.5f), 0.5f);
+                    n++;
+                }
+                if (n >= kMaxGridSteps) gridAcc = 0.f;
+            } else {
+                gridAcc = 0.f;
+            }
+            svf.reset();
+            dcx = dcy = 0.f;
+            held = 0.f;
+            audioOut = 0.f;
+            return;
+        }
 
         float relation = clampf(p.relation + e2Relation * e2 * 2.f,
                                 0.f, (float)(kNumOps - 1));
