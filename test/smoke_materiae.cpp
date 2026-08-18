@@ -357,6 +357,26 @@ static void checkEnv2() {
     report(MOD, "env2_finite", (double)s.nans, s.nans == 0);
 }
 
+// Ctrl-R has to land on something you can hear. Rack's own randomize is
+// uniform over every knob's whole range, which for this module put 11% of
+// patches below usable level; onRandomize aims the filter at the fundamental
+// and keeps the divider and the bandpass out of the corners where the voice
+// disappears. test/materiae_random has the full measurement -- this is the
+// guard against it drifting back.
+static void checkRandomize() {
+    const int kTries = 200;
+    int quiet = 0;
+    for (int k = 0; k < kTries; k++) {
+        Materiae m;
+        Module::RandomizeEvent ev;
+        m.onRandomize(ev);
+        Stats s = hit(m, 1.f);
+        if (s.nans) { report(MOD, "randomize_finite", (double)s.nans, false); return; }
+        if (s.rms() < 5.f * 0.02f) quiet++;
+    }
+    report(MOD, "randomize_audible", 100.0 * quiet / kTries, quiet < kTries / 20);
+}
+
 // Menu state survives a patch save and reload.
 static void checkPatchRoundTrip() {
     Materiae a;
@@ -374,4 +394,5 @@ static void checkPatchRoundTrip() {
 
 SMOKE_MAIN(checkHit, checkSilence, checkOperators, checkGrid, checkCrossMod,
            checkDivision, checkRetrigger, checkRepeatable, checkVelocity,
-           checkEnv2, checkDrone, checkGain, checkPatchRoundTrip)
+           checkEnv2, checkDrone, checkGain, checkRandomize,
+           checkPatchRoundTrip)

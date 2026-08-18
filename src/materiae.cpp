@@ -230,6 +230,84 @@ struct Materiae : Module {
         engine.setSampleRate(e.sampleRate);
     }
 
+    // Rack's own randomize is uniform over every knob's whole range, which for
+    // a voice with a filter in it is not the same as uniform over useful
+    // sounds. Measured over 600 uniform randomizations, 11% came out too quiet
+    // to use, and test/materiae_random named the dead zone: a low pitch,
+    // divided down further, read through a bandpass sitting well above it, so
+    // there is nothing left inside the band. Short decays made it worse.
+    //
+    // So this keeps the surprise and drops the duds. The rules are only about
+    // the handful of controls that can silence the voice; everything that
+    // merely changes it is left alone and uniform.
+    void onRandomize(const RandomizeEvent& e) override {
+        auto uni = []() { return random::uniform(); };
+
+        // pitch over a narrower span than the knob's own: the extremes are
+        // where the filter has the least chance of finding anything
+        float pitchOct = -1.f + 6.f * uni();
+        params[PITCH_PARAM].setValue(pitchOct);
+        float f0 = clampf(kBaseHz * std::pow(2.f, pitchOct), kMinF0, kMaxF0);
+
+        // The filter mode is decided first, because everything that can
+        // silence the voice depends on it. A bandpass passes a slice, so it
+        // has to be aimed; a lowpass only has to be above the fundamental.
+        bool bandpass = uni() < 0.4f;
+        params[FILTER_PARAM].setValue(bandpass ? 1.f : 0.f);
+
+        // The one rule that matters: cutoff is chosen *relative to the
+        // fundamental*, so the filter is always somewhere the oscillators
+        // actually are. The bandpass gets a tighter leash than the lowpass.
+        float span = bandpass ? 3.f : 4.5f;
+        float cutHz = clampf(f0 * std::pow(2.f, -0.5f + span * uni()),
+                             kMinCut, kMaxCut);
+        params[CUTOFF_PARAM].setValue(
+            std::log2(cutHz / kMinCut) / std::log2(kMaxCut / kMinCut));
+
+        // a wide bandpass at low resonance passes almost nothing, so under
+        // bandpass the resonance gets a floor
+        params[RESO_PARAM].setValue(bandpass ? 0.35f + 0.65f * uni() : uni());
+
+        // division weighted toward the shallow end -- /8 and /16 under a low
+        // pitch are most of the silence, and more so inside a band
+        float d = uni();
+        if (bandpass) d *= 0.7f;
+        params[DIV_PARAM].setValue(std::floor(d * d * (float)kNumDiv * 0.999f));
+
+        // a decay short enough to be a tick is not a patch worth landing on
+        params[DECAY_PARAM].setValue(0.35f + 0.65f * uni());
+        // and an attack is a percussion voice's least interesting knob at the
+        // top of its range, so it stays mostly fast
+        float a = uni();
+        params[ATTACK_PARAM].setValue(a * a * 0.7f);
+
+        // pulse widths away from the extremes: at the ends one square is so
+        // narrow that AND has almost nothing to find
+        params[SHAPE_PARAM].setValue(0.15f + 0.7f * uni());
+
+        // gain short of the top, where the knob is mostly adding drive rather
+        // than level anyway
+        params[GAIN_PARAM].setValue(0.7f * uni());
+
+        // everything else is uniform over its own range, as Rack would
+        params[RATIO_PARAM].setValue(std::floor(uni() * (float)kNumRatios * 0.999f));
+        params[GRID_PARAM].setValue(uni());
+        params[XMOD_PARAM].setValue(uni());
+        params[TILT_PARAM].setValue(-1.f + 2.f * uni());
+        params[DEST_PARAM].setValue(std::floor(uni() * 2.999f));
+        params[RELATION_PARAM].setValue(uni() * (float)(kNumOps - 1));
+        params[BLEND_PARAM].setValue(uni());
+        params[DECAY2_PARAM].setValue(uni());
+        params[CURVE2_PARAM].setValue(-1.f + 2.f * uni());
+        params[CURVE_PARAM].setValue(-1.f + 2.f * uni());
+        params[E2PITCH_PARAM].setValue(-1.f + 2.f * uni());
+        params[E2REL_PARAM].setValue(-1.f + 2.f * uni());
+        // env 2 on cutoff can walk the filter clean off the signal, so it
+        // gets less than its full throw here
+        params[E2CUT_PARAM].setValue(-0.7f + 1.4f * uni());
+        params[HIT_PARAM].setValue(0.f);
+    }
+
     void onReset(const ResetEvent& e) override {
         Module::onReset(e);
         engine.reset();

@@ -407,6 +407,41 @@ static int modeDiv() {
     return 0;
 }
 
+// Is the output saturator aliasing? Drive a pure sine into it and measure the
+// energy that lands on neither the fundamental nor any of its harmonics. A
+// memoryless nonlinearity at the host rate folds everything it makes above
+// Nyquist back down, and that fold is inharmonic -- which is what turns a
+// saturator into a source of clicks and grit rather than warmth.
+static int modeSat() {
+    const float f0 = 2350.f;      // not a divisor of SR, so folds are obvious
+    printf("gain_db,rms,alias_frac,worst_slew\n");
+    for (int g = 0; g <= 8; g++) {
+        float gain = std::pow(2.f, (g / 8.f) * 4.f);
+        std::vector<float> x(kFFT);
+        SoftClipper sc;
+        sc.reset();
+        float prev = 0.f, slew = 0.f;
+        for (int i = 0; i < kFFT; i++) {
+            float in = 0.7f * std::sin(2.f * 3.14159265f * f0 * i / SR);
+            x[i] = sc.process(in * gain);
+            if (i) slew = std::max(slew, std::fabs(x[i] - prev));
+            prev = x[i];
+        }
+        std::vector<float> m = spectrum(x);
+        float alias = 0.f, all = 1e-12f;
+        for (int i = 1; i < (int)m.size(); i++) {
+            float f = (float)i * SR / (float)kFFT;
+            all += m[i];
+            float h = f / f0;
+            if (std::fabs(h - std::floor(h + 0.5f)) > 0.08f) alias += m[i];
+        }
+        Stats st = stats(x);
+        printf("%.1f,%.4f,%.5f,%.4f\n", (g / 8.f) * 4.f * 6.0206f, st.rms,
+               alias / all, slew);
+    }
+    return 0;
+}
+
 static int modeRatio() {
     printf("ratio,rms,peak,centroid_hz,high_frac\n");
     for (int i = 0; i < kNumRatios; i++) {
@@ -448,8 +483,9 @@ int main(int argc, char** argv) {
     if (!strcmp(mode, "grid")) return modeGrid();
     if (!strcmp(mode, "xmod")) return modeXmod();
     if (!strcmp(mode, "div")) return modeDiv();
+    if (!strcmp(mode, "sat")) return modeSat();
     if (!strcmp(mode, "ratio")) return modeRatio();
     if (!strcmp(mode, "render")) return modeRender(argc > 2 ? argv[2] : ".");
-    fprintf(stderr, "usage: %s ops|grid|xmod|div|ratio|render [dir]\n", argv[0]);
+    fprintf(stderr, "usage: %s ops|grid|xmod|div|sat|ratio|render [dir]\n", argv[0]);
     return 2;
 }

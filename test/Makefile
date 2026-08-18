@@ -21,7 +21,7 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
-     scrupea_probe viginti_probe materiae_probe materiae_presets $(SMOKE_BINS) $(CROSS_BINS)
+     scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random $(SMOKE_BINS) $(CROSS_BINS)
 
 # Measurement and audition harness for the square-relation percussion voice.
 # It drives the engine header alone and needs no Rack. `ops` is the one that
@@ -34,6 +34,12 @@ materiae_probe: materiae_probe.cpp ../src/materiae_dsp.hpp
 # inside the swing, finite, and no two of them the same sound.
 materiae_presets: materiae_presets.cpp smoke_harness.hpp ../src/materiae.cpp \
                   ../src/materiae_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# What Ctrl-R actually gives you: how many uniform randomizations come out
+# inaudible and which knobs are responsible, plus level against the GAIN knob.
+materiae_random: materiae_random.cpp smoke_harness.hpp ../src/materiae.cpp \
+                 ../src/materiae_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 draen_sweep: draen_sweep.cpp ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
