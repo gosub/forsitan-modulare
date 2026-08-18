@@ -362,6 +362,18 @@
         "Sequencer",
         "Utility"
       ]
+    },
+    {
+      "slug": "materiae",
+      "name": "materiae",
+      "description": "Percussion from two square waves and the relation between them: logic, feedback, a ringing body.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/materiae.md",
+      "tags": [
+        "Drum",
+        "Synth voice",
+        "Logic",
+        "Digital"
+      ]
     }
   ]
 }

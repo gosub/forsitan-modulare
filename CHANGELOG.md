@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.15.0] - 2026-08-14
 ### Added
+  - **materiae**, a 20 HP percussion voice built from two square waves and
+    nothing else. Both oscillators are naive squares; all of the complexity is
+    relational. **ratio** sets how the two sit against each other over nineteen
+    steps — the just ratios, a 1% detune, and four irrationals whose pulse
+    pattern never repeats — **xmod** and **tilt** run the pair from independent
+    through one-way modulation into hard two-way feedback, and **relation**
+    picks which operator reads them.
+
+    Five operators, crossfaded rather than switched: **and**, **sum**, **ring**,
+    a set/reset **flip** whose duty cycle is the phase difference between the
+    oscillators, and a shift-register **noise**. The list is short on purpose.
+    For bipolar squares `A x B` is exactly `-(A xor B)`, `|A - B|` is the same
+    again, `A - B` has the same spectrum as `A + B`, and min and max differ only
+    by a DC term the output blocker removes — so ring, XOR, absolute
+    difference, subtraction and OR earn no knob positions of their own, and the
+    room that was left is in operators that read edges rather than levels.
+
+    Because **relation** crossfades it is continuous, and env 2 can sweep it:
+    the operator itself changes over the length of a hit.
+
+    **grid** sets the rate the logic core runs at, from 8x the host rate down
+    to 1.5 kHz. Squares and logic cannot be band limited, so rather than hide
+    that, the digital character is a knob: turned down the relationship is
+    quantized onto a coarse time grid and the displaced edges fold; turned up
+    the same patch is clean.
+
+    The filter is the body rather than a tone control — wound up it rings for
+    seconds and a trigger pings it, so the square is the exciter and the filter
+    supplies the weight that squares do not have. Two envelopes: env 1 on
+    amplitude, env 2 on pitch, relation and cutoff through bipolar trimpots.
+    Hits are repeatable by default (both oscillators reset phase on trigger,
+    because with edge-reading operators the pattern is a function of the phase
+    offset); free-running is in the menu. Velocity comes from trigger height,
+    and an idle voice costs no CPU.
+
   - **gradus**, a 12 HP stepped CV source: a discrete **cumuli**. Eight rows,
     each one a value knob, an add/jump switch and two triggers, all driving a
     single running output. Where cumuli ramps for as long as a gate is open,
