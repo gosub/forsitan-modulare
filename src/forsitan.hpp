@@ -40,3 +40,4 @@ extern Model* modelCartilago;
 extern Model* modelScrupea;
 extern Model* modelViginti;
 extern Model* modelGradus;
+extern Model* modelMateriae;
