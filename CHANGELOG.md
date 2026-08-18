@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.15.0] - 2026-08-14
 ### Added
-  - **materiae**, a 20 HP percussion voice built from two square waves and
+  - **materiae**, a 24 HP percussion voice built from two square waves and
     nothing else. Both oscillators are naive squares; all of the complexity is
     relational. **ratio** sets how the two sit against each other over nineteen
     steps — the just ratios, a 1% detune, and four irrationals whose pulse
@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     that, the digital character is a knob: turned down the relationship is
     quantized onto a coarse time grid and the displaced edges fold; turned up
     the same patch is clean.
+
+    Three outputs. **out** is the voice; **drone** is the same signal tapped
+    before the amplitude envelope, which turns the module into a continuous
+    voice whose every control is a timbre control; **env** is env 2. **gain**
+    drives an output saturator from 0 to +24 dB, so the top of the knob stops
+    making the voice louder and starts making it dirtier.
 
     The filter is the body rather than a tone control — wound up it rings for
     seconds and a trigger pings it, so the square is the exciter and the filter

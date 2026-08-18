@@ -25,9 +25,9 @@ SR = 48000.0        # the rate the grid settings below were chosen at
 
 # param ids, in the order of the ParamId enum in src/materiae.cpp
 (PITCH, RATIO, SHAPE, GRID, DIV, XMOD, TILT, DEST, RELATION, BLEND,
- CUTOFF, RESO, FILTER, DECAY2, CURVE2, ATTACK, DECAY, CURVE,
- E2PITCH, E2REL, E2CUT, HIT) = range(22)
-NPARAM = 22
+ CUTOFF, RESO, FILTER, GAIN, DECAY2, CURVE2, ATTACK, DECAY, CURVE,
+ E2PITCH, E2REL, E2CUT, HIT) = range(23)
+NPARAM = 23
 
 # from materiae_dsp.hpp
 BASE_HZ = 32.703
@@ -148,7 +148,7 @@ PRESETS = [
         # oscillators are close enough to drift through it as the hit decays
         PITCH: pitch(55), RATIO: ratio("1:1 detuned"), RELATION: relation("flip"),
         BLEND: 0.8, XMOD: 0.45, TILT: -0.5, DIV: div(2), GRID: grid(9000),
-        CUTOFF: cutoff(220), RESO: 0.85,
+        CUTOFF: cutoff(220), RESO: 0.85, GAIN: 0.45,
         DECAY: decay(0.9), CURVE: 0.35, DECAY2: decay2(0.35), CURVE2: 0.4,
         E2PITCH: -0.35, E2REL: 0.5, E2CUT: 0.3,
     }),
@@ -160,7 +160,7 @@ PRESETS = [
         PITCH: pitch(74), RATIO: ratio("sqrt2"), SHAPE: 0.78,
         RELATION: relation(("and", "sum", 0.4)), BLEND: 0.9,
         XMOD: 0.85, TILT: -0.7, DIV: div(2), DEST: BOTH, GRID: grid(11000),
-        CUTOFF: cutoff(900), RESO: 0.8,
+        CUTOFF: cutoff(900), RESO: 0.8, GAIN: 0.35,
         DECAY: decay(1.4), CURVE: 0.2, DECAY2: decay2(0.55), CURVE2: -0.3,
         E2PITCH: -0.5, E2REL: 1.0, E2CUT: 0.6,
     }),
@@ -170,7 +170,8 @@ PRESETS = [
 DEFAULTS = {
     PITCH: 1.0, RATIO: 10.0, SHAPE: 0.5, GRID: 0.0, DIV: 0.0,
     XMOD: 0.0, TILT: 0.0, DEST: float(FM), RELATION: 1.0, BLEND: 1.0,
-    CUTOFF: 0.65, RESO: 0.2, FILTER: float(LP), DECAY2: 0.35, CURVE2: 0.5,
+    CUTOFF: 0.65, RESO: 0.2, FILTER: float(LP), GAIN: 0.0,
+    DECAY2: 0.35, CURVE2: 0.5,
     ATTACK: 0.0, DECAY: 0.5, CURVE: 0.5,
     E2PITCH: 0.0, E2REL: 0.0, E2CUT: 0.0, HIT: 0.0,
 }

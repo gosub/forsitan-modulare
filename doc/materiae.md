@@ -22,7 +22,9 @@ trigger ─> phase reset
      ^                                    │
      └──────── [ cell B->A ] <────────────┘
 
-   A, B ─> RELATION ─> BLEND ─> resonant filter ─> VCA ─> out
+   A, B ─> RELATION ─> BLEND ─> resonant filter ─> GAIN ─> saturator ─┬─> DRONE
+                                                                      │
+                                                             VCA (env 1) ─> OUT
 
    env 1 ─> amplitude
    env 2 ─> pitch, the relation itself, cutoff
@@ -178,6 +180,7 @@ spectral distance the set was chosen on.
 | **cutoff** | 20 Hz to 12 kHz. Its CV jack is a straight volt per octave on top of the knob. |
 | **reso** | up to a filter that rings for seconds, and a trigger pings it. |
 | **lp/bp** | lowpass or bandpass. |
+| **gain** | 0 to +24 dB into the output saturator. |
 
 Squares are thin, and this module is supposed to sound heavy, so the filter is
 not a tone control at the end of the chain — it is the body of the sound. Wound
@@ -202,6 +205,26 @@ matters — from one envelope you get a pitch that falls or a pitch that rises, 
 filter that opens or one that closes, an operator that walks up the list or
 back down it. It also leaves the module at **env** for use elsewhere.
 
+## Outputs
+
+**out** is the voice: everything, through the VCA.
+
+**drone** is the same signal taken before env 1 — the filter and the saturator,
+held open. It ignores the amplitude envelope entirely, so the module becomes a
+continuous voice rather than a percussion one and every control on the panel is
+a timbre control on a drone. **relation** swept by hand across the five
+operators is worth trying here; so is **grid** at the bottom of its range.
+
+A trigger still does everything it normally does while the drone is running —
+resets the phases, restarts env 2, pings the filter — so the drone output is
+also the place to hear what a hit does to the *sound* with the envelope out of
+the way.
+
+The engine idles when nothing is sounding, so patching **drone** is what tells
+it to keep running. Unpatched, it costs nothing.
+
+**env** is env 2, 0–10 V.
+
 ## Triggering
 
 **trig**, or the **hit** button. Both oscillators reset their phase on every
@@ -219,6 +242,16 @@ sequencer's gate heights are not deliberate.
 **env 2 on retrigger** chooses whether a new hit restarts the modulation
 envelope or lets the running one finish — the second keeps the amplitude clean
 while modulation histories overlap.
+
+A trigger that arrives while the voice is still sounding restarts the
+oscillator phases, the latch and the shift register, and jumps the envelope
+back to full: four discontinuities at once, landing on a tone that is already
+there. So a retrigger gets a half-millisecond linear fade on the VCA, which
+puts the output at zero for the instant everything underneath it resets. It is
+short enough to still read as a sharp hit, and a trigger from silence skips it
+entirely. The fade is separate from **att** on purpose — the attack shares the
+**crv** knob, and a concave curve is at a quarter of full scale one sample in,
+which is not a fade at all.
 
 ## Context menu
 

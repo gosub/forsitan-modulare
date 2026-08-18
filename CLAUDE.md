@@ -111,6 +111,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | cartilago | Gristleizer (one band-limited LFO of four shapes into a shunt-FET attenuator that never closes and ticks, or into a ZDF state-variable filter; depth past 100%, v/oct into the audio band for ring modulation, oversampled) | 60.96mm (12HP) |
 | scrupea | chaotic bank inspired by Reaktor's Skrewell (8 voices of 2 levers, oscillator into a tuned feedback comb, all-to-all coupling chosen by the bars, 3 topologies, 64 bars in an edit area, 4 macros that map rather than offset) | 121.92mm (24HP) |
 | gradus | stepped CV source, a discrete cumuli (8 rows of knob + add/jump switch + a plus and a minus trigger with buttons, into one running output; jumps beat adds and the last row in reading order wins; reset button + trig beats everything; clip knob for 0-10/±5/±10/none) | 60.96mm (12HP) |
+| materiae | percussion from two square waves and the relation between them (5 crossfaded operators, A<->B feedback, GRID = the logic core rate as a knob, DIV as a subharmonic operand, resonant filter as the body, env 2 sweeping the operator; drone tap before the VCA, gain into a saturator) | 121.92mm (24HP) |
 
 ## limen module
 

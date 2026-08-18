@@ -90,6 +90,19 @@ constexpr float kMaxK = 2.f;
 constexpr float kStateLimit = 12.f; // integrator clamp, keeps the ring bounded
 
 constexpr float kCurveExp = 2.5f;   // curve knob -> pow exponent, in octaves
+// Retrigger fade. A trigger arriving while the voice is still sounding
+// restarts the oscillator phases, the latch and the shift register, and jumps
+// the envelope back to full -- four discontinuities at once, landing on a tone
+// that is already there. That is a retrigger click.
+//
+// The fix cannot be a minimum attack time, which was the first attempt: the
+// attack shares the CURVE knob, and a concave curve rises so steeply that even
+// half a millisecond is at a quarter of full scale after one sample. This is a
+// separate linear ramp on the VCA instead, independent of the envelope's shape,
+// so the voice is genuinely at zero for the instant everything resets and
+// comes back over half a millisecond. Short enough to still read as a sharp
+// hit; a trigger from silence skips it entirely.
+constexpr float kRetrigFade = 0.0005f;
 constexpr float kDCPole = 8.f;      // output DC blocker corner, Hz
 // The exciter is scaled so a plain hit peaks near unity, which leaves the
 // resonant filter's own boost somewhere to go: everything above 0.8 bends
@@ -299,6 +312,7 @@ struct Params {
     float gridRate = 0.f;   // logic core rate, Hz
     float relation = 1.f;   // 0..kNumOps-1, crossfaded between neighbours
     float blend = 1.f;      // 0 = osc A alone, 1 = operator
+    float gain = 1.f;       // drive into the output saturator, 1x .. 16x
     float cutoff = 2000.f;  // Hz
     float reso = 0.f;       // 0..1
     int filterMode = 0;     // 0 = lowpass, 1 = bandpass
@@ -327,9 +341,11 @@ struct Engine {
     Env env1, env2;
     float dcx = 0.f, dcy = 0.f;
     float velocity = 1.f;
+    float retrigFade = 1.f;
 
     float sampleRate = 44100.f;
     bool freeRun = false;       // do not reset phase on trigger
+    bool alwaysRun = false;     // keep sounding with env 1 finished (drone out)
     bool env2Free = false;      // env 2 keeps running through a retrigger
     bool trackCutoff = false;
     float phaseOffset = 0.f;    // B's phase at reset, 0..1
@@ -348,10 +364,15 @@ struct Engine {
         svf.reset();
         env1.reset(); env2.reset();
         dcx = dcy = 0.f;
+        retrigFade = 1.f;
     }
 
     void trigger(const Params& p, float vel) {
         velocity = vel;
+        // interrupting a sounding voice: fade the VCA down for the instant
+        // everything underneath it resets. A hit from silence has nothing to
+        // interrupt and starts at full.
+        retrigFade = env1.isRunning() ? 0.f : 1.f;
         env1.trigger();
         if (!env2Free || !env2.isRunning()) env2.trigger();
         if (!freeRun) {
@@ -366,8 +387,12 @@ struct Engine {
             // the grid accumulator too: left alone it carries a fractional
             // step across the trigger, which lands the core's first step at a
             // different sub-sample offset on every hit. Small, but it is the
-            // whole of what "repeatable" means here.
-            gridAcc = 0.f; held = 0.f;
+            // whole of what "repeatable" means here. `held` is deliberately
+            // not zeroed with it: below the host rate a grid step does not
+            // land every sample, so forcing the exciter to zero would punch a
+            // hole in a voice that is still sounding. A hit from silence has
+            // it at zero already, by way of the idle branch.
+            gridAcc = 0.f;
         }
         // ping the body. At zero resonance this adds nothing.
         svf.ic1 += 0.6f * p.reso;
@@ -457,8 +482,9 @@ struct Engine {
     }
 
     // one host sample
-    void process(const Params& p, float dt, float& audioOut, float& env2Out,
-                 float e2Pitch, float e2Relation, float e2Cutoff, float voct) {
+    void process(const Params& p, float dt, float& audioOut, float& droneOut,
+                 float& env2Out, float e2Pitch, float e2Relation,
+                 float e2Cutoff, float voct) {
         float e1 = env1.process(dt, p.attack, p.decay, p.curve);
         float e2 = env2.process(dt, 0.f, p.decay2, p.curve2);
         env2Out = e2;
@@ -467,7 +493,7 @@ struct Engine {
         float fA = f0;
         float fB = clampf(f0 * p.ratio, kMinF0, kMaxF0 * 2.f);
 
-        if (!env1.isRunning()) {
+        if (!env1.isRunning() && !alwaysRun) {
             // Idle. Nothing can reach the output, so nothing downstream runs.
             // The filter and the DC blocker are cleared rather than left to
             // coast: the oscillators would otherwise keep driving the filter
@@ -496,6 +522,7 @@ struct Engine {
             dcx = dcy = 0.f;
             held = 0.f;
             audioOut = 0.f;
+            droneOut = 0.f;
             return;
         }
 
@@ -535,14 +562,40 @@ struct Engine {
         svf.process(x, g, k, lp, bp, hp);
         float body = (p.filterMode == 1) ? bp * (2.f + 3.f * p.reso) : lp;
 
-        // VCA, then DC block: the operator's duty-cycle offset is a real part
-        // of the transient, so it is removed after the envelope, not before
-        float y = body * kExciterGain * e1 * velocity;
+        // Drive, ahead of the VCA. Saturating after the envelope would make
+        // how hard the voice clips a function of where in the decay you are,
+        // so a hit would change character as it fell rather than simply
+        // getting quieter. Here the knob sets a property of the patch.
+        float sat = softClip(body * kExciterGain * p.gain);
+
+        // DC block ahead of the VCA, and one blocker for both taps.
+        //
+        // It used to sit after the VCA, on the argument that the operator's
+        // duty-cycle offset is part of the transient and should be shaped by
+        // the envelope before being removed. Two things were wrong with that.
+        // A blocker fed a cut signal emits the offset it had been removing:
+        // when a retrigger drops the VCA to zero the output does not go with
+        // it, it steps to minus that offset and decays over the blocker's own
+        // twenty milliseconds -- which is a thump on every retrigger, and was
+        // measurably 10% of the level the voice had been at. And what the
+        // envelope was shaping was DC, which is not something to send through
+        // a VCA in the first place.
+        //
+        // Blocked first, the VCA sees a signal centred on zero, so an envelope
+        // at zero means an output at zero, exactly, and the retrigger has
+        // nothing left to click with.
         float r = 1.f - 6.2831853f * kDCPole / sampleRate;
-        dcy = y - dcx + r * dcy;
-        dcx = y;
-        if (!std::isfinite(dcy)) { dcy = 0.f; dcx = 0.f; svf.reset(); }
-        audioOut = softClip(dcy);
+        dcy = sat - dcx + r * dcy;
+        dcx = sat;
+        if (!std::isfinite(dcy)) { dcy = dcx = 0.f; svf.reset(); }
+
+        if (retrigFade < 1.f)
+            retrigFade = std::min(1.f, retrigFade + dt / kRetrigFade);
+
+        // the voice before env 1: the same sound, held open. No envelope means
+        // no retrigger fade either -- a drone tap has nothing to interrupt.
+        droneOut = softClip(dcy);
+        audioOut = softClip(dcy * e1 * velocity * retrigFade);
     }
 };
 

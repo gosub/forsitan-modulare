@@ -153,9 +153,9 @@ static std::vector<float> run(const Params& p, float seconds,
     e.trigger(p, 1.f);
     int n = (int)(seconds * SR);
     std::vector<float> out(n);
-    float dt = 1.f / SR, a, e2;
+    float dt = 1.f / SR, a, drone, e2;
     for (int i = 0; i < n; i++) {
-        e.process(p, dt, a, e2, e2Pitch, e2Rel, e2Cut, 0.f);
+        e.process(p, dt, a, drone, e2, e2Pitch, e2Rel, e2Cut, 0.f);
         out[i] = a;
     }
     return out;

@@ -157,6 +157,54 @@ static void checkDivision() {
     report(MOD, "div_audible_at_xmod0", worst, worst > 0.05);
 }
 
+// A retrigger during the decay must not click. The invariant that guarantees
+// it: the envelope has to pass through zero at the retrigger, so that the
+// oscillator phases, the latch and the shift register all reset underneath a
+// silent VCA instead of stepping a tone that is still sounding. Without the
+// retrigger attack floor the amplitude jumps from wherever the decay had got
+// to straight back to full.
+static void checkRetrigger() {
+    Materiae m;
+    setDefaults(m);
+    m.params[Materiae::ATTACK_PARAM].setValue(0.f);   // the worst case
+    m.params[Materiae::DECAY_PARAM].setValue(0.6f);
+    m.params[Materiae::RESO_PARAM].setValue(0.5f);
+    m.params[Materiae::RELATION_PARAM].setValue(2.f);
+    long frame = 0;
+    auto fire = [&]() {
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f);
+        for (int i = 0; i < 8; i++) m.process(makeArgs(frame++));
+        m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
+    };
+    m.process(makeArgs(frame++));
+    fire();
+    // 100 ms into the decay, note how loud it is, then hit it again
+    float before = 0.f;
+    for (int i = 0; i < (int)(0.1f * SR); i++) {
+        m.process(makeArgs(frame++));
+        before = std::max(before, std::fabs(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage()));
+    }
+    // the level right before the second hit, which is what a step would be
+    // measured against
+    float atRetrig = 0.f;
+    for (int i = 0; i < (int)(0.005f * SR); i++) {
+        m.process(makeArgs(frame++));
+        atRetrig = std::max(atRetrig, std::fabs(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage()));
+    }
+    // the trigger's own samples are part of the window: the zero is at the
+    // instant of the edge, not a millisecond after it
+    float floorV = 1e9f;
+    m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f);
+    for (int i = 0; i < (int)(0.001f * SR); i++) {
+        m.process(makeArgs(frame++));
+        floorV = std::min(floorV, std::fabs(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage()));
+        if (i == 8) m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
+    }
+    (void)before;
+    report(MOD, "retrig_passes_zero", floorV / (atRetrig + 1e-9f),
+           floorV < atRetrig * 0.05f);
+}
+
 // Phase reset is what makes a hit repeatable. Two strikes of one patch must
 // come out sample-identical; with the menu's free-run they must not.
 static void checkRepeatable() {
@@ -219,6 +267,59 @@ static void checkVelocity() {
            std::fabs(off - full) < full * 0.01);
 }
 
+// The drone tap is the voice before env 1: it has to keep sounding with the
+// envelope long finished, and only when something is patched into it.
+static void checkDrone() {
+    Materiae m;
+    setDefaults(m);
+    m.params[Materiae::DECAY_PARAM].setValue(0.1f);   // a very short hit
+    // Port::setChannels() returns early on a disconnected port -- Rack holds
+    // it at zero on purpose -- so the only way to fake a patched cable out
+    // here is the field itself.
+    m.outputs[Materiae::DRONE_OUTPUT].channels = 1;
+    Stats audio, drone;
+    long frame = 0;
+    m.process(makeArgs(frame++));
+    m.inputs[Materiae::TRIG_INPUT].setVoltage(5.f);
+    for (int i = 0; i < 8; i++) m.process(makeArgs(frame++));
+    m.inputs[Materiae::TRIG_INPUT].setVoltage(0.f);
+    for (int i = 0; i < (int)(0.5f * SR); i++) m.process(makeArgs(frame++));
+    // half a second later the hit is long over; the drone should not be
+    for (int i = 0; i < (int)(0.2f * SR); i++) {
+        m.process(makeArgs(frame++));
+        audio.add(m.outputs[Materiae::AUDIO_OUTPUT].getVoltage());
+        drone.add(m.outputs[Materiae::DRONE_OUTPUT].getVoltage());
+    }
+    report(MOD, "drone_sustains", drone.rms(), drone.rms() > 0.2);
+    report(MOD, "drone_finite", (double)drone.nans, drone.nans == 0);
+    report(MOD, "audio_still_silent", audio.peak, audio.peak < 1e-4f);
+}
+
+// GAIN drives the output saturator: it makes the voice louder, then dirtier,
+// and never past the declared swing.
+static void checkGain() {
+    double lo = 0, hi = 0, crestLo = 0, crestHi = 0;
+    float peak = 0.f;
+    for (int i = 0; i <= 4; i++) {
+        Materiae m;
+        setDefaults(m);
+        m.params[Materiae::GAIN_PARAM].setValue(i * 0.25f);
+        m.params[Materiae::DECAY_PARAM].setValue(0.5f);
+        Stats s = hit(m, 0.4f);
+        double crest = s.peak / (s.rms() + 1e-12);
+        if (i == 0) { lo = s.rms(); crestLo = crest; }
+        if (i == 4) { hi = s.rms(); crestHi = crest; }
+        peak = std::max(peak, s.peak);
+        if (s.nans) { report(MOD, "gain_finite", (double)s.nans, false); return; }
+    }
+    // 24 dB into a limiter does not come out as 24 dB: the level rises, then
+    // the knob stops making it louder and starts making it dirtier, which
+    // shows as the crest factor collapsing toward a square.
+    report(MOD, "gain_raises_level", hi / (lo + 1e-12), hi > lo * 1.4);
+    report(MOD, "gain_saturates", crestHi / (crestLo + 1e-12), crestHi < crestLo * 0.95);
+    report(MOD, "gain_in_range", peak, peak <= 5.01f);
+}
+
 // Env 2 leaves the module as a usable 0..10 V envelope.
 static void checkEnv2() {
     Materiae m;
@@ -255,5 +356,5 @@ static void checkPatchRoundTrip() {
 }
 
 SMOKE_MAIN(checkHit, checkSilence, checkOperators, checkGrid, checkCrossMod,
-           checkDivision, checkRepeatable, checkVelocity, checkEnv2,
-           checkPatchRoundTrip)
+           checkDivision, checkRetrigger, checkRepeatable, checkVelocity,
+           checkEnv2, checkDrone, checkGain, checkPatchRoundTrip)
