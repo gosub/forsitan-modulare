@@ -3,11 +3,12 @@
 
     python3 tools/presets/gen_materiae_presets.py
 
-One preset per sound family the module is meant to cover. The first eight are
-named for what they are; the last four are named for what they are like, which
-is a thread the module's own name started -- chaff, glint, vigil and slag are
-all things made of matter. doc/materiae.md carries the table that says which is
-the snare. Every setting is
+The bank is a tour of the module rather than a drum kit. Two of the twelve are
+sounds -- kick and click, the two ends of the envelope -- and the other ten each
+sit on one mechanism, with everything else near neutral so that mechanism is
+what you hear. Emulating a classic kit is the one thing this module is bad at;
+what it is for is the relationship between two square waves, and a preset is
+worth a slot when it shows one of those relationships plainly. Every setting is
 stated here the way it would be described out loud -- a pitch in Hz, a ratio by
 name, a cutoff in Hz, a decay in seconds, an operator by name -- and converted
 to knob positions on the way out through the same laws src/materiae.cpp uses to
@@ -102,6 +103,11 @@ DEFAULT_DATA = {
 }
 
 PRESETS = [
+    # Two of these are sounds. The other ten are demonstrations: each one is
+    # built around a single thing the module does that nothing else quite
+    # does, with everything else left near neutral so that thing is what you
+    # hear. A drum kit is what this module is worst at pretending to be.
+
     ("kick", {
         # the filter is the body: a near-self-oscillating sine at 62 Hz that
         # the square strikes, with the pitch envelope on top of it
@@ -111,91 +117,98 @@ PRESETS = [
         E2PITCH: -1.0, E2CUT: 0.35,
     }),
 
-    ("tom", {
-        PITCH: pitch(120), RATIO: ratio("3:2"), RELATION: relation("sum"),
-        BLEND: 0.5, CUTOFF: cutoff(420), RESO: 0.72,
-        DECAY: decay(0.45), CURVE: 0.6, DECAY2: decay2(0.12), CURVE2: 0.5,
-        E2PITCH: -0.8, E2CUT: 0.2,
-    }),
-
-    ("metal", {
-        # an irrational ratio into ring: the two never share a period, so the
-        # partials never line up and the hit keeps moving
-        PITCH: pitch(620), RATIO: ratio("pi"), RELATION: relation("ring"),
-        XMOD: 0.35, TILT: -0.4,
-        CUTOFF: cutoff(3800), RESO: 0.55, FILTER: BP,
-        DECAY: decay(1.1), CURVE: 0.8, DECAY2: decay2(0.2), CURVE2: 0.6,
-        E2REL: 0.6,
-    }),
-
-    ("digital", {
-        # the coarse grid is doing most of the work here, not the operator
-        PITCH: pitch(260), RATIO: ratio("sqrt2"), RELATION: relation("and"),
-        DIV: div(4), XMOD: 0.5, GRID: grid(6200),
-        CUTOFF: cutoff(5200), RESO: 0.4,
-        DECAY: decay(0.18), CURVE: 0.4, DECAY2: decay2(0.06), CURVE2: 0.6,
-        E2PITCH: 0.5,
-    }),
-
     ("click", {
+        # the other end of the envelope: twelve milliseconds of high square
         PITCH: pitch(2400), RATIO: ratio("7:4"), RELATION: relation("ring"),
         GRID: grid(21000), CUTOFF: cutoff(7000), RESO: 0.3,
         ATTACK: attack(0.0002), DECAY: decay(0.012), CURVE: 0.9,
         DECAY2: decay2(0.006), CURVE2: 0.6,
     }),
 
-    ("cymbal", {
-        # the shift register is the only route to noise that does not break the
-        # two-sources premise
-        PITCH: pitch(1500), RATIO: ratio("e"), RELATION: relation("noise"),
-        XMOD: 0.6, TILT: 0.3,
-        CUTOFF: cutoff(6500), RESO: 0.25, FILTER: BP,
-        DECAY: decay(0.9), CURVE: 0.85, DECAY2: decay2(0.3), CURVE2: 0.6,
-        E2CUT: 0.5,
+    ("precession", {
+        # RATIO on an irrational. sqrt2 means the two oscillators never share a
+        # period, so the pattern the operator reads out never comes back round
+        # -- given a long enough decay to hear it not repeating
+        PITCH: pitch(330), RATIO: ratio("sqrt2"), RELATION: relation("ring"),
+        CUTOFF: cutoff(7000), RESO: 0.3,
+        DECAY: decay(2.4), CURVE: 0.25, DECAY2: decay2(0.4), CURVE2: 0.5,
     }),
 
-    ("bass", {
-        # unstable: the latch's duty cycle is the phase difference, and the two
-        # oscillators are close enough to drift through it as the hit decays
-        PITCH: pitch(55), RATIO: ratio("1:1 detuned"), RELATION: relation("flip"),
-        BLEND: 0.8, XMOD: 0.45, TILT: -0.5, DIV: div(2), GRID: grid(9000),
-        CUTOFF: cutoff(220), RESO: 0.85, GAIN: 0.45,
-        DECAY: decay(0.9), CURVE: 0.35, DECAY2: decay2(0.35), CURVE2: 0.4,
-        E2PITCH: -0.35, E2REL: 0.5, E2CUT: 0.3,
+    ("eclipse", {
+        # SHAPE. One pulse width opens as the other closes, and AND is high
+        # only while they overlap, so the knob is setting how much of one disc
+        # covers the other
+        PITCH: pitch(150), RATIO: ratio("3:2"), SHAPE: 0.85,
+        RELATION: relation("and"),
+        CUTOFF: cutoff(4000), RESO: 0.4, GAIN: 0.2,
+        DECAY: decay(0.5), CURVE: 0.5, DECAY2: decay2(0.1), CURVE2: 0.6,
     }),
 
-    ("strange", {
-        # asymmetric feedback with the operator swept across the whole list by
-        # env 2: the relationship is different at the start of the hit and the
-        # end of it, which is the thing this module is for
-        PITCH: pitch(74), RATIO: ratio("sqrt2"), SHAPE: 0.78,
-        RELATION: relation(("and", "sum", 0.4)), BLEND: 0.9,
-        XMOD: 0.85, TILT: -0.7, DIV: div(2), DEST: BOTH, GRID: grid(11000),
-        CUTOFF: cutoff(900), RESO: 0.8, GAIN: 0.35,
-        DECAY: decay(1.4), CURVE: 0.2, DECAY2: decay2(0.55), CURVE2: -0.3,
-        E2PITCH: -0.5, E2REL: 1.0, E2CUT: 0.6,
-    }),
-    ("chaff", {  # a snare: dry husks beaten loose, a rattling scatter
-        # noise pulled back toward the latch, so the rattle keeps a pattern in
-        # it rather than being flat hiss, over a band-passed body
-        PITCH: pitch(190), RATIO: ratio("7:4"), SHAPE: 0.62,
-        RELATION: relation(("flip", "noise", 0.6)), XMOD: 0.3,
-        CUTOFF: cutoff(1800), RESO: 0.45, FILTER: BP, GAIN: 0.25,
-        DECAY: decay(0.22), CURVE: 0.7, DECAY2: decay2(0.05), CURVE2: 0.85,
-        E2CUT: 0.4, E2PITCH: -0.25,
+    ("moire", {
+        # the latch, whose duty cycle *is* the phase difference between the two
+        # oscillators. At a 1% detune that difference sweeps a full cycle twice
+        # a second, so the timbre slides continuously without a knob moving:
+        # two regular grids overlaid slightly out of true
+        PITCH: pitch(200), RATIO: ratio("1:1 detuned"), RELATION: relation("flip"),
+        CUTOFF: cutoff(3000), RESO: 0.35,
+        DECAY: decay(2.2), CURVE: 0.1, DECAY2: decay2(0.3), CURVE2: 0.5,
     }),
 
-    ("glint", {  # a hat: one brief flash and gone
-        # the short bright one the bank was missing: cymbal is nearly a second
-        # long, this is forty-five milliseconds
-        PITCH: pitch(3200), RATIO: ratio("e"), RELATION: relation("noise"),
-        XMOD: 0.4, GRID: grid(28000),
-        CUTOFF: cutoff(9000), RESO: 0.2, FILTER: BP, GAIN: 0.40,
-        ATTACK: attack(0.0002), DECAY: decay(0.045), CURVE: 0.9,
-        DECAY2: decay2(0.02), CURVE2: 0.7, E2CUT: 0.3,
+    ("lattice", {
+        # GRID near the bottom. The relationship between the two oscillators is
+        # quantized onto a 350 Hz time grid; every edge lands late by a
+        # different amount and the fold-down of that is the whole timbre
+        PITCH: pitch(220), RATIO: ratio("3:2"), RELATION: relation("ring"),
+        GRID: grid(350),
+        CUTOFF: cutoff(8000), RESO: 0.2,
+        DECAY: decay(0.9), CURVE: 0.5, DECAY2: decay2(0.15), CURVE2: 0.6,
     }),
 
-    ("vigil", {  # a drone: a watch kept unbroken
+    ("undertow", {
+        # DIV as a subharmonic operand, with no cross-modulation at all: the
+        # operator is reading a 40 Hz A against a 320 Hz B, which is a
+        # different relationship and not the same one an octave down
+        PITCH: pitch(320), RATIO: ratio("5:4"), RELATION: relation("ring"),
+        DIV: div(8),
+        CUTOFF: cutoff(5000), RESO: 0.45, GAIN: 0.2,
+        DECAY: decay(0.8), CURVE: 0.45, DECAY2: decay2(0.12), CURVE2: 0.6,
+        E2PITCH: -0.3,
+    }),
+
+    ("ouroboros", {
+        # XMOD full with TILT centred: each oscillator modulating the other at
+        # full depth, both directions at once, which is the far end of the
+        # continuum the module is built around
+        PITCH: pitch(120), RATIO: ratio("sqrt2"), RELATION: relation("ring"),
+        XMOD: 1.0, TILT: 0.0,
+        CUTOFF: cutoff(6000), RESO: 0.4,
+        DECAY: decay(1.5), CURVE: 0.3, DECAY2: decay2(0.35), CURVE2: 0.4,
+        E2PITCH: -0.2,
+    }),
+
+    ("transit", {
+        # env 2 on RELATION. The hit begins on the shift register and crosses
+        # the operator list back down to ring as the envelope falls, so what
+        # changes over the length of the note is not the timbre of an operator
+        # but which operator is reading the pair
+        PITCH: pitch(300), RATIO: ratio("7:4"), RELATION: relation("ring"),
+        CUTOFF: cutoff(6000), RESO: 0.35,
+        DECAY: decay(1.2), CURVE: 0.4, DECAY2: decay2(0.6), CURVE2: -0.2,
+        E2REL: 1.0,
+    }),
+
+    ("chatter", {
+        # the shift register: an 8-bit register clocked by A and fed from its
+        # own top bit exclusive-or'd with B. Noise, but deterministic and tied
+        # to the pitch, so it has a grain rather than a hiss
+        PITCH: pitch(400), RATIO: ratio("pi"), RELATION: relation("noise"),
+        XMOD: 0.3, TILT: -0.5,
+        CUTOFF: cutoff(5000), RESO: 0.3, GAIN: 0.25,
+        DECAY: decay(1.2), CURVE: 0.5, DECAY2: decay2(0.25), CURVE2: 0.6,
+        E2CUT: 0.3,
+    }),
+
+    ("vigil", {
         # for the DRONE output, where env 1 never closes: everything is slow,
         # nothing settles, and the oscillators free-run so it does not restart
         # from the same place each time
@@ -208,7 +221,7 @@ PRESETS = [
         "data": {"freeRun": True, "env2Free": True},
     }),
 
-    ("slag", {  # the coarse vitreous waste a furnace leaves behind
+    ("slag", {
         # gain most of the way up and the grid most of the way down: the
         # saturator and the coarse clock doing the damage between them
         PITCH: pitch(90), RATIO: ratio("4:3"), RELATION: relation("and"),

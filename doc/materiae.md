@@ -272,51 +272,71 @@ itself a step, and a large one.
 
 ## Factory presets
 
-Twelve, written by `tools/presets/gen_materiae_presets.py`. The first eight are
-named for what they are. The last four are named for what they are like — a
-thread the module's own name started, since chaff, glint, vigil and slag are all
-things made of matter — so here is what they actually do.
+Twelve, written by `tools/presets/gen_materiae_presets.py`. The bank is a tour
+of the module rather than a drum kit. Two of them are sounds — **kick** and
+**click**, the two ends of the envelope — and the other ten each sit on one
+mechanism with everything else left near neutral, so that mechanism is what you
+hear. Load one, then move the knob it is named after.
 
-| | preset | what it is |
-|---|--------|-----------|
-| 1 | **kick** | the filter as the body, struck by the square |
-| 2 | **tom** | the same, tuned up, with a longer pitch fall |
-| 3 | **metal** | π against 1, into ring, band-passed |
-| 4 | **digital** | AND on a coarse grid, divided |
-| 5 | **click** | two milliseconds of high square |
-| 6 | **cymbal** | the shift register, long and bright |
-| 7 | **bass** | the latch drifting through its own phase difference |
-| 8 | **strange** | asymmetric feedback, operator swept by env 2 |
-| 9 | **chaff** | a snare — noise pulled back toward the latch, so the rattle keeps a pattern in it |
-| 10 | **glint** | a hat — thirty-five milliseconds, where cymbal is nearly a second |
-| 11 | **vigil** | a drone, meant for the **drone** jack: free-running, everything slow, nothing settling |
-| 12 | **slag** | gain most of the way up and grid most of the way down, doing the damage between them |
+| | preset | the one thing it shows |
+|---|--------|-----------------------|
+| 1 | **kick** | the filter as the body: a sine at 62 Hz that the square strikes |
+| 2 | **click** | the other end of the envelope, twelve milliseconds long |
+| 3 | **precession** | **ratio** on an irrational. √2 means the two never share a period, so the pattern never comes back round — given a long enough decay to hear it not repeating |
+| 4 | **eclipse** | **shape**. One pulse width opens as the other closes, and AND is high only while they overlap: the knob sets how much of one disc covers the other |
+| 5 | **moire** | the **flip** operator, whose duty cycle *is* the phase difference between the oscillators. At a 1% detune that sweeps a full cycle twice a second, so the timbre slides with no knob moving |
+| 6 | **lattice** | **grid** near the bottom. Every edge lands late by a different amount and the fold-down of that is the whole timbre |
+| 7 | **undertow** | **div** as a subharmonic operand, with no cross-modulation at all: 40 Hz A read against 320 Hz B |
+| 8 | **ouroboros** | **xmod** full with **tilt** centred — each oscillator modulating the other at full depth, both ways at once |
+| 9 | **transit** | **env 2 → rel**. The hit begins on the shift register and crosses back to ring as it falls: what changes is *which operator is reading the pair* |
+| 10 | **chatter** | the shift register — noise, but deterministic and tied to the pitch, so it has a grain rather than a hiss |
+| 11 | **vigil** | the **drone** output, where env 1 never closes. Free-running, everything slow, nothing settling |
+| 12 | **slag** | **gain** most of the way up against **grid** most of the way down |
 
-`vigil` works from **out** as a very long hit, but it is written for **drone**,
-where env 1 never closes and the only thing happening is the slow drift of two
-oscillators against each other.
+`vigil` works from **out** as a very long hit, but it is written for **drone**.
 
-## Patch notes
+## Making a kit
 
-Four of these are presets 1, 3, 4 and 8; the settings are worth knowing anyway.
+There are no snare, tom, hat or cymbal presets, because a kit is the thing this
+module is worst at pretending to be and the slots are better spent showing what
+it is actually for. It will make them, though, and here is where to start. Every
+setting not listed stays at its default.
 
+**Tom** — pitch 120 Hz, ratio 3:2, **relation** on *sum*, **blend** 50%,
+cutoff 420 Hz, **reso** 72%, decay 450 ms, **crv** +0.6, dec 2 120 ms,
+**env 2 → pit** −0.8, **→ cut** +0.2. The pitch fall is doing most of the work;
+lengthen dec 2 for a bigger tom and shorten it for a smaller one.
 
-**Kick.** Pitch low, ratio 1:1, **blend** about a third, **cutoff** near the
-bottom with **reso** almost full, **env 2 → pit** hard negative and a short
-**dec 2**. The filter is the body; the square is only the click on the front.
+**Snare** — pitch 190 Hz, ratio 7:4, **shape** 62%, **relation** three fifths of
+the way from *flip* to *noise*, **xmod** 30%, **lp/bp** on bandpass at 1800 Hz,
+**reso** 45%, **gain** 25%, decay 220 ms, **crv** +0.7, dec 2 50 ms,
+**env 2 → cut** +0.4, **→ pit** −0.25. Sitting between flip and noise is the
+point: pure noise is flat hiss, and pulling it back toward the latch leaves a
+pattern inside the rattle.
 
-**Metallic.** Pitch up, ratio on π or √2, **relation** on **ring**, some
-**xmod**, **lp/bp** on bandpass. Add **env 2 → rel** to have it start somewhere
-else and arrive at ring.
+**Hat** — pitch 3.2 kHz, ratio *e*, **relation** on *noise*, **xmod** 40%,
+**grid** 28 kHz, bandpass at 9 kHz, **reso** 20%, **gain** 40%, **att** at
+minimum, decay 45 ms, **crv** +0.9, **env 2 → cut** +0.3. Open it by taking the
+decay to 300 ms.
 
-**Digital.** **relation** on **and**, **div** at /4, **grid** turned well down,
-short decay. The coarse grid and the subharmonic operand are doing the work
-between them; **xmod** can stay at zero.
+**Cymbal** — pitch 1.5 kHz, ratio *e*, **relation** on *noise*, **xmod** 60%,
+**tilt** +0.3, bandpass at 6.5 kHz, **reso** 25%, decay 900 ms, **crv** +0.85,
+dec 2 300 ms, **env 2 → cut** +0.5.
 
-**Strange.** **xmod** near full with **tilt** off centre, **div** at /2,
-**dest** on both, **relation** low with **env 2 → rel** wide open, long
-decays. The operator moves across the whole list while the two oscillators
-chase each other.
+**Bell / metallic** — pitch 620 Hz, ratio π, **relation** on *ring*,
+**xmod** 35%, **tilt** −0.4, bandpass at 3.8 kHz, **reso** 55%, decay 1.1 s,
+**crv** +0.8, **env 2 → rel** +0.6. The irrational ratio is what stops it
+sounding like a tuned tom.
+
+**Digital percussion** — pitch 260 Hz, ratio √2, **relation** on *and*,
+**div** /4, **xmod** 50%, **grid** 6.2 kHz, cutoff 5.2 kHz, **reso** 40%,
+decay 180 ms, **crv** +0.4, **env 2 → pit** +0.5.
+
+**Sub / unstable bass** — pitch 55 Hz, ratio 1:1 detuned, **relation** on
+*flip*, **blend** 80%, **xmod** 45%, **tilt** −0.5, **div** /2, **grid** 9 kHz,
+cutoff 220 Hz, **reso** 85%, decay 900 ms, **crv** +0.35, dec 2 350 ms,
+**env 2 → pit** −0.35, **→ rel** +0.5, **→ cut** +0.3. The latch drifting
+through its own phase difference is what makes it move.
 
 ## Idle cost
 

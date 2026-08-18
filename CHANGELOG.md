@@ -47,9 +47,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     seconds and a trigger pings it, so the square is the exciter and the filter
     supplies the weight that squares do not have. Two envelopes: env 1 on
     amplitude, env 2 on pitch, relation and cutoff through bipolar trimpots.
-    Twelve factory presets: kick, tom, metal, digital, click, cymbal, bass,
-    strange, and then chaff (a snare), glint (a hat), vigil (a drone for the
-    drone jack) and slag (gain up, grid down).
+    Twelve factory presets, and the bank is a tour of the module rather than a
+    drum kit: **kick** and **click** are sounds, and the other ten each sit on
+    one mechanism with everything else near neutral — precession (an irrational
+    ratio never repeating), eclipse (pulse-width overlap into AND), moire (the
+    latch reading phase difference), lattice (the coarse grid), undertow (a
+    divided operand), ouroboros (full two-way feedback), transit (env 2 moving
+    the operator itself), chatter (the shift register), vigil (the drone
+    output) and slag (gain up, grid down). Settings for the kit the bank no
+    longer carries — tom, snare, hat, cymbal, bell, digital percussion, sub —
+    are in doc/materiae.md.
 
     A trigger arriving on a sounding voice is deferred: the output fades down,
     everything resets where it cannot be heard, and it fades back up, so a
