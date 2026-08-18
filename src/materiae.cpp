@@ -444,32 +444,32 @@ struct MateriaeWidget : ModuleWidget {
 // @elem LABEL_DEST label 0.0 label "dest" 0.0 60.96 53.50
 // @elem LABEL_RELATION label 0.0 label "relation" 0.0 83.96 53.50
 // @elem LABEL_BLEND label 0.0 label "blend" 0.0 106.96 53.50
-// @elem LABEL_E2 label 0.0 label "env 2 to" 0.0 106.96 63.00
+// @elem LABEL_E2 label 0.0 label "env 2 to" 0.0 106.96 64.50
 // @elem LABEL_CUTOFF label 0.0 label "cutoff" 0.0 14.96 77.50
 // @elem LABEL_RESO label 0.0 label "reso" 0.0 37.96 77.50
 // @elem LABEL_FILTER label 0.0 label "lp/bp" 0.0 60.96 77.50
 // @elem LABEL_GAIN label 0.0 label "gain" 0.0 83.96 77.50
-// @elem LABEL_E2PITCH label 0.0 label "pit" 0.0 98.96 75.50
-// @elem LABEL_E2REL label 0.0 label "rel" 0.0 106.96 75.50
-// @elem LABEL_E2CUT label 0.0 label "cut" 0.0 114.96 75.50
+// @elem LABEL_E2PITCH label 0.0 label "pit" 0.0 98.96 77.50
+// @elem LABEL_E2REL label 0.0 label "rel" 0.0 106.96 77.50
+// @elem LABEL_E2CUT label 0.0 label "cut" 0.0 114.96 77.50
 // @elem LABEL_ATTACK label 0.0 label "att" 0.0 14.96 98.50
 // @elem LABEL_DECAY label 0.0 label "dec" 0.0 37.96 98.50
 // @elem LABEL_CURVE label 0.0 label "crv" 0.0 60.96 98.50
 // @elem LABEL_DECAY2 label 0.0 label "dec 2" 0.0 83.96 98.50
 // @elem LABEL_CURVE2 label 0.0 label "crv 2" 0.0 106.96 98.50
-// @elem LABEL_HIT label 0.0 label "hit" 0.0 7.00 112.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 17.00 112.50
-// @elem LABEL_VOCT label 0.0 label "v/o" 0.0 26.76 112.50
-// @elem LABEL_RATIOCV label 0.0 label "rat" 0.0 36.52 112.50
-// @elem LABEL_XMODCV label 0.0 label "xmd" 0.0 46.28 112.50
-// @elem LABEL_RELCV label 0.0 label "rel" 0.0 56.04 112.50
-// @elem LABEL_CUTCV label 0.0 label "cut" 0.0 65.80 112.50
-// @elem BOX_ENV2 panel_box 7.0 box "" 0.0 78.50 107.00
-// @elem BOX_DRONE panel_box 7.0 box "" 0.0 94.00 107.00
-// @elem BOX_AUDIO panel_box 7.0 box "" 0.0 109.50 107.00
-// @elem LABEL_ENV2 label 0.0 label "env" 0.0 78.50 112.50
-// @elem LABEL_DRONE label 0.0 label "drone" 0.0 94.00 112.50
-// @elem LABEL_AUDIO label 0.0 label "out" 0.0 109.50 112.50
+// @elem LABEL_HIT label 0.0 label "hit" 0.0 7.00 115.50
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 17.00 115.50
+// @elem LABEL_VOCT label 0.0 label "v/o" 0.0 26.76 115.50
+// @elem LABEL_RATIOCV label 0.0 label "rat" 0.0 36.52 115.50
+// @elem LABEL_XMODCV label 0.0 label "xmd" 0.0 46.28 115.50
+// @elem LABEL_RELCV label 0.0 label "rel" 0.0 56.04 115.50
+// @elem LABEL_CUTCV label 0.0 label "cut" 0.0 65.80 115.50
+// @elem BOX_ENV2 panel_box 7.0 box "" 0.0 78.50 110.50
+// @elem BOX_DRONE panel_box 7.0 box "" 0.0 94.00 110.50
+// @elem BOX_AUDIO panel_box 7.0 box "" 0.0 109.50 110.50
+// @elem LABEL_ENV2 label 0.0 label "env" 0.0 78.50 115.50
+// @elem LABEL_DRONE label 0.0 label "drone" 0.0 94.00 115.50
+// @elem LABEL_AUDIO label 0.0 label "out" 0.0 109.50 115.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 60.96 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -490,28 +490,28 @@ struct MateriaeWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.96f, 69.00f)), module, Materiae::RESO_PARAM));
         addParam(createParamCentered<CKSS>(mm2px(Vec(60.96f, 69.00f)), module, Materiae::FILTER_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(83.96f, 69.00f)), module, Materiae::GAIN_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(98.96f, 69.00f)), module, Materiae::E2PITCH_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(106.96f, 69.00f)), module, Materiae::E2REL_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(114.96f, 69.00f)), module, Materiae::E2CUT_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(98.96f, 71.00f)), module, Materiae::E2PITCH_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(106.96f, 71.00f)), module, Materiae::E2REL_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(114.96f, 71.00f)), module, Materiae::E2CUT_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(14.96f, 90.00f)), module, Materiae::ATTACK_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.96f, 90.00f)), module, Materiae::DECAY_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(60.96f, 90.00f)), module, Materiae::CURVE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(83.96f, 90.00f)), module, Materiae::DECAY2_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(106.96f, 90.00f)), module, Materiae::CURVE2_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(7.00f, 105.00f)), module, Materiae::HIT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 105.00f)), module, Materiae::TRIG_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.76f, 105.00f)), module, Materiae::VOCT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(36.52f, 105.00f)), module, Materiae::RATIO_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(46.28f, 105.00f)), module, Materiae::XMOD_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(56.04f, 105.00f)), module, Materiae::RELATION_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.80f, 105.00f)), module, Materiae::CUTOFF_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(78.50f, 105.00f)), module, Materiae::ENV2_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 105.00f)), module, Materiae::DRONE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(109.50f, 105.00f)), module, Materiae::AUDIO_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(10.00f, 102.00f)), module, Materiae::HIT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(83.50f, 102.00f)), module, Materiae::ENV2_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 102.00f)), module, Materiae::DRONE_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(114.50f, 102.00f)), module, Materiae::LEVEL_LIGHT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(7.00f, 108.00f)), module, Materiae::HIT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 108.00f)), module, Materiae::TRIG_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.76f, 108.00f)), module, Materiae::VOCT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(36.52f, 108.00f)), module, Materiae::RATIO_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(46.28f, 108.00f)), module, Materiae::XMOD_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(56.04f, 108.00f)), module, Materiae::RELATION_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.80f, 108.00f)), module, Materiae::CUTOFF_CV_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(78.50f, 108.00f)), module, Materiae::ENV2_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(94.00f, 108.00f)), module, Materiae::DRONE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(109.50f, 108.00f)), module, Materiae::AUDIO_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(10.00f, 105.00f)), module, Materiae::HIT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(83.50f, 105.00f)), module, Materiae::ENV2_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(99.00f, 105.00f)), module, Materiae::DRONE_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(114.50f, 105.00f)), module, Materiae::LEVEL_LIGHT));
         // @layout:end
     }
 
