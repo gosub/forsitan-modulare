@@ -21,7 +21,8 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
-     scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random $(SMOKE_BINS) $(CROSS_BINS)
+     scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
+     aether_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 # Measurement and audition harness for the square-relation percussion voice.
 # It drives the engine header alone and needs no Rack. `ops` is the one that
@@ -145,6 +146,14 @@ viginti_probe: viginti_probe.cpp ../src/viginti_dsp.hpp
 viginti_invariants: viginti_invariants.cpp ../src/viginti_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@
 
+# Measurement harness for the transmission line: the converter's pulse rate
+# law, the loop's lock and capture range per phase comparator, the ratio that
+# the distortion is made of, bandwidth against TONE, the standalone
+# oscillator, where the carrier folds the input, and CPU. Rack-free, like the
+# two viginti harnesses.
+aether_probe: aether_probe.cpp ../src/aether_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@
+
 check: $(SMOKE_BINS) $(CROSS_BINS)
 	@echo "module,check,value,pass"; \
 	rc=0; \
@@ -154,7 +163,7 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
 	      caligo_probe raucus_probe tundo_probe cartilago_probe \
-	      textor_probe scrupea_probe viginti_probe \
+	      textor_probe scrupea_probe viginti_probe aether_probe \
 	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
