@@ -166,7 +166,25 @@ Built 2026-08-19 off the aether branch, archived at 4 commits. Complete when
 archived: engine, module, panel, manual, panel image, plugin entry, changelog
 entry, a probe harness and 30 passing smoke checks.
 
-Rejected on the sound.
+### The verdict
+
+Not interesting enough acoustically or musically, and not versatile — in
+neither of the two things it does. As a self-oscillating instrument it makes
+one howl per setting, and the settings do not lead anywhere; as a processor of
+external audio it is an overdrive with a resonance, and the loop does not earn
+the panel it takes up. That is a judgement on the module, not on the port: the
+loop does what the block diagram says it does, at the pitches and levels the
+manual describes, and the measurements below all held.
+
+Worth knowing before anyone revives it: there is no Dark Matter schematic, so
+every frequency in the build was inference — band corners, loop band limits,
+amplifier bandwidth, the envelope's time constants. It is not knowable from
+here whether a different guess at those would have made a more interesting
+instrument, and finding out means tracing a board rather than writing more
+code. The generous reading is that a feedback loop of this shape is thinner in
+a rack than it is on a desk, where a no-input mixer's interest comes from
+hands on several faders at once and from what the mixer's own circuit does
+badly.
 
 ### What is worth salvaging
 
