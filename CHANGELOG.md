@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+  - **aether**, a 14 HP broken transmission line, after Schlappi Engineering's
+    Interstellar Radio. Audio goes into a synchronous charge-balance
+    voltage-to-frequency converter clocked by **carrier** and leaves as a pulse
+    train; a phase-locked loop with a converter of its own, clocked by
+    **demod**, gets it back. Both blocks are textbook, so the module is one
+    equation: at lock the output is `R*(1 + v_in) - 1` with
+    `R = f_carrier/f_demod`. Matched clocks return the signal, a faster
+    demodulator scales it down, and a slower one asks the loop for a control
+    voltage past its rails so it never locks and the output collapses — which
+    is exactly what the hardware's manual describes.
+
+    **type** switches the phase comparator between the three classic ones:
+    exclusive-or (always outputs, locks to harmonics), phase-frequency detector
+    (locks widest, rails into silence when it loses lock) and an RS latch
+    (false-locks at simple ratios). **tone** is one pole sitting in the loop
+    *and* on the output, so it sets tracking as much as brightness, and
+    **error** is a comparator across input and output — the ring-modulator
+    output, thresholded into a wet/dry of square waves.
+
+    The normalling is the circuit's: nothing in **in** makes that jack a +5 V
+    bias and the module a broken-radio oscillator, and nothing in a **cv**
+    input feeds it the signal instead, turning those attenuators into
+    audio-rate FM depth. Either **clk** input replaces its side's converter
+    clock without silencing the clock output beside it.
+
+    Clock ticks are scheduled in continuous time and the loop filter is
+    integrated between them, so the aliasing is the modelled carrier's and not
+    the host's: the same patch measures the same from 88.2 kHz to 384 kHz.
+    Oversampling (1x to 16x, 4x default) only filters the outputs. About 1.2 %
+    of a core.
+
 ## [2.15.0] - 2026-08-18
 ### Fixed
   - **materiae**'s file-local helper types are in an anonymous namespace, where

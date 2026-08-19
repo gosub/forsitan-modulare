@@ -374,6 +374,18 @@
         "Logic",
         "Digital"
       ]
+    },
+    {
+      "slug": "aether",
+      "name": "aether",
+      "description": "A faulty transmission line: audio to a pulse train on one clock, back through a PLL on another.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/aether.md",
+      "tags": [
+        "Distortion",
+        "Effect",
+        "Hardware clone",
+        "Ring modulator"
+      ]
     }
   ]
 }

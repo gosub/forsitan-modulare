@@ -112,6 +112,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | scrupea | chaotic bank inspired by Reaktor's Skrewell (8 voices of 2 levers, oscillator into a tuned feedback comb, all-to-all coupling chosen by the bars, 3 topologies, 64 bars in an edit area, 4 macros that map rather than offset) | 121.92mm (24HP) |
 | gradus | stepped CV source, a discrete cumuli (8 rows of knob + add/jump switch + a plus and a minus trigger with buttons, into one running output; jumps beat adds and the last row in reading order wins; reset button + trig beats everything; clip knob for 0-10/±5/±10/none) | 60.96mm (12HP) |
 | materiae | percussion from two square waves and the relation between them (5 crossfaded operators, A<->B feedback, GRID = the logic core rate as a knob, DIV as a subharmonic operand, resonant filter as the body, env 2 sweeping the operator; drone tap before the VCA, gain into a saturator) | 121.92mm (24HP) |
+| aether | broken transmission line (Interstellar Radio: a synchronous V/F converter clocked by the carrier into a PLL clocked by the demodulator; three phase comparators, error comparator, both clocks in and out) | 71.12mm (14HP) |
 
 ## limen module
 

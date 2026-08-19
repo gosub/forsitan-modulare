@@ -43,6 +43,7 @@ A collection of VCV Rack modules.
 | [viginti](doc/viginti.md) | MS-20 lowpass: the KORG35 Rev.2 circuit solved as the nonlinear system it is, so the resonance itself distorts and collapses with level | [doc/viginti.md](doc/viginti.md) |
 | [gradus](doc/gradus.md) | Eight triggered steps into one CV: each row's knob steps the output up or down, or jumps it to plus or minus that value | [doc/gradus.md](doc/gradus.md) |
 | [materiae](doc/materiae.md) | Percussion from two square waves and the relationship between them: logic operators, bidirectional feedback, a tuneable digital grid and a ringing filter for a body | [doc/materiae.md](doc/materiae.md) |
+| [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound | [doc/aether.md](doc/aether.md) |
 
 ## Tools
 
@@ -106,6 +107,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **viginti** | twenty, for the MS-20 whose Rev. 2 lowpass this is (its diodes clip inside the resonance loop) |
 | **gradus** | a step, a stair, a degree (the output climbs and falls in steps you set, and a jump row sends it straight to a given degree) |
 | **materiae** | of matter, of raw material — *materia* is stuff, timber, the substance a thing is made from; here two of the simplest signals there are, and nothing else |
+| **aether** | the upper air, the medium a signal was once thought to need in order to travel (this one travels badly) |
 
 ## Author
 
