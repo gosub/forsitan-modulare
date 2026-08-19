@@ -386,6 +386,18 @@
         "Hardware clone",
         "Ring modulator"
       ]
+    },
+    {
+      "slug": "umbrae",
+      "name": "umbrae",
+      "description": "An audio feedback instrument: drive, a saturating two-band EQ, and a loop that howls on its own.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/umbrae.md",
+      "tags": [
+        "Distortion",
+        "Effect",
+        "Hardware clone",
+        "Noise"
+      ]
     }
   ]
 }

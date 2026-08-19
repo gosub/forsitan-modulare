@@ -113,6 +113,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | gradus | stepped CV source, a discrete cumuli (8 rows of knob + add/jump switch + a plus and a minus trigger with buttons, into one running output; jumps beat adds and the last row in reading order wins; reset button + trig beats everything; clip knob for 0-10/±5/±10/none) | 60.96mm (12HP) |
 | materiae | percussion from two square waves and the relation between them (5 crossfaded operators, A<->B feedback, GRID = the logic core rate as a knob, DIV as a subharmonic operand, resonant filter as the body, env 2 sweeping the operator; drone tap before the VCA, gain into a saturator) | 121.92mm (24HP) |
 | aether | broken transmission line (Interstellar Radio: a synchronous V/F converter clocked by the carrier into a PLL clocked by the demodulator; three phase comparators, error comparator, both clocks in and out) | 71.12mm (14HP) |
+| umbrae | audio feedback instrument (Dark Matter: drive VCA, saturating two-band tone section, a loop around it that howls past unity, envelope follower normalled to the CV ins, external loop send/return) | 101.6mm (20HP) |
 
 ## limen module
 

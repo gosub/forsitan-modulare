@@ -38,6 +38,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     Oversampling (1x to 16x, 4x default) only filters the outputs. About 1.2 %
     of a core.
 
+  - **umbrae**, a 20 HP audio feedback instrument after Bastl Instruments and
+    Casper Electronics' Dark Matter. A loop runs around a two-band tone
+    section whose boosts saturate: below unity it is an overdrive with a
+    resonance, above unity it sings on its own, and the two band faders pick
+    the register — around 110 Hz on the bass side, 3.3 kHz on the treble one,
+    somewhere between when both are up. Ahead of it sits an input VCA with
+    the hardware's x3 gain and soft clipping, and behind it a crossfader
+    between the clean signal and the fed-back one.
+
+    An envelope follower watches the input and is normalled to the feedback
+    and crossfade CV inputs, so a signal played in gates and ducks the
+    feedback it causes. The send and return jacks open the loop for a delay
+    or a reverb to sit inside the howl, with the hardware's polarity switch
+    for the modules in it that invert.
+
+    In the hardware the loop is instantaneous, and a naive port screams near
+    Nyquist at a pitch that follows the host's sample rate. So the loop
+    carries an explicit 16 us propagation delay read out of a fractional
+    delay line, and the pitch comes from modelled time constants instead:
+    75.6-75.7 Hz for the same patch across an 8.7:1 range of engine rates.
+    That is also why the oversampling menu starts at 4x — below it one sample
+    is longer than the modelled delay. 0.9 % of a core at 4x.
+
+    Built from the hardware's block diagram and manual; there is no
+    schematic, so every frequency in it is inference and the documentation
+    says which. It is *after* Dark Matter in the way bulla is after the
+    Blippoo Box.
+
 ## [2.15.0] - 2026-08-18
 ### Fixed
   - **materiae**'s file-local helper types are in an anonymous namespace, where

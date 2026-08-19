@@ -44,6 +44,7 @@ A collection of VCV Rack modules.
 | [gradus](doc/gradus.md) | Eight triggered steps into one CV: each row's knob steps the output up or down, or jumps it to plus or minus that value | [doc/gradus.md](doc/gradus.md) |
 | [materiae](doc/materiae.md) | Percussion from two square waves and the relationship between them: logic operators, bidirectional feedback, a tuneable digital grid and a ringing filter for a body | [doc/materiae.md](doc/materiae.md) |
 | [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound | [doc/aether.md](doc/aether.md) |
+| [umbrae](doc/umbrae.md) | An audio feedback instrument: a loop around a saturating two-band tone section that colours what passes through it below unity and sings on its own above it | [doc/umbrae.md](doc/umbrae.md) |
 
 ## Tools
 
@@ -108,6 +109,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **gradus** | a step, a stair, a degree (the output climbs and falls in steps you set, and a jump row sends it straight to a given degree) |
 | **materiae** | of matter, of raw material — *materia* is stuff, timber, the substance a thing is made from; here two of the simplest signals there are, and nothing else |
 | **aether** | the upper air, the medium a signal was once thought to need in order to travel (this one travels badly) |
+| **umbrae** | shadows, and *of shadow* — the designer's own word for what the module makes: feedback as "the negative space around a sound, like a sonic shadow" |
 
 ## Author
 
