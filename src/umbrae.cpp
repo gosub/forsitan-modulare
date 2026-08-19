@@ -301,11 +301,11 @@ struct UmbraeWidget : ModuleWidget {
 // @elem LABEL_TREBBOOST label 0.0 label "boost" 0.0 49.80 48.50
 // @elem LABEL_FBKCV label 0.0 label "cv" 0.0 73.30 47.50
 // @elem LABEL_XFADECV label 0.0 label "cv" 0.0 92.30 47.50
-// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 11.80 83.00
-// @elem LABEL_BASS label 0.0 label "bass" 0.0 30.80 83.00
-// @elem LABEL_TREBLE label 0.0 label "treble" 0.0 49.80 83.00
-// @elem LABEL_FBK label 0.0 label "fbk" 0.0 68.80 83.00
-// @elem LABEL_XFADE label 0.0 label "x-fade" 0.0 87.80 83.00
+// @elem LABEL_DRIVE label 0.0 label "drive" 0.0 11.80 89.00
+// @elem LABEL_BASS label 0.0 label "bass" 0.0 30.80 89.00
+// @elem LABEL_TREBLE label 0.0 label "treble" 0.0 49.80 89.00
+// @elem LABEL_FBK label 0.0 label "fbk" 0.0 68.80 89.00
+// @elem LABEL_XFADE label 0.0 label "x-fade" 0.0 87.80 89.00
 // @elem LABEL_RETURN label 0.0 label "return" 0.0 10.00 112.50
 // @elem BOX_SEND panel_box 7.0 box "" 0.0 30.00 107.00
 // @elem LABEL_SEND label 0.0 label "send" 0.0 30.00 112.50
@@ -336,11 +336,11 @@ struct UmbraeWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(73.30f, 40.00f)), module, Umbrae::FBK_CV_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(82.80f, 40.00f)), module, Umbrae::XFADE_CV_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(92.30f, 40.00f)), module, Umbrae::XFADE_CV_INPUT));
-        addParam(createParamCentered<VCVSlider>(mm2px(Vec(11.80f, 66.00f)), module, Umbrae::DRIVE_PARAM));
-        addParam(createParamCentered<VCVSlider>(mm2px(Vec(30.80f, 66.00f)), module, Umbrae::BASS_PARAM));
-        addParam(createParamCentered<VCVSlider>(mm2px(Vec(49.80f, 66.00f)), module, Umbrae::TREBLE_PARAM));
-        addParam(createParamCentered<VCVSlider>(mm2px(Vec(68.80f, 66.00f)), module, Umbrae::FBK_PARAM));
-        addParam(createParamCentered<VCVSlider>(mm2px(Vec(87.80f, 66.00f)), module, Umbrae::XFADE_PARAM));
+        addParam(createParamCentered<VCVSlider>(mm2px(Vec(11.80f, 72.00f)), module, Umbrae::DRIVE_PARAM));
+        addParam(createParamCentered<VCVSlider>(mm2px(Vec(30.80f, 72.00f)), module, Umbrae::BASS_PARAM));
+        addParam(createParamCentered<VCVSlider>(mm2px(Vec(49.80f, 72.00f)), module, Umbrae::TREBLE_PARAM));
+        addParam(createParamCentered<VCVSlider>(mm2px(Vec(68.80f, 72.00f)), module, Umbrae::FBK_PARAM));
+        addParam(createParamCentered<VCVSlider>(mm2px(Vec(87.80f, 72.00f)), module, Umbrae::XFADE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.00f, 105.00f)), module, Umbrae::RETURN_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(30.00f, 105.00f)), module, Umbrae::SEND_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(52.00f, 105.00f)), module, Umbrae::DYNAMICS_OUTPUT));
