@@ -8,6 +8,7 @@ is parked on annotated tags outside the branch list:
 | `exp/sdt-machina` | stridor, crepitus, ruina, machina, and the `src/sdt/` port under them | 2026-08-09 |
 | `exp/fracta` | fractal interpolation oscillator | 2026-08-09 |
 | `exp/inedia` | starved-clock lo-fi delay core | 2026-08-09 |
+| `exp/umbrae` | audio feedback instrument, after Dark Matter | 2026-08-19 |
 
 To look at one:
 
@@ -22,7 +23,7 @@ verdict and the reasons, which are the part that evaporates: without them the
 idea sweeps in `ideas.md` re-propose these every few months and the same work
 gets done twice to reach the same answer.
 
-**All three were rejected for the same reason: the sound.** Not the
+**All of them were rejected for the same reason: the sound.** Not the
 implementation, not the CPU cost, not the panel. Each does what it says it
 does, and none of them was worth listening to. That verdict is about the
 result, not about whether the mechanism is interesting, so anything below
@@ -147,3 +148,54 @@ zero-order-held output against a fixed reconstruction filter (the aliasing is
 the sound, and a tracking anti-imaging filter would remove the grit), and the
 delay time being fixed in inner samples rather than seconds (which is what
 makes it read as tape rather than vibrato).
+
+
+## umbrae: audio feedback instrument
+
+A 20HP loop around a saturating two-band tone section, after Bastl Instruments
+and Casper Electronics' **Dark Matter**. Below unity an overdrive with a
+resonance in it; above unity a howl whose register the two band faders pick —
+around 110 Hz with the bass fader up, 3.3 kHz with the treble one, a kilohertz
+or so with both. An input VCA with the hardware's x3 gain and soft clipping in
+front, a crossfader between the clean signal and the fed-back one behind, an
+envelope follower normalled to the feedback and crossfade CV so a signal gates
+the feedback it causes, and send/return jacks to put a delay or a reverb
+inside the loop.
+
+Built 2026-08-19 off the aether branch, archived at 4 commits. Complete when
+archived: engine, module, panel, manual, panel image, plugin entry, changelog
+entry, a probe harness and 30 passing smoke checks.
+
+Rejected on the sound.
+
+### What is worth salvaging
+
+**The loop delay, which is the whole technique.** Dark Matter's loop is
+instantaneous, and its musical identity is that it oscillates at "the sound of
+the circuit itself, its own resonant frequency". Ported with the one-sample
+delay a digital loop implies, it screams near Nyquist at a pitch that moves
+with the host's sample rate — a different instrument at 44.1 kHz and at
+96 kHz. The fix was to give the loop an explicit **16 us propagation delay**,
+a few op-amp stages' worth of group delay, read out of a fractional delay
+line, so the pitch falls out of modelled time constants instead of out of the
+grid. Measured across an 8.7:1 range of engine rates, 176.4 kHz to 1.536 MHz,
+one patch held 75.6-75.7 Hz.
+
+Two things fall out of that and would fall out again:
+
+- the delay line needs two samples to interpolate between, so the module has a
+  **minimum oversampling ratio** rather than a preferred one (4x, which is
+  176.4 kHz at a 44.1 kHz host). The menu offered nothing lower and said why.
+- the read happens before the write, so a request of *d* samples comes back
+  *d + 1* later. Not compensating for that made the effective delay vary from
+  8.6 to 13.7 us across sample rates, which is a 10% spread in pitch — the bug
+  looked exactly like the problem the delay was there to fix.
+
+**And the measurement that catches it.** Any module here whose sound is a
+self-oscillating loop should be held to one number: the oscillation frequency
+at 44.1, 48, 96 and 192 kHz, and across every oversampling setting, has to be
+the same. It is a two-line check and it is the difference between a port and a
+thing that happens to sound good on the machine it was written on.
+
+The engine is `src/umbrae_dsp.hpp` on the tag, Rack-free, with the loop
+delay's arithmetic and the reasoning documented in its header.
