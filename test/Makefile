@@ -22,7 +22,7 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
-     aether_probe $(SMOKE_BINS) $(CROSS_BINS)
+     aether_probe umbrae_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 # Measurement and audition harness for the square-relation percussion voice.
 # It drives the engine header alone and needs no Rack. `ops` is the one that
@@ -155,6 +155,14 @@ viginti_invariants: viginti_invariants.cpp ../src/viginti_dsp.hpp
 aether_probe: aether_probe.cpp ../src/aether_dsp.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@
 
+# Measurement harness for the feedback loop: where it starts oscillating and
+# at what pitch, the tone section, the drive stage, the envelope follower,
+# the crossfader, the loop taken outside, and CPU. Its one non-negotiable
+# measurement is srate: the oscillation pitch may not move with the rate the
+# circuit is simulated at. Rack-free.
+umbrae_probe: umbrae_probe.cpp ../src/umbrae_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@
+
 check: $(SMOKE_BINS) $(CROSS_BINS)
 	@echo "module,check,value,pass"; \
 	rc=0; \
@@ -165,6 +173,7 @@ clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
 	      caligo_probe raucus_probe tundo_probe cartilago_probe \
 	      textor_probe scrupea_probe viginti_probe aether_probe \
+	      umbrae_probe \
 	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
