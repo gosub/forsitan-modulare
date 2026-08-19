@@ -188,7 +188,9 @@ struct Engine {
         double errThresh = 0.0;      // -1..1
         int type = PD_XOR;
         bool inputPatched = false;
-        bool extCarrier = false;
+        bool carrierCvPatched = false;
+        bool demodCvPatched = false;
+        bool extCarrier = false;      // CARRIER IN takes over the ticks
         bool extDemod = false;
     };
 
@@ -269,7 +271,12 @@ struct Engine {
 
         // Unpatched CV inputs are fed by the signal itself: the CV knobs
         // become audio-rate exponential FM depth. An external clock takes its
-        // side's CV out of the picture entirely, as the manual notes.
+        // side's CV out of the picture entirely, as the manual notes, but
+        // leaves the internal oscillator running for the clock output.
+        const double cvC = c.extCarrier ? 0.0
+                         : (c.carrierCvPatched ? carrierCv : sig);
+        const double cvD = c.extDemod ? 0.0
+                         : (c.demodCvPatched ? demodCv : sig);
         if (c.tone != lastTone) {
             lastTone = c.tone;
             const double toneHz = kToneMin * std::pow(kToneMax / kToneMin,
@@ -284,10 +291,8 @@ struct Engine {
             lastDemodKnob = c.demodKnob;
             demodOct = kClkOctaves * clampd(c.demodKnob, 0.0, 1.0);
         }
-        fCarrier = c.extCarrier ? fCarrier
-                 : clockHz(carrierOct + kClkOctPerVolt * c.carrierCvAmt * carrierCv);
-        fDemod = c.extDemod ? fDemod
-               : clockHz(demodOct + kClkOctPerVolt * c.demodCvAmt * demodCv);
+        fCarrier = clockHz(carrierOct + kClkOctPerVolt * c.carrierCvAmt * cvC);
+        fDemod = clockHz(demodOct + kClkOctPerVolt * c.demodCvAmt * cvD);
         carrierPeriod = 1.0 / fCarrier;
         demodPeriod = 1.0 / fDemod;
         // A clock that has just sped up must not sit out the old, longer
@@ -311,6 +316,8 @@ struct Engine {
         for (int guard = 0; guard < 4096; guard++) {
             const double tC = c.extCarrier ? extCarrierAt : carrierTimer;
             const double tD = c.extDemod ? extDemodAt : demodTimer;
+            // (an external clock's side leaves its timer to the free-running
+            // oscillator below, which only feeds the clock output)
             double tNext = rem;
             int which = -1;
             if (tC >= 0.0 && tC <= tNext) { tNext = tC; which = 0; }
@@ -337,6 +344,15 @@ struct Engine {
         advance(rem, tau, c.type);
         if (!c.extCarrier) carrierTimer -= rem;
         if (!c.extDemod) demodTimer -= rem;
+        // The oscillator behind a jack that has been taken over still runs:
+        // CARRIER OUT and RX CLOCK OUT do not go silent because something is
+        // plugged into the clock input beside them.
+        if (c.extCarrier) carrierTimer -= dt;
+        if (c.extDemod) demodTimer -= dt;
+        if (carrierTimer <= 0.0)
+            carrierTimer -= carrierPeriod * std::floor(carrierTimer / carrierPeriod);
+        if (demodTimer <= 0.0)
+            demodTimer -= demodPeriod * std::floor(demodTimer / demodPeriod);
         if (carrierTimer <= 0.0) carrierTimer = carrierPeriod;
         if (demodTimer <= 0.0) demodTimer = demodPeriod;
 
@@ -355,10 +371,8 @@ struct Engine {
         f.error = comparator(f.out - sig - c.errThresh * kErrVolts);
 
         // ── the two clock outputs ───────────────────────────────────────────
-        f.carrierClk = c.extCarrier ? 0.0
-                     : square(carrierTimer, carrierPeriod) * kClkVolts;
-        f.demodClk = c.extDemod ? 0.0
-                   : square(demodTimer, demodPeriod) * kClkVolts;
+        f.carrierClk = square(carrierTimer, carrierPeriod) * kClkVolts;
+        f.demodClk = square(demodTimer, demodPeriod) * kClkVolts;
         return f;
     }
 

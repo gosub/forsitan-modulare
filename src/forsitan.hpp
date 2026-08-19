@@ -41,3 +41,4 @@ extern Model* modelScrupea;
 extern Model* modelViginti;
 extern Model* modelGradus;
 extern Model* modelMateriae;
+extern Model* modelAether;
