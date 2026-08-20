@@ -1027,7 +1027,7 @@ struct VatesWidget : ModuleWidget {
 // @elem NOTE_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem LENGTH_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem LENGTH_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem MODE_PARAM CKSSPos 2.3 param "" 0.0
+// @elem MODE_PARAM CKSS 2.3 param "" 0.0
 // @elem TRIG_PARAM TL1105 2.6 param "" 0.0
 // @elem TRIG_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FILTER_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -1035,7 +1035,7 @@ struct VatesWidget : ModuleWidget {
 // @elem FX_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem FX_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem ENV_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem SYNC_PARAM CKSSPos 2.3 param "" 0.0
+// @elem SYNC_PARAM CKSS 2.3 param "" 0.0
 // @elem RATE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem LFO_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem LFO_INPUT PJ301MPort 4.01 input "" 0.0
@@ -1122,7 +1122,7 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.00f, 47.00f)), module, Vates::NOTE_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(110.50f, 47.00f)), module, Vates::LENGTH_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.00f, 47.00f)), module, Vates::LENGTH_INPUT));
-        addParam(createParamCentered<CKSSPos>(mm2px(Vec(26.50f, 64.00f)), module, Vates::MODE_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 64.00f)), module, Vates::MODE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(7.50f, 65.00f)), module, Vates::TRIG_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 65.00f)), module, Vates::TRIG_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 65.00f)), module, Vates::FILTER_PARAM));
@@ -1130,7 +1130,7 @@ struct VatesWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 65.00f)), module, Vates::FX_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 65.00f)), module, Vates::FX_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 118.00f)), module, Vates::ENV_OUTPUT));
-        addParam(createParamCentered<CKSSPos>(mm2px(Vec(8.00f, 84.00f)), module, Vates::SYNC_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(8.00f, 84.00f)), module, Vates::SYNC_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.00f, 82.50f)), module, Vates::RATE_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(33.00f, 82.50f)), module, Vates::LFO_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 82.50f)), module, Vates::LFO_INPUT));

@@ -1,10 +1,11 @@
 #pragma once
-// A switch you can click straight to a position, instead of one that steps
-// through its positions in a ring.
+// A three-position switch you can click straight to a position, instead of
+// one that steps through its positions in a ring.
 //
 // Rack's app::Switch increments on every click and wraps at the top, which is
-// fine for two positions and irritating for three: going from "as is" to
-// "invert" and back means passing through "randomize" and hearing it. Here
+// exactly right for two positions — a click flips it — and irritating for
+// three: going from "as is" to "invert" and back means passing through
+// "randomize" and hearing it. So only the three-way switch is wrapped. Here
 // the click lands where you pointed — top of the widget is the top position,
 // bottom is the bottom one — like the switch it is drawn as.
 //
@@ -74,5 +75,4 @@ struct PositionSwitch : TBase {
 
 }   // namespace forsitan
 
-using CKSSPos = forsitan::PositionSwitch<rack::componentlibrary::CKSS>;
 using CKSSThreePos = forsitan::PositionSwitch<rack::componentlibrary::CKSSThree>;
