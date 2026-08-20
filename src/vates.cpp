@@ -307,7 +307,10 @@ struct Vates : Module {
 		configParam(BANK_ATT_PARAM, -1.f, 1.f, 0.f, "Bank CV", "%", 0.f, 100.f);
 		configParam(SAMPLE_PARAM, 0.f, 1.f, 0.f, "Sample");
 		configParam(SAMPLE_ATT_PARAM, -1.f, 1.f, 0.f, "Sample CV", "%", 0.f, 100.f);
-		configSwitch(MODE_PARAM, 0.f, 1.f, 1.f, "Sample modulation", {"cue", "play"});
+		// The panel labels this switch "cue" above and "play" below, so its
+		// up position — value 1 on a CKSS — is cue, and down is play. The
+		// names here are indexed by value and must agree with the panel.
+		configSwitch(MODE_PARAM, 0.f, 1.f, 0.f, "Sample modulation", {"play", "cue"});
 		configButton(TRIG_PARAM, "Trigger");
 		configParam(PITCH_PARAM, -2.f, 2.f, 0.f, "Pitch", " oct");
 		configParam(PITCH_ATT_PARAM, -1.f, 1.f, 0.f, "Pitch CV", "%", 0.f, 100.f);
@@ -507,10 +510,15 @@ struct Vates : Module {
 	// The attenuverted CV offsets that index, and *this* wraps: modulation
 	// past the last entry comes back to the first, which is what makes a slow
 	// ramp into `sample` a sequence rather than a fade.
+	//
+	// Ten volts at full attenuverter is exactly one bank, and the epsilon is
+	// the fencepost: without it a 0-10 V ramp reaches the first entry again
+	// at its very top instead of resting on the last one, which is the same
+	// off-by-one the knob used to have.
 	static int cvSelect(int base, float cv, float att, int count) {
 		if (count <= 0)
 			return 0;
-		int i = base + (int)std::floor(cv * 0.2f * att * count);
+		int i = base + (int)std::floor(cv * 0.1f * att * (count - 1e-3f));
 		i %= count;
 		if (i < 0)
 			i += count;
@@ -705,7 +713,7 @@ struct Vates : Module {
 		int sampleKnob = knobSelect(params[SAMPLE_PARAM].getValue(), nSamples);
 		int sel = cvSelect(sampleKnob, inputs[SAMPLE_INPUT].getVoltage(),
 		                   params[SAMPLE_ATT_PARAM].getValue(), nSamples);
-		bool play = params[MODE_PARAM].getValue() > 0.5f;
+		bool play = params[MODE_PARAM].getValue() < 0.5f;
 
 		// play mode fires when *modulation* crosses into another sample. A
 		// hand on the sample knob, or a bank change moving the ground under
@@ -805,7 +813,10 @@ struct Vates : Module {
 		float lfoHz;
 		if (params[SYNC_PARAM].getValue() > 0.5f) {
 			// synced: the knob is a divider of the step clock
-			static const float div[8] = {0.25f, 0.5f, 1.f, 2.f, 4.f, 8.f, 16.f, 32.f};
+			// steps per cycle, slowest first: clockwise has to speed the LFO
+			// up here exactly as it does in free mode, or the knob reverses
+			// its meaning as the switch flips
+			static const float div[8] = {32.f, 16.f, 8.f, 4.f, 2.f, 1.f, 0.5f, 0.25f};
 			int d = clamp((int)(rateKnob * 7.999f), 0, 7);
 			lfoHz = 1.f / std::max(stepSeconds * div[d], 1e-4f);
 		}

@@ -82,6 +82,9 @@ The bank is stepped rather than swept, as on the hardware, where BANK is a
 button and only the samples sit under a knob. Right-click either display to
 see the whole list and jump straight to an entry.
 
+Ten volts at full attenuverter is one bank, so a 0–10 V ramp sweeps the bank
+exactly once and rests on its last sample; past that it wraps.
+
 The sample knob spans its bank end to end — its top is the last sample, not
 the first one again. Wrapping belongs to modulation: a CV that runs past the
 last sample comes back to the first, which is what turns a slow ramp into a
@@ -161,7 +164,7 @@ falls out of the delay and into the flanger.
 | control | what it does |
 |---------|--------------|
 | **sync / free** | whether the LFO follows the clock or runs on its own. |
-| **rate** | in sync, the clock divider; in free, 0.01–20 Hz. |
+| **rate** | in sync, the clock divider, from two bars a cycle to four cycles a step; in free, 0.01–20 Hz. Clockwise is faster in both, so the knob does not reverse its meaning when the switch flips. |
 | **lfo mod** | attenuverter and input for the rate. |
 | **reset** | a rising edge restarts the triangle at its peak. |
 | **tri**, **pulse** | triangle and its rising-edge pulse, 0–10V. |

@@ -199,12 +199,23 @@ static void testPlayCue() {
 	m.params[Vates::SAMPLE_ATT_PARAM].setValue(1.f);
 	m.inputs[Vates::SAMPLE_INPUT].channels = 1;
 
+	// The panel puts "cue" above the switch and "play" below, so value 1 has
+	// to read "cue" and value 0 has to be the mode that fires. Checking the
+	// switch's own labels against its behaviour is what catches the two
+	// being wired the opposite way round.
+	// (read the labels straight off the quantity: ParamQuantity::setValue and
+	// getDisplayValueString go through APP->engine, and the harness has no App)
+	SwitchQuantity* modeQ = dynamic_cast<SwitchQuantity*>(m.getParamQuantity(Vates::MODE_PARAM));
+	bool labelsOk = modeQ && modeQ->labels.size() == 2
+	                && modeQ->labels[0] == "play" && modeQ->labels[1] == "cue";
+	report("vates", "mode_labels", labelsOk ? 1 : 0, labelsOk);
+
 	// a ramp across the whole bank, in play mode: every crossing is a hit
-	m.params[Vates::MODE_PARAM].setValue(1.f);
+	m.params[Vates::MODE_PARAM].setValue(0.f);
 	int hits = 0;
 	float wasEnv = 0.f;
 	for (int i = 0; i < (int)(0.8 * SR); i++) {
-		m.inputs[Vates::SAMPLE_INPUT].setVoltage(5.f * i / (0.8f * SR));
+		m.inputs[Vates::SAMPLE_INPUT].setVoltage(10.f * i / (0.8f * SR));
 		m.process(makeArgs(fr++));
 		if (m.env > wasEnv + 0.5f)
 			hits++;
@@ -213,13 +224,13 @@ static void testPlayCue() {
 	report("vates", "play_mode_hits", hits, hits >= 4);
 
 	// the same ramp in cue mode fires nothing
-	m.params[Vates::MODE_PARAM].setValue(0.f);
+	m.params[Vates::MODE_PARAM].setValue(1.f);
 	m.voiceActive = false;
 	m.env = 0.f;
 	int cueHits = 0;
 	wasEnv = 0.f;
 	for (int i = 0; i < (int)(0.8 * SR); i++) {
-		m.inputs[Vates::SAMPLE_INPUT].setVoltage(5.f * i / (0.8f * SR));
+		m.inputs[Vates::SAMPLE_INPUT].setVoltage(10.f * i / (0.8f * SR));
 		m.process(makeArgs(fr++));
 		if (m.env > wasEnv + 0.5f)
 			cueHits++;
@@ -329,6 +340,77 @@ static void testDefaults() {
 	run(m, fr, 0.1);
 	Stats late = runStats(m, fr, 0.1, Vates::LEFT_OUTPUT);
 	report("vates", "default_length_audible", late.rms(), late.rms() > 0.05);
+}
+
+// ── the CV input spans a bank once, and its top is the last sample ────────────
+// Ten volts at full attenuverter is one bank. At the very top the index used
+// to have wrapped round to the first sample again — the knob's old fencepost,
+// moved into the CV.
+static void testCvRange() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "cvrange_setup", 0, false);
+		return;
+	}
+	selectSample(m, 0, 0);
+	m.params[Vates::SAMPLE_PARAM].setValue(0.f);
+	m.params[Vates::SAMPLE_ATT_PARAM].setValue(1.f);
+	m.params[Vates::MODE_PARAM].setValue(1.f);      // cue: measure, do not play
+	m.inputs[Vates::SAMPLE_INPUT].channels = 1;
+
+	int seen[8] = {0};
+	int last = -1;
+	bool monotonic = true;
+	for (int i = 0; i <= 1000; i++) {
+		m.inputs[Vates::SAMPLE_INPUT].setVoltage(10.f * i / 1000.f);
+		run(m, fr, 0.001);
+		int s = m.aimedSample;
+		if (s >= 0 && s < 8)
+			seen[s]++;
+		if (last >= 0 && s < last)
+			monotonic = false;      // it wrapped somewhere inside the sweep
+		last = s;
+	}
+	int covered = 0;
+	for (int i = 0; i < 8; i++)
+		covered += seen[i] > 0 ? 1 : 0;
+	report("vates", "cv_covers_bank", covered, covered == 8);
+	report("vates", "cv_no_wrap_in_range", monotonic ? 1 : 0, monotonic);
+	report("vates", "cv_top_is_last", last, last == 7);
+
+	// past ten volts it *does* wrap: that is what makes a ramp a sequence
+	m.inputs[Vates::SAMPLE_INPUT].setVoltage(11.5f);
+	run(m, fr, 0.01);
+	report("vates", "cv_wraps_past_range", m.aimedSample, m.aimedSample == 1);
+}
+
+// ── the rate knob means the same thing in both LFO modes ──────────────────────
+static void testLfoDirection() {
+	Vates m;
+	long fr = 0;
+	auto periodOf = [&](float knob, bool sync) {
+		m.params[Vates::SYNC_PARAM].setValue(sync ? 1.f : 0.f);
+		m.params[Vates::RATE_PARAM].setValue(knob);
+		m.params[Vates::TEMPO_PARAM].setValue(120.f);
+		run(m, fr, 0.3);
+		int cycles = 0;
+		bool was = false;
+		for (int i = 0; i < (int)(4.0 * SR); i++) {
+			m.process(makeArgs(fr++));
+			bool p = m.outputs[Vates::PULSE_OUTPUT].getVoltage() > 5.f;
+			if (p && !was)
+				cycles++;
+			was = p;
+		}
+		return cycles;
+	};
+	int freeSlow = periodOf(0.2f, false);
+	int freeFast = periodOf(0.8f, false);
+	int syncSlow = periodOf(0.2f, true);
+	int syncFast = periodOf(0.8f, true);
+	report("vates", "lfo_free_clockwise_faster", freeFast - freeSlow, freeFast > freeSlow);
+	report("vates", "lfo_sync_clockwise_faster", syncFast - syncSlow, syncFast > syncSlow);
 }
 
 // ── user kits, and the paging that keeps play mode usable ─────────────────────
@@ -511,7 +593,7 @@ static void testLfo() {
 
 	// synced: the LFO period follows the step clock
 	m.params[Vates::SYNC_PARAM].setValue(1.f);
-	m.params[Vates::RATE_PARAM].setValue(0.3f);     // one step per cycle
+	m.params[Vates::RATE_PARAM].setValue(0.69f);    // one step per cycle
 	m.params[Vates::TEMPO_PARAM].setValue(120.f);
 	run(m, fr, 0.5);
 	int syncCycles = 0;
@@ -590,5 +672,6 @@ static void testAbuse() {
 }
 
 SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
-           testKnobRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testLfo, testToneAbuse, testAbuse)
+           testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
+           testPatternSwitches, testLfo, testLfoDirection, testToneAbuse,
+           testAbuse)
