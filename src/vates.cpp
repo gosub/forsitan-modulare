@@ -241,6 +241,7 @@ struct Vates : Module {
 	int bankIndex = 0;
 	int sampleIndex = 0;
 	int aimedSample = 0;
+	int prevSampleKnob = -1;
 	// What the display shows. Plain char buffers written by the audio thread
 	// only when the text actually changes: the widget reads them from the UI
 	// thread, and having it walk `banks` and the kit-name vector instead
@@ -285,7 +286,10 @@ struct Vates : Module {
 		configButton(TRIG_PARAM, "Trigger");
 		configParam(PITCH_PARAM, -2.f, 2.f, 0.f, "Pitch", " oct");
 		configParam(PITCH_ATT_PARAM, -1.f, 1.f, 0.f, "Pitch CV", "%", 0.f, 100.f);
-		configParam(LENGTH_PARAM, -1.f, 1.f, 0.f, "Length");
+		// Centre is the shortest envelope, as on the hardware, but a fresh
+		// module wants to make a sound rather than a click: the default sits
+		// where a hit is a few hundred milliseconds long.
+		configParam(LENGTH_PARAM, -1.f, 1.f, 0.6f, "Length");
 		configParam(LENGTH_ATT_PARAM, -1.f, 1.f, 0.f, "Length CV", "%", 0.f, 100.f);
 		configParam(FILTER_PARAM, -1.f, 1.f, 0.f, "Filter");
 		configParam(FX_PARAM, -1.f, 1.f, 0.f, "FX");
@@ -434,14 +438,22 @@ struct Vates : Module {
 		return 0;
 	}
 
-	// knob + attenuverted CV, wrapped: modulation past the last one comes
-	// back to the first, which is what makes a slow ramp into `sample` a
-	// sequence rather than a fade
-	static int wrapSelect(float knob, float cv, float att, int count) {
+	// The knob alone spans the whole list end to end: its last position is
+	// the last entry, never the first again. Wrapping belongs to modulation,
+	// not to the hand.
+	static int knobSelect(float knob, int count) {
 		if (count <= 0)
 			return 0;
-		float v = knob * count + cv * 0.2f * att * count;
-		int i = (int)std::floor(v);
+		return clamp((int)(knob * count), 0, count - 1);
+	}
+
+	// The attenuverted CV offsets that index, and *this* wraps: modulation
+	// past the last entry comes back to the first, which is what makes a slow
+	// ramp into `sample` a sequence rather than a fade.
+	static int cvSelect(int base, float cv, float att, int count) {
+		if (count <= 0)
+			return 0;
+		int i = base + (int)std::floor(cv * 0.2f * att * count);
 		i %= count;
 		if (i < 0)
 			i += count;
@@ -602,10 +614,11 @@ struct Vates : Module {
 
 		// ── bank and sample selection ────────────────────────────────────────
 		int nBanks = bankCount();
-		int newBank = wrapSelect(params[BANK_PARAM].getValue(),
-		                         inputs[BANK_INPUT].getVoltage(),
-		                         params[BANK_ATT_PARAM].getValue(), nBanks);
-		if (newBank != bankIndex) {
+		int bankKnob = knobSelect(params[BANK_PARAM].getValue(), nBanks);
+		int newBank = cvSelect(bankKnob, inputs[BANK_INPUT].getVoltage(),
+		                       params[BANK_ATT_PARAM].getValue(), nBanks);
+		bool bankChanged = (newBank != bankIndex);
+		if (bankChanged) {
 			bankIndex = newBank;
 			int kitIdx = bankIndex - vates_bank::kNumBanks;
 			if (kitIdx >= 0 && kitIdx != loadedKitIndex)
@@ -614,11 +627,19 @@ struct Vates : Module {
 		uiBank = bankIndex;
 
 		int nSamples = samplesInBank(bankIndex);
-		int sel = wrapSelect(params[SAMPLE_PARAM].getValue(),
-		                     inputs[SAMPLE_INPUT].getVoltage(),
-		                     params[SAMPLE_ATT_PARAM].getValue(), nSamples);
+		int sampleKnob = knobSelect(params[SAMPLE_PARAM].getValue(), nSamples);
+		int sel = cvSelect(sampleKnob, inputs[SAMPLE_INPUT].getVoltage(),
+		                   params[SAMPLE_ATT_PARAM].getValue(), nSamples);
 		bool play = params[MODE_PARAM].getValue() > 0.5f;
-		bool crossed = (sel != aimedSample);
+
+		// play mode fires when *modulation* crosses into another sample. A
+		// hand on the sample knob, or a bank change moving the ground under
+		// the index, is browsing, not playing: it must not fire, or the
+		// module screams while you are looking for a sound.
+		bool knobMoved = (sampleKnob != prevSampleKnob) || bankChanged
+		                 || prevSampleKnob < 0;
+		bool crossed = (sel != aimedSample) && !knobMoved;
+		prevSampleKnob = sampleKnob;
 		aimedSample = sel;
 		if (!voiceActive)
 			uiSample = sel;

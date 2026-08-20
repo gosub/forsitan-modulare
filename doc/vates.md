@@ -67,13 +67,23 @@ happen to catch it.
 
 | control | what it does |
 |---------|--------------|
-| **bank** | selects the bank: six generated, then your kits. CV in with attenuverter; the selection wraps. |
-| **sample** | selects one sample within the bank. CV in with attenuverter, and it wraps too — modulation past the last sample comes back to the first. |
+| **bank** | selects the bank: six generated, then your kits. CV in with attenuverter. |
+| **sample** | selects one sample within the bank. CV in with attenuverter. |
+
+Both knobs span their list end to end — the top of the sample knob is the
+last sample of the bank, not the first one again. Wrapping belongs to
+modulation: a CV that runs past the last sample comes back to the first, which
+is what turns a slow ramp into a sequence rather than a fade.
 | **play / cue** | what modulation of *sample* does. See below. |
 | **trig** | fires the selected sample. The button does the same by hand. |
 
 **bank** and **sample** are the module's instrument. Nothing else needs
 patching: a trigger and a moving CV on **sample** is already a part.
+
+Turning either knob by hand is browsing, never playing: play mode fires on
+*modulation* crossing into another sample, not on your hand moving the knob
+or on a bank change shifting the ground under it. To hear what is selected,
+press **trig**.
 
 **play** fires a sample the moment modulation crosses into it, so the
 modulation source *is* the rhythm — a triangle LFO into **sample** in play
@@ -112,6 +122,10 @@ hardware, because sweeping through the middle is the point.
 - **centre**: the shortest envelope, a click of the sample.
 - **right**: decay grows, the sample plays forward.
 - **left**: attack grows, and the sample plays **backwards**.
+
+A fresh vates starts at about a third of the way clockwise, where a hit is a
+few hundred milliseconds — centre is the shortest envelope there is, and a
+module that clicked out of the browser would be telling you nothing.
 
 The value is latched at the trigger, so modulation flips the direction
 between hits and never mid-sample. **env** outputs the envelope, 0–10V.

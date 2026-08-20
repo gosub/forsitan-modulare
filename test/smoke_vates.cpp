@@ -205,6 +205,100 @@ static void testPlayCue() {
 	report("vates", "cue_mode_hits", cueHits, cueHits == 0);
 }
 
+// ── the sample knob browses, it does not play ─────────────────────────────────
+// Turning the knob by hand in play mode used to fire a hit at every step,
+// which made looking for a sound unbearable. Only modulation crosses.
+static void testKnobBrowsing() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "browse_setup", 0, false);
+		return;
+	}
+	m.params[Vates::MODE_PARAM].setValue(1.f);   // play
+	m.params[Vates::LENGTH_PARAM].setValue(0.5f);
+	selectSample(m, 0, 0);
+	run(m, fr, 0.05);
+
+	int hits = 0;
+	float wasEnv = m.env;
+	long n = (long)(1.5 * SR);
+	for (long i = 0; i < n; i++) {
+		m.params[Vates::SAMPLE_PARAM].setValue((float)i / n);
+		m.process(makeArgs(fr++));
+		if (m.env > wasEnv + 0.5f)
+			hits++;
+		wasEnv = m.env;
+	}
+	report("vates", "sample_knob_silent", hits, hits == 0);
+
+	// the same for the bank knob, which also shifts the sample index
+	hits = 0;
+	wasEnv = m.env;
+	for (long i = 0; i < n; i++) {
+		m.params[Vates::BANK_PARAM].setValue((float)i / n);
+		m.process(makeArgs(fr++));
+		if (m.env > wasEnv + 0.5f)
+			hits++;
+		wasEnv = m.env;
+	}
+	report("vates", "bank_knob_silent", hits, hits == 0);
+}
+
+// ── the knob spans the list end to end ────────────────────────────────────────
+// Its top used to land back on the first entry, one step past the last.
+static void testKnobRange() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "range_setup", 0, false);
+		return;
+	}
+	m.params[Vates::BANK_PARAM].setValue(0.f);
+	m.params[Vates::SAMPLE_PARAM].setValue(1.f);
+	run(m, fr, 0.02);
+	report("vates", "sample_knob_top", m.aimedSample,
+	       m.aimedSample == vates_bank::kSamplesPerBank - 1);
+
+	m.params[Vates::SAMPLE_PARAM].setValue(0.f);
+	run(m, fr, 0.02);
+	report("vates", "sample_knob_bottom", m.aimedSample, m.aimedSample == 0);
+
+	// every sample reachable, exactly one eighth of the knob each
+	int seen[16] = {0};
+	for (int i = 0; i < 8; i++) {
+		m.params[Vates::SAMPLE_PARAM].setValue((i + 0.5f) / 8.f);
+		run(m, fr, 0.02);
+		if (m.aimedSample >= 0 && m.aimedSample < 16)
+			seen[m.aimedSample]++;
+	}
+	int covered = 0;
+	for (int i = 0; i < vates_bank::kSamplesPerBank; i++)
+		covered += seen[i] == 1 ? 1 : 0;
+	report("vates", "sample_knob_covers", covered, covered == vates_bank::kSamplesPerBank);
+
+	// and the bank knob's top is the last bank, not the first
+	m.params[Vates::BANK_PARAM].setValue(1.f);
+	run(m, fr, 0.02);
+	report("vates", "bank_knob_top", m.bankIndex, m.bankIndex == m.bankCount() - 1);
+}
+
+// ── a module straight out of the browser makes a sound, not a click ───────────
+static void testDefaults() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "defaults_setup", 0, false);
+		return;
+	}
+	selectSample(m, 4, 0);        // a sustained sample, so length is what decides
+	run(m, fr, 0.02);
+	pressTrigger(m, fr);
+	run(m, fr, 0.1);
+	Stats late = runStats(m, fr, 0.1, Vates::LEFT_OUTPUT);
+	report("vates", "default_length_audible", late.rms(), late.rms() > 0.05);
+}
+
 // ── clock, internal and external ──────────────────────────────────────────────
 static void testClock() {
 	Vates m;
@@ -374,5 +468,6 @@ static void testAbuse() {
 	       std::max(l.peak, r.peak) <= 10.001f);
 }
 
-SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testClock,
-           testPatternSwitches, testLfo, testToneAbuse, testAbuse)
+SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+           testKnobRange, testDefaults, testClock, testPatternSwitches, testLfo,
+           testToneAbuse, testAbuse)
