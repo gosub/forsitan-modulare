@@ -199,14 +199,27 @@ a saw outright.
 | **gate ptrn**, **cv ptrn** | a three-position switch and a jack each: live surgery on the gate and CV sequences. |
 
 The two three-position switches are the hardware's best idea and they come
-over unchanged. They are clicked *to* a position rather than stepped through
-one: click the top of the switch for randomize, the middle for as-is, the
-bottom for invert. Rack's own switches increment and wrap, which would mean
-passing through randomize — and hearing it — on the way back from invert. Middle leaves the sequence alone. Up randomizes the step the
+over unchanged. Middle leaves the sequence alone. Up randomizes the step the
 sequence is on right now. Down inverts it — silent steps sound, sounding
-steps go quiet, and CV flips around its own midpoint. Flick one for a bar
-and the pattern is different when you flick it back; hold it down and the
-inversion keeps re-applying, so a 16-step pattern reads as 32.
+steps go quiet, and CV flips around its own midpoint.
+
+**They are pencils, not filters.** A switch writes into the pattern as it
+plays, one step at a time, so returning it to the middle does not restore
+what was there: it stops the editing and leaves the edits. That is the point
+of it — flick one for a beat and only those steps change, "alter the sequence
+partially until it fits your needs", as the hardware's manual puts it — and
+it is also why holding invert down does not hold an inverted pattern. Each
+pass inverts what the pass before it inverted, so a 16-step rhythm takes 32
+steps to come round, which is the pseudo-32-step sequence the original
+advertises.
+
+To get the untouched rhythm back, select it again: turn the **rhythm** knob
+away and back, and the pattern reloads from the table.
+
+They are clicked *to* a position rather than stepped through one: click the
+top of the switch for randomize, the middle for as-is, the bottom for invert.
+Rack's own switches increment and wrap, which would mean passing through
+randomize — and hearing it — on the way back from invert.
 
 Each switch is normalled to the jack beside it, so a patched voltage does the
 same job: **above +1V randomize, below −1V invert,
