@@ -1,4 +1,5 @@
 #include "forsitan.hpp"
+#include "artifex/core.hpp"
 #include "citadel/dsp.hpp"
 #include "citadel/modulation.hpp"
 #include "position_switch.hpp"
@@ -104,9 +105,16 @@ struct Artifex : Module {
 
 	// ── state ────────────────────────────────────────────────────────────────
 	citadel::Modulation modul;
+	artifex_fx::Core core;
 	int mode = 0;                 // the mode actually running
 	int aimedMode = 0;            // what the knob and CV ask for
 	float envFollow = 0.f;
+	float bufSeconds = artifex_fx::kHardwareBuffer;
+	bool limiter = true;
+	float stepHold = 0.f;         // the step input, sampled on the clock
+	float sinceTrig = 10.f;       // for the delay's clock sync
+	float trigPeriod = 0.f;
+	int uiTick = 0;
 
 	// What the displays show. Plain char buffers written by the audio thread
 	// only when the text changes; the widget reads them from the UI thread.
@@ -116,6 +124,10 @@ struct Artifex : Module {
 
 	dsp::SchmittTrigger trigIn;
 	dsp::BooleanTrigger trigButton;
+
+	void onSampleRateChange(const SampleRateChangeEvent& e) override {
+		core.setRates(e.sampleRate, bufSeconds);
+	}
 
 	Artifex() {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -185,6 +197,10 @@ struct Artifex : Module {
 
 		configBypass(LEFT_INPUT, LEFT_OUTPUT);
 		configBypass(RIGHT_INPUT, RIGHT_OUTPUT);
+
+		// Rack sends onSampleRateChange when the module is added, but the
+		// buffers have to exist before the first process() either way.
+		core.setRates(44100.f, bufSeconds);
 	}
 
 	// A three-position switch, normalled to the input beside it.
@@ -208,6 +224,66 @@ struct Artifex : Module {
 		if (i < 0)
 			i += 9;
 		return i;
+	}
+
+	// What the right-hand display reads: the time knob in whatever unit the
+	// mode gives it.
+	void formatTime() {
+		float v = core.uiTime;
+		switch (core.uiUnit) {
+		case artifex_fx::UNIT_MS:
+			if (v < 10.f)
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "%.1f ms", v);
+			else
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "%.0f ms", v);
+			break;
+		case artifex_fx::UNIT_HZ:
+			if (v < 10.f)
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "%.2f Hz", v);
+			else if (v < 1000.f)
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "%.0f Hz", v);
+			else
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "%.2f kHz", v * 0.001f);
+			break;
+		case artifex_fx::UNIT_DIV: {
+			// a ratio of the clock the trig input is carrying
+			static const int num[22] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,
+			                            1, 3, 2, 3, 4, 6, 8, 12, 16, 32};
+			static const int den[22] = {256, 128, 64, 32, 16, 12, 8, 6, 4, 3, 2, 3,
+			                            1, 2, 1, 1, 1, 1, 1, 1, 1, 1};
+			int best = 12;
+			float err = 1e9f;
+			for (int i = 0; i < 22; i++) {
+				float r = (float)num[i] / (float)den[i];
+				float e = std::fabs(r - v);
+				if (e < err) {
+					err = e;
+					best = i;
+				}
+			}
+			if (den[best] == 1)
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "sync %d", num[best]);
+			else
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "sync %d/%d",
+				              num[best], den[best]);
+			break;
+		}
+		case artifex_fx::UNIT_STEPS:
+			std::snprintf(uiTimeText, sizeof(uiTimeText), "%.0f steps", v);
+			break;
+		case artifex_fx::UNIT_RHYTHM:
+			std::snprintf(uiTimeText, sizeof(uiTimeText), "rhythm %.0f", v);
+			break;
+		case artifex_fx::UNIT_SEMI:
+			std::snprintf(uiTimeText, sizeof(uiTimeText), "%+.1f semi", v);
+			break;
+		default:
+			if (std::fabs(v) < 0.02f)
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "held");
+			else
+				std::snprintf(uiTimeText, sizeof(uiTimeText), "%+.2f x", v);
+			break;
+		}
 	}
 
 	void process(const ProcessArgs& args) override {
@@ -251,10 +327,58 @@ struct Artifex : Module {
 		float coef = rect > envFollow ? 0.002f : 0.0002f;
 		envFollow += (rect - envFollow) * coef;
 
+		// ── the trigger, and what the delay hears in it ──────────────────────
+		// A clock at the trig input is what the delay snaps its time to, so
+		// the interval between edges is measured as they arrive.
+		sinceTrig += args.sampleTime;
+		bool fire = false;
+		if (trigIn.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f)) {
+			if (sinceTrig > 1e-3f && sinceTrig < 4.f)
+				trigPeriod = sinceTrig;
+			sinceTrig = 0.f;
+			fire = true;
+		}
+		if (trigButton.process(params[TRIG_PARAM].getValue() > 0.5f))
+			fire = true;
+		if (sinceTrig > 2.f)
+			trigPeriod = 0.f;
+
+		// ── the mode's three knobs ───────────────────────────────────────────
+		// time takes two inputs through the one attenuverter: free is
+		// continuous, step is sampled and held on each beat of the clock
+		if (modul.stepped)
+			stepHold = inputs[STEP_INPUT].getVoltage();
+		float timeMod = (inputs[FREE_INPUT].getVoltage() + stepHold)
+		                * 0.2f * params[TIME_ATT_PARAM].getValue();
+
+		artifex_fx::Ctl ct;
+		ct.mode = mode;
+		ct.time = clamp(params[TIME_PARAM].getValue() + timeMod, 0.f, 1.f);
+		ct.feedback = clamp(params[FBK_PARAM].getValue()
+		                    + inputs[FBK_INPUT].getVoltage() * 0.2f
+		                      * params[FBK_ATT_PARAM].getValue(), 0.f, 1.f);
+		ct.amount = clamp(params[AMT_PARAM].getValue()
+		                  + inputs[AMT_INPUT].getVoltage() * 0.2f
+		                    * params[AMT_ATT_PARAM].getValue(), 0.f, 1.f);
+		ct.filter = clamp(params[FILTER_PARAM].getValue()
+		                  + inputs[FILTER_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+		ct.stereo = clamp(params[STEREO_PARAM].getValue()
+		                  + inputs[STEREO_INPUT].getVoltage() * 0.1f, 0.f, 1.f);
+		ct.trig = fire;
+		ct.stepped = modul.stepped;
+		ct.step = modul.step;
+		ct.stepSeconds = modul.stepSeconds;
+		ct.trigPeriod = trigPeriod;
+		ct.limiter = limiter;
+		ct.dt = args.sampleTime;
+
+		float wetL = 0.f, wetR = 0.f;
+		core.process(ct, inL, inR, wetL, wetR);
+
 		// ── output ───────────────────────────────────────────────────────────
 		float level = params[LEVEL_PARAM].getValue();
-		float outL = inL * level;
-		float outR = inR * level;
+		float outL = wetL * level;
+		float outR = wetR * level;
 		outputs[LEFT_OUTPUT].setVoltage(clamp(outL, -10.f, 10.f));
 		outputs[RIGHT_OUTPUT].setVoltage(clamp(outR, -10.f, 10.f));
 		lights[LEFT_LIGHT].setBrightnessSmooth(std::fabs(outL) * 0.2f, args.sampleTime);
@@ -275,6 +399,12 @@ struct Artifex : Module {
 			uiModeShown = mode;
 			std::snprintf(uiModeText, sizeof(uiModeText), "%d %s", mode + 1, kModeNames[mode]);
 		}
+		// the time reading changes as fast as the knob does; forty times a
+		// second is as fast as anyone can read it
+		if (++uiTick >= 1024) {
+			uiTick = 0;
+			formatTime();
+		}
 	}
 
 	void onReset(const ResetEvent& e) override {
@@ -285,6 +415,9 @@ struct Artifex : Module {
 		monoInput = false;
 		mode = aimedMode = 0;
 		uiModeShown = -1;
+		bufSeconds = artifex_fx::kHardwareBuffer;
+		limiter = true;
+		core.setRates(core.sr, bufSeconds);
 		modul.resetSequence();
 		modul.loadedRhythm = -1;
 	}
@@ -295,6 +428,8 @@ struct Artifex : Module {
 		json_object_set_new(root, "hardwareCvWindow", json_boolean(hardwareCvWindow));
 		json_object_set_new(root, "quantizeModeChanges", json_boolean(quantizeModeChanges));
 		json_object_set_new(root, "monoInput", json_boolean(monoInput));
+		json_object_set_new(root, "bufSeconds", json_real(bufSeconds));
+		json_object_set_new(root, "limiter", json_boolean(limiter));
 		return root;
 	}
 
@@ -307,6 +442,12 @@ struct Artifex : Module {
 			quantizeModeChanges = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "monoInput"))
 			monoInput = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "bufSeconds")) {
+			bufSeconds = clamp((float)json_real_value(j), 0.5f, 8.f);
+			core.setRates(core.sr, bufSeconds);
+		}
+		if (json_t* j = json_object_get(root, "limiter"))
+			limiter = json_boolean_value(j);
 	}
 };
 
@@ -344,7 +485,7 @@ struct ArtifexDisplay : Widget {
 	}
 
 	void onButton(const event::Button& e) override {
-		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_RIGHT && module) {
+		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_RIGHT && module && isMode) {
 			e.consume(this);
 			showMenu();
 			return;
@@ -354,27 +495,16 @@ struct ArtifexDisplay : Widget {
 
 	void showMenu() {
 		Menu* menu = createMenu();
-		if (isMode) {
-			menu->addChild(createMenuLabel("FX mode"));
-			Artifex* m = module;
-			for (int i = 0; i < 9; i++)
-				menu->addChild(createCheckMenuItem(
-					string::f("%d %s", i + 1, kModeNames[i]), "",
-					[=]() { return m->mode == i; },
-					[=]() {
-						m->params[Artifex::FXMODE_PARAM].setValue((float)i);
-						m->mode = m->aimedMode = i;
-					}));
-		}
-		else {
-			menu->addChild(createMenuLabel("Rhythm"));
-			Artifex* m = module;
-			for (int i = 0; i < 32; i++)
-				menu->addChild(createCheckMenuItem(
-					string::f("%d", i + 1), "",
-					[=]() { return (int)std::round(m->params[Artifex::RHYTHM_PARAM].getValue()) == i; },
-					[=]() { m->params[Artifex::RHYTHM_PARAM].setValue((float)i); }));
-		}
+		menu->addChild(createMenuLabel("FX mode"));
+		Artifex* m = module;
+		for (int i = 0; i < 9; i++)
+			menu->addChild(createCheckMenuItem(
+				string::f("%d %s", i + 1, kModeNames[i]), "",
+				[=]() { return m->mode == i; },
+				[=]() {
+					m->params[Artifex::FXMODE_PARAM].setValue((float)i);
+					m->mode = m->aimedMode = i;
+				}));
 	}
 };
 
@@ -557,6 +687,20 @@ struct ArtifexWidget : ModuleWidget {
 			return;
 
 		menu->addChild(new MenuSeparator);
+		std::vector<std::string> bufNames = {"1.15 s (hardware)", "2.5 s", "5 s"};
+		static const float bufValues[3] = {artifex_fx::kHardwareBuffer, 2.5f, 5.f};
+		menu->addChild(createIndexSubmenuItem("Buffer", bufNames,
+			[=]() {
+				for (int i = 0; i < 3; i++)
+					if (std::fabs(m->bufSeconds - bufValues[i]) < 0.01f)
+						return i;
+				return 0;
+			},
+			[=](int v) {
+				m->bufSeconds = bufValues[clamp(v, 0, 2)];
+				m->core.setRates(m->core.sr, m->bufSeconds);
+			}));
+		menu->addChild(createBoolPtrMenuItem("Feedback safety limiter", "", &m->limiter));
 		menu->addChild(createBoolPtrMenuItem("Mode changes wait for the clock", "",
 		                                     &m->quantizeModeChanges));
 		menu->addChild(createBoolPtrMenuItem("Sum the inputs to mono", "", &m->monoInput));

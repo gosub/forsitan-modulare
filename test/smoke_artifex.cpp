@@ -1,0 +1,529 @@
+// smoke_artifex — offline sanity checks for the nine-mode effect.
+//
+// See smoke_harness.hpp for the shared scaffolding and CSV format. The claims
+// here are about what each mode does to a signal: that a knob at zero leaves
+// it alone, that the delay repeats and snaps to a clock, that the freezer
+// holds after the input stops, that the panner moves the channels in opposite
+// directions, that the two pitch modes shift pitch, and that nothing goes
+// non-finite or off the rails with the feedback wide open.
+
+#include "smoke_harness.hpp"
+#include "../src/artifex.cpp"
+
+#include <vector>
+
+static const int kModes = 9;
+
+static void step(Artifex& m, long& frame, float l, float r) {
+	m.inputs[Artifex::LEFT_INPUT].channels = 1;
+	m.inputs[Artifex::RIGHT_INPUT].channels = 1;
+	m.inputs[Artifex::LEFT_INPUT].setVoltage(l);
+	m.inputs[Artifex::RIGHT_INPUT].setVoltage(r);
+	m.process(makeArgs(frame++));
+}
+
+// A tone at hz, for `seconds`, collecting both outputs.
+struct Rec {
+	std::vector<float> l, r, in;
+	Stats sl, sr;
+};
+
+static void runTone(Artifex& m, long& frame, double seconds, float hz,
+                    float amp, Rec* rec = NULL) {
+	long n = (long)(seconds * SR);
+	for (long i = 0; i < n; i++) {
+		float ph = 2.f * (float)M_PI * hz * (float)frame / SR;
+		float x = amp * std::sin(ph);
+		step(m, frame, x, x);
+		if (rec) {
+			rec->l.push_back(m.outputs[Artifex::LEFT_OUTPUT].getVoltage());
+			rec->r.push_back(m.outputs[Artifex::RIGHT_OUTPUT].getVoltage());
+			rec->in.push_back(x);
+			rec->sl.add(rec->l.back());
+			rec->sr.add(rec->r.back());
+		}
+	}
+}
+
+static void runSilence(Artifex& m, long& frame, double seconds, Rec* rec = NULL) {
+	runTone(m, frame, seconds, 100.f, 0.f, rec);
+}
+
+static void setMode(Artifex& m, int mode) {
+	m.params[Artifex::FXMODE_PARAM].setValue((float)mode);
+	m.mode = m.aimedMode = mode;
+}
+
+static double rmsOf(const std::vector<float>& v, size_t from, size_t to) {
+	double s = 0.0;
+	size_t n = 0;
+	for (size_t i = from; i < to && i < v.size(); i++, n++)
+		s += (double)v[i] * v[i];
+	return n ? std::sqrt(s / n) : 0.0;
+}
+
+// Zero crossings per second of a buffer: a proxy for pitch on a sine.
+static double zcr(const std::vector<float>& v, size_t from, size_t to) {
+	int z = 0;
+	size_t n = 0;
+	float prev = 0.f;
+	for (size_t i = from; i < to && i < v.size(); i++, n++) {
+		if ((v[i] > 0.f) != (prev > 0.f))
+			z++;
+		prev = v[i];
+	}
+	return n ? 0.5 * z * SR / n : 0.0;
+}
+
+// ── the mode list is what the panel says it is ────────────────────────────────
+static void testModeLabels() {
+	Artifex m;
+	SwitchQuantity* q = dynamic_cast<SwitchQuantity*>(m.getParamQuantity(Artifex::FXMODE_PARAM));
+	bool ok = q && q->labels.size() == 9 && q->labels[0] == "delay"
+	          && q->labels[2] == "freezer" && q->labels[8] == "shifter";
+	report("artifex", "mode_labels", ok ? 1 : 0, ok);
+}
+
+// ── amount at zero is the dry signal, in every mode ───────────────────────────
+// "Fully left this knob turns off any effect and you should hear a clean
+// signal" is the one promise every mode makes, so every mode is asked.
+static void testDryAtZero() {
+	int worst = -1;
+	double worstErr = 0.0;
+	for (int mode = 0; mode < kModes; mode++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, mode);
+		m.params[Artifex::AMT_PARAM].setValue(0.f);
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		Rec rec;
+		runTone(m, fr, 0.3, 220.f, 3.f, &rec);
+		// compare the second half, past any settling
+		size_t from = rec.l.size() / 2;
+		double err = 0.0;
+		for (size_t i = from; i < rec.l.size(); i++)
+			err = std::max(err, (double)std::fabs(rec.l[i] - rec.in[i]));
+		if (err > worstErr) {
+			worstErr = err;
+			worst = mode;
+		}
+	}
+	report("artifex", "dry_at_zero_amount", worstErr, worstErr < 0.05);
+	report("artifex", "dry_at_zero_worst_mode", worst, worst >= 0);
+}
+
+// ── every mode makes a sound, and none of them makes a non-finite one ─────────
+static void testAllModesAudible() {
+	int quiet = 0;
+	int quietest = -1;
+	double quietestRms = 1e9;
+	long nans = 0;
+	float loudest = 0.f;
+	for (int mode = 0; mode < kModes; mode++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, mode);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(0.4f);
+		m.params[Artifex::TIME_PARAM].setValue(0.6f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		Rec rec;
+		runTone(m, fr, 1.0, 220.f, 3.f, &rec);
+		nans += rec.sl.nans + rec.sr.nans;
+		loudest = std::max(loudest, std::max(rec.sl.peak, rec.sr.peak));
+		double r = std::max(rec.sl.rms(), rec.sr.rms());
+		if (r < quietestRms) {
+			quietestRms = r;
+			quietest = mode;
+		}
+		if (r < 0.05)
+			quiet++;
+	}
+	report("artifex", "all_modes_quietest", quietest, true);
+	report("artifex", "all_modes_quietest_rms", quietestRms, true);
+	report("artifex", "all_modes_finite", nans, nans == 0);
+	report("artifex", "all_modes_audible", quiet, quiet == 0);
+	report("artifex", "all_modes_bounded", loudest, loudest < 12.f);
+}
+
+// ── the delay repeats, and a clock at trig snaps it ───────────────────────────
+static void testDelay() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.5f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+
+	// one click in, then silence: the echo has to arrive later
+	Rec rec;
+	step(m, fr, 5.f, 5.f);
+	runSilence(m, fr, 0.5, &rec);
+	double early = rmsOf(rec.l, 0, (size_t)(0.002 * SR));
+	double late = 0.0;
+	size_t at = 0;
+	for (size_t i = (size_t)(0.004 * SR); i < rec.l.size(); i++)
+		if (std::fabs(rec.l[i]) > late) {
+			late = std::fabs(rec.l[i]);
+			at = i;
+		}
+	report("artifex", "delay_repeats", late, late > 0.5);
+	report("artifex", "delay_repeat_is_later", (double)at / SR, at > (size_t)(0.004 * SR));
+	report("artifex", "delay_dry_is_first", early, early >= 0.0);
+
+	// a clock at the trig input: the delay snaps to a division of it, so the
+	// echo lands on a multiple of the clock period rather than where the knob
+	// happened to point
+	Artifex m2;
+	long fr2 = 0;
+	setMode(m2, artifex_fx::MODE_DELAY);
+	m2.params[Artifex::AMT_PARAM].setValue(1.f);
+	m2.params[Artifex::TIME_PARAM].setValue(0.42f);
+	m2.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m2.inputs[Artifex::TRIG_INPUT].channels = 1;
+	const double period = 0.25;
+	for (int k = 0; k < 3; k++) {
+		m2.inputs[Artifex::TRIG_INPUT].setVoltage(5.f);
+		runSilence(m2, fr2, 0.002);
+		m2.inputs[Artifex::TRIG_INPUT].setVoltage(0.f);
+		runSilence(m2, fr2, period - 0.002);
+	}
+	bool synced = m2.trigPeriod > 0.2f && m2.trigPeriod < 0.3f;
+	report("artifex", "delay_measures_the_clock", m2.trigPeriod, synced);
+	report("artifex", "delay_shows_the_division", m2.core.uiUnit,
+	       m2.core.uiUnit == artifex_fx::UNIT_DIV);
+	// the snapped time is a division of the clock, not the knob's own value
+	double ratio = m2.core.uiTime;
+	double near = std::fabs(ratio - std::floor(ratio * 12.0 + 0.5) / 12.0);
+	report("artifex", "delay_snaps_to_a_division", near, near < 0.02);
+}
+
+// ── the freezer holds a chunk after the input has gone ────────────────────────
+static void testFreezer() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_FREEZER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.8f);   // short, tonal
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+
+	runTone(m, fr, 0.5, 220.f, 3.f);
+	// trigger a fresh capture of the tone, then take the input away
+	m.params[Artifex::TRIG_PARAM].setValue(1.f);
+	runTone(m, fr, 0.01, 220.f, 3.f);
+	m.params[Artifex::TRIG_PARAM].setValue(0.f);
+	Rec rec;
+	runSilence(m, fr, 0.5, &rec);
+	double held = rmsOf(rec.l, (size_t)(0.2 * SR), rec.l.size());
+	report("artifex", "freezer_holds_after_input", held, held > 0.2);
+	report("artifex", "freezer_finite", rec.sl.nans + rec.sr.nans,
+	       rec.sl.nans + rec.sr.nans == 0);
+}
+
+// ── the panner moves the two channels in opposite directions ──────────────────
+static void testPanner() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_PANNER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.15f);   // a slow sway
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	Rec rec;
+	runTone(m, fr, 2.0, 300.f, 3.f, &rec);
+
+	// envelope of each channel over 20 ms blocks, then their correlation
+	size_t blk = (size_t)(0.02 * SR);
+	std::vector<double> el, er;
+	for (size_t i = 0; i + blk < rec.l.size(); i += blk) {
+		el.push_back(rmsOf(rec.l, i, i + blk));
+		er.push_back(rmsOf(rec.r, i, i + blk));
+	}
+	double ml = 0, mr = 0;
+	for (size_t i = 0; i < el.size(); i++) { ml += el[i]; mr += er[i]; }
+	ml /= el.size(); mr /= er.size();
+	double cov = 0, vl = 0, vr = 0;
+	for (size_t i = 0; i < el.size(); i++) {
+		cov += (el[i] - ml) * (er[i] - mr);
+		vl += (el[i] - ml) * (el[i] - ml);
+		vr += (er[i] - mr) * (er[i] - mr);
+	}
+	double corr = cov / std::sqrt(std::max(vl * vr, 1e-12));
+	report("artifex", "panner_channels_oppose", corr, corr < -0.5);
+}
+
+// ── the crusher holds its output between samples of its own clock ─────────────
+static void testCrusher() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_CRUSHER);
+	m.params[Artifex::AMT_PARAM].setValue(0.5f);
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.1f);   // a low sample rate
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	Rec rec;
+	runTone(m, fr, 0.3, 300.f, 3.f, &rec);
+
+	// most consecutive samples are identical when the signal is held
+	size_t same = 0, n = 0;
+	for (size_t i = rec.l.size() / 2; i + 1 < rec.l.size(); i++, n++)
+		if (rec.l[i] == rec.l[i + 1])
+			same++;
+	double frac = n ? (double)same / n : 0.0;
+	report("artifex", "crusher_holds_samples", frac, frac > 0.8);
+}
+
+// ── the slicer chops: it is loud on its steps and quiet between them ──────────
+static void testSlicer() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_SLICER);
+	m.params[Artifex::AMT_PARAM].setValue(0.9f);    // a short decay
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.f);    // four on the floor
+	m.params[Artifex::TEMPO_PARAM].setValue(120.f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	Rec rec;
+	runTone(m, fr, 2.0, 300.f, 3.f, &rec);
+
+	// the loudest and quietest 30 ms blocks have to be far apart
+	size_t blk = (size_t)(0.03 * SR);
+	double loud = 0.0, quiet = 1e9;
+	for (size_t i = (size_t)(0.5 * SR); i + blk < rec.l.size(); i += blk) {
+		double e = rmsOf(rec.l, i, i + blk);
+		loud = std::max(loud, e);
+		quiet = std::min(quiet, e);
+	}
+	report("artifex", "slicer_chops", loud - quiet, loud > 0.3 && quiet < 0.05);
+}
+
+// ── the two pitch modes move pitch, in the direction they claim ───────────────
+static void testPitch() {
+	// the shifter is the one that has to be in tune, so it is measured:
+	// unity first, since the octaves are judged against it
+	double f[3] = {0.0, 0.0, 0.0};
+	static const float knob[3] = {0.5f, 0.f, 1.f};
+	for (int k = 0; k < 3; k++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, artifex_fx::MODE_SHIFTER);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::STEREO_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		m.params[Artifex::TIME_PARAM].setValue(knob[k]);
+		Rec rec;
+		runTone(m, fr, 1.0, 400.f, 3.f, &rec);
+		f[k] = zcr(rec.l, (size_t)(0.4 * SR), rec.l.size());
+	}
+	// a crossfaded shifter is not a tuner: a tenth of a semitone of error in
+	// the window would show here, so the window is what these bound
+	report("artifex", "shifter_unity", f[0], std::fabs(f[0] - 400.0) < 40.0);
+	report("artifex", "shifter_down_an_octave", f[1] / f[0],
+	       f[1] < f[0] * 0.62 && f[1] > f[0] * 0.40);
+	report("artifex", "shifter_up_an_octave", f[2] / f[0], f[2] > f[0] * 1.6);
+
+	// the pitcher only goes up, and its window is what time sets
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_PITCHER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.7f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	Rec rec;
+	runTone(m, fr, 1.0, 400.f, 3.f, &rec);
+	double up = zcr(rec.l, (size_t)(0.4 * SR), rec.l.size());
+	report("artifex", "pitcher_goes_up", up, up > 440.0);
+}
+
+// ── the replayer runs its tape backwards below the centre ─────────────────────
+static void testReplayer() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_REPLAYER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);     // locked: play, do not record
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.75f);  // forwards
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+
+	// fill the tape with a rising sweep, then lock it and listen
+	m.params[Artifex::AMT_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.75f);
+	long n = (long)(1.2 * SR);
+	for (long i = 0; i < n; i++) {
+		float t = (float)i / SR;
+		float x = 3.f * std::sin(2.f * (float)M_PI * (100.f + 400.f * t) * t);
+		step(m, fr, x, x);
+	}
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	Rec fwd;
+	runSilence(m, fr, 0.6, &fwd);
+	double a = zcr(fwd.l, 0, fwd.l.size() / 3);
+	double b = zcr(fwd.l, 2 * fwd.l.size() / 3, fwd.l.size());
+	report("artifex", "replayer_plays_forward", b - a, b > a);
+
+	// the same tape backwards: the sweep now falls
+	m.params[Artifex::TIME_PARAM].setValue(0.25f);
+	Rec back;
+	runSilence(m, fr, 0.6, &back);
+	double c = zcr(back.l, 0, back.l.size() / 3);
+	double d = zcr(back.l, 2 * back.l.size() / 3, back.l.size());
+	report("artifex", "replayer_plays_backward", c - d, d < c);
+}
+
+// ── the stereo knob pulls the channels apart ──────────────────────────────────
+static void testStereo() {
+	double width[2] = {0.0, 0.0};
+	for (int k = 0; k < 2; k++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, artifex_fx::MODE_FLANGER);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(0.3f);
+		m.params[Artifex::TIME_PARAM].setValue(0.4f);
+		m.params[Artifex::STEREO_PARAM].setValue(k == 0 ? 0.f : 1.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		Rec rec;
+		runTone(m, fr, 2.0, 300.f, 3.f, &rec);
+		double sum = 0.0, diff = 0.0;
+		for (size_t i = rec.l.size() / 2; i < rec.l.size(); i++) {
+			double s = 0.5 * (rec.l[i] + rec.r[i]);
+			double d = 0.5 * (rec.l[i] - rec.r[i]);
+			sum += s * s;
+			diff += d * d;
+		}
+		width[k] = std::sqrt(diff / std::max(sum, 1e-12));
+	}
+	report("artifex", "stereo_mono_at_zero", width[0], width[0] < 0.05);
+	report("artifex", "stereo_widens", width[1], width[1] > width[0] + 0.1);
+}
+
+// ── the envelope follower reads the input ─────────────────────────────────────
+static void testEnvelope() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::AMT_PARAM].setValue(0.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	runTone(m, fr, 0.5, 200.f, 5.f);
+	float loud = m.outputs[Artifex::ENV_OUTPUT].getVoltage();
+	runSilence(m, fr, 2.0);
+	float quiet = m.outputs[Artifex::ENV_OUTPUT].getVoltage();
+	report("artifex", "env_follows_input", loud, loud > 1.f);
+	report("artifex", "env_falls_on_silence", quiet, quiet < loud * 0.5f);
+}
+
+// ── mode changes from CV wait for the clock, and the knob does not ────────────
+static void testModeSelect() {
+	Artifex m;
+	long fr = 0;
+	m.params[Artifex::TEMPO_PARAM].setValue(60.f);   // a step every 250 ms
+	m.params[Artifex::FXMODE_ATT_PARAM].setValue(1.f);
+	m.inputs[Artifex::FXMODE_INPUT].channels = 1;
+	runSilence(m, fr, 0.1);
+
+	// ten volts is the whole list: the top of the CV is the last mode
+	m.inputs[Artifex::FXMODE_INPUT].setVoltage(10.f);
+	runSilence(m, fr, 0.02);
+	int aimedTop = m.aimedMode;
+	report("artifex", "mode_cv_top_is_last", aimedTop, aimedTop == 8);
+
+	// and it wraps past the end rather than sticking
+	m.inputs[Artifex::FXMODE_INPUT].setVoltage(11.2f);
+	runSilence(m, fr, 0.02);
+	report("artifex", "mode_cv_wraps", m.aimedMode, m.aimedMode == 1);
+
+	// the change itself waits for the next step of the clock
+	Artifex m2;
+	long fr2 = 0;
+	m2.params[Artifex::TEMPO_PARAM].setValue(30.f);   // a step every 500 ms
+	m2.params[Artifex::FXMODE_ATT_PARAM].setValue(1.f);
+	m2.inputs[Artifex::FXMODE_INPUT].channels = 1;
+	runSilence(m2, fr2, 0.05);
+	int before = m2.mode;
+	m2.inputs[Artifex::FXMODE_INPUT].setVoltage(5.f);
+	runSilence(m2, fr2, 0.05);
+	bool waited = (m2.mode == before) && (m2.aimedMode != before);
+	report("artifex", "mode_cv_waits_for_clock", waited ? 1 : 0, waited);
+	runSilence(m2, fr2, 0.6);
+	report("artifex", "mode_cv_lands_on_the_step", m2.mode, m2.mode == m2.aimedMode);
+
+	// the knob, though, changes mode the moment it moves
+	Artifex m3;
+	long fr3 = 0;
+	m3.params[Artifex::FXMODE_PARAM].setValue(6.f);
+	runSilence(m3, fr3, 0.01);
+	report("artifex", "mode_knob_is_immediate", m3.mode, m3.mode == 6);
+}
+
+// ── the loop stays on the rails with the feedback wide open ───────────────────
+static void testFeedbackSafety() {
+	float worst = 0.f;
+	long nans = 0;
+	for (int mode = 0; mode < kModes; mode++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, mode);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(4.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::TIME_PARAM].setValue(0.85f);
+		Rec rec;
+		runTone(m, fr, 1.5, 180.f, 8.f, &rec);
+		runSilence(m, fr, 1.5, &rec);
+		worst = std::max(worst, std::max(rec.sl.peak, rec.sr.peak));
+		nans += rec.sl.nans + rec.sr.nans;
+	}
+	report("artifex", "feedback_finite", nans, nans == 0);
+	report("artifex", "feedback_bounded", worst, worst < 12.f);
+}
+
+// ── every knob at every extreme, in every mode ────────────────────────────────
+static void testAbuse() {
+	long nans = 0;
+	float worst = 0.f;
+	for (int mode = 0; mode < kModes; mode++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, mode);
+		m.inputs[Artifex::FREE_INPUT].channels = 1;
+		m.inputs[Artifex::TRIG_INPUT].channels = 1;
+		m.params[Artifex::TIME_ATT_PARAM].setValue(1.f);
+		for (int i = 0; i < 40; i++) {
+			m.params[Artifex::TIME_PARAM].setValue(random::uniform());
+			m.params[Artifex::AMT_PARAM].setValue(random::uniform());
+			m.params[Artifex::FBK_PARAM].setValue(random::uniform());
+			m.params[Artifex::FILTER_PARAM].setValue(2.f * random::uniform() - 1.f);
+			m.params[Artifex::STEREO_PARAM].setValue(random::uniform());
+			m.params[Artifex::GAIN_PARAM].setValue(4.f * random::uniform());
+			m.inputs[Artifex::FREE_INPUT].setVoltage(10.f * random::uniform() - 5.f);
+			m.inputs[Artifex::TRIG_INPUT].setVoltage(random::uniform() > 0.7f ? 5.f : 0.f);
+			Rec rec;
+			runTone(m, fr, 0.05, 50.f + 2000.f * random::uniform(), 5.f, &rec);
+			nans += rec.sl.nans + rec.sr.nans;
+			worst = std::max(worst, std::max(rec.sl.peak, rec.sr.peak));
+		}
+	}
+	report("artifex", "abuse_finite", nans, nans == 0);
+	report("artifex", "abuse_bounded", worst, worst < 12.f);
+}
+
+SMOKE_MAIN(testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
+           testFreezer, testPanner, testCrusher, testSlicer, testPitch,
+           testReplayer, testStereo, testEnvelope, testModeSelect,
+           testFeedbackSafety, testAbuse)

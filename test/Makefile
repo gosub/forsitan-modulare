@@ -9,7 +9,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 # to one module only rebuilds its own harness.
 SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
-                cartilago scrupea viginti gradus materiae aether vates
+                cartilago scrupea viginti gradus materiae aether vates artifex
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
@@ -22,13 +22,18 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
-     aether_probe vates_probe $(SMOKE_BINS) $(CROSS_BINS)
+     aether_probe vates_probe artifex_probe $(SMOKE_BINS) $(CROSS_BINS)
 
 # Measures and auditions the generated banks: every family of the four ported
 # pages64 kit engines, the imber-derived tonal families, a whole six-bank set
 # from one seed, and `wav <dir>` to write them out and listen.
 vates_probe: vates_probe.cpp ../src/vates/kits.hpp ../src/vates/bank.hpp \
              ../src/imber/imber_gen.hpp ../src/imber/imber_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Drives the nine effects against one test signal: `sweep` compares them,
+# `mode <n>` walks one across its knobs, `wav <dir>` writes them out to listen.
+artifex_probe: artifex_probe.cpp ../src/artifex/core.hpp $(wildcard ../src/citadel/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Measurement and audition harness for the square-relation percussion voice.
@@ -127,6 +132,8 @@ smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
 smoke_guttur smoke_vespae smoke_raucus smoke_cartilago: $(wildcard ../src/guttur/*.hpp)
 smoke_raucus: ../src/raucus_dsp.hpp
 smoke_quadrare: ../src/quadrare_dsp.hpp
+smoke_vates: $(wildcard ../src/citadel/*.hpp) $(wildcard ../src/vates/*.hpp)
+smoke_artifex: $(wildcard ../src/citadel/*.hpp) $(wildcard ../src/artifex/*.hpp)
 smoke_antrum: ../src/antrum_dsp.hpp
 smoke_caligo: ../src/caligo_dsp.hpp
 smoke_tundo: ../src/tundo_dsp.hpp

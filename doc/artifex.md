@@ -207,7 +207,7 @@ what the hardware suggests and what it is best at.
 Triangle and pulse as on the hardware, plus a saw, and it is the same LFO
 vates has. The switch chooses sync or free: synced, the rate knob picks a
 division of the clock and the phase is locked to the pattern, so the saw is a
-usable bar phasor; free, it runs from about 0.01 Hz to audio rate.
+usable bar phasor; free, it runs 0.01–20 Hz.
 
 **reset** restarts it. **mod** is an attenuverted rate input. Patching the
 pulse output into the mod input reshapes the triangle, exactly as the
@@ -244,8 +244,8 @@ untouched rhythm back, select it again with the rhythm knob.
 Two, above everything else. The left one names the mode and its number; the
 right one reads the time parameter in whatever unit the mode uses — a delay
 time in milliseconds, a clock division when it is synced, a frequency for the
-panner, a rhythm number for the slicer, an interval for the shifter. Both
-have a right-click picker.
+panner, a rhythm number for the slicer, an interval for the shifter. Right-click
+the left one to jump straight to a mode.
 
 ## Context menu
 
