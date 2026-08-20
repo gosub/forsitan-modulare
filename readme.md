@@ -45,6 +45,7 @@ A collection of VCV Rack modules.
 | [materiae](doc/materiae.md) | Percussion from two square waves and the relationship between them: logic operators, bidirectional feedback, a tuneable digital grid and a ringing filter for a body | [doc/materiae.md](doc/materiae.md) |
 | [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound | [doc/aether.md](doc/aether.md) |
 | [vates](doc/vates.md) | Stereo sample player over banks it generates itself: modulate which sample plays and the rhythm falls out, with a reversing envelope, a filter and FX, an LFO and a 16-step pattern generator | [doc/vates.md](doc/vates.md) |
+| [artifex](doc/artifex.md) | Nine stereo effects — delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter — sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator | [doc/artifex.md](doc/artifex.md) |
 
 ## Tools
 
@@ -110,6 +111,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **materiae** | of matter, of raw material — *materia* is stuff, timber, the substance a thing is made from; here two of the simplest signals there are, and nothing else |
 | **aether** | the upper air, the medium a signal was once thought to need in order to travel (this one travels badly) |
 | **vates** | the bard, the poet-seer — the one who sings what he is given (after the Bastl Citadel Wave Bard) |
+| **artifex** | the maker, the contriver — the craftsman who works a material rather than choosing from a catalogue (after the Bastl Citadel FX Wizard) |
 
 ## Author
 

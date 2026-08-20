@@ -388,6 +388,18 @@
       ]
     },
     {
+      "slug": "artifex",
+      "name": "artifex",
+      "description": "Nine stereo effects sharing one feedback loop, with a pattern generator wired into them.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/artifex.md",
+      "tags": [
+        "Effect",
+        "Delay",
+        "Distortion",
+        "Hardware clone"
+      ]
+    },
+    {
       "slug": "vates",
       "name": "vates",
       "description": "Stereo sample player with generated banks: modulate the sample choice and the rhythm falls out.",
