@@ -334,12 +334,19 @@ static void testDefaults() {
 		report("vates", "defaults_setup", 0, false);
 		return;
 	}
-	selectSample(m, 4, 0);        // a sustained sample, so length is what decides
+	// The claim is about the default envelope, not about the sample that
+	// happens to be under it: a generated pad can open very quietly and the
+	// audio level would say nothing about the length knob. So the envelope
+	// is what is measured, with the audio only checked for being there.
+	selectSample(m, 4, 0);
 	run(m, fr, 0.02);
 	pressTrigger(m, fr);
 	run(m, fr, 0.1);
-	Stats late = runStats(m, fr, 0.1, Vates::LEFT_OUTPUT);
-	report("vates", "default_length_audible", late.rms(), late.rms() > 0.05);
+	Stats env = runStats(m, fr, 0.1, Vates::ENV_OUTPUT);
+	Stats audio = runStats(m, fr, 0.1, Vates::LEFT_OUTPUT);
+	report("vates", "default_length_open", env.rms(), env.rms() > 1.0);
+	report("vates", "default_length_audible", audio.rms(),
+	       audio.rms() > 1e-3 && audio.nans == 0);
 }
 
 // ── the CV input spans a bank once, and its top is the last sample ────────────
