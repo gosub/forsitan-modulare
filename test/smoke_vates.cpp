@@ -610,6 +610,23 @@ static void testPitchTracking() {
 	pressTrigger(m, fr);
 	report("vates", "note_1voct", m.voiceRateNow(),
 	       std::fabs(m.voiceRateNow() - 2.f) < 1e-4f);
+
+	// and the two add, which is the hardware's own formula: the note input
+	// sets the note at the trigger, the free input bends it afterwards
+	m.inputs[Vates::FREE_INPUT].setVoltage(1.f);
+	run(m, fr, 0.01);
+	report("vates", "note_plus_free", m.voiceRateNow(),
+	       std::fabs(m.voiceRateNow() - 4.f) < 1e-4f);
+
+	// the free bend keeps moving inside a hit the note input cannot: it is
+	// latched, so changing it mid-hit does nothing until the next trigger
+	m.inputs[Vates::NOTE_INPUT].setVoltage(2.f);
+	run(m, fr, 0.01);
+	report("vates", "note_latched_in_hit", m.voiceRateNow(),
+	       std::fabs(m.voiceRateNow() - 4.f) < 1e-4f);
+	pressTrigger(m, fr);
+	report("vates", "note_updates_at_trigger", m.voiceRateNow(),
+	       std::fabs(m.voiceRateNow() - 8.f) < 1e-4f);
 }
 
 // ── the pattern inputs read the Rack window, and the hardware one on ask ─────
