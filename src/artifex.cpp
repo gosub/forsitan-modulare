@@ -1,7 +1,7 @@
 #include "forsitan.hpp"
 #include "artifex/core.hpp"
-#include "citadel/dsp.hpp"
-#include "citadel/modulation.hpp"
+#include "shared/dsp.hpp"
+#include "shared/modulation.hpp"
 #include "position_switch.hpp"
 
 #include <cmath>
@@ -10,12 +10,12 @@
 
 // artifex — nine stereo effects sharing one feedback loop.
 //
-// After the Bastl Instruments Citadel FX Wizard, the other face of the
-// hardware vates is built after: three knobs that mean something different in
-// every mode, a filter inside the feedback path, a stereo detune, and the
-// same pattern generator and LFO vates has (src/citadel/modulation.hpp).
-// The hardware's SHIFT layer is unpacked into real controls. See
-// doc/artifex.md.
+// After a Bastl Instruments hardware effect, named and credited in
+// doc/artifex.md -- the other face of the hardware vates comes from: three
+// knobs that mean something different in every mode, a filter inside the
+// feedback path, a stereo detune, and the same pattern generator and LFO
+// vates has (src/shared/modulation.hpp). The hardware's SHIFT layer is
+// unpacked into real controls.
 
 namespace {
 
@@ -104,7 +104,7 @@ struct Artifex : Module {
 	bool monoInput = false;
 
 	// ── state ────────────────────────────────────────────────────────────────
-	citadel::Modulation modul;
+	forsitan_mod::Modulation modul;
 	artifex_fx::Core core;
 	int mode = 0;                 // the mode actually running
 	int aimedMode = 0;            // what the knob and CV ask for
@@ -288,7 +288,7 @@ struct Artifex : Module {
 
 	void process(const ProcessArgs& args) override {
 		// ── the shared modulation section ────────────────────────────────────
-		citadel::ModIn min;
+		forsitan_mod::ModIn min;
 		min.dt = args.sampleTime;
 		min.bpm = params[TEMPO_PARAM].getValue();
 		min.clkVoltage = inputs[CLK_INPUT].getVoltage();
@@ -296,7 +296,7 @@ struct Artifex : Module {
 		min.patResetVoltage = inputs[PAT_RESET_INPUT].getVoltage();
 		min.rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
 		if (inputs[RHYTHM_INPUT].isConnected())
-			min.rhythm = citadel::rhythmSelect(min.rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f);
+			min.rhythm = forsitan_mod::rhythmSelect(min.rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f);
 		min.gateMode = patternMode(GSW_PARAM, G_INPUT);
 		min.cvMode = patternMode(CSW_PARAM, C_INPUT);
 		min.lfoRateKnob = params[RATE_PARAM].getValue();

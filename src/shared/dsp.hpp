@@ -5,12 +5,12 @@
 #include <cmath>
 #include <vector>
 
-// Small DSP blocks shared by the two Citadel modules, vates and artifex.
-// Both are header-only and self-contained: every function is inline, so the
-// two translation units that include this file do not collide (see
-// tools/release/check_symbols.py and the ODR note in CLAUDE.md).
+// Small DSP blocks shared by vates and artifex. Both are header-only and
+// self-contained: every function is inline, so the two translation units that
+// include this file do not collide (see tools/release/check_symbols.py and
+// the ODR note in CLAUDE.md).
 
-namespace citadel {
+namespace forsitan_dsp {
 
 using namespace rack;
 
@@ -91,4 +91,4 @@ struct Delay {
 	}
 };
 
-}   // namespace citadel
+}   // namespace forsitan_dsp

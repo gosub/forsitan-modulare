@@ -2,8 +2,8 @@
 #include "sampler/kitloader.hpp"
 #include "vates/bank.hpp"
 #include "imber/imber_worker.hpp"
-#include "citadel/dsp.hpp"
-#include "citadel/modulation.hpp"
+#include "shared/dsp.hpp"
+#include "shared/modulation.hpp"
 #include "position_switch.hpp"
 
 #include <osdialog.h>
@@ -16,11 +16,12 @@
 
 // vates — stereo sample player with a pattern generator underneath.
 //
-// After the Bastl Instruments Citadel Wave Bard: you do not draw a rhythm,
-// you modulate sample selection and let the rhythm fall out. The hardware's
-// two modifier buttons (SHIFT and BANK, which give every knob two or three
-// jobs) are unpacked here into real controls, since holding one thing while
-// turning another is a gesture a mouse does badly.
+// After a Bastl Instruments hardware sampler, named and credited in
+// doc/vates.md: you do not draw a rhythm, you modulate sample selection and
+// let the rhythm fall out. The hardware's two modifier buttons (SHIFT and
+// BANK, which give every knob two or three jobs) are unpacked here into real
+// controls, since holding one thing while turning another is a gesture a
+// mouse does badly.
 //
 // Six banks of eight samples are generated from a seed — drums, objects,
 // grains, micro, tones, air (src/vates/bank.hpp) — one sample per kind the
@@ -37,12 +38,12 @@ using forsitan_sampler::Kit;
 // regenerating 48 samples every time the engine rate changes.
 static const float kGenRate = 44100.f;
 
-static const int kSteps = citadel::kSteps;
+static const int kSteps = forsitan_mod::kSteps;
 
-using citadel::Svf;
-using citadel::Delay;
-using citadel::rhythmPattern;
-using citadel::rhythmCv;
+using forsitan_dsp::Svf;
+using forsitan_dsp::Delay;
+using forsitan_mod::rhythmPattern;
+using forsitan_mod::rhythmCv;
 
 }   // namespace
 
@@ -200,7 +201,7 @@ struct Vates : Module {
 	// ── clock, LFO, pattern ──────────────────────────────────────────────────
 	// The tempo generator, the pattern generator and the LFO are the section
 	// artifex shares: on the hardware the two panels are one board.
-	citadel::Modulation modul;
+	forsitan_mod::Modulation modul;
 
 	// ── fx ───────────────────────────────────────────────────────────────────
 	Svf filt[2];
@@ -653,10 +654,10 @@ struct Vates : Module {
 			uiSample = sel;
 
 		// ── clock, pattern generator and LFO ─────────────────────────────────
-		// all three live in citadel::Modulation, shared with artifex; the knob
+		// all three live in forsitan_mod::Modulation, shared with artifex; the knob
 		// spans the 32 rhythms and the CV offsets it, wrapping, on the same
 		// ten-volts-is-the-whole-list scale as bank and sample
-		citadel::ModIn min;
+		forsitan_mod::ModIn min;
 		min.dt = args.sampleTime;
 		min.bpm = params[TEMPO_PARAM].getValue();
 		min.clkVoltage = inputs[CLK_INPUT].getVoltage();
@@ -664,7 +665,7 @@ struct Vates : Module {
 		min.patResetVoltage = inputs[PAT_RESET_INPUT].getVoltage();
 		min.rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
 		if (inputs[RHYTHM_INPUT].isConnected())
-			min.rhythm = citadel::rhythmSelect(min.rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f);
+			min.rhythm = forsitan_mod::rhythmSelect(min.rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f);
 		min.gateMode = patternMode(GSW_PARAM, G_INPUT);
 		min.cvMode = patternMode(CSW_PARAM, C_INPUT);
 		min.lfoRateKnob = params[RATE_PARAM].getValue();

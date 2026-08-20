@@ -1,8 +1,8 @@
 #pragma once
 #include <rack.hpp>
 
-#include "../citadel/dsp.hpp"
-#include "../citadel/modulation.hpp"
+#include "../shared/dsp.hpp"
+#include "../shared/modulation.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -19,8 +19,8 @@
 namespace artifex_fx {
 
 using namespace rack;
-using citadel::Delay;
-using citadel::Svf;
+using forsitan_dsp::Delay;
+using forsitan_dsp::Svf;
 
 enum Mode {
 	MODE_DELAY = 0,
@@ -445,7 +445,7 @@ struct Core {
 			if (ct.stepped) {
 				// stereo gives the two channels different rhythms
 				int p = pat + (c == 1 ? (int)(ct.stereo * 8.f + 0.5f) : 0);
-				bool hit = (citadel::rhythmPattern(p & 31)
+				bool hit = (forsitan_mod::rhythmPattern(p & 31)
 				            & (uint16_t)(0x8000u >> (ct.step & 15))) != 0;
 				if (fb > 0.001f && (next() % 1000u) < (uint32_t)(fb * 700.f))
 					hit = !hit;

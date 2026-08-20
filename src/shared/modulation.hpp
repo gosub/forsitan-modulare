@@ -4,15 +4,16 @@
 #include <cmath>
 #include <cstdint>
 
-// The modulation section the two Citadel modules share.
+// The modulation section vates and artifex share: a tempo generator, a
+// sixteen-step pattern generator with its two editing switches, and an LFO
+// that can phase-lock to the clock.
 //
-// On the hardware, the Wave Bard and the FX Wizard are one board with two
-// panels: the same tempo generator, the same sixteen-step pattern generator
-// with its two editing switches, and the same LFO sit under both. vates and
-// artifex share this file for the same reason — everything here is inline,
-// so both translation units can include it.
+// The two modules come from the two sides of one piece of hardware, which is
+// one board running one firmware — so this half of them really is the same
+// machine. Everything here is inline, so both translation units can include
+// it.
 
-namespace citadel {
+namespace forsitan_mod {
 
 using namespace rack;
 
@@ -251,4 +252,4 @@ struct Modulation {
 	}
 };
 
-}   // namespace citadel
+}   // namespace forsitan_mod

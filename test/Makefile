@@ -33,7 +33,7 @@ vates_probe: vates_probe.cpp ../src/vates/kits.hpp ../src/vates/bank.hpp \
 
 # Drives the nine effects against one test signal: `sweep` compares them,
 # `mode <n>` walks one across its knobs, `wav <dir>` writes them out to listen.
-artifex_probe: artifex_probe.cpp ../src/artifex/core.hpp $(wildcard ../src/citadel/*.hpp)
+artifex_probe: artifex_probe.cpp ../src/artifex/core.hpp $(wildcard ../src/shared/*.hpp)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Measurement and audition harness for the square-relation percussion voice.
@@ -132,8 +132,8 @@ smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
 smoke_guttur smoke_vespae smoke_raucus smoke_cartilago: $(wildcard ../src/guttur/*.hpp)
 smoke_raucus: ../src/raucus_dsp.hpp
 smoke_quadrare: ../src/quadrare_dsp.hpp
-smoke_vates: $(wildcard ../src/citadel/*.hpp) $(wildcard ../src/vates/*.hpp)
-smoke_artifex: $(wildcard ../src/citadel/*.hpp) $(wildcard ../src/artifex/*.hpp)
+smoke_vates: $(wildcard ../src/shared/*.hpp) $(wildcard ../src/vates/*.hpp)
+smoke_artifex: $(wildcard ../src/shared/*.hpp) $(wildcard ../src/artifex/*.hpp)
 smoke_antrum: ../src/antrum_dsp.hpp
 smoke_caligo: ../src/caligo_dsp.hpp
 smoke_tundo: ../src/tundo_dsp.hpp
