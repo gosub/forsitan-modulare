@@ -2,6 +2,8 @@
 #include "sampler/kitloader.hpp"
 #include "vates/bank.hpp"
 #include "imber/imber_worker.hpp"
+#include "citadel/dsp.hpp"
+#include "citadel/modulation.hpp"
 #include "position_switch.hpp"
 
 #include <osdialog.h>
@@ -35,102 +37,12 @@ using forsitan_sampler::Kit;
 // regenerating 48 samples every time the engine rate changes.
 static const float kGenRate = 44100.f;
 
-static const int kSteps = 16;
+static const int kSteps = citadel::kSteps;
 
-// ── the rhythm table ──────────────────────────────────────────────────────────
-// 32 sixteen-step gate patterns, step 0 in the high bit. Sixteen written by
-// hand — the ones a drummer would recognise — then the sixteen euclidean
-// distributions E(1..16, 16), which fill in every density between them. The
-// hardware loads its rhythms from a web app that rebuilds the firmware; this
-// is the knob that replaces it.
-static uint16_t rhythmPattern(int i) {
-	static const uint16_t classic[16] = {
-		0x8888,   // four on the floor
-		0x0808,   // backbeat
-		0x2222,   // offbeat eighths
-		0xAAAA,   // eighths
-		0xFFFF,   // sixteenths
-		0x9292,   // tresillo
-		0x9228,   // son clave
-		0x9128,   // rumba clave
-		0x9224,   // bossa
-		0xA94A,   // cascara
-		0x9999,   // shuffle
-		0xB2B2,   // gallop
-		0x8000,   // downbeat only
-		0x8080,   // half notes
-		0x9249,   // dotted eighths
-		0x9632,   // funk
-	};
-	i = clamp(i, 0, 31);
-	if (i < 16)
-		return classic[i];
-	int k = i - 15;   // 1..16 onsets
-	uint16_t p = 0;
-	for (int s = 0; s < kSteps; s++)
-		if ((s * k) % kSteps < k)
-			p |= (uint16_t)(0x8000u >> s);
-	return p;
-}
-
-// The CV sequence that goes with a rhythm: sixteen stepped levels, hashed
-// from the pattern index so a rhythm always brings the same contour.
-static float rhythmCv(int pat, int step) {
-	uint32_t h = (uint32_t)(pat + 1) * 2654435761u ^ (uint32_t)(step + 1) * 2246822519u;
-	h ^= h >> 13;
-	h *= 2654435761u;
-	h ^= h >> 16;
-	return (h % 16u) / 15.f * 10.f;
-}
-
-// ── small DSP ─────────────────────────────────────────────────────────────────
-
-// TPT state-variable filter, one per channel. vates uses it as a lowpass on
-// one side of the filter knob and a highpass on the other.
-struct Svf {
-	float ic1 = 0.f, ic2 = 0.f;
-	void reset() { ic1 = ic2 = 0.f; }
-	// returns lowpass in lp and highpass in hp
-	void process(float x, float g, float k, float& lp, float& hp) {
-		float a1 = 1.f / (1.f + g * (g + k));
-		float a2 = g * a1;
-		float v3 = x - ic2;
-		float v1 = a1 * ic1 + a2 * v3;
-		float v2 = ic2 + g * v1;
-		ic1 = 2.f * v1 - ic1;
-		ic2 = 2.f * v2 - ic2;
-		lp = v2;
-		hp = x - k * v1 - v2;
-		if (!std::isfinite(ic1) || !std::isfinite(ic2))
-			reset();
-	}
-};
-
-// One delay line with fractional read, used by both halves of the FX knob.
-struct Delay {
-	std::vector<float> buf;
-	int w = 0;
-	void init(int n) {
-		buf.assign(std::max(2, n), 0.f);
-		w = 0;
-	}
-	void write(float x) {
-		buf[w] = x;
-		if (++w >= (int)buf.size())
-			w = 0;
-	}
-	float read(float delaySamples) const {
-		int n = (int)buf.size();
-		float d = clamp(delaySamples, 1.f, (float)(n - 2));
-		float rp = (float)w - d;
-		while (rp < 0.f)
-			rp += n;
-		int i0 = (int)rp;
-		float fr = rp - i0;
-		int i1 = (i0 + 1) % n;
-		return buf[i0] + (buf[i1] - buf[i0]) * fr;
-	}
-};
+using citadel::Svf;
+using citadel::Delay;
+using citadel::rhythmPattern;
+using citadel::rhythmCv;
 
 }   // namespace
 
@@ -286,24 +198,9 @@ struct Vates : Module {
 	int uiBank = 0, uiSample = 0;
 
 	// ── clock, LFO, pattern ──────────────────────────────────────────────────
-	double clockPhase = 0.0;              // 0..1 within a step
-	float stepSeconds = 0.125f;
-	float sinceExternal = 10.f;
-	bool externalClock = false;
-	int step = 0;
-	// Position in steps, running and fractional: the synced LFO derives its
-	// phase from this rather than free-running at a synced rate, so its saw
-	// output really is the place in the bar and stays there.
-	int barStep = 0;          // 0..31: two bars, so every division divides it
-	double barPos = 0.0;
-	double lfoOffset = 0.0;
-	float gateTimer = 0.f;
-	float clkPulse = 0.f;
-	uint16_t gateWork = 0;
-	float cvWork[kSteps] = {0.f};
-	int loadedRhythm = -1;
-	uint32_t patRng = 0x1234567u;
-	float lfoPhase = 0.f;
+	// The tempo generator, the pattern generator and the LFO are the section
+	// artifex shares: on the hardware the two panels are one board.
+	citadel::Modulation modul;
 
 	// ── fx ───────────────────────────────────────────────────────────────────
 	Svf filt[2];
@@ -311,7 +208,7 @@ struct Vates : Module {
 	float dlyFb[2] = {0.f, 0.f};
 	float modPhase = 0.f;
 
-	dsp::SchmittTrigger trigIn, clkIn, lfoResetIn, patResetIn;
+	dsp::SchmittTrigger trigIn;
 	dsp::BooleanTrigger trigButton, bankUpButton, bankDownButton;
 
 	Vates() : bankTotal(vates_bank::kNumBanks) {
@@ -755,124 +652,29 @@ struct Vates : Module {
 		if (!voiceActive)
 			uiSample = sel;
 
-		// ── clock ────────────────────────────────────────────────────────────
-		bool stepped = false;
-		sinceExternal += args.sampleTime;
-		bool extEdge = clkIn.process(inputs[CLK_INPUT].getVoltage(), 0.1f, 1.f);
-		if (extEdge && honourExternalClock) {
-			if (externalClock && sinceExternal > 1e-4f && sinceExternal < 4.f)
-				stepSeconds = sinceExternal;
-			externalClock = true;
-			sinceExternal = 0.f;
-			stepped = true;
-			clockPhase = 0.0;
-		}
-		if (externalClock && sinceExternal > 2.f)
-			externalClock = false;   // the external clock stopped; take over again
-		if (!externalClock) {
-			float bpm = params[TEMPO_PARAM].getValue();
-			stepSeconds = 60.f / std::max(bpm, 1.f) / 4.f;   // sixteenths
-			clockPhase += args.sampleTime / stepSeconds;
-			if (clockPhase >= 1.0) {
-				clockPhase -= 1.0;
-				stepped = true;
-			}
-		}
-		else
-			clockPhase = std::min(1.0, clockPhase + args.sampleTime / std::max(stepSeconds, 1e-4f));
-
-		if (patResetIn.process(inputs[PAT_RESET_INPUT].getVoltage(), 0.1f, 1.f)) {
-			step = 0;
-			barStep = 0;
-			clockPhase = 0.0;
-			lfoOffset = 0.0;
-		}
-
-		// ── pattern generator ────────────────────────────────────────────────
-		// the knob spans the 32 rhythms and the CV offsets it, wrapping, on
-		// the same ten-volts-is-the-whole-list scale as bank and sample
-		int rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
+		// ── clock, pattern generator and LFO ─────────────────────────────────
+		// all three live in citadel::Modulation, shared with artifex; the knob
+		// spans the 32 rhythms and the CV offsets it, wrapping, on the same
+		// ten-volts-is-the-whole-list scale as bank and sample
+		citadel::ModIn min;
+		min.dt = args.sampleTime;
+		min.bpm = params[TEMPO_PARAM].getValue();
+		min.clkVoltage = inputs[CLK_INPUT].getVoltage();
+		min.honourExternal = honourExternalClock;
+		min.patResetVoltage = inputs[PAT_RESET_INPUT].getVoltage();
+		min.rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
 		if (inputs[RHYTHM_INPUT].isConnected())
-			rhythm = cvSelect(rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f, 32);
-		if (rhythm != loadedRhythm) {
-			loadedRhythm = rhythm;
-			gateWork = rhythmPattern(rhythm);
-			for (int s = 0; s < kSteps; s++)
-				cvWork[s] = rhythmCv(rhythm, s);
-		}
-		if (stepped) {
-			step = (step + 1) % kSteps;
-			barStep = (barStep + 1) % (2 * kSteps);
+			min.rhythm = citadel::rhythmSelect(min.rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f);
+		min.gateMode = patternMode(GSW_PARAM, G_INPUT);
+		min.cvMode = patternMode(CSW_PARAM, C_INPUT);
+		min.lfoRateKnob = params[RATE_PARAM].getValue();
+		min.lfoRateMod = inputs[LFO_INPUT].getVoltage() * 0.2f * params[LFO_ATT_PARAM].getValue();
+		min.lfoSynced = params[SYNC_PARAM].getValue() > 0.5f;
+		min.lfoResetVoltage = inputs[LFO_RESET_INPUT].getVoltage();
+		modul.process(min);
 
-			// the two switches, each normalled to its own input: middle
-			// leaves the sequence alone, up randomizes the step the sequence
-			// is on, down inverts it — and both write into the working copy,
-			// so a flick changes the pattern for good
-			int gMode = patternMode(GSW_PARAM, G_INPUT);
-			int cMode = patternMode(CSW_PARAM, C_INPUT);
-			uint16_t mask = (uint16_t)(0x8000u >> step);
-			if (gMode == 2) {
-				patRng ^= patRng << 13; patRng ^= patRng >> 17; patRng ^= patRng << 5;
-				if (patRng & 1)
-					gateWork |= mask;
-				else
-					gateWork &= (uint16_t)~mask;
-			}
-			else if (gMode == 0)
-				gateWork ^= mask;
-			if (cMode == 2) {
-				patRng ^= patRng << 13; patRng ^= patRng >> 17; patRng ^= patRng << 5;
-				cvWork[step] = (patRng % 16u) / 15.f * 10.f;
-			}
-			else if (cMode == 0)
-				cvWork[step] = 10.f - cvWork[step];
-
-			if (gateWork & mask)
-				gateTimer = 0.75f * stepSeconds;
-			clkPulse = 1e-3f;
-		}
-		gateTimer = std::max(0.f, gateTimer - args.sampleTime);
-		clkPulse = std::max(0.f, clkPulse - args.sampleTime);
-		barPos = (double)barStep + clockPhase;
-
-		// ── LFO ──────────────────────────────────────────────────────────────
-		float rateKnob = params[RATE_PARAM].getValue();
-		float rateMod = inputs[LFO_INPUT].getVoltage() * 0.2f * params[LFO_ATT_PARAM].getValue();
-		bool synced = params[SYNC_PARAM].getValue() > 0.5f;
-		bool lfoReset = lfoResetIn.process(inputs[LFO_RESET_INPUT].getVoltage(), 0.1f, 1.f);
-
-		if (synced) {
-			// Steps per cycle, slowest first: clockwise has to speed the LFO up
-			// here exactly as it does in free mode, or the knob reverses its
-			// meaning as the switch flips. Sixteen steps is one pattern — one
-			// bar — so at that division the saw output is the bar position.
-			//
-			// Synced means phase-locked, not merely a synced rate: the phase is
-			// derived from the step clock, so the LFO cannot drift against the
-			// pattern and its saw stays a usable phasor.
-			static const float div[8] = {32.f, 16.f, 8.f, 4.f, 2.f, 1.f, 0.5f, 0.25f};
-			int d = clamp((int)(rateKnob * 7.999f + rateMod * 4.f), 0, 7);
-			// modulation moves the division rather than detuning the rate: a
-			// phase derived from the clock has nothing to detune
-			if (lfoReset)
-				lfoOffset = barPos;
-			double phase = (barPos - lfoOffset) / div[d];
-			phase -= std::floor(phase);
-			lfoPhase = (float)phase;
-		}
-		else {
-			float lfoHz = 0.01f * std::pow(2000.f, clamp(rateKnob, 0.f, 1.f));
-			lfoHz *= std::pow(4.f, clamp(rateMod, -1.f, 1.f));
-			lfoHz = clamp(lfoHz, 0.002f, 400.f);
-			if (lfoReset)
-				lfoPhase = 0.f;
-			lfoPhase += lfoHz * args.sampleTime;
-			lfoPhase -= std::floor(lfoPhase);
-		}
-		// peak at phase 0, falling to the trough at 0.5, rising back after:
-		// pulse is high exactly while the triangle rises
-		float tri = lfoPhase < 0.5f ? 1.f - 2.f * lfoPhase : 2.f * lfoPhase - 1.f;
-		bool lfoRising = lfoPhase >= 0.5f;
+		float stepSeconds = modul.stepSeconds;
+		float tri = modul.tri;
 
 		// ── triggers ─────────────────────────────────────────────────────────
 		bool fire = false;
@@ -1001,13 +803,13 @@ struct Vates : Module {
 
 		outputs[ENV_OUTPUT].setVoltage(clamp(env * release * 10.f, 0.f, 10.f));
 		outputs[TRI_OUTPUT].setVoltage(tri * 10.f);
-		outputs[PULSE_OUTPUT].setVoltage(lfoRising ? 10.f : 0.f);
+		outputs[PULSE_OUTPUT].setVoltage(modul.lfoRising ? 10.f : 0.f);
 		// the saw is the cycle's own position, rising from the reset point:
 		// synced to sixteen steps it sweeps a whole bank once a bar
-		outputs[SAW_OUTPUT].setVoltage(lfoPhase * 10.f);
-		outputs[CLK_OUTPUT].setVoltage(clkPulse > 0.f ? 10.f : 0.f);
-		outputs[GATE_OUTPUT].setVoltage(gateTimer > 0.f ? 10.f : 0.f);
-		outputs[CV_OUTPUT].setVoltage(cvWork[clamp(step, 0, kSteps - 1)]);
+		outputs[SAW_OUTPUT].setVoltage(modul.lfoPhase * 10.f);
+		outputs[CLK_OUTPUT].setVoltage(modul.clock() ? 10.f : 0.f);
+		outputs[GATE_OUTPUT].setVoltage(modul.gate() ? 10.f : 0.f);
+		outputs[CV_OUTPUT].setVoltage(modul.cv());
 
 		refreshDisplayText();
 	}
@@ -1088,8 +890,8 @@ struct Vates : Module {
 		pendingGen = true;
 		bankBase = 0;
 		voiceActive = false;
-		step = 0;
-		loadedRhythm = -1;
+		modul.resetSequence();
+		modul.loadedRhythm = -1;
 	}
 
 	json_t* dataToJson() override {

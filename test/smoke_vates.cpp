@@ -71,13 +71,13 @@ static void pressTrigger(Vates& m, long& frame) {
 // Process until the pattern generator has advanced n steps, whatever the
 // tempo works out to in frames.
 static void runSteps(Vates& m, long& frame, int n) {
-	int was = m.step;
+	int was = m.modul.step;
 	int seen = 0;
 	long guard = (long)(30.0 * SR);
 	while (seen < n && guard-- > 0) {
 		m.process(makeArgs(frame++));
-		if (m.step != was) {
-			was = m.step;
+		if (m.modul.step != was) {
+			was = m.modul.step;
 			seen++;
 		}
 	}
@@ -547,7 +547,7 @@ static void testClock() {
 	// and hands the tempo back when it stops
 	m.inputs[Vates::CLK_INPUT].setVoltage(0.f);
 	run(m, fr, 2.5);
-	report("vates", "clock_handback", m.externalClock ? 1 : 0, !m.externalClock);
+	report("vates", "clock_handback", m.modul.externalClock ? 1 : 0, !m.modul.externalClock);
 }
 
 // ── the pattern switches rewrite the sequence ─────────────────────────────────
@@ -558,17 +558,17 @@ static void testPatternSwitches() {
 	m.params[Vates::RHYTHM_PARAM].setValue(0.f);    // four on the floor
 	m.params[Vates::GSW_PARAM].setValue(1.f);
 	run(m, fr, 0.5);
-	uint16_t asIs = m.gateWork;
+	uint16_t asIs = m.modul.gateWork;
 	report("vates", "rhythm_loaded", asIs, asIs == 0x8888);
 
 	m.params[Vates::GSW_PARAM].setValue(0.f);       // invert, exactly one pass
 	runSteps(m, fr, 16);
-	uint16_t inverted = m.gateWork;
+	uint16_t inverted = m.modul.gateWork;
 	report("vates", "gate_inverted", inverted, inverted == (uint16_t)~asIs);
 
 	m.params[Vates::GSW_PARAM].setValue(2.f);       // randomize
 	runSteps(m, fr, 16);
-	report("vates", "gate_randomized", m.gateWork, m.gateWork != inverted);
+	report("vates", "gate_randomized", m.modul.gateWork, m.modul.gateWork != inverted);
 
 	// the CV sequence stays inside its rails whatever the switches do
 	m.params[Vates::CSW_PARAM].setValue(2.f);
@@ -649,20 +649,20 @@ static void testRhythmCv() {
 	m.inputs[Vates::RHYTHM_INPUT].channels = 1;
 	m.inputs[Vates::RHYTHM_INPUT].setVoltage(0.f);
 	run(m, fr, 0.2);
-	report("vates", "rhythm_cv_zero", m.gateWork, m.gateWork == 0x8888);
+	report("vates", "rhythm_cv_zero", m.modul.gateWork, m.modul.gateWork == 0x8888);
 
 	m.inputs[Vates::RHYTHM_INPUT].setVoltage(10.f);   // the last of the 32
 	run(m, fr, 0.2);
-	report("vates", "rhythm_cv_top", m.gateWork, m.gateWork == 0xFFFF);
+	report("vates", "rhythm_cv_top", m.modul.gateWork, m.modul.gateWork == 0xFFFF);
 
 	m.inputs[Vates::RHYTHM_INPUT].setVoltage(5.f);    // halfway: "funk"
 	run(m, fr, 0.2);
-	report("vates", "rhythm_cv_middle", m.gateWork, m.gateWork == 0x9632);
+	report("vates", "rhythm_cv_middle", m.modul.gateWork, m.modul.gateWork == 0x9632);
 
 	// past the end it wraps: 11 V is 35 patterns on, which is the fourth
 	m.inputs[Vates::RHYTHM_INPUT].setVoltage(11.f);
 	run(m, fr, 0.2);
-	report("vates", "rhythm_cv_wraps", m.gateWork, m.gateWork == 0xAAAA);
+	report("vates", "rhythm_cv_wraps", m.modul.gateWork, m.modul.gateWork == 0xAAAA);
 }
 
 // ── the pattern inputs read the Rack window, and the hardware one on ask ─────
@@ -678,31 +678,31 @@ static void testPatternInputs() {
 	m.inputs[Vates::G_INPUT].channels = 1;            // ...but the jack decides
 	m.inputs[Vates::G_INPUT].setVoltage(0.f);
 	run(m, fr, 0.3);
-	uint16_t start = m.gateWork;
+	uint16_t start = m.modul.gateWork;
 	runSteps(m, fr, 16);
-	report("vates", "pattern_in_0v_neutral", m.gateWork,
-	       m.gateWork == start && start == 0x8888);
+	report("vates", "pattern_in_0v_neutral", m.modul.gateWork,
+	       m.modul.gateWork == start && start == 0x8888);
 
 	m.inputs[Vates::G_INPUT].setVoltage(-5.f);        // invert
 	runSteps(m, fr, 16);
-	report("vates", "pattern_in_negative_inverts", m.gateWork,
-	       m.gateWork == (uint16_t)~start);
+	report("vates", "pattern_in_negative_inverts", m.modul.gateWork,
+	       m.modul.gateWork == (uint16_t)~start);
 
 	m.inputs[Vates::G_INPUT].setVoltage(5.f);         // randomize
-	uint16_t before = m.gateWork;
+	uint16_t before = m.modul.gateWork;
 	runSteps(m, fr, 16);
-	report("vates", "pattern_in_positive_randomizes", m.gateWork,
-	       m.gateWork != before);
+	report("vates", "pattern_in_positive_randomizes", m.modul.gateWork,
+	       m.modul.gateWork != before);
 
 	// the hardware window, for whoever wants it: 0 V inverts
 	m.hardwareCvWindow = true;
 	m.params[Vates::RHYTHM_PARAM].setValue(1.f);      // reload a clean pattern
 	run(m, fr, 0.1);
-	uint16_t clean = m.gateWork;
+	uint16_t clean = m.modul.gateWork;
 	m.inputs[Vates::G_INPUT].setVoltage(0.f);
 	runSteps(m, fr, 16);
-	report("vates", "pattern_in_hardware_window", m.gateWork,
-	       m.gateWork == (uint16_t)~clean);
+	report("vates", "pattern_in_hardware_window", m.modul.gateWork,
+	       m.modul.gateWork == (uint16_t)~clean);
 }
 
 // ── the LFO ───────────────────────────────────────────────────────────────────
