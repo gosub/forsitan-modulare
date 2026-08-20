@@ -22,7 +22,14 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
-     aether_probe $(SMOKE_BINS) $(CROSS_BINS)
+     aether_probe vates_probe $(SMOKE_BINS) $(CROSS_BINS)
+
+# Measures and auditions the generated banks: every family of the four ported
+# pages64 kit engines, the imber-derived tonal families, a whole six-bank set
+# from one seed, and `wav <dir>` to write them out and listen.
+vates_probe: vates_probe.cpp ../src/vates/kits.hpp ../src/vates/bank.hpp \
+             ../src/imber/imber_gen.hpp ../src/imber/imber_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Measurement and audition harness for the square-relation percussion voice.
 # It drives the engine header alone and needs no Rack. `ops` is the one that
