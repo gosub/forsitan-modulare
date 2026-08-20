@@ -1263,20 +1263,20 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_TRIG label 0.0 label "trig" 0.0 12.25 69.50
 // @elem LABEL_FILTER label 0.0 label "filter" 0.0 49.50 70.50
 // @elem LABEL_FX label 0.0 label "fx" 0.0 82.50 70.50
-// @elem BOX_ENV panel_box 7.0 box "" 0.0 115.50 85.00
-// @elem LABEL_ENV label 0.0 label "env" 0.0 115.50 90.50
-// @elem LABEL_SYNC label 0.0 label "sync" 0.0 7.00 75.50
-// @elem LABEL_FREERUN label 0.0 label "free" 0.0 7.00 91.50
-// @elem LABEL_RATE label 0.0 label "rate" 0.0 17.00 91.50
-// @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 45.50 90.50
-// @elem BOX_SAW panel_box 7.0 box "" 0.0 92.00 85.00
-// @elem BOX_TRI panel_box 7.0 box "" 0.0 60.00 85.00
-// @elem LABEL_TRI label 0.0 label "tri" 0.0 60.00 90.50
-// @elem BOX_PULSE panel_box 7.0 box "" 0.0 76.00 85.00
-// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 76.00 90.50
-// @elem LABEL_SAW label 0.0 label "saw" 0.0 92.00 90.50
-// @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 115.50 70.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 126.50 70.50
+// @elem BOX_ENV panel_box 7.0 box "" 0.0 82.00 120.00
+// @elem LABEL_ENV label 0.0 label "env" 0.0 82.00 125.50
+// @elem LABEL_SYNC label 0.0 label "sync" 0.0 8.00 75.50
+// @elem LABEL_FREERUN label 0.0 label "free" 0.0 8.00 91.50
+// @elem LABEL_RATE label 0.0 label "rate" 0.0 20.00 91.50
+// @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 52.00 90.50
+// @elem BOX_SAW panel_box 7.0 box "" 0.0 104.00 85.00
+// @elem BOX_TRI panel_box 7.0 box "" 0.0 68.00 85.00
+// @elem LABEL_TRI label 0.0 label "tri" 0.0 68.00 90.50
+// @elem BOX_PULSE panel_box 7.0 box "" 0.0 86.00 85.00
+// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 86.00 90.50
+// @elem LABEL_SAW label 0.0 label "saw" 0.0 104.00 90.50
+// @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 110.00 70.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 121.00 70.50
 // @elem LABEL_GSW label 0.0 label "G" 0.0 24.00 95.50
 // @elem LABEL_CSW label 0.0 label "C" 0.0 44.00 95.50
 // @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 11.50 110.50
@@ -1290,10 +1290,10 @@ struct VatesWidget : ModuleWidget {
 // @elem BOX_CLK_OUT panel_box 7.0 box "" 0.0 112.00 104.00
 // @elem LABEL_CLK_OUT label 0.0 label "clk" 0.0 112.00 109.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 25.00 126.50
-// @elem BOX_LEFT panel_box 7.0 box "" 0.0 85.00 120.00
-// @elem LABEL_LEFT label 0.0 label "L" 0.0 85.00 125.50
-// @elem BOX_RIGHT panel_box 7.0 box "" 0.0 105.00 120.00
-// @elem LABEL_RIGHT label 0.0 label "R" 0.0 105.00 125.50
+// @elem BOX_LEFT panel_box 7.0 box "" 0.0 98.00 120.00
+// @elem LABEL_LEFT label 0.0 label "L" 0.0 98.00 125.50
+// @elem BOX_RIGHT panel_box 7.0 box "" 0.0 114.00 120.00
+// @elem LABEL_RIGHT label 0.0 label "R" 0.0 114.00 125.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 66.04 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -1321,17 +1321,17 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 62.00f)), module, Vates::FILTER_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 62.00f)), module, Vates::FX_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 62.00f)), module, Vates::FX_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.50f, 83.00f)), module, Vates::ENV_OUTPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(7.00f, 83.00f)), module, Vates::SYNC_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(17.00f, 83.00f)), module, Vates::RATE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(26.50f, 83.00f)), module, Vates::LFO_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(35.50f, 83.00f)), module, Vates::LFO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.50f, 83.00f)), module, Vates::LFO_RESET_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(60.00f, 83.00f)), module, Vates::TRI_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 83.00f)), module, Vates::PULSE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.00f, 83.00f)), module, Vates::SAW_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(115.50f, 62.00f)), module, Vates::TEMPO_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(126.50f, 62.00f)), module, Vates::CLK_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 118.00f)), module, Vates::ENV_OUTPUT));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(8.00f, 83.00f)), module, Vates::SYNC_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(20.00f, 83.00f)), module, Vates::RATE_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(31.00f, 83.00f)), module, Vates::LFO_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.00f, 83.00f)), module, Vates::LFO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(52.00f, 83.00f)), module, Vates::LFO_RESET_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(68.00f, 83.00f)), module, Vates::TRI_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(86.00f, 83.00f)), module, Vates::PULSE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(104.00f, 83.00f)), module, Vates::SAW_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 62.00f)), module, Vates::TEMPO_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 62.00f)), module, Vates::CLK_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 102.00f)), module, Vates::RHYTHM_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(24.00f, 102.00f)), module, Vates::GSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.50f, 102.00f)), module, Vates::G_INPUT));
@@ -1342,10 +1342,10 @@ struct VatesWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(96.00f, 102.00f)), module, Vates::CV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(112.00f, 102.00f)), module, Vates::CLK_OUTPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.00f, 118.00f)), module, Vates::LEVEL_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(85.00f, 118.00f)), module, Vates::LEFT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(105.00f, 118.00f)), module, Vates::RIGHT_OUTPUT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(90.00f, 115.00f)), module, Vates::LEFT_LIGHT));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(110.00f, 115.00f)), module, Vates::RIGHT_LIGHT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 118.00f)), module, Vates::LEFT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 118.00f)), module, Vates::RIGHT_OUTPUT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(103.00f, 115.00f)), module, Vates::LEFT_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(119.00f, 115.00f)), module, Vates::RIGHT_LIGHT));
         // @layout:end
 
 		VatesDisplay* bankDisp = new VatesDisplay;
