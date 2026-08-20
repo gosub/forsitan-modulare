@@ -343,10 +343,24 @@ static void testDefaults() {
 	pressTrigger(m, fr);
 	run(m, fr, 0.1);
 	Stats env = runStats(m, fr, 0.1, Vates::ENV_OUTPUT);
-	Stats audio = runStats(m, fr, 0.1, Vates::LEFT_OUTPUT);
 	report("vates", "default_length_open", env.rms(), env.rms() > 1.0);
-	report("vates", "default_length_audible", audio.rms(),
-	       audio.rms() > 1e-3 && audio.nans == 0);
+
+	// The audio only has to be there. Its level over any one window belongs
+	// to the generated sample — a pad can still be swelling a fifth of a
+	// second in — so this is a peak over the whole hit, not an rms late in
+	// it, and the envelope above is what carries the claim about the knob.
+	Vates m2;
+	long fr2 = 0;
+	if (!waitForBanks(m2, fr2)) {
+		report("vates", "default_length_audible", 0, false);
+		return;
+	}
+	selectSample(m2, 4, 0);
+	run(m2, fr2, 0.02);
+	pressTrigger(m2, fr2);
+	Stats audio = runStats(m2, fr2, 0.5, Vates::LEFT_OUTPUT);
+	report("vates", "default_length_audible", audio.peak,
+	       audio.peak > 1e-2 && audio.nans == 0);
 }
 
 // ── the CV input spans a bank once, and its top is the last sample ────────────
