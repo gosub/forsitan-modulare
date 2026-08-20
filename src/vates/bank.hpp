@@ -224,6 +224,22 @@ struct BankSet {
 	uint64_t seed = 0;
 	float sr = 44100.f;
 	bool ready = false;
+
+	// Hand a finished set over without copying 48 buffers: the caller is the
+	// audio thread taking delivery from the worker.
+	void swapFrom(BankSet& o) {
+		for (int b = 0; b < kNumBanks; b++) {
+			banks[b].name.swap(o.banks[b].name);
+			for (int s = 0; s < kSamplesPerBank; s++) {
+				banks[b].sampleNames[s].swap(o.banks[b].sampleNames[s]);
+				banks[b].L[s].swap(o.banks[b].L[s]);
+				banks[b].R[s].swap(o.banks[b].R[s]);
+			}
+		}
+		seed = o.seed;
+		sr = o.sr;
+		ready = o.ready;
+	}
 };
 
 inline const char* bankName(int b) {

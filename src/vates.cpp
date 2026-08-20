@@ -1,4 +1,15 @@
 #include "forsitan.hpp"
+#include "sampler/kitloader.hpp"
+#include "vates/bank.hpp"
+#include "imber/imber_worker.hpp"
+
+#include <osdialog.h>
+
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
 
 // vates — stereo sample player with a pattern generator underneath.
 //
@@ -9,12 +20,118 @@
 // turning another is a gesture a mouse does badly.
 //
 // Six banks of eight samples are generated from a seed — drums, objects,
-// grains, micro, tones, air — one sample per kind the generator knows, so a
-// knob position always means the same role. User kits follow, read from the
-// kits folder shared with pellicula. See doc/vates.md.
-//
-// NOTE: this is the panel and the parameter surface. The engine (sample
-// generation, playback, envelope, FX, LFO, pattern generator) lands next.
+// grains, micro, tones, air (src/vates/bank.hpp) — one sample per kind the
+// generator knows, so a knob position always means the same role. User kits
+// follow, read from the kits folder shared with pellicula. See doc/vates.md.
+
+namespace {
+
+using forsitan_sampler::Sample;
+using forsitan_sampler::Kit;
+
+// Generated banks are always rendered at this rate and resampled on
+// playback, exactly as a user's wav files are: the alternative is
+// regenerating 48 samples every time the engine rate changes.
+static const float kGenRate = 44100.f;
+
+static const int kSteps = 16;
+
+// ── the rhythm table ──────────────────────────────────────────────────────────
+// 32 sixteen-step gate patterns, step 0 in the high bit. Sixteen written by
+// hand — the ones a drummer would recognise — then the sixteen euclidean
+// distributions E(1..16, 16), which fill in every density between them. The
+// hardware loads its rhythms from a web app that rebuilds the firmware; this
+// is the knob that replaces it.
+static uint16_t rhythmPattern(int i) {
+	static const uint16_t classic[16] = {
+		0x8888,   // four on the floor
+		0x0808,   // backbeat
+		0x2222,   // offbeat eighths
+		0xAAAA,   // eighths
+		0xFFFF,   // sixteenths
+		0x9292,   // tresillo
+		0x9228,   // son clave
+		0x9128,   // rumba clave
+		0x9224,   // bossa
+		0xA94A,   // cascara
+		0x9999,   // shuffle
+		0xB2B2,   // gallop
+		0x8000,   // downbeat only
+		0x8080,   // half notes
+		0x9249,   // dotted eighths
+		0x9632,   // funk
+	};
+	i = clamp(i, 0, 31);
+	if (i < 16)
+		return classic[i];
+	int k = i - 15;   // 1..16 onsets
+	uint16_t p = 0;
+	for (int s = 0; s < kSteps; s++)
+		if ((s * k) % kSteps < k)
+			p |= (uint16_t)(0x8000u >> s);
+	return p;
+}
+
+// The CV sequence that goes with a rhythm: sixteen stepped levels, hashed
+// from the pattern index so a rhythm always brings the same contour.
+static float rhythmCv(int pat, int step) {
+	uint32_t h = (uint32_t)(pat + 1) * 2654435761u ^ (uint32_t)(step + 1) * 2246822519u;
+	h ^= h >> 13;
+	h *= 2654435761u;
+	h ^= h >> 16;
+	return (h % 16u) / 15.f * 10.f;
+}
+
+// ── small DSP ─────────────────────────────────────────────────────────────────
+
+// TPT state-variable filter, one per channel. vates uses it as a lowpass on
+// one side of the filter knob and a highpass on the other.
+struct Svf {
+	float ic1 = 0.f, ic2 = 0.f;
+	void reset() { ic1 = ic2 = 0.f; }
+	// returns lowpass in lp and highpass in hp
+	void process(float x, float g, float k, float& lp, float& hp) {
+		float a1 = 1.f / (1.f + g * (g + k));
+		float a2 = g * a1;
+		float v3 = x - ic2;
+		float v1 = a1 * ic1 + a2 * v3;
+		float v2 = ic2 + g * v1;
+		ic1 = 2.f * v1 - ic1;
+		ic2 = 2.f * v2 - ic2;
+		lp = v2;
+		hp = x - k * v1 - v2;
+		if (!std::isfinite(ic1) || !std::isfinite(ic2))
+			reset();
+	}
+};
+
+// One delay line with fractional read, used by both halves of the FX knob.
+struct Delay {
+	std::vector<float> buf;
+	int w = 0;
+	void init(int n) {
+		buf.assign(std::max(2, n), 0.f);
+		w = 0;
+	}
+	void write(float x) {
+		buf[w] = x;
+		if (++w >= (int)buf.size())
+			w = 0;
+	}
+	float read(float delaySamples) const {
+		int n = (int)buf.size();
+		float d = clamp(delaySamples, 1.f, (float)(n - 2));
+		float rp = (float)w - d;
+		while (rp < 0.f)
+			rp += n;
+		int i0 = (int)rp;
+		float fr = rp - i0;
+		int i1 = (i0 + 1) % n;
+		return buf[i0] + (buf[i1] - buf[i0]) * fr;
+	}
+};
+
+}   // namespace
 
 struct Vates : Module {
 	enum ParamId {
@@ -74,6 +191,82 @@ struct Vates : Module {
 		LIGHTS_LEN
 	};
 
+	// ── generated banks ──────────────────────────────────────────────────────
+	struct GenJob {
+		vates_bank::BankSet set;
+		std::atomic<int> progress;
+		std::atomic<bool> done;
+		std::atomic<bool> failed;
+		std::atomic<bool> abort;
+		GenJob() : progress(0), done(false), failed(false), abort(false) {}
+	};
+	std::shared_ptr<GenJob> genJob;
+	std::shared_ptr<vates_bank::BankSet> banks;
+	uint64_t bankSeed = 0x5eedbaadull;
+	bool pendingGen = true;
+
+	// ── user kits ────────────────────────────────────────────────────────────
+	struct KitJob {
+		Kit kit;
+		std::atomic<bool> done;
+		std::atomic<bool> abort;
+		KitJob() : done(false), abort(false) {}
+	};
+	std::shared_ptr<KitJob> kitJob;
+	std::shared_ptr<Kit> userKit;
+	std::vector<std::string> kitNames;
+	std::string loadingKit;
+	int loadedKitIndex = -1;
+
+	// ── quantizer ────────────────────────────────────────────────────────────
+	int rootNote = 0;                     // 0-11, C..B
+	int scaleIndex = imber_dsp::kDefaultScale;
+	bool honourExternalClock = true;
+
+	// ── voice ────────────────────────────────────────────────────────────────
+	std::shared_ptr<void> voiceHold;      // keeps the bank or kit alive
+	const std::vector<float>* voiceL = nullptr;
+	const std::vector<float>* voiceR = nullptr;
+	double voicePos = 0.0;
+	float voiceRate = 1.f;                // samples per engine frame
+	float voiceSrcRate = kGenRate;
+	bool voiceActive = false;
+	bool voiceReverse = false;
+	bool voiceAttack = false;             // in the rising phase of a reverse hit
+	float env = 0.f, envCoef = 0.f;
+	bool envHold = false;                 // no-decay: play to the end
+	float release = 1.f;
+
+	// ── selection ────────────────────────────────────────────────────────────
+	int bankIndex = 0;
+	int sampleIndex = 0;
+	int aimedSample = 0;
+	float notePitch = 0.f;                // latched, quantized
+	int uiBank = 0, uiSample = 0;
+
+	// ── clock, LFO, pattern ──────────────────────────────────────────────────
+	double clockPhase = 0.0;              // 0..1 within a step
+	float stepSeconds = 0.125f;
+	float sinceExternal = 10.f;
+	bool externalClock = false;
+	int step = 0;
+	float gateTimer = 0.f;
+	float clkPulse = 0.f;
+	uint16_t gateWork = 0;
+	float cvWork[kSteps] = {0.f};
+	int loadedRhythm = -1;
+	uint32_t patRng = 0x1234567u;
+	float lfoPhase = 0.f;
+
+	// ── fx ───────────────────────────────────────────────────────────────────
+	Svf filt[2];
+	Delay dly[2], mod[2];
+	float dlyFb[2] = {0.f, 0.f};
+	float modPhase = 0.f;
+
+	dsp::SchmittTrigger trigIn, clkIn, lfoResetIn, patResetIn;
+	dsp::BooleanTrigger trigButton;
+
 	Vates() {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
@@ -122,12 +315,642 @@ struct Vates : Module {
 		configOutput(CV_OUTPUT, "Pattern CV");
 		configOutput(LEFT_OUTPUT, "Left");
 		configOutput(RIGHT_OUTPUT, "Right");
+
+		forsitan_sampler::loadSettingsOnce();
+		bankSeed = (uint64_t)random::u32() | 1ull;
+		for (int i = 0; i < 2; i++) {
+			dly[i].init((int)(1.6f * 96000.f));
+			mod[i].init((int)(0.05f * 96000.f));
+		}
 	}
 
+	~Vates() {
+		if (genJob)
+			genJob->abort.store(true);
+		if (kitJob)
+			kitJob->abort.store(true);
+	}
+
+	void onAdd(const AddEvent& e) override {
+		refreshKits();
+	}
+
+	void refreshKits() {
+		kitNames = forsitan_sampler::listKits(forsitan_sampler::getKitsFolder());
+	}
+
+	int bankCount() const {
+		return vates_bank::kNumBanks + (int)kitNames.size();
+	}
+
+	// ── background work ──────────────────────────────────────────────────────
+
+	// Build the six generated banks off the audio thread. startDetached, not
+	// std::thread: this can be called from process(), and a worker that
+	// inherits the audio thread's realtime policy gets SIGXCPU'd partway
+	// through (see imber_worker.hpp).
+	void startGeneration() {
+		if (genJob)
+			genJob->abort.store(true);
+		std::shared_ptr<GenJob> j;
+		try {
+			j.reset(new GenJob());
+		}
+		catch (const std::exception& err) {
+			WARN("vates: cannot allocate a bank job (%s)", err.what());
+			return;
+		}
+		uint64_t seed = bankSeed;
+		bool started = imber_worker::startDetached([j, seed]() {
+			try {
+				vates_bank::build(j->set, seed, kGenRate, &j->progress, &j->abort);
+			}
+			catch (...) {
+				j->failed.store(true);
+			}
+			j->done.store(true);
+		});
+		if (!started) {
+			WARN("vates: cannot start the bank worker");
+			return;
+		}
+		genJob = j;
+		pendingGen = false;
+	}
+
+	void startKitLoad(int kitIdx) {
+		if (kitJob)
+			kitJob->abort.store(true);
+		if (kitIdx < 0 || kitIdx >= (int)kitNames.size()) {
+			loadingKit.clear();
+			return;
+		}
+		std::shared_ptr<KitJob> j;
+		try {
+			j.reset(new KitJob());
+		}
+		catch (const std::exception& err) {
+			WARN("vates: cannot allocate a kit job (%s)", err.what());
+			return;
+		}
+		std::string name = kitNames[kitIdx];
+		std::string dir = forsitan_sampler::getKitsFolder() + "/" + name;
+		j->kit.name = name;
+		loadingKit = name;
+		loadedKitIndex = kitIdx;
+		bool started = imber_worker::startDetached([j, dir]() {
+			std::vector<std::string> files = forsitan_sampler::listKitFiles(dir, 64);
+			for (const std::string& f : files) {
+				if (j->abort.load())
+					break;
+				Sample s;
+				if (!forsitan_sampler::loadWav(f, s, /*mono=*/false))
+					s = Sample();   // keep the index aligned with the file list
+				j->kit.samples.push_back(std::move(s));
+			}
+			j->done.store(true);
+		});
+		if (!started) {
+			WARN("vates: cannot start the kit worker");
+			return;
+		}
+		kitJob = j;
+	}
+
+	// ── selection helpers ────────────────────────────────────────────────────
+
+	int samplesInBank(int b) const {
+		if (b < vates_bank::kNumBanks)
+			return banks ? vates_bank::kSamplesPerBank : 0;
+		if (userKit && loadedKitIndex == b - vates_bank::kNumBanks)
+			return (int)userKit->samples.size();
+		return 0;
+	}
+
+	// knob + attenuverted CV, wrapped: modulation past the last one comes
+	// back to the first, which is what makes a slow ramp into `sample` a
+	// sequence rather than a fade
+	static int wrapSelect(float knob, float cv, float att, int count) {
+		if (count <= 0)
+			return 0;
+		float v = knob * count + cv * 0.2f * att * count;
+		int i = (int)std::floor(v);
+		i %= count;
+		if (i < 0)
+			i += count;
+		return i;
+	}
+
+	float quantizePitch(float volts) const {
+		const imber_dsp::ScaleDef& sc = imber_dsp::kScales[clamp(scaleIndex, 0, imber_dsp::kScaleCount - 1)];
+		float st = volts * 12.f;
+		int ref = (int)std::round(st);
+		int best = ref;
+		float bestDist = 1e9f;
+		for (int s = ref - 6; s <= ref + 6; s++) {
+			int pc = ((s - rootNote) % 12 + 12) % 12;
+			for (int d = 0; d < sc.size; d++)
+				if (sc.deg[d] == pc) {
+					float dist = std::fabs(s - st);
+					if (dist < bestDist) {
+						bestDist = dist;
+						best = s;
+					}
+					break;
+				}
+		}
+		return best / 12.f;
+	}
+
+	// ── the voice ────────────────────────────────────────────────────────────
+
+	void trigger(float sr) {
+		// a reverse hit that is still swelling is not interrupted, as on the
+		// hardware: "during attack, samples don't retrigger"
+		if (voiceActive && voiceAttack)
+			return;
+
+		const std::vector<float>* L = nullptr;
+		const std::vector<float>* R = nullptr;
+		std::shared_ptr<void> hold;
+		float srcRate = kGenRate;
+		int b = bankIndex;
+		int s = sampleIndex;
+		if (b < vates_bank::kNumBanks) {
+			if (!banks)
+				return;
+			const vates_bank::Bank& bank = banks->banks[b];
+			s = clamp(s, 0, vates_bank::kSamplesPerBank - 1);
+			L = &bank.L[s];
+			R = &bank.R[s];
+			hold = banks;
+		}
+		else {
+			if (!userKit || loadedKitIndex != b - vates_bank::kNumBanks)
+				return;
+			if (s < 0 || s >= (int)userKit->samples.size())
+				return;
+			const Sample& smp = userKit->samples[s];
+			if (smp.empty())
+				return;
+			L = &smp.l;
+			R = smp.stereo() ? &smp.r : &smp.l;
+			srcRate = smp.sampleRate;
+			hold = userKit;
+		}
+		if (!L || L->size() < 2)
+			return;
+
+		voiceHold = hold;
+		voiceL = L;
+		voiceR = R;
+		voiceSrcRate = srcRate;
+
+		// length is latched here, direction included: modulation flips the
+		// playback direction between hits and never inside one
+		float len = clamp(params[LENGTH_PARAM].getValue()
+		                  + inputs[LENGTH_INPUT].getVoltage() * 0.2f
+		                    * params[LENGTH_ATT_PARAM].getValue(), -1.f, 1.f);
+		voiceReverse = len < 0.f;
+		float mag = std::fabs(len);
+		float T = 0.005f * std::pow(1200.f, mag);   // 5 ms .. 6 s
+		envHold = mag > 0.98f;
+
+		if (!voiceReverse) {
+			voicePos = 0.0;
+			env = 1.f;
+			voiceAttack = false;
+			envCoef = std::exp(-1.f / std::max(T * 0.25f * sr, 1.f));
+		}
+		else {
+			voicePos = (double)(L->size() - 2);
+			env = 0.f;
+			voiceAttack = true;
+			// the swell reaches full level as the sample runs out, or in T,
+			// whichever is shorter
+			float playable = (float)L->size() / std::max(voiceRateNow(), 1e-6f) / sr;
+			float A = std::min(T, std::max(playable, 0.002f));
+			envCoef = std::exp(-1.f / std::max(A * 0.25f * sr, 1.f));
+		}
+		release = 1.f;
+
+		if (inputs[NOTE_INPUT].isConnected())
+			notePitch = quantizePitch(inputs[NOTE_INPUT].getVoltage()
+			                          * params[PITCH_ATT_PARAM].getValue());
+		else
+			notePitch = 0.f;
+
+		voiceActive = true;
+		uiBank = bankIndex;
+		uiSample = sampleIndex;
+	}
+
+	float voiceRateNow() {
+		float pitch = params[PITCH_PARAM].getValue() + notePitch;
+		if (inputs[FREE_INPUT].isConnected())
+			pitch += inputs[FREE_INPUT].getVoltage() * params[PITCH_ATT_PARAM].getValue();
+		return std::pow(2.f, clamp(pitch, -6.f, 6.f));
+	}
+
+	// ── process ──────────────────────────────────────────────────────────────
+
 	void process(const ProcessArgs& args) override {
-		// engine to follow
-		outputs[LEFT_OUTPUT].setVoltage(0.f);
-		outputs[RIGHT_OUTPUT].setVoltage(0.f);
+		const float sr = args.sampleRate;
+
+		// finished background work
+		if (pendingGen && !genJob)
+			startGeneration();
+		if (genJob && genJob->done.load()) {
+			if (!genJob->failed.load() && genJob->set.ready) {
+				std::shared_ptr<vates_bank::BankSet> fresh;
+				try {
+					fresh.reset(new vates_bank::BankSet());
+				}
+				catch (...) {
+					fresh.reset();
+				}
+				if (fresh) {
+					fresh->swapFrom(genJob->set);
+					banks = fresh;
+				}
+			}
+			genJob.reset();
+		}
+		if (kitJob && kitJob->done.load()) {
+			std::shared_ptr<Kit> fresh;
+			try {
+				fresh.reset(new Kit());
+			}
+			catch (...) {
+				fresh.reset();
+			}
+			if (fresh) {
+				fresh->name = kitJob->kit.name;
+				fresh->samples.swap(kitJob->kit.samples);
+				userKit = fresh;
+			}
+			loadingKit.clear();
+			kitJob.reset();
+		}
+
+		// ── bank and sample selection ────────────────────────────────────────
+		int nBanks = bankCount();
+		int newBank = wrapSelect(params[BANK_PARAM].getValue(),
+		                         inputs[BANK_INPUT].getVoltage(),
+		                         params[BANK_ATT_PARAM].getValue(), nBanks);
+		if (newBank != bankIndex) {
+			bankIndex = newBank;
+			int kitIdx = bankIndex - vates_bank::kNumBanks;
+			if (kitIdx >= 0 && kitIdx != loadedKitIndex)
+				startKitLoad(kitIdx);
+		}
+		uiBank = bankIndex;
+
+		int nSamples = samplesInBank(bankIndex);
+		int sel = wrapSelect(params[SAMPLE_PARAM].getValue(),
+		                     inputs[SAMPLE_INPUT].getVoltage(),
+		                     params[SAMPLE_ATT_PARAM].getValue(), nSamples);
+		bool play = params[MODE_PARAM].getValue() > 0.5f;
+		bool crossed = (sel != aimedSample);
+		aimedSample = sel;
+		if (!voiceActive)
+			uiSample = sel;
+
+		// ── clock ────────────────────────────────────────────────────────────
+		bool stepped = false;
+		sinceExternal += args.sampleTime;
+		bool extEdge = clkIn.process(inputs[CLK_INPUT].getVoltage(), 0.1f, 1.f);
+		if (extEdge && honourExternalClock) {
+			if (externalClock && sinceExternal > 1e-4f && sinceExternal < 4.f)
+				stepSeconds = sinceExternal;
+			externalClock = true;
+			sinceExternal = 0.f;
+			stepped = true;
+			clockPhase = 0.0;
+		}
+		if (externalClock && sinceExternal > 2.f)
+			externalClock = false;   // the external clock stopped; take over again
+		if (!externalClock) {
+			float bpm = params[TEMPO_PARAM].getValue();
+			stepSeconds = 60.f / std::max(bpm, 1.f) / 4.f;   // sixteenths
+			clockPhase += args.sampleTime / stepSeconds;
+			if (clockPhase >= 1.0) {
+				clockPhase -= 1.0;
+				stepped = true;
+			}
+		}
+		else
+			clockPhase = std::min(1.0, clockPhase + args.sampleTime / std::max(stepSeconds, 1e-4f));
+
+		if (patResetIn.process(inputs[PAT_RESET_INPUT].getVoltage(), 0.1f, 1.f)) {
+			step = 0;
+			clockPhase = 0.0;
+		}
+
+		// ── pattern generator ────────────────────────────────────────────────
+		int rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
+		if (rhythm != loadedRhythm) {
+			loadedRhythm = rhythm;
+			gateWork = rhythmPattern(rhythm);
+			for (int s = 0; s < kSteps; s++)
+				cvWork[s] = rhythmCv(rhythm, s);
+		}
+		if (stepped) {
+			step = (step + 1) % kSteps;
+
+			// the two switches, each normalled to its own input: middle
+			// leaves the sequence alone, up randomizes the step the sequence
+			// is on, down inverts it — and both write into the working copy,
+			// so a flick changes the pattern for good
+			int gMode = (int)std::round(params[GSW_PARAM].getValue());
+			if (inputs[G_INPUT].isConnected()) {
+				float v = inputs[G_INPUT].getVoltage();
+				gMode = v > 3.2f ? 2 : (v < 1.6f ? 0 : 1);
+			}
+			int cMode = (int)std::round(params[CSW_PARAM].getValue());
+			if (inputs[C_INPUT].isConnected()) {
+				float v = inputs[C_INPUT].getVoltage();
+				cMode = v > 3.2f ? 2 : (v < 1.6f ? 0 : 1);
+			}
+			uint16_t mask = (uint16_t)(0x8000u >> step);
+			if (gMode == 2) {
+				patRng ^= patRng << 13; patRng ^= patRng >> 17; patRng ^= patRng << 5;
+				if (patRng & 1)
+					gateWork |= mask;
+				else
+					gateWork &= (uint16_t)~mask;
+			}
+			else if (gMode == 0)
+				gateWork ^= mask;
+			if (cMode == 2) {
+				patRng ^= patRng << 13; patRng ^= patRng >> 17; patRng ^= patRng << 5;
+				cvWork[step] = (patRng % 16u) / 15.f * 10.f;
+			}
+			else if (cMode == 0)
+				cvWork[step] = 10.f - cvWork[step];
+
+			if (gateWork & mask)
+				gateTimer = 0.75f * stepSeconds;
+			clkPulse = 1e-3f;
+		}
+		gateTimer = std::max(0.f, gateTimer - args.sampleTime);
+		clkPulse = std::max(0.f, clkPulse - args.sampleTime);
+
+		// ── LFO ──────────────────────────────────────────────────────────────
+		float rateKnob = params[RATE_PARAM].getValue();
+		float rateMod = inputs[LFO_INPUT].getVoltage() * 0.2f * params[LFO_ATT_PARAM].getValue();
+		float lfoHz;
+		if (params[SYNC_PARAM].getValue() > 0.5f) {
+			// synced: the knob is a divider of the step clock
+			static const float div[8] = {0.25f, 0.5f, 1.f, 2.f, 4.f, 8.f, 16.f, 32.f};
+			int d = clamp((int)(rateKnob * 7.999f), 0, 7);
+			lfoHz = 1.f / std::max(stepSeconds * div[d], 1e-4f);
+		}
+		else
+			lfoHz = 0.01f * std::pow(2000.f, clamp(rateKnob, 0.f, 1.f));
+		lfoHz *= std::pow(4.f, clamp(rateMod, -1.f, 1.f));
+		lfoHz = clamp(lfoHz, 0.002f, 400.f);
+		if (lfoResetIn.process(inputs[LFO_RESET_INPUT].getVoltage(), 0.1f, 1.f))
+			lfoPhase = 0.f;
+		lfoPhase += lfoHz * args.sampleTime;
+		lfoPhase -= std::floor(lfoPhase);
+		// peak at phase 0, falling to the trough at 0.5, rising back after:
+		// pulse is high exactly while the triangle rises
+		float tri = lfoPhase < 0.5f ? 1.f - 2.f * lfoPhase : 2.f * lfoPhase - 1.f;
+		bool lfoRising = lfoPhase >= 0.5f;
+
+		// ── triggers ─────────────────────────────────────────────────────────
+		bool fire = false;
+		if (trigIn.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f))
+			fire = true;
+		if (trigButton.process(params[TRIG_PARAM].getValue() > 0.5f))
+			fire = true;
+		if (play && crossed && nSamples > 0)
+			fire = true;
+		if (fire) {
+			sampleIndex = aimedSample;
+			trigger(sr);
+		}
+
+		// ── playback ─────────────────────────────────────────────────────────
+		float outL = 0.f, outR = 0.f;
+		if (voiceActive && voiceL) {
+			size_t n = voiceL->size();
+			double p = voicePos;
+			if (p < 0.0 || p >= (double)(n - 1)) {
+				voiceActive = false;
+			}
+			else {
+				size_t i0 = (size_t)p;
+				float fr = (float)(p - i0);
+				size_t i1 = std::min(i0 + 1, n - 1);
+				outL = (*voiceL)[i0] + ((*voiceL)[i1] - (*voiceL)[i0]) * fr;
+				outR = (*voiceR)[i0] + ((*voiceR)[i1] - (*voiceR)[i0]) * fr;
+
+				float rate = voiceRateNow() * voiceSrcRate / sr;
+				voicePos += voiceReverse ? -rate : rate;
+
+				if (voiceAttack) {
+					env += (1.f - env) * (1.f - envCoef);
+					if (env > 0.995f) {
+						env = 1.f;
+						voiceAttack = false;
+					}
+				}
+				else if (!envHold && !voiceReverse)
+					env *= envCoef;
+
+				// a reversed hit stops when it reaches the head of the
+				// sample; fade the last few ms so the stop does not click
+				if (voiceReverse) {
+					float togo = (float)voicePos / std::max(rate, 1e-6f) / sr;
+					if (togo < 0.003f)
+						release = clamp(togo / 0.003f, 0.f, 1.f);
+				}
+				float a = env * release;
+				outL *= a;
+				outR *= a;
+				if (!envHold && env < 1e-4f && !voiceAttack)
+					voiceActive = false;
+			}
+		}
+		if (!voiceActive) {
+			env = 0.f;
+			voiceHold.reset();
+		}
+
+		// ── filter ───────────────────────────────────────────────────────────
+		float fParam = clamp(params[FILTER_PARAM].getValue()
+		                     + inputs[FILTER_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+		if (std::fabs(fParam) > 0.01f) {
+			bool lowpass = fParam < 0.f;
+			float mag = std::fabs(fParam);
+			float fc = lowpass ? 80.f * std::pow(250.f, 1.f - mag)
+			                   : 20.f * std::pow(200.f, mag);
+			fc = clamp(fc, 20.f, 0.45f * sr);
+			float g = std::tan((float)M_PI * fc / sr);
+			float k = 1.f / (0.707f + 1.6f * mag);
+			float lp, hp;
+			filt[0].process(outL, g, k, lp, hp);
+			outL = lowpass ? lp : hp;
+			filt[1].process(outR, g, k, lp, hp);
+			outR = lowpass ? lp : hp;
+		}
+
+		// ── fx ───────────────────────────────────────────────────────────────
+		float fxParam = clamp(params[FX_PARAM].getValue()
+		                      + inputs[FX_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+		if (fxParam < -0.01f) {
+			// tempo-synced delay, three eighths of a beat as on the hardware
+			float amt = -fxParam;
+			float beat = stepSeconds * 4.f;
+			float t = clamp(beat * 0.375f, 0.005f, 1.5f) * sr;
+			float wetL = dly[0].read(t);
+			float wetR = dly[1].read(t * 0.667f);
+			float fb = 0.25f + 0.35f * amt;
+			dly[0].write(outL + wetR * fb);
+			dly[1].write(outR + wetL * fb);
+			outL += wetL * amt * 0.8f;
+			outR += wetR * amt * 0.8f;
+		}
+		else if (fxParam > 0.01f) {
+			// chorus into flanger: the further up, the shorter the delay and
+			// the more feedback, and the wet path soft-clips
+			float amt = fxParam;
+			modPhase += 0.35f * args.sampleTime;
+			modPhase -= std::floor(modPhase);
+			float m1 = std::sin(2.f * (float)M_PI * modPhase);
+			float m2 = std::sin(2.f * (float)M_PI * (modPhase + 0.25f));
+			float base = (8.f - 6.5f * amt) * 0.001f * sr;
+			float depth = (2.5f - 1.8f * amt) * 0.001f * sr;
+			float wetL = mod[0].read(base + depth * m1);
+			float wetR = mod[1].read(base + depth * m2);
+			float fb = 0.7f * amt;
+			mod[0].write(std::tanh(outL + wetL * fb));
+			mod[1].write(std::tanh(outR + wetR * fb));
+			float mix = 0.9f * amt;
+			outL = outL * (1.f - 0.5f * mix) + wetL * mix;
+			outR = outR * (1.f - 0.5f * mix) + wetR * mix;
+			outL = std::tanh(outL * (1.f + amt));
+			outR = std::tanh(outR * (1.f + amt));
+		}
+
+		// ── outputs ──────────────────────────────────────────────────────────
+		float level = params[LEVEL_PARAM].getValue();
+		outL *= level * 5.f;
+		outR *= level * 5.f;
+		outputs[LEFT_OUTPUT].setVoltage(clamp(outL, -10.f, 10.f));
+		outputs[RIGHT_OUTPUT].setVoltage(clamp(outR, -10.f, 10.f));
+		lights[LEFT_LIGHT].setBrightnessSmooth(std::fabs(outL) * 0.2f, args.sampleTime);
+		lights[RIGHT_LIGHT].setBrightnessSmooth(std::fabs(outR) * 0.2f, args.sampleTime);
+
+		outputs[ENV_OUTPUT].setVoltage(clamp(env * release * 10.f, 0.f, 10.f));
+		outputs[TRI_OUTPUT].setVoltage(tri * 10.f);
+		outputs[PULSE_OUTPUT].setVoltage(lfoRising ? 10.f : 0.f);
+		outputs[CLK_OUTPUT].setVoltage(clkPulse > 0.f ? 10.f : 0.f);
+		outputs[GATE_OUTPUT].setVoltage(gateTimer > 0.f ? 10.f : 0.f);
+		outputs[CV_OUTPUT].setVoltage(cvWork[clamp(step, 0, kSteps - 1)]);
+	}
+
+	// ── ui helpers ───────────────────────────────────────────────────────────
+
+	std::string bankLabel() {
+		if (genJob) {
+			int p = genJob->progress.load();
+			return string::f("building %d%%", 100 * p / vates_bank::kTotalSamples);
+		}
+		if (bankIndex < vates_bank::kNumBanks)
+			return vates_bank::bankName(bankIndex);
+		int k = bankIndex - vates_bank::kNumBanks;
+		if (!loadingKit.empty())
+			return loadingKit + " ...";
+		if (k >= 0 && k < (int)kitNames.size())
+			return kitNames[k];
+		return "-";
+	}
+
+	std::string sampleLabel() {
+		int n = samplesInBank(bankIndex);
+		if (n <= 0)
+			return "-";
+		int s = clamp(uiSample, 0, n - 1);
+		if (bankIndex < vates_bank::kNumBanks && banks)
+			return string::f("%d %s", s + 1, banks->banks[bankIndex].sampleNames[s].c_str());
+		return string::f("%d/%d", s + 1, n);
+	}
+
+	// ── persistence ──────────────────────────────────────────────────────────
+
+	void onReset(const ResetEvent& e) override {
+		Module::onReset(e);
+		rootNote = 0;
+		scaleIndex = imber_dsp::kDefaultScale;
+		honourExternalClock = true;
+		bankSeed = (uint64_t)random::u32() | 1ull;
+		pendingGen = true;
+		voiceActive = false;
+		step = 0;
+		loadedRhythm = -1;
+	}
+
+	json_t* dataToJson() override {
+		json_t* root = json_object();
+		json_object_set_new(root, "bankSeed", json_integer((json_int_t)bankSeed));
+		json_object_set_new(root, "root", json_integer(rootNote));
+		json_object_set_new(root, "scale", json_integer(scaleIndex));
+		json_object_set_new(root, "externalClock", json_boolean(honourExternalClock));
+		return root;
+	}
+
+	void dataFromJson(json_t* root) override {
+		if (json_t* j = json_object_get(root, "bankSeed")) {
+			bankSeed = (uint64_t)json_integer_value(j);
+			pendingGen = true;
+		}
+		if (json_t* j = json_object_get(root, "root"))
+			rootNote = clamp((int)json_integer_value(j), 0, 11);
+		if (json_t* j = json_object_get(root, "scale"))
+			scaleIndex = clamp((int)json_integer_value(j), 0, imber_dsp::kScaleCount - 1);
+		if (json_t* j = json_object_get(root, "externalClock"))
+			honourExternalClock = json_boolean_value(j);
+	}
+};
+
+// ── display ───────────────────────────────────────────────────────────────────
+// Kits are the user's own and the generated banks are new every seed, so the
+// panel cannot label what a knob position holds — the display does.
+struct VatesDisplay : Widget {
+	Vates* module = nullptr;
+
+	void draw(const DrawArgs& args) override {
+		Rect r = box.zeroPos();
+		nvgBeginPath(args.vg);
+		nvgRoundedRect(args.vg, r.pos.x, r.pos.y, r.size.x, r.size.y, 2.f);
+		nvgFillColor(args.vg, nvgRGB(0x11, 0x11, 0x11));
+		nvgFill(args.vg);
+		nvgStrokeColor(args.vg, nvgRGB(0x55, 0x55, 0x55));
+		nvgStrokeWidth(args.vg, 0.8f);
+		nvgStroke(args.vg);
+	}
+
+	void drawLayer(const DrawArgs& args, int layer) override {
+		if (layer != 1)
+			return;
+		std::shared_ptr<Font> font =
+			APP->window->loadFont(asset::system("res/fonts/ShareTechMono-Regular.ttf"));
+		if (!font)
+			return;
+		Rect r = box.zeroPos();
+		nvgFontFaceId(args.vg, font->handle);
+		nvgFontSize(args.vg, 11.f);
+		nvgFillColor(args.vg, nvgRGB(0xff, 0xd5, 0x00));
+
+		std::string bank = module ? module->bankLabel() : "vates";
+		std::string smp  = module ? module->sampleLabel() : "";
+		nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
+		nvgText(args.vg, r.pos.x + 6.f, r.getCenter().y, bank.c_str(), NULL);
+		nvgTextAlign(args.vg, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
+		nvgText(args.vg, r.pos.x + r.size.x - 6.f, r.getCenter().y, smp.c_str(), NULL);
 	}
 };
 
@@ -276,6 +1099,58 @@ struct VatesWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(90.00f, 115.00f)), module, Vates::LEFT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(110.00f, 115.00f)), module, Vates::RIGHT_LIGHT));
         // @layout:end
+
+		VatesDisplay* disp = new VatesDisplay;
+		disp->module = module;
+		disp->box.pos = mm2px(Vec(24.f, 9.5f));
+		disp->box.size = mm2px(Vec(84.08f, 8.f));
+		addChild(disp);
+	}
+
+	void appendContextMenu(Menu* menu) override {
+		Vates* m = getModule<Vates>();
+		if (!m)
+			return;
+
+		menu->addChild(new MenuSeparator);
+
+		std::vector<std::string> noteNames;
+		for (int i = 0; i < 12; i++)
+			noteNames.push_back(imber_dsp::noteName(i));
+		menu->addChild(createIndexSubmenuItem("Root", noteNames,
+			[=]() { return m->rootNote; },
+			[=](int v) { m->rootNote = v; }));
+
+		std::vector<std::string> scaleNames;
+		for (int i = 0; i < imber_dsp::kScaleCount; i++)
+			scaleNames.push_back(imber_dsp::kScales[i].name);
+		menu->addChild(createIndexSubmenuItem("Scale", scaleNames,
+			[=]() { return m->scaleIndex; },
+			[=](int v) { m->scaleIndex = v; }));
+
+		menu->addChild(createMenuItem("Reroll kit", "", [=]() {
+			m->bankSeed = (uint64_t)random::u32() | 1ull;
+			m->pendingGen = true;
+		}));
+
+		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
+			&m->honourExternalClock));
+
+		menu->addChild(new MenuSeparator);
+		std::string folder = forsitan_sampler::getKitsFolder();
+		menu->addChild(createMenuLabel(folder.empty() ? "Kits folder: (not set)"
+		                                              : "Kits folder: " + folder));
+		menu->addChild(createMenuItem("Set kits folder…", "", [=]() {
+			char* p = osdialog_file(OSDIALOG_OPEN_DIR,
+			                        folder.empty() ? NULL : folder.c_str(), NULL, NULL);
+			if (p) {
+				forsitan_sampler::setKitsFolder(p);
+				std::free(p);
+				m->refreshKits();
+			}
+		}));
+		menu->addChild(createMenuItem("Rescan kits", string::f("%d found", (int)m->kitNames.size()),
+			[=]() { m->refreshKits(); }));
 	}
 };
 
