@@ -241,6 +241,13 @@ struct Vates : Module {
 	int bankIndex = 0;
 	int sampleIndex = 0;
 	int aimedSample = 0;
+	// What the display shows. Plain char buffers written by the audio thread
+	// only when the text actually changes: the widget reads them from the UI
+	// thread, and having it walk `banks` and the kit-name vector instead
+	// would be a race against the swap that installs a freshly built set.
+	char uiBankText[48] = "vates";
+	char uiSampleText[48] = "";
+	int uiBankShown = -1, uiSampleShown = -1, uiProgressShown = -1;
 	float notePitch = 0.f;                // latched, quantized
 	int uiBank = 0, uiSample = 0;
 
@@ -850,33 +857,47 @@ struct Vates : Module {
 		outputs[CLK_OUTPUT].setVoltage(clkPulse > 0.f ? 10.f : 0.f);
 		outputs[GATE_OUTPUT].setVoltage(gateTimer > 0.f ? 10.f : 0.f);
 		outputs[CV_OUTPUT].setVoltage(cvWork[clamp(step, 0, kSteps - 1)]);
+
+		refreshDisplayText();
 	}
 
 	// ── ui helpers ───────────────────────────────────────────────────────────
 
-	std::string bankLabel() {
-		if (genJob) {
-			int p = genJob->progress.load();
-			return string::f("building %d%%", 100 * p / vates_bank::kTotalSamples);
-		}
-		if (bankIndex < vates_bank::kNumBanks)
-			return vates_bank::bankName(bankIndex);
-		int k = bankIndex - vates_bank::kNumBanks;
-		if (!loadingKit.empty())
-			return loadingKit + " ...";
-		if (k >= 0 && k < (int)kitNames.size())
-			return kitNames[k];
-		return "-";
-	}
-
-	std::string sampleLabel() {
+	// Called from process(), and only writes when something changed: the
+	// generation percentage, the bank, or the sample.
+	void refreshDisplayText() {
+		int progress = -1;
+		if (genJob)
+			progress = 100 * genJob->progress.load() / vates_bank::kTotalSamples;
 		int n = samplesInBank(bankIndex);
-		if (n <= 0)
-			return "-";
-		int s = clamp(uiSample, 0, n - 1);
-		if (bankIndex < vates_bank::kNumBanks && banks)
-			return string::f("%d %s", s + 1, banks->banks[bankIndex].sampleNames[s].c_str());
-		return string::f("%d/%d", s + 1, n);
+		int s = n > 0 ? clamp(uiSample, 0, n - 1) : -1;
+		if (progress == uiProgressShown && bankIndex == uiBankShown && s == uiSampleShown)
+			return;
+		uiProgressShown = progress;
+		uiBankShown = bankIndex;
+		uiSampleShown = s;
+
+		if (progress >= 0)
+			snprintf(uiBankText, sizeof uiBankText, "building %d%%", progress);
+		else if (bankIndex < vates_bank::kNumBanks)
+			snprintf(uiBankText, sizeof uiBankText, "%s", vates_bank::bankName(bankIndex));
+		else if (!loadingKit.empty())
+			snprintf(uiBankText, sizeof uiBankText, "%s ...", loadingKit.c_str());
+		else {
+			int k = bankIndex - vates_bank::kNumBanks;
+			if (k >= 0 && k < (int)kitNames.size())
+				snprintf(uiBankText, sizeof uiBankText, "%s", kitNames[k].c_str());
+			else
+				snprintf(uiBankText, sizeof uiBankText, "-");
+		}
+
+		if (s < 0)
+			snprintf(uiSampleText, sizeof uiSampleText, "-");
+		else if (bankIndex < vates_bank::kNumBanks && banks)
+			snprintf(uiSampleText, sizeof uiSampleText, "%d %s", s + 1,
+			         banks->banks[bankIndex].sampleNames[s].c_str());
+		else
+			snprintf(uiSampleText, sizeof uiSampleText, "%d/%d", s + 1, n);
 	}
 
 	// ── persistence ──────────────────────────────────────────────────────────
@@ -945,12 +966,12 @@ struct VatesDisplay : Widget {
 		nvgFontSize(args.vg, 11.f);
 		nvgFillColor(args.vg, nvgRGB(0xff, 0xd5, 0x00));
 
-		std::string bank = module ? module->bankLabel() : "vates";
-		std::string smp  = module ? module->sampleLabel() : "";
+		const char* bank = module ? module->uiBankText : "vates";
+		const char* smp  = module ? module->uiSampleText : "";
 		nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
-		nvgText(args.vg, r.pos.x + 6.f, r.getCenter().y, bank.c_str(), NULL);
+		nvgText(args.vg, r.pos.x + 6.f, r.getCenter().y, bank, NULL);
 		nvgTextAlign(args.vg, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
-		nvgText(args.vg, r.pos.x + r.size.x - 6.f, r.getCenter().y, smp.c_str(), NULL);
+		nvgText(args.vg, r.pos.x + r.size.x - 6.f, r.getCenter().y, smp, NULL);
 	}
 };
 
