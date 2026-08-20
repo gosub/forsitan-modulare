@@ -63,6 +63,48 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     audio input and the sample-loader web app are gone — Rack has all of them
     already.
 
+  - **artifex**, a 28 HP stereo multi-effect, after Bastl Instruments' Citadel
+    FX Wizard — the other face of the hardware vates comes from, and it shares
+    that module's whole lower half: the same tempo generator, the same 32
+    rhythms, the same pattern generator with its two editing switches and the
+    same phase-locked LFO, because on the hardware they are one board.
+
+    Nine modes sit inside one filtered feedback loop, and the three knobs
+    above them keep their meaning across all nine: **time** is always the
+    mode's rate, **feedback** is the module's own output coming back through
+    the **filter** — a lowpass on one side of centre, a highpass on the other,
+    inside the loop and nowhere else — and **amount** is how much effect you
+    get, with fully left the dry signal in every mode. **stereo** detunes the
+    mode against itself between the channels, which is where the image comes
+    from.
+
+    The modes are a stereo **delay** that snaps to a clock at the **trig**
+    input, division by division, and says which one it picked; a **flanger**
+    from chorus to pitch modulation; a **freezer** that catches a chunk on a
+    trigger, on arriving in the mode, or on amount leaving zero, rhythmic to
+    the left of the knob and tonal to the right; a **panner** that runs up
+    into stereo ring modulation and reverses on a trigger; a **crusher**
+    whose top half XORs the sample with a shift of itself; a **slicer** that
+    chops with the same 32 rhythms and takes a different one per channel;
+    a **pitcher** that shifts up by sweeping a tap with a ramp, transient
+    duplication included; a **replayer** tape loop that runs backwards below
+    the centre and locks at full amount; and a **shifter** that crossfades two
+    taps, so feedback with a small interval walks the tail away in pitch.
+
+    **time** takes two modulation inputs through one attenuverter: **free** is
+    continuous, **step** is sampled and held on the clock, so patching the
+    pattern **cv** there moves the effect on the beat. **fx mode** has a CV
+    input where ten volts covers all nine and wraps, and changes from it wait
+    for the next step of the clock, as on the hardware. There is an input gain
+    to +12 dB, because the feedback tone depends on how hard it is driven, an
+    envelope follower on the input for ducking, and a context menu for the
+    buffer length (1.15 s as on the hardware, or longer), the safety limiter
+    in the loop, mono summing and clock behaviour.
+
+    MIDI in both its forms, the headphone output, tap tempo, the advanced
+    settings mode and the memory reset are gone: they exist to work around a
+    panel with two buttons.
+
   - **aether**, a 14 HP broken transmission line, after Schlappi Engineering's
     Interstellar Radio. Audio goes into a synchronous charge-balance
     voltage-to-frequency converter clocked by **carrier** and leaves as a pulse
