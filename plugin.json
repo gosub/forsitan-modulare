@@ -106,7 +106,7 @@
     },
     {
       "slug": "draen",
-      "name": "dræn",
+      "name": "dr\u00e6n",
       "description": "Drone synthesizer: two banks of 37 engines, each played from just a fundamental and a level.",
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/draen.md",
       "tags": [
@@ -385,6 +385,18 @@
         "Effect",
         "Hardware clone",
         "Ring modulator"
+      ]
+    },
+    {
+      "slug": "vates",
+      "name": "vates",
+      "description": "Stereo sample player with generated banks: modulate the sample choice and the rhythm falls out.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.15.0/doc/vates.md",
+      "tags": [
+        "Sampler",
+        "Drum",
+        "Sequencer",
+        "Hardware clone"
       ]
     }
   ]
