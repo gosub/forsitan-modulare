@@ -569,6 +569,49 @@ static void testPatternSwitches() {
 	report("vates", "cv_range", cv.peak, cv.peak <= 10.001f && cv.nans == 0);
 }
 
+// ── full clockwise on the pitch attenuverter is exactly 1V/oct ────────────────
+// The hardware calibrates that endpoint — "this input tracks V/Oct standard
+// when the PITCH MOD knob is fully clock-wise" — for both pitch inputs, so it
+// is a number to hold, not a taste.
+static void testPitchTracking() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "pitch_setup", 0, false);
+		return;
+	}
+	selectSample(m, 4, 0);
+	m.params[Vates::PITCH_PARAM].setValue(0.f);
+	m.params[Vates::PITCH_ATT_PARAM].setValue(1.f);
+	m.inputs[Vates::FREE_INPUT].channels = 1;
+
+	m.inputs[Vates::FREE_INPUT].setVoltage(1.f);
+	run(m, fr, 0.01);
+	float oct = m.voiceRateNow();
+	m.inputs[Vates::FREE_INPUT].setVoltage(2.f);
+	run(m, fr, 0.01);
+	float twoOct = m.voiceRateNow();
+	report("vates", "free_1voct", oct, std::fabs(oct - 2.f) < 1e-4f);
+	report("vates", "free_2voct", twoOct, std::fabs(twoOct - 4.f) < 1e-4f);
+
+	// half attenuation is half the interval, in octaves
+	m.params[Vates::PITCH_ATT_PARAM].setValue(0.5f);
+	m.inputs[Vates::FREE_INPUT].setVoltage(1.f);
+	run(m, fr, 0.01);
+	report("vates", "free_half_att", m.voiceRateNow(),
+	       std::fabs(m.voiceRateNow() - std::sqrt(2.f)) < 1e-4f);
+
+	// the note input tracks too, quantized: a volt is a scale octave
+	m.params[Vates::PITCH_ATT_PARAM].setValue(1.f);
+	m.inputs[Vates::FREE_INPUT].setVoltage(0.f);
+	m.inputs[Vates::NOTE_INPUT].channels = 1;
+	m.inputs[Vates::NOTE_INPUT].setVoltage(1.f);
+	run(m, fr, 0.01);
+	pressTrigger(m, fr);
+	report("vates", "note_1voct", m.voiceRateNow(),
+	       std::fabs(m.voiceRateNow() - 2.f) < 1e-4f);
+}
+
 // ── the pattern inputs read the Rack window, and the hardware one on ask ─────
 // A gate source resting at 0 V must mean "leave the pattern alone". Under the
 // hardware's 0-5 V logic the same 0 V means invert, every step, which is what
@@ -713,5 +756,5 @@ static void testAbuse() {
 
 SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testPatternInputs, testLfo, testLfoDirection, testToneAbuse,
+           testPatternSwitches, testPatternInputs, testPitchTracking, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)
