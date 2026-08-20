@@ -2,6 +2,7 @@
 #include "sampler/kitloader.hpp"
 #include "vates/bank.hpp"
 #include "imber/imber_worker.hpp"
+#include "position_switch.hpp"
 
 #include <osdialog.h>
 
@@ -1224,7 +1225,7 @@ struct VatesWidget : ModuleWidget {
 // @elem NOTE_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem LENGTH_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem LENGTH_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem MODE_PARAM CKSS 2.3 param "" 0.0
+// @elem MODE_PARAM CKSSPos 2.3 param "" 0.0
 // @elem TRIG_PARAM TL1105 2.6 param "" 0.0
 // @elem TRIG_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem FILTER_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -1232,7 +1233,7 @@ struct VatesWidget : ModuleWidget {
 // @elem FX_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem FX_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem ENV_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem SYNC_PARAM CKSS 2.3 param "" 0.0
+// @elem SYNC_PARAM CKSSPos 2.3 param "" 0.0
 // @elem RATE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem LFO_ATT_PARAM Trimpot 3.03 param "" 0.0
 // @elem LFO_INPUT PJ301MPort 4.01 input "" 0.0
@@ -1243,9 +1244,9 @@ struct VatesWidget : ModuleWidget {
 // @elem TEMPO_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem CLK_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem RHYTHM_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem GSW_PARAM CKSSThree 2.3 param "" 0.0
+// @elem GSW_PARAM CKSSThreePos 2.3 param "" 0.0
 // @elem G_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem CSW_PARAM CKSSThree 2.3 param "" 0.0
+// @elem CSW_PARAM CKSSThreePos 2.3 param "" 0.0
 // @elem C_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem PAT_RESET_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem RHYTHM_INPUT PJ301MPort 4.01 input "" 0.0
@@ -1294,7 +1295,7 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_CV label 0.0 label "cv" 0.0 98.00 107.50
 // @elem BOX_CLK_OUT panel_box 7.0 box "" 0.0 114.00 102.00
 // @elem LABEL_CLK_OUT label 0.0 label "clk" 0.0 114.00 107.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 33.02 126.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 49.50 126.50
 // @elem BOX_LEFT panel_box 7.0 box "" 0.0 98.00 120.00
 // @elem LABEL_LEFT label 0.0 label "L" 0.0 98.00 125.50
 // @elem BOX_RIGHT panel_box 7.0 box "" 0.0 114.00 120.00
@@ -1319,7 +1320,7 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.00f, 47.00f)), module, Vates::NOTE_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(110.50f, 47.00f)), module, Vates::LENGTH_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.00f, 47.00f)), module, Vates::LENGTH_INPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 64.00f)), module, Vates::MODE_PARAM));
+        addParam(createParamCentered<CKSSPos>(mm2px(Vec(26.50f, 64.00f)), module, Vates::MODE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(7.50f, 65.00f)), module, Vates::TRIG_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 65.00f)), module, Vates::TRIG_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 65.00f)), module, Vates::FILTER_PARAM));
@@ -1327,7 +1328,7 @@ struct VatesWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 65.00f)), module, Vates::FX_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 65.00f)), module, Vates::FX_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 118.00f)), module, Vates::ENV_OUTPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(8.00f, 84.00f)), module, Vates::SYNC_PARAM));
+        addParam(createParamCentered<CKSSPos>(mm2px(Vec(8.00f, 84.00f)), module, Vates::SYNC_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.00f, 82.50f)), module, Vates::RATE_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(33.00f, 82.50f)), module, Vates::LFO_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 82.50f)), module, Vates::LFO_INPUT));
@@ -1338,16 +1339,16 @@ struct VatesWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 65.00f)), module, Vates::TEMPO_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 65.00f)), module, Vates::CLK_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 118.00f)), module, Vates::RHYTHM_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(16.00f, 98.00f)), module, Vates::GSW_PARAM));
+        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(16.00f, 98.00f)), module, Vates::GSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.50f, 100.00f)), module, Vates::G_INPUT));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(38.00f, 98.00f)), module, Vates::CSW_PARAM));
+        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(38.00f, 98.00f)), module, Vates::CSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(47.50f, 100.00f)), module, Vates::C_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 100.00f)), module, Vates::PAT_RESET_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.00f, 118.00f)), module, Vates::RHYTHM_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 100.00f)), module, Vates::GATE_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 100.00f)), module, Vates::CV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 100.00f)), module, Vates::CLK_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(33.02f, 118.00f)), module, Vates::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 118.00f)), module, Vates::LEVEL_PARAM));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 118.00f)), module, Vates::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 118.00f)), module, Vates::RIGHT_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(103.00f, 115.00f)), module, Vates::LEFT_LIGHT));

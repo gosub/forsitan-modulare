@@ -199,7 +199,10 @@ a saw outright.
 | **gate ptrn**, **cv ptrn** | a three-position switch and a jack each: live surgery on the gate and CV sequences. |
 
 The two three-position switches are the hardware's best idea and they come
-over unchanged. Middle leaves the sequence alone. Up randomizes the step the
+over unchanged. They are clicked *to* a position rather than stepped through
+one: click the top of the switch for randomize, the middle for as-is, the
+bottom for invert. Rack's own switches increment and wrap, which would mean
+passing through randomize — and hearing it — on the way back from invert. Middle leaves the sequence alone. Up randomizes the step the
 sequence is on right now. Down inverts it — silent steps sound, sounding
 steps go quiet, and CV flips around its own midpoint. Flick one for a bar
 and the pattern is different when you flick it back; hold it down and the
