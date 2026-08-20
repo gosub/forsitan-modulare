@@ -44,8 +44,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     so a flick changes the pattern for good. Each switch is normalled to a
     jack that does the same job from a voltage: above +1 V randomizes, below
     −1 V inverts, so a gate resting at 0 V leaves the pattern alone (the
-    hardware's own 0–5 V window, where 0 V inverts, is a menu option). Plus an LFO with triangle and
-    pulse outs that is patch-programmable through its own rate input, an
+    hardware's own 0–5 V window, where 0 V inverts, is a menu option).
+
+    Plus an LFO with triangle, pulse and saw outputs, phase-locked to the
+    clock when synced rather than merely running at a synced rate — so at
+    sixteen steps a cycle its saw *is* the position in the bar, and patched
+    into **sample** at full attenuverter it sweeps a whole bank once a bar,
+    since ten volts is one bank. It is patch-programmable through its own
+    rate input as on the hardware, and there is an
     internal clock that hands over to **clk in** and takes the tempo back two
     seconds after it stops, a resonant filter that is a lowpass on one side of
     centre and a highpass on the other, and a tempo-synced delay that becomes

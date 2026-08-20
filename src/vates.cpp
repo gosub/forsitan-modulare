@@ -179,6 +179,7 @@ struct Vates : Module {
 		ENV_OUTPUT,
 		TRI_OUTPUT,
 		PULSE_OUTPUT,
+		SAW_OUTPUT,
 		CLK_OUTPUT,
 		GATE_OUTPUT,
 		CV_OUTPUT,
@@ -288,6 +289,12 @@ struct Vates : Module {
 	float sinceExternal = 10.f;
 	bool externalClock = false;
 	int step = 0;
+	// Position in steps, running and fractional: the synced LFO derives its
+	// phase from this rather than free-running at a synced rate, so its saw
+	// output really is the place in the bar and stays there.
+	int barStep = 0;          // 0..31: two bars, so every division divides it
+	double barPos = 0.0;
+	double lfoOffset = 0.0;
 	float gateTimer = 0.f;
 	float clkPulse = 0.f;
 	uint16_t gateWork = 0;
@@ -355,6 +362,7 @@ struct Vates : Module {
 		configOutput(ENV_OUTPUT, "Envelope");
 		configOutput(TRI_OUTPUT, "LFO triangle");
 		configOutput(PULSE_OUTPUT, "LFO pulse");
+		configOutput(SAW_OUTPUT, "LFO saw: the position in its cycle, and in the bar when synced to sixteen steps");
 		configOutput(CLK_OUTPUT, "Clock");
 		configOutput(GATE_OUTPUT, "Pattern gate");
 		configOutput(CV_OUTPUT, "Pattern CV");
@@ -772,7 +780,9 @@ struct Vates : Module {
 
 		if (patResetIn.process(inputs[PAT_RESET_INPUT].getVoltage(), 0.1f, 1.f)) {
 			step = 0;
+			barStep = 0;
 			clockPhase = 0.0;
+			lfoOffset = 0.0;
 		}
 
 		// ── pattern generator ────────────────────────────────────────────────
@@ -785,6 +795,7 @@ struct Vates : Module {
 		}
 		if (stepped) {
 			step = (step + 1) % kSteps;
+			barStep = (barStep + 1) % (2 * kSteps);
 
 			// the two switches, each normalled to its own input: middle
 			// leaves the sequence alone, up randomizes the step the sequence
@@ -815,28 +826,42 @@ struct Vates : Module {
 		}
 		gateTimer = std::max(0.f, gateTimer - args.sampleTime);
 		clkPulse = std::max(0.f, clkPulse - args.sampleTime);
+		barPos = (double)barStep + clockPhase;
 
 		// ── LFO ──────────────────────────────────────────────────────────────
 		float rateKnob = params[RATE_PARAM].getValue();
 		float rateMod = inputs[LFO_INPUT].getVoltage() * 0.2f * params[LFO_ATT_PARAM].getValue();
-		float lfoHz;
-		if (params[SYNC_PARAM].getValue() > 0.5f) {
-			// synced: the knob is a divider of the step clock
-			// steps per cycle, slowest first: clockwise has to speed the LFO
-			// up here exactly as it does in free mode, or the knob reverses
-			// its meaning as the switch flips
+		bool synced = params[SYNC_PARAM].getValue() > 0.5f;
+		bool lfoReset = lfoResetIn.process(inputs[LFO_RESET_INPUT].getVoltage(), 0.1f, 1.f);
+
+		if (synced) {
+			// Steps per cycle, slowest first: clockwise has to speed the LFO up
+			// here exactly as it does in free mode, or the knob reverses its
+			// meaning as the switch flips. Sixteen steps is one pattern — one
+			// bar — so at that division the saw output is the bar position.
+			//
+			// Synced means phase-locked, not merely a synced rate: the phase is
+			// derived from the step clock, so the LFO cannot drift against the
+			// pattern and its saw stays a usable phasor.
 			static const float div[8] = {32.f, 16.f, 8.f, 4.f, 2.f, 1.f, 0.5f, 0.25f};
-			int d = clamp((int)(rateKnob * 7.999f), 0, 7);
-			lfoHz = 1.f / std::max(stepSeconds * div[d], 1e-4f);
+			int d = clamp((int)(rateKnob * 7.999f + rateMod * 4.f), 0, 7);
+			// modulation moves the division rather than detuning the rate: a
+			// phase derived from the clock has nothing to detune
+			if (lfoReset)
+				lfoOffset = barPos;
+			double phase = (barPos - lfoOffset) / div[d];
+			phase -= std::floor(phase);
+			lfoPhase = (float)phase;
 		}
-		else
-			lfoHz = 0.01f * std::pow(2000.f, clamp(rateKnob, 0.f, 1.f));
-		lfoHz *= std::pow(4.f, clamp(rateMod, -1.f, 1.f));
-		lfoHz = clamp(lfoHz, 0.002f, 400.f);
-		if (lfoResetIn.process(inputs[LFO_RESET_INPUT].getVoltage(), 0.1f, 1.f))
-			lfoPhase = 0.f;
-		lfoPhase += lfoHz * args.sampleTime;
-		lfoPhase -= std::floor(lfoPhase);
+		else {
+			float lfoHz = 0.01f * std::pow(2000.f, clamp(rateKnob, 0.f, 1.f));
+			lfoHz *= std::pow(4.f, clamp(rateMod, -1.f, 1.f));
+			lfoHz = clamp(lfoHz, 0.002f, 400.f);
+			if (lfoReset)
+				lfoPhase = 0.f;
+			lfoPhase += lfoHz * args.sampleTime;
+			lfoPhase -= std::floor(lfoPhase);
+		}
 		// peak at phase 0, falling to the trough at 0.5, rising back after:
 		// pulse is high exactly while the triangle rises
 		float tri = lfoPhase < 0.5f ? 1.f - 2.f * lfoPhase : 2.f * lfoPhase - 1.f;
@@ -970,6 +995,9 @@ struct Vates : Module {
 		outputs[ENV_OUTPUT].setVoltage(clamp(env * release * 10.f, 0.f, 10.f));
 		outputs[TRI_OUTPUT].setVoltage(tri * 10.f);
 		outputs[PULSE_OUTPUT].setVoltage(lfoRising ? 10.f : 0.f);
+		// the saw is the cycle's own position, rising from the reset point:
+		// synced to sixteen steps it sweeps a whole bank once a bar
+		outputs[SAW_OUTPUT].setVoltage(lfoPhase * 10.f);
 		outputs[CLK_OUTPUT].setVoltage(clkPulse > 0.f ? 10.f : 0.f);
 		outputs[GATE_OUTPUT].setVoltage(gateTimer > 0.f ? 10.f : 0.f);
 		outputs[CV_OUTPUT].setVoltage(cvWork[clamp(step, 0, kSteps - 1)]);
@@ -1205,6 +1233,7 @@ struct VatesWidget : ModuleWidget {
 // @elem LFO_RESET_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem TRI_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem PULSE_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem SAW_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem TEMPO_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem CLK_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem RHYTHM_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -1229,23 +1258,25 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_LENGTH label 0.0 label "length" 0.0 115.50 40.50
 // @elem LABEL_FREE label 0.0 label "free" 0.0 82.50 54.50
 // @elem LABEL_NOTE label 0.0 label "note" 0.0 93.00 54.50
-// @elem LABEL_CUE label 0.0 label "cue" 0.0 34.00 57.50
-// @elem LABEL_MODE label 0.0 label "play" 0.0 34.00 72.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 20.25 71.50
-// @elem LABEL_FILTER label 0.0 label "filter" 0.0 49.50 72.50
-// @elem LABEL_FX label 0.0 label "fx" 0.0 82.50 72.50
-// @elem BOX_ENV panel_box 7.0 box "" 0.0 115.50 66.00
-// @elem LABEL_ENV label 0.0 label "env" 0.0 115.50 71.50
-// @elem LABEL_SYNC label 0.0 label "sync" 0.0 10.00 74.80
-// @elem LABEL_FREERUN label 0.0 label "free" 0.0 10.00 90.50
-// @elem LABEL_RATE label 0.0 label "rate" 0.0 21.00 90.50
-// @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 51.50 89.50
-// @elem BOX_TRI panel_box 7.0 box "" 0.0 70.00 84.00
-// @elem LABEL_TRI label 0.0 label "tri" 0.0 70.00 89.50
-// @elem BOX_PULSE panel_box 7.0 box "" 0.0 89.00 84.00
-// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 89.00 89.50
-// @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 105.50 90.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 116.50 89.50
+// @elem LABEL_CUE label 0.0 label "cue" 0.0 26.50 55.50
+// @elem LABEL_MODE label 0.0 label "play" 0.0 26.50 70.50
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 12.25 69.50
+// @elem LABEL_FILTER label 0.0 label "filter" 0.0 49.50 70.50
+// @elem LABEL_FX label 0.0 label "fx" 0.0 82.50 70.50
+// @elem BOX_ENV panel_box 7.0 box "" 0.0 115.50 85.00
+// @elem LABEL_ENV label 0.0 label "env" 0.0 115.50 90.50
+// @elem LABEL_SYNC label 0.0 label "sync" 0.0 7.00 75.50
+// @elem LABEL_FREERUN label 0.0 label "free" 0.0 7.00 91.50
+// @elem LABEL_RATE label 0.0 label "rate" 0.0 17.00 91.50
+// @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 45.50 90.50
+// @elem BOX_SAW panel_box 7.0 box "" 0.0 92.00 85.00
+// @elem BOX_TRI panel_box 7.0 box "" 0.0 60.00 85.00
+// @elem LABEL_TRI label 0.0 label "tri" 0.0 60.00 90.50
+// @elem BOX_PULSE panel_box 7.0 box "" 0.0 76.00 85.00
+// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 76.00 90.50
+// @elem LABEL_SAW label 0.0 label "saw" 0.0 92.00 90.50
+// @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 115.50 70.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 104.50 69.50
 // @elem LABEL_GSW label 0.0 label "G" 0.0 24.00 95.50
 // @elem LABEL_CSW label 0.0 label "C" 0.0 44.00 95.50
 // @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 11.50 110.50
@@ -1283,23 +1314,24 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.00f, 47.00f)), module, Vates::NOTE_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(110.50f, 47.00f)), module, Vates::LENGTH_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.00f, 47.00f)), module, Vates::LENGTH_INPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(34.00f, 64.00f)), module, Vates::MODE_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(15.50f, 64.00f)), module, Vates::TRIG_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 64.00f)), module, Vates::TRIG_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 64.00f)), module, Vates::FILTER_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 64.00f)), module, Vates::FILTER_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 64.00f)), module, Vates::FX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 64.00f)), module, Vates::FX_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.50f, 64.00f)), module, Vates::ENV_OUTPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(10.00f, 82.00f)), module, Vates::SYNC_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.00f, 82.00f)), module, Vates::RATE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(32.00f, 82.00f)), module, Vates::LFO_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(41.50f, 82.00f)), module, Vates::LFO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.50f, 82.00f)), module, Vates::LFO_RESET_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(70.00f, 82.00f)), module, Vates::TRI_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(89.00f, 82.00f)), module, Vates::PULSE_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(105.50f, 82.00f)), module, Vates::TEMPO_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(116.50f, 82.00f)), module, Vates::CLK_INPUT));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 62.00f)), module, Vates::MODE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(7.50f, 62.00f)), module, Vates::TRIG_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 62.00f)), module, Vates::TRIG_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 62.00f)), module, Vates::FILTER_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 62.00f)), module, Vates::FILTER_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 62.00f)), module, Vates::FX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 62.00f)), module, Vates::FX_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.50f, 83.00f)), module, Vates::ENV_OUTPUT));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(7.00f, 83.00f)), module, Vates::SYNC_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(17.00f, 83.00f)), module, Vates::RATE_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(26.50f, 83.00f)), module, Vates::LFO_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(35.50f, 83.00f)), module, Vates::LFO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.50f, 83.00f)), module, Vates::LFO_RESET_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(60.00f, 83.00f)), module, Vates::TRI_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 83.00f)), module, Vates::PULSE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.00f, 83.00f)), module, Vates::SAW_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(115.50f, 62.00f)), module, Vates::TEMPO_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(104.50f, 62.00f)), module, Vates::CLK_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 102.00f)), module, Vates::RHYTHM_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(24.00f, 102.00f)), module, Vates::GSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.50f, 102.00f)), module, Vates::G_INPUT));

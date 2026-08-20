@@ -165,9 +165,16 @@ falls out of the delay and into the flanger.
 |---------|--------------|
 | **sync / free** | whether the LFO follows the clock or runs on its own. |
 | **rate** | in sync, the clock divider, from two bars a cycle to four cycles a step; in free, 0.01–20 Hz. Clockwise is faster in both, so the knob does not reverse its meaning when the switch flips. |
-| **lfo mod** | attenuverter and input for the rate. |
+| **lfo mod** | attenuverter and input for the rate — in sync it moves the division, since a phase-locked LFO has nothing to detune. |
 | **reset** | a rising edge restarts the triangle at its peak. |
-| **tri**, **pulse** | triangle and its rising-edge pulse, 0–10V. |
+| **tri**, **pulse**, **saw** | triangle, its rising-edge pulse, and the position in the cycle, all 0–10V. |
+
+**sync means phase-locked**, not merely a synced rate: the LFO takes its
+phase from the step clock, so it cannot drift against the pattern and a
+pattern reset puts it back to the top. That is what makes **saw** useful as
+more than a shape — set the division to sixteen steps and it *is* the
+position in the bar. Patch it to **sample** with the attenuverter fully up
+and the bank sweeps exactly once a bar, since ten volts is one bank.
 
 The hardware crams sync and free onto the two ends of one knob; its own
 manual admits that modulation never crosses between them, only speeds the

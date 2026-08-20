@@ -691,6 +691,49 @@ static void testLfo() {
 	report("vates", "lfo_synced_cycles", syncCycles, syncCycles >= 14 && syncCycles <= 18);
 }
 
+// ── the saw output tracks the bar ─────────────────────────────────────────────
+// Synced to sixteen steps the LFO's saw is the position in the pattern, and
+// it is phase-locked rather than merely running at a synced rate: a pattern
+// reset puts it back to zero and it does not drift away again.
+static void testSaw() {
+	Vates m;
+	long fr = 0;
+	m.params[Vates::TEMPO_PARAM].setValue(240.f);   // a step is 62.5 ms
+	m.params[Vates::SYNC_PARAM].setValue(1.f);
+	m.params[Vates::RATE_PARAM].setValue(0.19f);    // sixteen steps a cycle
+	m.inputs[Vates::PAT_RESET_INPUT].channels = 1;
+
+	run(m, fr, 0.7);
+	m.inputs[Vates::PAT_RESET_INPUT].setVoltage(10.f);
+	run(m, fr, 0.002);
+	m.inputs[Vates::PAT_RESET_INPUT].setVoltage(0.f);
+	run(m, fr, 0.002);
+	float atReset = m.outputs[Vates::SAW_OUTPUT].getVoltage();
+	report("vates", "saw_zero_at_reset", atReset, atReset < 0.2f);
+
+	// half a bar later it is halfway up, and a bar later it is back
+	runSteps(m, fr, 8);
+	float half = m.outputs[Vates::SAW_OUTPUT].getVoltage();
+	runSteps(m, fr, 8);
+	float full = m.outputs[Vates::SAW_OUTPUT].getVoltage();
+	report("vates", "saw_half_bar", half, std::fabs(half - 5.f) < 0.4f);
+	report("vates", "saw_bar_wraps", full, full < 0.4f);
+
+	// four bars on, still locked: this is the drift a synced *rate* would show
+	runSteps(m, fr, 64);
+	float later = m.outputs[Vates::SAW_OUTPUT].getVoltage();
+	report("vates", "saw_no_drift", later, later < 0.4f);
+
+	// and it stays inside its rails, in free mode too
+	Stats sync = runStats(m, fr, 1.0, Vates::SAW_OUTPUT);
+	m.params[Vates::SYNC_PARAM].setValue(0.f);
+	m.params[Vates::RATE_PARAM].setValue(0.5f);
+	Stats free = runStats(m, fr, 1.0, Vates::SAW_OUTPUT);
+	report("vates", "saw_range", std::max(sync.peak, free.peak),
+	       sync.peak <= 10.001f && free.peak <= 10.001f
+	       && sync.nans + free.nans == 0 && free.rms() > 0.5);
+}
+
 // ── the tone controls, at every extreme, into every corner ────────────────────
 static void testToneAbuse() {
 	Vates m;
@@ -756,5 +799,5 @@ static void testAbuse() {
 
 SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testPatternInputs, testPitchTracking, testLfo, testLfoDirection, testToneAbuse,
+           testPatternSwitches, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)
