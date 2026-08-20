@@ -43,9 +43,19 @@ static bool waitForBanks(Vates& m, long& frame) {
 }
 
 static void selectSample(Vates& m, int bank, int sample) {
-	int nb = m.bankCount();
-	m.params[Vates::BANK_PARAM].setValue((bank + 0.5f) / std::max(nb, 1));
+	m.bankBase = bank;
 	m.params[Vates::SAMPLE_PARAM].setValue((sample + 0.5f) / vates_bank::kSamplesPerBank);
+}
+
+// One press of a bank button, edge and all.
+static void pressBank(Vates& m, long& frame, bool up) {
+	int id = up ? Vates::BANK_UP_PARAM : Vates::BANK_DOWN_PARAM;
+	m.params[id].setValue(1.f);
+	for (int i = 0; i < 4; i++)
+		m.process(makeArgs(frame++));
+	m.params[id].setValue(0.f);
+	for (int i = 0; i < 4; i++)
+		m.process(makeArgs(frame++));
 }
 
 // The button fires on the rising edge, so four frames is a press — and the
@@ -110,22 +120,35 @@ static void testLength() {
 		report("vates", "length_setup", 0, false);
 		return;
 	}
+	// The claim is about the envelope and the direction of travel, so that
+	// is what is measured: the audio also carries the sample's own shape,
+	// and a generated pad that fades into its own tail can fall while the
+	// envelope rises. The audio checks here are only that it is there.
 	selectSample(m, 4, 0);            // tones: 2.5 s of sustained material
 	m.params[Vates::LENGTH_PARAM].setValue(0.55f);
 	run(m, fr, 0.01);
 	pressTrigger(m, fr);
-	Stats fwd1 = runStats(m, fr, 0.25, Vates::LEFT_OUTPUT);
-	Stats fwd2 = runStats(m, fr, 0.25, Vates::LEFT_OUTPUT);
-	report("vates", "forward_decays", fwd2.rms() / std::max(fwd1.rms(), 1e-9),
-	       fwd2.rms() < fwd1.rms());
+	Stats fwdEnv1 = runStats(m, fr, 0.25, Vates::ENV_OUTPUT);
+	double fwdPos1 = m.voicePos;
+	Stats fwdEnv2 = runStats(m, fr, 0.25, Vates::ENV_OUTPUT);
+	report("vates", "forward_env_decays", fwdEnv2.rms() / std::max(fwdEnv1.rms(), 1e-9),
+	       fwdEnv2.rms() < fwdEnv1.rms());
+	report("vates", "forward_plays_forward", m.voicePos - fwdPos1,
+	       m.voicePos > fwdPos1);
 
 	m.params[Vates::LENGTH_PARAM].setValue(-0.55f);
 	run(m, fr, 0.5);
 	pressTrigger(m, fr);
-	Stats rev1 = runStats(m, fr, 0.25, Vates::LEFT_OUTPUT);
-	Stats rev2 = runStats(m, fr, 0.25, Vates::LEFT_OUTPUT);
-	report("vates", "reverse_swells", rev2.rms() / std::max(rev1.rms(), 1e-9),
-	       rev2.rms() > rev1.rms());
+	Stats revEnv1 = runStats(m, fr, 0.1, Vates::ENV_OUTPUT);
+	double revPos1 = m.voicePos;
+	Stats revEnv2 = runStats(m, fr, 0.1, Vates::ENV_OUTPUT);
+	Stats revAudio = runStats(m, fr, 0.2, Vates::LEFT_OUTPUT);
+	report("vates", "reverse_env_swells", revEnv2.rms() / std::max(revEnv1.rms(), 1e-9),
+	       revEnv2.rms() > revEnv1.rms());
+	report("vates", "reverse_plays_backwards", revPos1 - m.voicePos,
+	       m.voicePos < revPos1);
+	report("vates", "reverse_audible", revAudio.rms(),
+	       revAudio.rms() > 1e-3 && revAudio.nans == 0);
 
 	// the envelope output follows, and stays inside its rails
 	Stats env = runStats(m, fr, 0.2, Vates::ENV_OUTPUT);
@@ -232,17 +255,19 @@ static void testKnobBrowsing() {
 	}
 	report("vates", "sample_knob_silent", hits, hits == 0);
 
-	// the same for the bank knob, which also shifts the sample index
+	// the same for the bank buttons, which also shift the sample index
 	hits = 0;
 	wasEnv = m.env;
-	for (long i = 0; i < n; i++) {
-		m.params[Vates::BANK_PARAM].setValue((float)i / n);
-		m.process(makeArgs(fr++));
-		if (m.env > wasEnv + 0.5f)
-			hits++;
-		wasEnv = m.env;
+	for (int b = 0; b < 8; b++) {
+		pressBank(m, fr, true);
+		for (int i = 0; i < (int)(0.05 * SR); i++) {
+			m.process(makeArgs(fr++));
+			if (m.env > wasEnv + 0.5f)
+				hits++;
+			wasEnv = m.env;
+		}
 	}
-	report("vates", "bank_knob_silent", hits, hits == 0);
+	report("vates", "bank_button_silent", hits, hits == 0);
 }
 
 // ── the knob spans the list end to end ────────────────────────────────────────
@@ -254,7 +279,7 @@ static void testKnobRange() {
 		report("vates", "range_setup", 0, false);
 		return;
 	}
-	m.params[Vates::BANK_PARAM].setValue(0.f);
+	m.bankBase = 0;
 	m.params[Vates::SAMPLE_PARAM].setValue(1.f);
 	run(m, fr, 0.02);
 	report("vates", "sample_knob_top", m.aimedSample,
@@ -277,10 +302,17 @@ static void testKnobRange() {
 		covered += seen[i] == 1 ? 1 : 0;
 	report("vates", "sample_knob_covers", covered, covered == vates_bank::kSamplesPerBank);
 
-	// and the bank knob's top is the last bank, not the first
-	m.params[Vates::BANK_PARAM].setValue(1.f);
+	// the bank buttons step and wrap, both ways
+	m.bankBase = 0;
 	run(m, fr, 0.02);
-	report("vates", "bank_knob_top", m.bankIndex, m.bankIndex == m.bankCount() - 1);
+	pressBank(m, fr, false);
+	report("vates", "bank_button_wraps_down", m.bankIndex,
+	       m.bankIndex == m.bankCount() - 1);
+	pressBank(m, fr, true);
+	report("vates", "bank_button_wraps_up", m.bankIndex, m.bankIndex == 0);
+	pressBank(m, fr, true);
+	pressBank(m, fr, true);
+	report("vates", "bank_button_steps", m.bankIndex, m.bankIndex == 2);
 }
 
 // ── a module straight out of the browser makes a sound, not a click ───────────
@@ -297,6 +329,95 @@ static void testDefaults() {
 	run(m, fr, 0.1);
 	Stats late = runStats(m, fr, 0.1, Vates::LEFT_OUTPUT);
 	report("vates", "default_length_audible", late.rms(), late.rms() > 0.05);
+}
+
+// ── user kits, and the paging that keeps play mode usable ─────────────────────
+// Writes a throwaway kit of 20 files, points vates at it in memory (never at
+// the user's settings file) and checks the pages: a 20-file kit is three
+// banks of 8, 8 and 4, each page plays its own window of the kit, and the
+// number of samples a bank offers never grows with the kit — which is what
+// keeps crossings per LFO cycle from growing with it.
+static void writeTestWav(const std::string& path, int frames, int channels, float amp) {
+	FILE* f = fopen(path.c_str(), "wb");
+	if (!f)
+		return;
+	auto w32 = [&](uint32_t v) { fputc(v & 255, f); fputc((v >> 8) & 255, f);
+	                             fputc((v >> 16) & 255, f); fputc((v >> 24) & 255, f); };
+	auto w16 = [&](uint16_t v) { fputc(v & 255, f); fputc((v >> 8) & 255, f); };
+	uint32_t bytes = (uint32_t)(frames * channels * 2);
+	fwrite("RIFF", 1, 4, f); w32(36 + bytes); fwrite("WAVE", 1, 4, f);
+	fwrite("fmt ", 1, 4, f); w32(16); w16(1); w16((uint16_t)channels); w32(44100);
+	w32(44100 * channels * 2); w16((uint16_t)(channels * 2)); w16(16);
+	fwrite("data", 1, 4, f); w32(bytes);
+	for (int i = 0; i < frames; i++)
+		for (int c = 0; c < channels; c++)
+			w16((uint16_t)(int16_t)lrintf(amp * 32000.f
+				* std::sin(2.f * (float)M_PI * 220.f * i / 44100.f)));
+	fclose(f);
+}
+
+static void testUserKits() {
+	const std::string root = "/tmp/vates_smoke_kits";
+	const std::string kit = root + "/twenty";
+	rack::system::createDirectories(kit);
+	for (int i = 0; i < 20; i++)
+		writeTestWav(rack::string::f("%s/%02d.wav", kit.c_str(), i),
+		             4410, (i % 2) ? 2 : 1, 0.8f);
+	forsitan_sampler::setKitsFolder(root, /*persist=*/false);
+
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "kits_setup", 0, false);
+		return;
+	}
+	m.refreshKits();
+	report("vates", "kit_pages", m.bankCount(),
+	       m.bankCount() == vates_bank::kNumBanks + 3);
+
+	// walk the three pages: 8, 8 and 4 samples, each one playing
+	int counts[3] = {0, 0, 0};
+	int played[3] = {0, 0, 0};
+	for (int p = 0; p < 3; p++) {
+		int bank = vates_bank::kNumBanks + p;
+		m.bankBase = bank;
+		run(m, fr, 0.05);
+		for (int i = 0; i < 200 && m.samplesInBank(bank) == 0; i++) {
+			run(m, fr, 0.01);
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
+		}
+		counts[p] = m.samplesInBank(bank);
+		m.params[Vates::LENGTH_PARAM].setValue(0.7f);
+		for (int s = 0; s < counts[p]; s++) {
+			m.params[Vates::SAMPLE_PARAM].setValue((s + 0.5f) / std::max(counts[p], 1));
+			run(m, fr, 0.01);
+			pressTrigger(m, fr);
+			Stats st = runStats(m, fr, 0.05, Vates::LEFT_OUTPUT);
+			if (st.rms() > 1e-3 && st.nans == 0)
+				played[p]++;
+		}
+	}
+	report("vates", "kit_page_sizes", counts[0] * 100 + counts[1] * 10 + counts[2],
+	       counts[0] == 8 && counts[1] == 8 && counts[2] == 4);
+	report("vates", "kit_page_playback", played[0] + played[1] + played[2],
+	       played[0] == 8 && played[1] == 8 && played[2] == 4);
+
+	// a bank never offers more than the page size, whatever the kit holds
+	int biggest = 0;
+	for (int b = 0; b < m.bankCount(); b++)
+		biggest = std::max(biggest, m.samplesInBank(b));
+	report("vates", "bank_size_bounded", biggest, biggest <= 8);
+
+	// asking for the whole kit in one bank is a deliberate choice, and works
+	m.samplesPerBank = 0;
+	m.refreshKits();
+	m.bankBase = vates_bank::kNumBanks;
+	run(m, fr, 0.05);
+	report("vates", "whole_kit_one_bank", m.samplesInBank(vates_bank::kNumBanks),
+	       m.samplesInBank(vates_bank::kNumBanks) == 20);
+
+	forsitan_sampler::setKitsFolder("", /*persist=*/false);
+	rack::system::removeRecursively(root);
 }
 
 // ── clock, internal and external ──────────────────────────────────────────────
@@ -469,5 +590,5 @@ static void testAbuse() {
 }
 
 SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
-           testKnobRange, testDefaults, testClock, testPatternSwitches, testLfo,
-           testToneAbuse, testAbuse)
+           testKnobRange, testDefaults, testUserKits, testClock,
+           testPatternSwitches, testLfo, testToneAbuse, testAbuse)

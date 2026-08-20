@@ -12,7 +12,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     sample plays and let the rhythm fall out. **sample mod** in **play** mode
     fires a hit the moment modulation crosses into a new sample, so an LFO into
     it *is* the sequence; in **cue** mode the same modulation only aims, and
-    **trig** decides when. Both selections wrap, so a slow ramp is a part.
+    **trig** decides when. Modulation wraps, so a slow ramp is a part, while
+    the knob itself spans its bank end to end and never fires: a hand on a
+    control is browsing. Two buttons step the bank, as on the hardware, and
+    right-clicking either display lists what is there — banks, or the samples
+    of the current bank by name — and jumps to it.
 
     **length** is one knob for the envelope and the playback direction:
     centre is the shortest hit, right lengthens the decay, and left lengthens
@@ -29,7 +33,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     The four percussive banks come from the kit engines of the author's
     pages64 plugin, the two tonal ones from imber's generators, all rendered
     at C so the quantizer is honest. Your own kits follow the generated ones,
-    read from the kits folder pellicula already uses.
+    read from the kits folder pellicula already uses, cut into banks of eight
+    like the generated ones — which is the hardware's organisation and also
+    what keeps play-mode density from growing with the size of a kit.
 
     Underneath sits the hardware's semi-autonomous half: a 16-step pattern
     generator with **gate** and **cv** outputs, 32 built-in rhythms on a knob

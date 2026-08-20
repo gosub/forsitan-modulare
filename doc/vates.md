@@ -55,6 +55,14 @@ subfolder is a kit of `.wav` files ordered by filename. Stereo files stay
 stereo. Kits load on a background thread, so browsing them never interrupts
 the audio.
 
+A kit is cut into banks of eight, the size of a generated one: twenty files
+are three banks, `mykit 1/3` to `mykit 3/3`. That is the hardware's own
+organisation — eight samples to a bank, more banks for more sounds — and it
+is also what keeps play mode usable. Crossings per LFO cycle are twice the
+number of samples the CV spans, so a bank of 64 would fire 128 times a cycle
+where the hardware fires 16. **samples per bank** in the context menu offers
+16, 32 or the whole kit if you want that sweep on purpose.
+
 Generated banks are always rendered at 44.1 kHz and resampled on playback,
 exactly as your own files are — the alternative is regenerating forty-eight
 samples every time the engine rate changes. Building a whole set takes about
@@ -67,23 +75,27 @@ happen to catch it.
 
 | control | what it does |
 |---------|--------------|
-| **bank** | selects the bank: six generated, then your kits. CV in with attenuverter. |
+| **bank** | two buttons, − and +, step through the banks: six generated, then your kits. CV in with attenuverter. |
 | **sample** | selects one sample within the bank. CV in with attenuverter. |
 
-Both knobs span their list end to end — the top of the sample knob is the
-last sample of the bank, not the first one again. Wrapping belongs to
-modulation: a CV that runs past the last sample comes back to the first, which
-is what turns a slow ramp into a sequence rather than a fade.
+The bank is stepped rather than swept, as on the hardware, where BANK is a
+button and only the samples sit under a knob. Right-click either display to
+see the whole list and jump straight to an entry.
+
+The sample knob spans its bank end to end — its top is the last sample, not
+the first one again. Wrapping belongs to modulation: a CV that runs past the
+last sample comes back to the first, which is what turns a slow ramp into a
+sequence rather than a fade.
 | **play / cue** | what modulation of *sample* does. See below. |
 | **trig** | fires the selected sample. The button does the same by hand. |
 
 **bank** and **sample** are the module's instrument. Nothing else needs
 patching: a trigger and a moving CV on **sample** is already a part.
 
-Turning either knob by hand is browsing, never playing: play mode fires on
-*modulation* crossing into another sample, not on your hand moving the knob
-or on a bank change shifting the ground under it. To hear what is selected,
-press **trig**.
+Turning the sample knob or stepping the bank is browsing, never playing: play
+mode fires on *modulation* crossing into another sample, not on your hand
+moving a control or on a bank change shifting the ground under it. To hear
+what is selected, press **trig**.
 
 **play** fires a sample the moment modulation crosses into it, so the
 modulation source *is* the rhythm — a triangle LFO into **sample** in play
@@ -190,12 +202,16 @@ between them leave it alone.
 The hardware's rhythms come from a web app that rebuilds the firmware. Here
 they are 32 patterns on a knob, and the switches make them yours.
 
-### the display
+### the displays
 
-The band under the title reads the bank on the left and the sample on the
-right — "drums" and "3 snare", or the name of your kit and which file of it
-is selected. Kits are yours and generated banks are new with every seed, so
-the panel cannot label what a knob position holds; the display can.
+Two of them under the title: the bank on the left, the sample on the right —
+"drums" and "3 snare", or the name of your kit and the file that is selected.
+Kits are yours and generated banks are new with every seed, so the panel
+cannot label what a selection holds; the displays can.
+
+**Right-click either one** for the list it selects from — every bank, or every
+sample of the current bank by name — with the current entry checked. It is
+the fastest way around a kit you do not know by heart.
 
 ### output
 
@@ -211,6 +227,8 @@ tight.
   with the patch, so a rerolled kit comes back exactly as you left it.
 - **kits folder**, **rescan kits** — the folder is shared with pellicula; the
   rescan picks up kits added while Rack was running.
+- **samples per bank** — how a kit of your own is cut into banks: 8 (the
+  default, and a generated bank's size), 16, 32, or the whole kit in one.
 - **external clock takes over** — whether **clk in** may take the tempo from
   the **tempo** knob.
 

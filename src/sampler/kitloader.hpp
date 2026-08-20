@@ -40,6 +40,7 @@ struct Sample {
 struct Kit {
 	std::string name;
 	std::vector<Sample> samples;
+	std::vector<std::string> sampleNames;   // file stems, index-aligned
 };
 
 // ── minimal WAV loader ────────────────────────────────────────────────────────
@@ -209,10 +210,15 @@ inline std::string getKitsFolder() {
 	return s.folder;
 }
 
-inline void setKitsFolder(const std::string& path) {
+// `persist` is false only for tests, which must not rewrite the user's
+// settings file to point at a temporary folder.
+inline void setKitsFolder(const std::string& path, bool persist = true) {
 	detail::KitsFolderState& s = detail::kitsFolderState();
 	std::lock_guard<std::mutex> lock(s.mutex);
 	s.folder = path;
+	s.loaded = true;
+	if (!persist)
+		return;
 	system::createDirectories(system::getDirectory(settingsPath()));
 	json_t* root = json_object();
 	json_object_set_new(root, "kitsFolder", json_string(path.c_str()));

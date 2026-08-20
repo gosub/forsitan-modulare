@@ -135,7 +135,8 @@ struct Delay {
 
 struct Vates : Module {
 	enum ParamId {
-		BANK_PARAM,
+		BANK_DOWN_PARAM,
+		BANK_UP_PARAM,
 		BANK_ATT_PARAM,
 		SAMPLE_PARAM,
 		SAMPLE_ATT_PARAM,
@@ -218,6 +219,28 @@ struct Vates : Module {
 	std::string loadingKit;
 	int loadedKitIndex = -1;
 
+	// A user kit is paged into banks the size of a generated one, which is
+	// how the hardware organises its own material: eight samples to a bank,
+	// more banks for more sounds. It is also what keeps play mode usable —
+	// crossings per LFO cycle are twice the samples the CV spans, so a bank
+	// that grew to 64 would fire 128 times where the hardware fires 16.
+	//
+	// The table is built on the UI thread and read on the audio thread, so it
+	// is plain ints and char arrays published behind one atomic count: no
+	// allocation to race with, and a stale read is a clamped index for one
+	// frame rather than a freed pointer.
+	static const int kMaxUserPages = 256;
+	static const int kMaxBanks = vates_bank::kNumBanks + kMaxUserPages;
+	struct PageInfo {
+		int kit = -1;      // index into kitNames
+		int first = 0;     // first sample of the kit this page holds
+		int count = 0;     // how many
+		char name[40] = "";
+	};
+	PageInfo pages[kMaxBanks];
+	std::atomic<int> bankTotal;
+	int samplesPerBank = vates_bank::kSamplesPerBank;   // 0 = a kit is one bank
+
 	// ── quantizer ────────────────────────────────────────────────────────────
 	int rootNote = 0;                     // 0-11, C..B
 	int scaleIndex = imber_dsp::kDefaultScale;
@@ -239,6 +262,7 @@ struct Vates : Module {
 
 	// ── selection ────────────────────────────────────────────────────────────
 	int bankIndex = 0;
+	int bankBase = 0;          // what the buttons set; CV offsets it
 	int sampleIndex = 0;
 	int aimedSample = 0;
 	int prevSampleKnob = -1;
@@ -273,12 +297,13 @@ struct Vates : Module {
 	float modPhase = 0.f;
 
 	dsp::SchmittTrigger trigIn, clkIn, lfoResetIn, patResetIn;
-	dsp::BooleanTrigger trigButton;
+	dsp::BooleanTrigger trigButton, bankUpButton, bankDownButton;
 
-	Vates() {
+	Vates() : bankTotal(vates_bank::kNumBanks) {
 		config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
-		configParam(BANK_PARAM, 0.f, 1.f, 0.f, "Bank");
+		configButton(BANK_DOWN_PARAM, "Previous bank");
+		configButton(BANK_UP_PARAM, "Next bank");
 		configParam(BANK_ATT_PARAM, -1.f, 1.f, 0.f, "Bank CV", "%", 0.f, 100.f);
 		configParam(SAMPLE_PARAM, 0.f, 1.f, 0.f, "Sample");
 		configParam(SAMPLE_ATT_PARAM, -1.f, 1.f, 0.f, "Sample CV", "%", 0.f, 100.f);
@@ -346,12 +371,42 @@ struct Vates : Module {
 		refreshKits();
 	}
 
+	// Scans the kits folder and rebuilds the page table. UI thread only: it
+	// reads directories.
 	void refreshKits() {
-		kitNames = forsitan_sampler::listKits(forsitan_sampler::getKitsFolder());
+		std::string folder = forsitan_sampler::getKitsFolder();
+		kitNames = forsitan_sampler::listKits(folder);
+
+		int n = vates_bank::kNumBanks;
+		for (int k = 0; k < (int)kitNames.size() && n < kMaxBanks; k++) {
+			int files = (int)forsitan_sampler::listKitFiles(
+				folder + "/" + kitNames[k], 64).size();
+			int per = samplesPerBank > 0 ? samplesPerBank : 64;
+			int nPages = std::max(1, (files + per - 1) / per);
+			for (int p = 0; p < nPages && n < kMaxBanks; p++, n++) {
+				PageInfo& pi = pages[n];
+				pi.kit = k;
+				pi.first = p * per;
+				pi.count = clamp(files - pi.first, 0, per);
+				if (nPages > 1)
+					snprintf(pi.name, sizeof pi.name, "%s %d/%d",
+					         kitNames[k].c_str(), p + 1, nPages);
+				else
+					snprintf(pi.name, sizeof pi.name, "%s", kitNames[k].c_str());
+			}
+		}
+		bankTotal.store(n);
+		uiBankShown = -1;   // make the display pick the new names up
 	}
 
 	int bankCount() const {
-		return vates_bank::kNumBanks + (int)kitNames.size();
+		return std::max(bankTotal.load(), vates_bank::kNumBanks);
+	}
+
+	const PageInfo* page(int bank) const {
+		if (bank < vates_bank::kNumBanks || bank >= kMaxBanks)
+			return nullptr;
+		return &pages[bank];
 	}
 
 	// ── background work ──────────────────────────────────────────────────────
@@ -418,6 +473,7 @@ struct Vates : Module {
 				if (!forsitan_sampler::loadWav(f, s, /*mono=*/false))
 					s = Sample();   // keep the index aligned with the file list
 				j->kit.samples.push_back(std::move(s));
+				j->kit.sampleNames.push_back(system::getStem(f));
 			}
 			j->done.store(true);
 		});
@@ -433,9 +489,10 @@ struct Vates : Module {
 	int samplesInBank(int b) const {
 		if (b < vates_bank::kNumBanks)
 			return banks ? vates_bank::kSamplesPerBank : 0;
-		if (userKit && loadedKitIndex == b - vates_bank::kNumBanks)
-			return (int)userKit->samples.size();
-		return 0;
+		const PageInfo* pi = page(b);
+		if (!pi || !userKit || loadedKitIndex != pi->kit)
+			return 0;
+		return clamp((int)userKit->samples.size() - pi->first, 0, pi->count);
 	}
 
 	// The knob alone spans the whole list end to end: its last position is
@@ -505,11 +562,13 @@ struct Vates : Module {
 			hold = banks;
 		}
 		else {
-			if (!userKit || loadedKitIndex != b - vates_bank::kNumBanks)
+			const PageInfo* pi = page(b);
+			if (!pi || !userKit || loadedKitIndex != pi->kit)
 				return;
-			if (s < 0 || s >= (int)userKit->samples.size())
+			int file = pi->first + s;
+			if (s < 0 || s >= pi->count || file >= (int)userKit->samples.size())
 				return;
-			const Sample& smp = userKit->samples[s];
+			const Sample& smp = userKit->samples[file];
 			if (smp.empty())
 				return;
 			L = &smp.l;
@@ -606,6 +665,7 @@ struct Vates : Module {
 			if (fresh) {
 				fresh->name = kitJob->kit.name;
 				fresh->samples.swap(kitJob->kit.samples);
+				fresh->sampleNames.swap(kitJob->kit.sampleNames);
 				userKit = fresh;
 			}
 			loadingKit.clear();
@@ -614,15 +674,30 @@ struct Vates : Module {
 
 		// ── bank and sample selection ────────────────────────────────────────
 		int nBanks = bankCount();
-		int bankKnob = knobSelect(params[BANK_PARAM].getValue(), nBanks);
-		int newBank = cvSelect(bankKnob, inputs[BANK_INPUT].getVoltage(),
+		// The bank is stepped, not swept: two buttons as on the hardware,
+		// where BANK is a button and only the samples sit under a knob.
+		bool bankStepped = false;
+		if (bankUpButton.process(params[BANK_UP_PARAM].getValue() > 0.5f)) {
+			bankBase++;
+			bankStepped = true;
+		}
+		if (bankDownButton.process(params[BANK_DOWN_PARAM].getValue() > 0.5f)) {
+			bankBase--;
+			bankStepped = true;
+		}
+		bankBase %= std::max(nBanks, 1);
+		if (bankBase < 0)
+			bankBase += nBanks;
+		int newBank = cvSelect(bankBase, inputs[BANK_INPUT].getVoltage(),
 		                       params[BANK_ATT_PARAM].getValue(), nBanks);
 		bool bankChanged = (newBank != bankIndex);
 		if (bankChanged) {
 			bankIndex = newBank;
-			int kitIdx = bankIndex - vates_bank::kNumBanks;
-			if (kitIdx >= 0 && kitIdx != loadedKitIndex)
-				startKitLoad(kitIdx);
+			const PageInfo* pi = page(bankIndex);
+			// pages of one kit share its load: turning past a page boundary
+			// changes the window, not the files
+			if (pi && pi->kit >= 0 && pi->kit != loadedKitIndex)
+				startKitLoad(pi->kit);
 		}
 		uiBank = bankIndex;
 
@@ -637,7 +712,7 @@ struct Vates : Module {
 		// the index, is browsing, not playing: it must not fire, or the
 		// module screams while you are looking for a sound.
 		bool knobMoved = (sampleKnob != prevSampleKnob) || bankChanged
-		                 || prevSampleKnob < 0;
+		                 || bankStepped || prevSampleKnob < 0;
 		bool crossed = (sel != aimedSample) && !knobMoved;
 		prevSampleKnob = sampleKnob;
 		aimedSample = sel;
@@ -905,11 +980,9 @@ struct Vates : Module {
 		else if (!loadingKit.empty())
 			snprintf(uiBankText, sizeof uiBankText, "%s ...", loadingKit.c_str());
 		else {
-			int k = bankIndex - vates_bank::kNumBanks;
-			if (k >= 0 && k < (int)kitNames.size())
-				snprintf(uiBankText, sizeof uiBankText, "%s", kitNames[k].c_str());
-			else
-				snprintf(uiBankText, sizeof uiBankText, "-");
+			const PageInfo* pi = page(bankIndex);
+			snprintf(uiBankText, sizeof uiBankText, "%s",
+			         (pi && pi->kit >= 0) ? pi->name : "-");
 		}
 
 		if (s < 0)
@@ -917,8 +990,35 @@ struct Vates : Module {
 		else if (bankIndex < vates_bank::kNumBanks && banks)
 			snprintf(uiSampleText, sizeof uiSampleText, "%d %s", s + 1,
 			         banks->banks[bankIndex].sampleNames[s].c_str());
-		else
-			snprintf(uiSampleText, sizeof uiSampleText, "%d/%d", s + 1, n);
+		else {
+			const PageInfo* pi = page(bankIndex);
+			int file = pi ? pi->first + s : s;
+			if (userKit && file < (int)userKit->sampleNames.size())
+				snprintf(uiSampleText, sizeof uiSampleText, "%d %s", s + 1,
+				         userKit->sampleNames[file].c_str());
+			else
+				snprintf(uiSampleText, sizeof uiSampleText, "%d/%d", s + 1, n);
+		}
+	}
+
+	// ── names for the display pickers (UI thread) ────────────────────────────
+
+	std::string bankName(int b) {
+		if (b < vates_bank::kNumBanks)
+			return vates_bank::bankName(b);
+		const PageInfo* pi = page(b);
+		return (pi && pi->kit >= 0) ? pi->name : "-";
+	}
+
+	std::string sampleName(int b, int s) {
+		if (b < vates_bank::kNumBanks && banks)
+			return string::f("%d  %s", s + 1,
+			                 banks->banks[b].sampleNames[s].c_str());
+		const PageInfo* pi = page(b);
+		int file = pi ? pi->first + s : s;
+		if (userKit && file < (int)userKit->sampleNames.size())
+			return string::f("%d  %s", s + 1, userKit->sampleNames[file].c_str());
+		return string::f("%d", s + 1);
 	}
 
 	// ── persistence ──────────────────────────────────────────────────────────
@@ -930,6 +1030,7 @@ struct Vates : Module {
 		honourExternalClock = true;
 		bankSeed = (uint64_t)random::u32() | 1ull;
 		pendingGen = true;
+		bankBase = 0;
 		voiceActive = false;
 		step = 0;
 		loadedRhythm = -1;
@@ -941,6 +1042,8 @@ struct Vates : Module {
 		json_object_set_new(root, "root", json_integer(rootNote));
 		json_object_set_new(root, "scale", json_integer(scaleIndex));
 		json_object_set_new(root, "externalClock", json_boolean(honourExternalClock));
+		json_object_set_new(root, "samplesPerBank", json_integer(samplesPerBank));
+		json_object_set_new(root, "bank", json_integer(bankBase));
 		return root;
 	}
 
@@ -955,14 +1058,21 @@ struct Vates : Module {
 			scaleIndex = clamp((int)json_integer_value(j), 0, imber_dsp::kScaleCount - 1);
 		if (json_t* j = json_object_get(root, "externalClock"))
 			honourExternalClock = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "samplesPerBank"))
+			samplesPerBank = clamp((int)json_integer_value(j), 0, 64);
+		if (json_t* j = json_object_get(root, "bank"))
+			bankBase = std::max(0, (int)json_integer_value(j));
 	}
 };
 
-// ── display ───────────────────────────────────────────────────────────────────
-// Kits are the user's own and the generated banks are new every seed, so the
-// panel cannot label what a knob position holds — the display does.
+// ── displays ──────────────────────────────────────────────────────────────────
+// Two of them, bank on the left and sample on the right. Kits are the user's
+// own and generated banks are new with every seed, so the panel cannot label
+// what a selection holds — these can, and a right-click on either one lists
+// what is there and jumps straight to it.
 struct VatesDisplay : Widget {
 	Vates* module = nullptr;
+	bool isBank = true;
 
 	void draw(const DrawArgs& args) override {
 		Rect r = box.zeroPos();
@@ -986,13 +1096,49 @@ struct VatesDisplay : Widget {
 		nvgFontFaceId(args.vg, font->handle);
 		nvgFontSize(args.vg, 11.f);
 		nvgFillColor(args.vg, nvgRGB(0xff, 0xd5, 0x00));
-
-		const char* bank = module ? module->uiBankText : "vates";
-		const char* smp  = module ? module->uiSampleText : "";
 		nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
-		nvgText(args.vg, r.pos.x + 6.f, r.getCenter().y, bank, NULL);
-		nvgTextAlign(args.vg, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
-		nvgText(args.vg, r.pos.x + r.size.x - 6.f, r.getCenter().y, smp, NULL);
+		nvgScissor(args.vg, r.pos.x + 2.f, r.pos.y, r.size.x - 4.f, r.size.y);
+		const char* txt = !module ? (isBank ? "vates" : "")
+		                          : (isBank ? module->uiBankText : module->uiSampleText);
+		nvgText(args.vg, r.pos.x + 5.f, r.getCenter().y, txt, NULL);
+		nvgResetScissor(args.vg);
+	}
+
+	// right-click: the list of what this display selects from
+	void onButton(const ButtonEvent& e) override {
+		if (e.action != GLFW_PRESS || e.button != GLFW_MOUSE_BUTTON_RIGHT
+		    || !module) {
+			Widget::onButton(e);
+			return;
+		}
+		e.consume(this);
+		Menu* menu = createMenu();
+		Vates* m = module;
+		if (isBank) {
+			menu->addChild(createMenuLabel("Bank"));
+			int n = m->bankCount();
+			for (int b = 0; b < n; b++)
+				menu->addChild(createCheckMenuItem(m->bankName(b), "",
+					[=]() { return m->bankBase == b; },
+					[=]() { m->bankBase = b; }));
+		}
+		else {
+			menu->addChild(createMenuLabel("Sample"));
+			int n = m->samplesInBank(m->bankIndex);
+			if (n <= 0) {
+				menu->addChild(createMenuLabel("(nothing loaded)"));
+				return;
+			}
+			int b = m->bankIndex;
+			for (int i = 0; i < n; i++)
+				menu->addChild(createCheckMenuItem(m->sampleName(b, i), "",
+					[=]() { return m->aimedSample == i; },
+					[=]() {
+						// the knob is still the selector: move it there
+						APP->engine->setParamValue(m, Vates::SAMPLE_PARAM,
+						                           (i + 0.5f) / n);
+					}));
+		}
 	}
 };
 
@@ -1006,7 +1152,8 @@ struct VatesWidget : ModuleWidget {
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BR ScrewSilver 3.5 screw "" 0.0
-// @elem BANK_PARAM RoundBigBlackKnob 7.62 param "" 0.0
+// @elem BANK_DOWN_PARAM VCVButton 4.15 param "" 0.0
+// @elem BANK_UP_PARAM VCVButton 4.15 param "" 0.0
 // @elem SAMPLE_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem PITCH_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem LENGTH_PARAM RoundBigBlackKnob 7.62 param "" 0.0
@@ -1050,7 +1197,9 @@ struct VatesWidget : ModuleWidget {
 // @elem RIGHT_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem LEFT_LIGHT SmallLight 1.0 light "" 0.0
 // @elem RIGHT_LIGHT SmallLight 1.0 light "" 0.0
-// @elem LABEL_BANK label 0.0 label "bank" 0.0 16.50 40.50
+// @elem LABEL_BANK_DOWN label 0.0 label "-" 0.0 11.00 37.00
+// @elem LABEL_BANK_UP label 0.0 label "+" 0.0 22.00 37.00
+// @elem LABEL_BANK label 0.0 label "bank" 0.0 16.50 41.80
 // @elem LABEL_SAMPLE label 0.0 label "sample" 0.0 49.50 40.50
 // @elem LABEL_PITCH label 0.0 label "pitch" 0.0 82.50 40.50
 // @elem LABEL_LENGTH label 0.0 label "length" 0.0 115.50 40.50
@@ -1096,7 +1245,8 @@ struct VatesWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(124.46f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(124.46f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(16.50f, 29.00f)), module, Vates::BANK_PARAM));
+        addParam(createParamCentered<VCVButton>(mm2px(Vec(11.00f, 29.00f)), module, Vates::BANK_DOWN_PARAM));
+        addParam(createParamCentered<VCVButton>(mm2px(Vec(22.00f, 29.00f)), module, Vates::BANK_UP_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(49.50f, 29.00f)), module, Vates::SAMPLE_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(82.50f, 29.00f)), module, Vates::PITCH_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(115.50f, 29.00f)), module, Vates::LENGTH_PARAM));
@@ -1142,11 +1292,19 @@ struct VatesWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(110.00f, 115.00f)), module, Vates::RIGHT_LIGHT));
         // @layout:end
 
-		VatesDisplay* disp = new VatesDisplay;
-		disp->module = module;
-		disp->box.pos = mm2px(Vec(24.f, 9.5f));
-		disp->box.size = mm2px(Vec(84.08f, 8.f));
-		addChild(disp);
+		VatesDisplay* bankDisp = new VatesDisplay;
+		bankDisp->module = module;
+		bankDisp->isBank = true;
+		bankDisp->box.pos = mm2px(Vec(8.f, 9.5f));
+		bankDisp->box.size = mm2px(Vec(53.f, 8.f));
+		addChild(bankDisp);
+
+		VatesDisplay* sampleDisp = new VatesDisplay;
+		sampleDisp->module = module;
+		sampleDisp->isBank = false;
+		sampleDisp->box.pos = mm2px(Vec(71.08f, 9.5f));
+		sampleDisp->box.size = mm2px(Vec(53.f, 8.f));
+		addChild(sampleDisp);
 	}
 
 	void appendContextMenu(Menu* menu) override {
@@ -1193,6 +1351,22 @@ struct VatesWidget : ModuleWidget {
 		}));
 		menu->addChild(createMenuItem("Rescan kits", string::f("%d found", (int)m->kitNames.size()),
 			[=]() { m->refreshKits(); }));
+
+		// How a user kit is cut into banks. Eight is a generated bank and the
+		// hardware's own default; it is also what holds play-mode density
+		// steady, since a bank twice the size fires twice as often.
+		static const int perOptions[4] = {8, 16, 32, 0};
+		int cur = 0;
+		for (int i = 0; i < 4; i++)
+			if (perOptions[i] == m->samplesPerBank)
+				cur = i;
+		menu->addChild(createIndexSubmenuItem("Samples per bank",
+			{"8", "16", "32", "whole kit"},
+			[=]() { return cur; },
+			[=](int v) {
+				m->samplesPerBank = perOptions[clamp(v, 0, 3)];
+				m->refreshKits();
+			}));
 	}
 };
 
