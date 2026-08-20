@@ -1285,7 +1285,7 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_SAW label 0.0 label "saw" 0.0 114.00 90.00
 // @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 110.00 73.50
 // @elem LABEL_CLK label 0.0 label "clk" 0.0 121.00 73.50
-// @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 16.50 126.50
+// @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 22.01 126.50
 // @elem LABEL_G label 0.0 label "gate ptrn" 0.0 20.75 107.50
 // @elem LABEL_C label 0.0 label "cv ptrn" 0.0 42.75 107.50
 // @elem LABEL_PAT_RESET label 0.0 label "reset" 0.0 66.04 107.50
@@ -1295,7 +1295,7 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_CV label 0.0 label "cv" 0.0 98.00 107.50
 // @elem BOX_CLK_OUT panel_box 7.0 box "" 0.0 114.00 102.00
 // @elem LABEL_CLK_OUT label 0.0 label "clk" 0.0 114.00 107.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 49.50 126.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 44.03 126.50
 // @elem BOX_LEFT panel_box 7.0 box "" 0.0 98.00 120.00
 // @elem LABEL_LEFT label 0.0 label "L" 0.0 98.00 125.50
 // @elem BOX_RIGHT panel_box 7.0 box "" 0.0 114.00 120.00
@@ -1338,17 +1338,17 @@ struct VatesWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 82.50f)), module, Vates::SAW_OUTPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 65.00f)), module, Vates::TEMPO_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 65.00f)), module, Vates::CLK_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 118.00f)), module, Vates::RHYTHM_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.51f, 118.00f)), module, Vates::RHYTHM_PARAM));
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(16.00f, 98.00f)), module, Vates::GSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.50f, 100.00f)), module, Vates::G_INPUT));
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(38.00f, 98.00f)), module, Vates::CSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(47.50f, 100.00f)), module, Vates::C_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 100.00f)), module, Vates::PAT_RESET_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.00f, 118.00f)), module, Vates::RHYTHM_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(27.51f, 118.00f)), module, Vates::RHYTHM_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 100.00f)), module, Vates::GATE_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 100.00f)), module, Vates::CV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 100.00f)), module, Vates::CLK_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 118.00f)), module, Vates::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(44.03f, 118.00f)), module, Vates::LEVEL_PARAM));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 118.00f)), module, Vates::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 118.00f)), module, Vates::RIGHT_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(103.00f, 115.00f)), module, Vates::LEFT_LIGHT));

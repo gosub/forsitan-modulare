@@ -17,16 +17,32 @@ namespace forsitan {
 
 template <typename TBase>
 struct PositionSwitch : TBase {
+	float pressY = 0.f;
+
+	// Note where the press landed and let the ordinary parameter handling
+	// run: consuming the press here instead would still start a drag on this
+	// widget, and Switch::onDragStart would then increment the value on top
+	// of whatever we had set — every click landing one position too high.
 	void onButton(const rack::event::Button& e) override {
-		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT
-		    && (e.mods & RACK_MOD_MASK) == 0) {
-			setFromPos(e.pos.y);
-			e.consume(this);
+		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT)
+			pressY = e.pos.y;
+		rack::app::ParamWidget::onButton(e);
+	}
+
+	// This is where Switch does its increment. Setting from the press
+	// position instead is the whole point of the widget.
+	void onDragStart(const rack::event::DragStart& e) override {
+		if (this->momentary) {
+			TBase::onDragStart(e);
 			return;
 		}
-		// everything else — right-click menu, ctrl-click, double-click — is
-		// the ordinary parameter behaviour
-		rack::app::ParamWidget::onButton(e);
+		if (e.button == GLFW_MOUSE_BUTTON_LEFT)
+			setFromPos(pressY);
+	}
+
+	void onDragEnd(const rack::event::DragEnd& e) override {
+		if (this->momentary)
+			TBase::onDragEnd(e);
 	}
 
 	void setFromPos(float y) {
