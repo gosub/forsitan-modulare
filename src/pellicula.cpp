@@ -27,193 +27,24 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include "sampler/kitloader.hpp"
+
 #include <thread>
 #include <atomic>
 
 static const int kNumVoices  = 8;
 static const int kNumSamples = 64;
 
-// ── minimal WAV loader ────────────────────────────────────────────────────────
-// Canonical RIFF/WAVE PCM. Handles 8/16/24/32-bit int and 32-bit float, mono or
-// multi-channel (down-mixed to mono). Little-endian hosts only (all Rack targets).
-struct Sample {
-    std::vector<float> data;   // mono, normalised to [-1, 1]
-    float sampleRate = 44100.f;
-};
-
-static uint32_t rd32(const uint8_t* p) {
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-static uint16_t rd16(const uint8_t* p) {
-    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
-}
-
-static bool loadWav(const std::string& path, Sample& out) {
-    FILE* f = std::fopen(path.c_str(), "rb");
-    if (!f)
-        return false;
-    std::fseek(f, 0, SEEK_END);
-    long len = std::ftell(f);
-    std::fseek(f, 0, SEEK_SET);
-    if (len < 44) { std::fclose(f); return false; }
-    std::vector<uint8_t> buf(len);
-    size_t got = std::fread(buf.data(), 1, len, f);
-    std::fclose(f);
-    if ((long)got != len)
-        return false;
-
-    if (std::memcmp(buf.data(), "RIFF", 4) != 0 || std::memcmp(buf.data() + 8, "WAVE", 4) != 0)
-        return false;
-
-    uint16_t fmt = 1, channels = 1, bits = 16;
-    uint32_t rate = 44100;
-    const uint8_t* pcm = nullptr;
-    uint32_t pcmBytes = 0;
-
-    size_t pos = 12;
-    while (pos + 8 <= (size_t)len) {
-        const uint8_t* ck = buf.data() + pos;
-        uint32_t cksz = rd32(ck + 4);
-        const uint8_t* body = ck + 8;
-        if (std::memcmp(ck, "fmt ", 4) == 0 && cksz >= 16) {
-            fmt      = rd16(body + 0);
-            channels = rd16(body + 2);
-            rate     = rd32(body + 4);
-            bits     = rd16(body + 14);
-        }
-        else if (std::memcmp(ck, "data", 4) == 0) {
-            pcm      = body;
-            pcmBytes = cksz;
-            if (pos + 8 + pcmBytes > (size_t)len)   // clamp to file
-                pcmBytes = (uint32_t)((size_t)len - (pos + 8));
-        }
-        pos += 8 + cksz + (cksz & 1);   // chunks are word-aligned
-    }
-    if (!pcm || channels == 0)
-        return false;
-
-    const bool isFloat = (fmt == 3);
-    const int  bytesPS = bits / 8;
-    if (bytesPS == 0)
-        return false;
-    const uint32_t frames = pcmBytes / (bytesPS * channels);
-    out.sampleRate = (float)rate;
-    out.data.resize(frames);
-
-    for (uint32_t i = 0; i < frames; ++i) {
-        float acc = 0.f;
-        for (int c = 0; c < channels; ++c) {
-            const uint8_t* s = pcm + (size_t)(i * channels + c) * bytesPS;
-            float v = 0.f;
-            if (isFloat && bits == 32) {
-                uint32_t u = rd32(s);
-                float fv; std::memcpy(&fv, &u, 4);
-                v = fv;
-            }
-            else if (bits == 16) {
-                v = (int16_t)rd16(s) / 32768.f;
-            }
-            else if (bits == 24) {
-                int32_t u = (s[0]) | (s[1] << 8) | (s[2] << 16);
-                if (u & 0x800000) u |= ~0xFFFFFF;   // sign-extend
-                v = u / 8388608.f;
-            }
-            else if (bits == 32) {
-                v = (int32_t)rd32(s) / 2147483648.f;
-            }
-            else if (bits == 8) {
-                v = ((int)s[0] - 128) / 128.f;   // 8-bit WAV is unsigned
-            }
-            acc += v;
-        }
-        out.data[i] = acc / channels;
-    }
-    return true;
-}
-
-// A loaded kit: up to 64 samples, ordered by filename.
-struct Bank {
-    std::string name;
-    std::vector<Sample> samples;
-};
-
-// ── global "kits folder" setting (plugin-wide, shared by all instances) ───────
-static std::mutex g_settingsMutex;
-static std::string g_kitsFolder;
-static bool g_settingsLoaded = false;
-
-static std::string settingsPath() {
-    return asset::user("pellicula/settings.json");
-}
-static void loadSettingsOnce() {
-    std::lock_guard<std::mutex> lock(g_settingsMutex);
-    if (g_settingsLoaded)
-        return;
-    g_settingsLoaded = true;
-    FILE* f = std::fopen(settingsPath().c_str(), "r");
-    if (!f)
-        return;
-    json_error_t err;
-    json_t* root = json_loadf(f, 0, &err);
-    std::fclose(f);
-    if (!root)
-        return;
-    if (json_t* kf = json_object_get(root, "kitsFolder"))
-        g_kitsFolder = json_string_value(kf);
-    json_decref(root);
-}
-static std::string getKitsFolder() {
-    std::lock_guard<std::mutex> lock(g_settingsMutex);
-    return g_kitsFolder;
-}
-static void setKitsFolder(const std::string& path) {
-    std::lock_guard<std::mutex> lock(g_settingsMutex);
-    g_kitsFolder = path;
-    system::createDirectories(system::getDirectory(settingsPath()));
-    json_t* root = json_object();
-    json_object_set_new(root, "kitsFolder", json_string(path.c_str()));
-    if (FILE* f = std::fopen(settingsPath().c_str(), "w")) {
-        json_dumpf(root, f, JSON_INDENT(2));
-        std::fclose(f);
-    }
-    json_decref(root);
-}
-
-// natural (numeric-aware, case-insensitive) filename ordering: 1, 2, 10 not 1, 10, 2
-static bool naturalLess(const std::string& A, const std::string& B) {
-    std::string a = string::lowercase(A), b = string::lowercase(B);
-    size_t i = 0, j = 0;
-    while (i < a.size() && j < b.size()) {
-        if (std::isdigit((unsigned char)a[i]) && std::isdigit((unsigned char)b[j])) {
-            size_t i0 = i, j0 = j;
-            while (i < a.size() && std::isdigit((unsigned char)a[i])) ++i;
-            while (j < b.size() && std::isdigit((unsigned char)b[j])) ++j;
-            std::string na = a.substr(i0, i - i0), nb = b.substr(j0, j - j0);
-            size_t pa = na.find_first_not_of('0'), pb = nb.find_first_not_of('0');
-            na = (pa == std::string::npos) ? "" : na.substr(pa);
-            nb = (pb == std::string::npos) ? "" : nb.substr(pb);
-            if (na.size() != nb.size()) return na.size() < nb.size();
-            if (na != nb)               return na < nb;
-        }
-        else {
-            if (a[i] != b[j]) return a[i] < b[j];
-            ++i; ++j;
-        }
-    }
-    return a.size() < b.size();
-}
-
-// list the immediate subfolders of the kits folder (each is a selectable kit)
-static std::vector<std::string> listKits(const std::string& folder) {
-    std::vector<std::string> kits;
-    if (folder.empty() || !system::isDirectory(folder))
-        return kits;
-    for (const std::string& e : system::getEntries(folder))
-        if (system::isDirectory(e))
-            kits.push_back(system::getFilename(e));
-    std::sort(kits.begin(), kits.end(), naturalLess);
-    return kits;
-}
+// Samples, kits, the WAV reader and the shared "kits folder" setting all
+// live in src/sampler/kitloader.hpp — vates browses the same library.
+using forsitan_sampler::Sample;
+using forsitan_sampler::Kit;
+using forsitan_sampler::loadWav;
+using forsitan_sampler::getKitsFolder;
+using forsitan_sampler::setKitsFolder;
+using forsitan_sampler::loadSettingsOnce;
+using forsitan_sampler::listKits;
+using forsitan_sampler::listKitFiles;
 
 // ── module ────────────────────────────────────────────────────────────────────
 struct Pellicula : Module {
@@ -256,7 +87,7 @@ struct Pellicula : Module {
         float  env      = 1.f;   // decay envelope
         float  envCoef  = 1.f;   // per-sample decay multiplier (1 = no decay)
         bool   noDecay  = true;  // full-sample playback (decay knob at max)
-        std::shared_ptr<Bank> src;   // bank this voice is playing from (latched)
+        std::shared_ptr<Kit> src;   // bank this voice is playing from (latched)
     };
     Voice voices[kNumVoices];
     dsp::SchmittTrigger trig[kNumVoices];
@@ -265,11 +96,11 @@ struct Pellicula : Module {
     float lightEnv[kNumVoices] = {0.f};
 
     // kit loading (background thread → glitch-free swap into `bank`)
-    std::shared_ptr<Bank> bank;           // current kit (audio thread reads)
+    std::shared_ptr<Kit> bank;           // current kit (audio thread reads)
     std::string kitName;                  // selected kit subfolder name ("" = none)
     std::thread loader;
     std::mutex  handoffMutex;
-    std::shared_ptr<Bank> incoming;       // staged by worker, consumed in process()
+    std::shared_ptr<Kit> incoming;       // staged by worker, consumed in process()
     std::atomic<bool> hasIncoming{false};
     std::atomic<bool> abortLoad{false};
 
@@ -310,21 +141,12 @@ struct Pellicula : Module {
 
     // Build a kit on a worker thread, then stage it for the audio thread.
     void loadKitWorker(std::string name) {
-        auto b = std::make_shared<Bank>();
+        auto b = std::make_shared<Kit>();
         b->name = name;
         std::string folder = getKitsFolder();
         std::string dir = folder + "/" + name;
         if (!name.empty() && !folder.empty() && system::isDirectory(dir)) {
-            std::vector<std::string> files;
-            for (const std::string& e : system::getEntries(dir)) {
-                if (system::isFile(e) && string::lowercase(system::getExtension(e)) == ".wav")
-                    files.push_back(e);
-            }
-            std::sort(files.begin(), files.end(), [](const std::string& x, const std::string& y) {
-                return naturalLess(system::getFilename(x), system::getFilename(y));
-            });
-            if ((int)files.size() > kNumSamples)
-                files.resize(kNumSamples);
+            std::vector<std::string> files = listKitFiles(dir, kNumSamples);
             for (const std::string& fp : files) {
                 if (abortLoad.load())
                     return;
@@ -382,7 +204,7 @@ struct Pellicula : Module {
 
         Voice& vo = voices[v];
         // nothing to play if no kit, index past the kit, or empty slot
-        if (!bank || idx >= (int)bank->samples.size() || bank->samples[idx].data.size() < 2) {
+        if (!bank || idx >= (int)bank->samples.size() || bank->samples[idx].frames() < 2) {
             vo.active = false;
             return;
         }
@@ -437,8 +259,8 @@ struct Pellicula : Module {
                 Sample& s = vo.src->samples[vo.sample];
                 int i0 = (int)vo.pos;
                 float fr = (float)(vo.pos - i0);
-                float a = s.data[i0];
-                float b = (i0 + 1 < (int)s.data.size()) ? s.data[i0 + 1] : 0.f;
+                float a = s.l[i0];
+                float b = (i0 + 1 < (int)s.frames()) ? s.l[i0 + 1] : 0.f;
                 float smp = a + (b - a) * fr;
 
                 if (crush12)
@@ -461,7 +283,7 @@ struct Pellicula : Module {
                 if (!vo.noDecay)
                     vo.env *= vo.envCoef;
 
-                if (vo.pos >= s.data.size() - 1 || vo.env < 1e-4f) {
+                if (vo.pos >= s.frames() - 1 || vo.env < 1e-4f) {
                     vo.active = false;
                     vo.src.reset();
                 }
