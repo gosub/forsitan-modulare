@@ -173,6 +173,7 @@ struct Vates : Module {
 		G_INPUT,
 		C_INPUT,
 		PAT_RESET_INPUT,
+		RHYTHM_INPUT,
 		INPUTS_LEN
 	};
 	enum OutputId {
@@ -358,6 +359,7 @@ struct Vates : Module {
 		configInput(G_INPUT, "Gate pattern modifier");
 		configInput(C_INPUT, "CV pattern modifier");
 		configInput(PAT_RESET_INPUT, "Pattern reset");
+		configInput(RHYTHM_INPUT, "Rhythm select");
 
 		configOutput(ENV_OUTPUT, "Envelope");
 		configOutput(TRI_OUTPUT, "LFO triangle");
@@ -786,7 +788,11 @@ struct Vates : Module {
 		}
 
 		// ── pattern generator ────────────────────────────────────────────────
+		// the knob spans the 32 rhythms and the CV offsets it, wrapping, on
+		// the same ten-volts-is-the-whole-list scale as bank and sample
 		int rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
+		if (inputs[RHYTHM_INPUT].isConnected())
+			rhythm = cvSelect(rhythm, inputs[RHYTHM_INPUT].getVoltage(), 1.f, 32);
 		if (rhythm != loadedRhythm) {
 			loadedRhythm = rhythm;
 			gateWork = rhythmPattern(rhythm);
@@ -1242,6 +1248,7 @@ struct VatesWidget : ModuleWidget {
 // @elem CSW_PARAM CKSSThree 2.3 param "" 0.0
 // @elem C_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem PAT_RESET_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem RHYTHM_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem GATE_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem CV_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem CLK_OUTPUT PJ301MPort 4.01 output "" 0.0
@@ -1277,9 +1284,9 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_SAW label 0.0 label "saw" 0.0 114.00 90.00
 // @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 110.00 73.50
 // @elem LABEL_CLK label 0.0 label "clk" 0.0 121.00 73.50
-// @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 11.00 108.50
-// @elem LABEL_G label 0.0 label "gate ptrn" 0.0 28.75 107.50
-// @elem LABEL_C label 0.0 label "cv ptrn" 0.0 48.75 107.50
+// @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 16.50 126.50
+// @elem LABEL_G label 0.0 label "gate ptrn" 0.0 20.75 107.50
+// @elem LABEL_C label 0.0 label "cv ptrn" 0.0 42.75 107.50
 // @elem LABEL_PAT_RESET label 0.0 label "reset" 0.0 66.04 107.50
 // @elem BOX_GATE panel_box 7.0 box "" 0.0 82.00 102.00
 // @elem LABEL_GATE label 0.0 label "gate" 0.0 82.00 107.50
@@ -1330,12 +1337,13 @@ struct VatesWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 82.50f)), module, Vates::SAW_OUTPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 65.00f)), module, Vates::TEMPO_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 65.00f)), module, Vates::CLK_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 100.00f)), module, Vates::RHYTHM_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(24.00f, 98.00f)), module, Vates::GSW_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.50f, 100.00f)), module, Vates::G_INPUT));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(44.00f, 98.00f)), module, Vates::CSW_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 100.00f)), module, Vates::C_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 118.00f)), module, Vates::RHYTHM_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(16.00f, 98.00f)), module, Vates::GSW_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.50f, 100.00f)), module, Vates::G_INPUT));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(38.00f, 98.00f)), module, Vates::CSW_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(47.50f, 100.00f)), module, Vates::C_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 100.00f)), module, Vates::PAT_RESET_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(22.00f, 118.00f)), module, Vates::RHYTHM_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 100.00f)), module, Vates::GATE_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 100.00f)), module, Vates::CV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 100.00f)), module, Vates::CLK_OUTPUT));

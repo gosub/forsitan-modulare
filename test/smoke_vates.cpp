@@ -636,6 +636,35 @@ static void testPitchTracking() {
 	       std::fabs(m.voiceRateNow() - 8.f) < 1e-4f);
 }
 
+// ── the rhythm CV picks patterns ──────────────────────────────────────────────
+// Same ten-volts-is-the-whole-list scale as bank and sample, offsetting the
+// knob and wrapping past the end. Its own module: selecting a rhythm reloads
+// the working pattern, so this must not run after the switches have edited
+// one.
+static void testRhythmCv() {
+	Vates m;
+	long fr = 0;
+	m.params[Vates::TEMPO_PARAM].setValue(240.f);
+	m.params[Vates::RHYTHM_PARAM].setValue(0.f);
+	m.inputs[Vates::RHYTHM_INPUT].channels = 1;
+	m.inputs[Vates::RHYTHM_INPUT].setVoltage(0.f);
+	run(m, fr, 0.2);
+	report("vates", "rhythm_cv_zero", m.gateWork, m.gateWork == 0x8888);
+
+	m.inputs[Vates::RHYTHM_INPUT].setVoltage(10.f);   // the last of the 32
+	run(m, fr, 0.2);
+	report("vates", "rhythm_cv_top", m.gateWork, m.gateWork == 0xFFFF);
+
+	m.inputs[Vates::RHYTHM_INPUT].setVoltage(5.f);    // halfway: "funk"
+	run(m, fr, 0.2);
+	report("vates", "rhythm_cv_middle", m.gateWork, m.gateWork == 0x9632);
+
+	// past the end it wraps: 11 V is 35 patterns on, which is the fourth
+	m.inputs[Vates::RHYTHM_INPUT].setVoltage(11.f);
+	run(m, fr, 0.2);
+	report("vates", "rhythm_cv_wraps", m.gateWork, m.gateWork == 0xAAAA);
+}
+
 // ── the pattern inputs read the Rack window, and the hardware one on ask ─────
 // A gate source resting at 0 V must mean "leave the pattern alone". Under the
 // hardware's 0-5 V logic the same 0 V means invert, every step, which is what
@@ -823,5 +852,5 @@ static void testAbuse() {
 
 SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
+           testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

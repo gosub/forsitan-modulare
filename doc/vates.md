@@ -193,7 +193,7 @@ a saw outright.
 | **tempo** | internal clock, 30–300 BPM. |
 | **clk in** | external clock. It takes over while it runs; two seconds of silence hands the tempo back to **tempo**. |
 | **clk out** | the clock in use, internal or external. |
-| **rhythm** | selects one of 32 built-in 16-step gate patterns. |
+| **rhythm** | selects one of 32 built-in 16-step gate patterns, with a CV input beside it: ten volts is the whole list, and it wraps past the end. Selecting a rhythm reloads it, discarding what the switches have written into it. |
 | **gate**, **cv** | the pattern's gate (75% of a step) and its stepped CV, 0–10V. |
 | **reset** | restarts both sequences. Patch a slow LFO here to shorten the pattern. |
 | **gate ptrn**, **cv ptrn** | a three-position switch and a jack each: live surgery on the gate and CV sequences. |

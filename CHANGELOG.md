@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     Underneath sits the hardware's semi-autonomous half: a 16-step pattern
     generator with **gate** and **cv** outputs, 32 built-in rhythms on a knob
-    in place of the original's web editor, and the two three-position switches
+    (with a CV input of its own) in place of the original's web editor, and the two three-position switches
     that randomize or invert the step the sequence is on — and write it back,
     so a flick changes the pattern for good. Each switch is normalled to a
     jack that does the same job from a voltage: above +1 V randomizes, below
