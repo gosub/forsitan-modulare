@@ -55,6 +55,12 @@ subfolder is a kit of `.wav` files ordered by filename. Stereo files stay
 stereo. Kits load on a background thread, so browsing them never interrupts
 the audio.
 
+Generated banks are always rendered at 44.1 kHz and resampled on playback,
+exactly as your own files are — the alternative is regenerating forty-eight
+samples every time the engine rate changes. Building a whole set takes about
+a tenth of a second, on a worker thread; the display counts it up if you
+happen to catch it.
+
 ## The panel
 
 ### sample
@@ -170,6 +176,13 @@ between them leave it alone.
 The hardware's rhythms come from a web app that rebuilds the firmware. Here
 they are 32 patterns on a knob, and the switches make them yours.
 
+### the display
+
+The band under the title reads the bank on the left and the sample on the
+right — "drums" and "3 snare", or the name of your kit and which file of it
+is selected. Kits are yours and generated banks are new with every seed, so
+the panel cannot label what a knob position holds; the display can.
+
 ### output
 
 **level** sets the output, **L** and **R** carry it, each with a lamp. One
@@ -180,9 +193,12 @@ tight.
 ## Context menu
 
 - **root**, **scale** — the quantizer for the **note** input.
-- **reroll kit** — a new seed for the six generated banks.
-- **kits folder** — shared with pellicula.
-- **clock** — whether **clk in** may take over from the internal tempo.
+- **reroll kit** — a new seed for the six generated banks. The seed is saved
+  with the patch, so a rerolled kit comes back exactly as you left it.
+- **kits folder**, **rescan kits** — the folder is shared with pellicula; the
+  rescan picks up kits added while Rack was running.
+- **external clock takes over** — whether **clk in** may take the tempo from
+  the **tempo** knob.
 
 ## What was left behind
 

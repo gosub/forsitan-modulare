@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
+  - **vates**, a 26 HP stereo sample player, after Bastl Instruments' Citadel
+    Wave Bard. Its idea is that you do not draw a rhythm: you modulate which
+    sample plays and let the rhythm fall out. **sample mod** in **play** mode
+    fires a hit the moment modulation crosses into a new sample, so an LFO into
+    it *is* the sequence; in **cue** mode the same modulation only aims, and
+    **trig** decides when. Both selections wrap, so a slow ramp is a part.
+
+    **length** is one knob for the envelope and the playback direction:
+    centre is the shortest hit, right lengthens the decay, and left lengthens
+    the *attack* and plays the sample backwards. It latches at the trigger, so
+    modulation flips the direction between hits and never inside one, and a
+    reversed swell refuses to be retriggered while it is still rising. Two
+    pitch inputs, because they are two jobs: **free** bends continuously,
+    **note** is quantized to the root and scale and only updates on a trigger.
+
+    vates ships no audio files and still boots making sound: six banks of
+    eight samples are synthesized from a seed saved with the patch — drums,
+    struck objects, grains, micro-sounds, tones and air — one sample of each
+    kind the generator knows, so a knob position always means the same role.
+    The four percussive banks come from the kit engines of the author's
+    pages64 plugin, the two tonal ones from imber's generators, all rendered
+    at C so the quantizer is honest. Your own kits follow the generated ones,
+    read from the kits folder pellicula already uses.
+
+    Underneath sits the hardware's semi-autonomous half: a 16-step pattern
+    generator with **gate** and **cv** outputs, 32 built-in rhythms on a knob
+    in place of the original's web editor, and the two three-position switches
+    that randomize or invert the step the sequence is on — and write it back,
+    so a flick changes the pattern for good. Plus an LFO with triangle and
+    pulse outs that is patch-programmable through its own rate input, an
+    internal clock that hands over to **clk in** and takes the tempo back two
+    seconds after it stops, a resonant filter that is a lowpass on one side of
+    centre and a highpass on the other, and a tempo-synced delay that becomes
+    a chorus and then a flanger as the **fx** knob crosses.
+
+    The hardware's SHIFT and BANK layers, which give every knob two or three
+    jobs, are unpacked into real controls: holding one thing while turning
+    another is a gesture a mouse does badly. MIDI, the headphone output, the
+    audio input and the sample-loader web app are gone — Rack has all of them
+    already.
+
   - **aether**, a 14 HP broken transmission line, after Schlappi Engineering's
     Interstellar Radio. Audio goes into a synchronous charge-balance
     voltage-to-frequency converter clocked by **carrier** and leaves as a pulse
