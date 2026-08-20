@@ -41,7 +41,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     generator with **gate** and **cv** outputs, 32 built-in rhythms on a knob
     in place of the original's web editor, and the two three-position switches
     that randomize or invert the step the sequence is on — and write it back,
-    so a flick changes the pattern for good. Plus an LFO with triangle and
+    so a flick changes the pattern for good. Each switch is normalled to a
+    jack that does the same job from a voltage: above +1 V randomizes, below
+    −1 V inverts, so a gate resting at 0 V leaves the pattern alone (the
+    hardware's own 0–5 V window, where 0 V inverts, is a menu option). Plus an LFO with triangle and
     pulse outs that is patch-programmable through its own rate input, an
     internal clock that hands over to **clk in** and takes the tempo back two
     seconds after it stops, a resonant filter that is a lowpass on one side of

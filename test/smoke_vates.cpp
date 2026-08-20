@@ -569,6 +569,46 @@ static void testPatternSwitches() {
 	report("vates", "cv_range", cv.peak, cv.peak <= 10.001f && cv.nans == 0);
 }
 
+// ── the pattern inputs read the Rack window, and the hardware one on ask ─────
+// A gate source resting at 0 V must mean "leave the pattern alone". Under the
+// hardware's 0-5 V logic the same 0 V means invert, every step, which is what
+// the menu option is for.
+static void testPatternInputs() {
+	Vates m;
+	long fr = 0;
+	m.params[Vates::TEMPO_PARAM].setValue(240.f);
+	m.params[Vates::RHYTHM_PARAM].setValue(0.f);      // four on the floor
+	m.params[Vates::GSW_PARAM].setValue(0.f);         // switch says invert...
+	m.inputs[Vates::G_INPUT].channels = 1;            // ...but the jack decides
+	m.inputs[Vates::G_INPUT].setVoltage(0.f);
+	run(m, fr, 0.3);
+	uint16_t start = m.gateWork;
+	runSteps(m, fr, 16);
+	report("vates", "pattern_in_0v_neutral", m.gateWork,
+	       m.gateWork == start && start == 0x8888);
+
+	m.inputs[Vates::G_INPUT].setVoltage(-5.f);        // invert
+	runSteps(m, fr, 16);
+	report("vates", "pattern_in_negative_inverts", m.gateWork,
+	       m.gateWork == (uint16_t)~start);
+
+	m.inputs[Vates::G_INPUT].setVoltage(5.f);         // randomize
+	uint16_t before = m.gateWork;
+	runSteps(m, fr, 16);
+	report("vates", "pattern_in_positive_randomizes", m.gateWork,
+	       m.gateWork != before);
+
+	// the hardware window, for whoever wants it: 0 V inverts
+	m.hardwareCvWindow = true;
+	m.params[Vates::RHYTHM_PARAM].setValue(1.f);      // reload a clean pattern
+	run(m, fr, 0.1);
+	uint16_t clean = m.gateWork;
+	m.inputs[Vates::G_INPUT].setVoltage(0.f);
+	runSteps(m, fr, 16);
+	report("vates", "pattern_in_hardware_window", m.gateWork,
+	       m.gateWork == (uint16_t)~clean);
+}
+
 // ── the LFO ───────────────────────────────────────────────────────────────────
 static void testLfo() {
 	Vates m;
@@ -673,5 +713,5 @@ static void testAbuse() {
 
 SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testLfo, testLfoDirection, testToneAbuse,
+           testPatternSwitches, testPatternInputs, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

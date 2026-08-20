@@ -245,6 +245,12 @@ struct Vates : Module {
 	int rootNote = 0;                     // 0-11, C..B
 	int scaleIndex = imber_dsp::kDefaultScale;
 	bool honourExternalClock = true;
+	// Which voltage window the pattern inputs read. The hardware's is 0-5 V
+	// logic — below 1.6 V inverts — which in Rack means a gate resting at 0 V
+	// inverts the pattern continuously until it goes high. The default here
+	// is the Rack reading: zero is neutral, positive randomizes, negative
+	// inverts.
+	bool hardwareCvWindow = false;
 
 	// ── voice ────────────────────────────────────────────────────────────────
 	std::shared_ptr<void> voiceHold;      // keeps the bank or kit alive
@@ -546,6 +552,17 @@ struct Vates : Module {
 		return best / 12.f;
 	}
 
+	// 0 = invert, 1 = leave alone, 2 = randomize. The switch is normalled to
+	// the jack, as on the hardware: patch a cable and the voltage decides.
+	int patternMode(int switchParam, int inputId) {
+		if (!inputs[inputId].isConnected())
+			return (int)std::round(params[switchParam].getValue());
+		float v = inputs[inputId].getVoltage();
+		if (hardwareCvWindow)
+			return v > 3.2f ? 2 : (v < 1.6f ? 0 : 1);
+		return v > 1.f ? 2 : (v < -1.f ? 0 : 1);
+	}
+
 	// ── the voice ────────────────────────────────────────────────────────────
 
 	void trigger(float sr) {
@@ -773,16 +790,8 @@ struct Vates : Module {
 			// leaves the sequence alone, up randomizes the step the sequence
 			// is on, down inverts it — and both write into the working copy,
 			// so a flick changes the pattern for good
-			int gMode = (int)std::round(params[GSW_PARAM].getValue());
-			if (inputs[G_INPUT].isConnected()) {
-				float v = inputs[G_INPUT].getVoltage();
-				gMode = v > 3.2f ? 2 : (v < 1.6f ? 0 : 1);
-			}
-			int cMode = (int)std::round(params[CSW_PARAM].getValue());
-			if (inputs[C_INPUT].isConnected()) {
-				float v = inputs[C_INPUT].getVoltage();
-				cMode = v > 3.2f ? 2 : (v < 1.6f ? 0 : 1);
-			}
+			int gMode = patternMode(GSW_PARAM, G_INPUT);
+			int cMode = patternMode(CSW_PARAM, C_INPUT);
 			uint16_t mask = (uint16_t)(0x8000u >> step);
 			if (gMode == 2) {
 				patRng ^= patRng << 13; patRng ^= patRng >> 17; patRng ^= patRng << 5;
@@ -1039,6 +1048,7 @@ struct Vates : Module {
 		rootNote = 0;
 		scaleIndex = imber_dsp::kDefaultScale;
 		honourExternalClock = true;
+		hardwareCvWindow = false;
 		bankSeed = (uint64_t)random::u32() | 1ull;
 		pendingGen = true;
 		bankBase = 0;
@@ -1055,6 +1065,7 @@ struct Vates : Module {
 		json_object_set_new(root, "externalClock", json_boolean(honourExternalClock));
 		json_object_set_new(root, "samplesPerBank", json_integer(samplesPerBank));
 		json_object_set_new(root, "bank", json_integer(bankBase));
+		json_object_set_new(root, "hardwareCvWindow", json_boolean(hardwareCvWindow));
 		return root;
 	}
 
@@ -1073,6 +1084,8 @@ struct Vates : Module {
 			samplesPerBank = clamp((int)json_integer_value(j), 0, 64);
 		if (json_t* j = json_object_get(root, "bank"))
 			bankBase = std::max(0, (int)json_integer_value(j));
+		if (json_t* j = json_object_get(root, "hardwareCvWindow"))
+			hardwareCvWindow = json_boolean_value(j);
 	}
 };
 
@@ -1346,6 +1359,11 @@ struct VatesWidget : ModuleWidget {
 
 		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
 			&m->honourExternalClock));
+
+		menu->addChild(createIndexSubmenuItem("Pattern input window",
+			{"0V neutral, +1V randomize, -1V invert", "Hardware: 1.6-3.2V neutral"},
+			[=]() { return m->hardwareCvWindow ? 1 : 0; },
+			[=](int v) { m->hardwareCvWindow = (v == 1); }));
 
 		menu->addChild(new MenuSeparator);
 		std::string folder = forsitan_sampler::getKitsFolder();

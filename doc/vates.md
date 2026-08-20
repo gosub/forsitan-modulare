@@ -199,8 +199,14 @@ and the pattern is different when you flick it back; hold it down and the
 inversion keeps re-applying, so a 16-step pattern reads as 32.
 
 Each switch is normalled to its input jack, **G in** and **C in**, so a
-patched voltage does the same job: above 3.2V randomize, below 1.6V invert,
-between them leave it alone.
+patched voltage does the same job: **above +1V randomize, below −1V invert,
+between them leave it alone**. A gate source resting at 0V therefore leaves
+the pattern alone until it fires, and a bipolar LFO reaches both actions.
+
+The hardware reads its own 0–5V logic there — above 3.2V randomize, below
+1.6V invert — which in Rack would mean a gate idling at 0V inverts the
+pattern on every step. **pattern input window** in the context menu switches
+to it for anyone who wants the original's response.
 
 The hardware's rhythms come from a web app that rebuilds the firmware. Here
 they are 32 patterns on a knob, and the switches make them yours.
@@ -234,6 +240,8 @@ tight.
   default, and a generated bank's size), 16, 32, or the whole kit in one.
 - **external clock takes over** — whether **clk in** may take the tempo from
   the **tempo** knob.
+- **pattern input window** — the voltage windows **G in** and **C in** read:
+  the Rack one (0V neutral) or the hardware's (1.6–3.2V neutral).
 
 ## What was left behind
 
