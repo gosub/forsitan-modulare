@@ -1258,38 +1258,36 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_LENGTH label 0.0 label "length" 0.0 115.50 40.50
 // @elem LABEL_FREE label 0.0 label "free" 0.0 82.50 54.50
 // @elem LABEL_NOTE label 0.0 label "note" 0.0 93.00 54.50
-// @elem LABEL_CUE label 0.0 label "cue" 0.0 26.50 54.90
-// @elem LABEL_MODE label 0.0 label "play" 0.0 26.50 69.50
-// @elem LABEL_TRIG label 0.0 label "trig" 0.0 12.25 69.50
-// @elem LABEL_FILTER label 0.0 label "filter" 0.0 49.50 70.50
-// @elem LABEL_FX label 0.0 label "fx" 0.0 82.50 70.50
+// @elem LABEL_CUE label 0.0 label "cue" 0.0 26.50 57.90
+// @elem LABEL_MODE label 0.0 label "play" 0.0 26.50 72.50
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 12.25 72.50
+// @elem LABEL_FILTER label 0.0 label "filter" 0.0 49.50 73.50
+// @elem LABEL_FX label 0.0 label "fx" 0.0 82.50 73.50
 // @elem BOX_ENV panel_box 7.0 box "" 0.0 82.00 120.00
 // @elem LABEL_ENV label 0.0 label "env" 0.0 82.00 125.50
-// @elem LABEL_SYNC label 0.0 label "sync" 0.0 8.00 75.50
-// @elem LABEL_FREERUN label 0.0 label "free" 0.0 8.00 91.50
-// @elem LABEL_RATE label 0.0 label "rate" 0.0 21.00 91.50
-// @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 57.00 90.50
-// @elem BOX_SAW panel_box 7.0 box "" 0.0 114.00 85.00
-// @elem BOX_TRI panel_box 7.0 box "" 0.0 82.00 85.00
-// @elem LABEL_TRI label 0.0 label "tri" 0.0 82.00 90.50
-// @elem BOX_PULSE panel_box 7.0 box "" 0.0 98.00 85.00
-// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 98.00 90.50
-// @elem LABEL_SAW label 0.0 label "saw" 0.0 114.00 90.50
-// @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 110.00 70.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 121.00 70.50
-// @elem LABEL_GSW label 0.0 label "G" 0.0 24.00 95.50
-// @elem LABEL_CSW label 0.0 label "C" 0.0 44.00 95.50
-// @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 11.50 110.50
-// @elem LABEL_G label 0.0 label "G in" 0.0 33.50 109.50
-// @elem LABEL_C label 0.0 label "C in" 0.0 53.50 109.50
-// @elem LABEL_PAT_RESET label 0.0 label "reset" 0.0 65.00 109.50
-// @elem BOX_GATE panel_box 7.0 box "" 0.0 82.00 104.00
-// @elem LABEL_GATE label 0.0 label "gate" 0.0 82.00 109.50
-// @elem BOX_CV panel_box 7.0 box "" 0.0 98.00 104.00
-// @elem LABEL_CV label 0.0 label "cv" 0.0 98.00 109.50
-// @elem BOX_CLK_OUT panel_box 7.0 box "" 0.0 114.00 104.00
-// @elem LABEL_CLK_OUT label 0.0 label "clk" 0.0 114.00 109.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 25.00 126.50
+// @elem LABEL_SYNC label 0.0 label "sync" 0.0 8.00 77.30
+// @elem LABEL_FREERUN label 0.0 label "free" 0.0 8.00 92.50
+// @elem LABEL_RATE label 0.0 label "rate" 0.0 21.00 91.00
+// @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 66.04 90.00
+// @elem BOX_SAW panel_box 7.0 box "" 0.0 114.00 84.50
+// @elem BOX_TRI panel_box 7.0 box "" 0.0 82.00 84.50
+// @elem LABEL_TRI label 0.0 label "tri" 0.0 82.00 90.00
+// @elem BOX_PULSE panel_box 7.0 box "" 0.0 98.00 84.50
+// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 98.00 90.00
+// @elem LABEL_SAW label 0.0 label "saw" 0.0 114.00 90.00
+// @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 110.00 73.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 121.00 73.50
+// @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 11.00 108.50
+// @elem LABEL_G label 0.0 label "gate ptrn" 0.0 28.75 107.50
+// @elem LABEL_C label 0.0 label "cv ptrn" 0.0 48.75 107.50
+// @elem LABEL_PAT_RESET label 0.0 label "reset" 0.0 66.04 107.50
+// @elem BOX_GATE panel_box 7.0 box "" 0.0 82.00 102.00
+// @elem LABEL_GATE label 0.0 label "gate" 0.0 82.00 107.50
+// @elem BOX_CV panel_box 7.0 box "" 0.0 98.00 102.00
+// @elem LABEL_CV label 0.0 label "cv" 0.0 98.00 107.50
+// @elem BOX_CLK_OUT panel_box 7.0 box "" 0.0 114.00 102.00
+// @elem LABEL_CLK_OUT label 0.0 label "clk" 0.0 114.00 107.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 33.02 126.50
 // @elem BOX_LEFT panel_box 7.0 box "" 0.0 98.00 120.00
 // @elem LABEL_LEFT label 0.0 label "L" 0.0 98.00 125.50
 // @elem BOX_RIGHT panel_box 7.0 box "" 0.0 114.00 120.00
@@ -1314,34 +1312,34 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.00f, 47.00f)), module, Vates::NOTE_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(110.50f, 47.00f)), module, Vates::LENGTH_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.00f, 47.00f)), module, Vates::LENGTH_INPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 61.00f)), module, Vates::MODE_PARAM));
-        addParam(createParamCentered<TL1105>(mm2px(Vec(7.50f, 62.00f)), module, Vates::TRIG_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 62.00f)), module, Vates::TRIG_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 62.00f)), module, Vates::FILTER_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 62.00f)), module, Vates::FILTER_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 62.00f)), module, Vates::FX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 62.00f)), module, Vates::FX_INPUT));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 64.00f)), module, Vates::MODE_PARAM));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(7.50f, 65.00f)), module, Vates::TRIG_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 65.00f)), module, Vates::TRIG_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 65.00f)), module, Vates::FILTER_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(60.50f, 65.00f)), module, Vates::FILTER_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(82.50f, 65.00f)), module, Vates::FX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.50f, 65.00f)), module, Vates::FX_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 118.00f)), module, Vates::ENV_OUTPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(8.00f, 83.00f)), module, Vates::SYNC_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.00f, 83.00f)), module, Vates::RATE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.00f, 83.00f)), module, Vates::LFO_ATT_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 83.00f)), module, Vates::LFO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(57.00f, 83.00f)), module, Vates::LFO_RESET_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 83.00f)), module, Vates::TRI_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 83.00f)), module, Vates::PULSE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 83.00f)), module, Vates::SAW_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 62.00f)), module, Vates::TEMPO_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 62.00f)), module, Vates::CLK_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 102.00f)), module, Vates::RHYTHM_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(24.00f, 102.00f)), module, Vates::GSW_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.50f, 102.00f)), module, Vates::G_INPUT));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(44.00f, 102.00f)), module, Vates::CSW_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 102.00f)), module, Vates::C_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.00f, 102.00f)), module, Vates::PAT_RESET_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 102.00f)), module, Vates::GATE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 102.00f)), module, Vates::CV_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 102.00f)), module, Vates::CLK_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.00f, 118.00f)), module, Vates::LEVEL_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(8.00f, 84.00f)), module, Vates::SYNC_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(21.00f, 82.50f)), module, Vates::RATE_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(33.00f, 82.50f)), module, Vates::LFO_ATT_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 82.50f)), module, Vates::LFO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 82.50f)), module, Vates::LFO_RESET_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 82.50f)), module, Vates::TRI_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 82.50f)), module, Vates::PULSE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 82.50f)), module, Vates::SAW_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 65.00f)), module, Vates::TEMPO_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 65.00f)), module, Vates::CLK_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.00f, 100.00f)), module, Vates::RHYTHM_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(24.00f, 98.00f)), module, Vates::GSW_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.50f, 100.00f)), module, Vates::G_INPUT));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(44.00f, 98.00f)), module, Vates::CSW_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.50f, 100.00f)), module, Vates::C_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 100.00f)), module, Vates::PAT_RESET_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 100.00f)), module, Vates::GATE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 100.00f)), module, Vates::CV_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 100.00f)), module, Vates::CLK_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(33.02f, 118.00f)), module, Vates::LEVEL_PARAM));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 118.00f)), module, Vates::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 118.00f)), module, Vates::RIGHT_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(103.00f, 115.00f)), module, Vates::LEFT_LIGHT));

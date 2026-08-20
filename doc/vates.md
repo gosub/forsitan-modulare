@@ -196,7 +196,7 @@ a saw outright.
 | **rhythm** | selects one of 32 built-in 16-step gate patterns. |
 | **gate**, **cv** | the pattern's gate (75% of a step) and its stepped CV, 0–10V. |
 | **reset** | restarts both sequences. Patch a slow LFO here to shorten the pattern. |
-| **G**, **C** switches | live surgery on the gate and CV sequences. |
+| **gate ptrn**, **cv ptrn** | a three-position switch and a jack each: live surgery on the gate and CV sequences. |
 
 The two three-position switches are the hardware's best idea and they come
 over unchanged. Middle leaves the sequence alone. Up randomizes the step the
@@ -205,8 +205,8 @@ steps go quiet, and CV flips around its own midpoint. Flick one for a bar
 and the pattern is different when you flick it back; hold it down and the
 inversion keeps re-applying, so a 16-step pattern reads as 32.
 
-Each switch is normalled to its input jack, **G in** and **C in**, so a
-patched voltage does the same job: **above +1V randomize, below −1V invert,
+Each switch is normalled to the jack beside it, so a patched voltage does the
+same job: **above +1V randomize, below −1V invert,
 between them leave it alone**. A gate source resting at 0V therefore leaves
 the pattern alone until it fires, and a bipolar LFO reaches both actions.
 
@@ -247,7 +247,7 @@ tight.
   default, and a generated bank's size), 16, 32, or the whole kit in one.
 - **external clock takes over** — whether **clk in** may take the tempo from
   the **tempo** knob.
-- **pattern input window** — the voltage windows **G in** and **C in** read:
+- **pattern input window** — the voltage window the two pattern jacks read:
   the Rack one (0V neutral) or the hardware's (1.6–3.2V neutral).
 
 ## What was left behind
