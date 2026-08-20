@@ -1258,8 +1258,8 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_LENGTH label 0.0 label "length" 0.0 115.50 40.50
 // @elem LABEL_FREE label 0.0 label "free" 0.0 82.50 54.50
 // @elem LABEL_NOTE label 0.0 label "note" 0.0 93.00 54.50
-// @elem LABEL_CUE label 0.0 label "cue" 0.0 26.50 55.50
-// @elem LABEL_MODE label 0.0 label "play" 0.0 26.50 70.50
+// @elem LABEL_CUE label 0.0 label "cue" 0.0 26.50 54.90
+// @elem LABEL_MODE label 0.0 label "play" 0.0 26.50 69.50
 // @elem LABEL_TRIG label 0.0 label "trig" 0.0 12.25 69.50
 // @elem LABEL_FILTER label 0.0 label "filter" 0.0 49.50 70.50
 // @elem LABEL_FX label 0.0 label "fx" 0.0 82.50 70.50
@@ -1276,7 +1276,7 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_PULSE label 0.0 label "pulse" 0.0 76.00 90.50
 // @elem LABEL_SAW label 0.0 label "saw" 0.0 92.00 90.50
 // @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 115.50 70.50
-// @elem LABEL_CLK label 0.0 label "clk" 0.0 104.50 69.50
+// @elem LABEL_CLK label 0.0 label "clk" 0.0 126.50 70.50
 // @elem LABEL_GSW label 0.0 label "G" 0.0 24.00 95.50
 // @elem LABEL_CSW label 0.0 label "C" 0.0 44.00 95.50
 // @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 11.50 110.50
@@ -1314,7 +1314,7 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(93.00f, 47.00f)), module, Vates::NOTE_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(110.50f, 47.00f)), module, Vates::LENGTH_ATT_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.00f, 47.00f)), module, Vates::LENGTH_INPUT));
-        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 62.00f)), module, Vates::MODE_PARAM));
+        addParam(createParamCentered<CKSS>(mm2px(Vec(26.50f, 61.00f)), module, Vates::MODE_PARAM));
         addParam(createParamCentered<TL1105>(mm2px(Vec(7.50f, 62.00f)), module, Vates::TRIG_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(17.00f, 62.00f)), module, Vates::TRIG_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(49.50f, 62.00f)), module, Vates::FILTER_PARAM));
@@ -1331,7 +1331,7 @@ struct VatesWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(76.00f, 83.00f)), module, Vates::PULSE_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.00f, 83.00f)), module, Vates::SAW_OUTPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(115.50f, 62.00f)), module, Vates::TEMPO_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(104.50f, 62.00f)), module, Vates::CLK_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(126.50f, 62.00f)), module, Vates::CLK_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(11.50f, 102.00f)), module, Vates::RHYTHM_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(24.00f, 102.00f)), module, Vates::GSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.50f, 102.00f)), module, Vates::G_INPUT));
