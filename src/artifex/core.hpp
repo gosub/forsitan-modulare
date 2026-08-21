@@ -78,6 +78,16 @@ static const float kClipVolts = 5.f;
 // long enough not to click.
 static const float kSliceAttack = 0.002f;
 
+// The delay's time glides towards the knob rather than following it. A knob in
+// Rack arrives in steps -- a parameter moves once per UI frame -- and a delay
+// that teleports its read position clicks on every one of them, which is a
+// buzz at the frame rate and not a sweep. The glide is also the mode's whole
+// character: a read pointer travelling through the tape at a speed other than
+// one is exactly the pitch bend a tape echo makes when its motor changes
+// speed, and 50 ms is slow enough to hear that and fast enough that the knob
+// still feels connected.
+static const float kDelayGlide = 0.050f;
+
 struct Core {
 	float sr = 44100.f;
 	float bufSeconds = kHardwareBuffer;
@@ -95,6 +105,7 @@ struct Core {
 
 	// per-mode state
 	float modPhase[2] = {0.f, 0.f};      // flanger, panner
+	float delaySm = -1.f;     // the delay time, glided; negative = not yet set
 	int panDir = 1;
 	double freezeStart[2] = {0.0, 0.0};
 	double freezePos[2] = {0.0, 0.0};
@@ -157,6 +168,7 @@ struct Core {
 			tapePos[c] = 0.0;
 		}
 		panDir = 1;
+		delaySm = -1.f;
 		crushDip = 0.f;
 		grainStretch = 0.f;
 		// Arriving in the replayer loads the tape, which is what a trigger
@@ -297,8 +309,15 @@ struct Core {
 		if (uiUnit == UNIT_MS)
 			uiTime = base * 1000.f;
 
+		// The display reads the knob; the tape follows it. Arriving in the
+		// mode snaps, so the first repeat is the time you asked for.
+		if (delaySm <= 0.f)
+			delaySm = base;
+		else
+			delaySm += (base - delaySm) * (1.f - std::exp(-ct.dt / kDelayGlide));
+
 		for (int c = 0; c < 2; c++) {
-			float d = clamp(base * detune(c, ct.stereo), 0.002f, maxT) * sr;
+			float d = clamp(delaySm * detune(c, ct.stereo), 0.002f, maxT) * sr;
 			float wet = tape[c].read(d);
 			tape[c].write(softClip((in[c] + wet * fb * 0.98f) / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);

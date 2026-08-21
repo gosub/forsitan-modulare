@@ -77,6 +77,13 @@ A clean stereo delay, 1.15 s at the far left down to 2 ms at the far right.
 Feedback is taken *before* the filter, as on the hardware, so the filter
 colours the loop rather than gating it.
 
+The tape glides towards the time knob instead of jumping to it, over about
+50 ms. Moving the knob therefore bends the pitch of whatever is already in the
+delay, the way changing a tape echo's motor speed does: down as you lengthen
+it, up as you shorten it, and further the faster you move. It applies to the
+clock snap below as well, so stepping between divisions bends rather than
+cuts.
+
 With a clock at **clk** the time knob snaps to the nearest division of the
 tempo — 1/256 through 32 bars, whichever of them fall inside the delay's own
 range — and the display says which. Short times turn the delay into a comb

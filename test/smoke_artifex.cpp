@@ -467,6 +467,41 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ── sweeping the time knob bends, it does not click ───────────────────────────
+// A parameter in Rack moves once per UI frame, so a knob drag arrives as ~60
+// steps a second. A delay that teleports its read position clicks on every one
+// of them. Drag the time knob across its whole range at frame rate and assert
+// the output never steps faster than a swept sine can.
+static void testDelaySweep() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);     // all wet
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TIME_PARAM].setValue(1.f);
+
+	const double secs = 2.0;
+	const long n = (long)(secs * SR);
+	const long stepN = (long)(SR / 60.f);           // one UI frame
+	std::vector<float> out;
+	out.reserve(n);
+	for (long i = 0; i < n; i++) {
+		if (i % stepN == 0)
+			m.params[Artifex::TIME_PARAM].setValue(1.f - (float)i / n);
+		float x = 5.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR);
+		step(m, fr, x, x);
+		out.push_back(m.outputs[Artifex::LEFT_OUTPUT].getVoltage());
+	}
+
+	// The sweep pitches the tone, so the output legitimately slews faster than
+	// 220 Hz would -- but by its pitch ratio, not by a factor of seventy.
+	double slew = 2.0 * M_PI * 220.0 / SR * 5.0;
+	double worst = 0.0;
+	for (size_t i = (size_t)(0.05 * SR); i < out.size(); i++)
+		worst = std::max(worst, (double)std::fabs(out[i] - out[i - 1]));
+	report("artifex", "delay_sweep_bends_not_clicks", worst / slew, worst < slew * 6.0);
+}
+
 // ── the envelope follower reads the input ─────────────────────────────────────
 static void testEnvelope() {
 	Artifex m;
@@ -631,5 +666,6 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testWrapClick, testEnvelope, testModeSelect,
+           testReplayer, testStereo, testWrapClick, testDelaySweep, testEnvelope,
+           testModeSelect,
            testFeedbackSafety, testAbuse)
