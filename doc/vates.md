@@ -145,6 +145,19 @@ module that clicked out of the browser would be telling you nothing.
 The value is latched at the trigger, so modulation flips the direction
 between hits and never mid-sample. **env** outputs the envelope, 0–10V.
 
+**Reversed hits swell by default**, which is the mirror of the forward
+envelope and what the hardware does. It is also the opposite of percussive:
+the loudest moment arrives at the end. **Reversed hits decay instead of
+swelling** in the context menu keeps the forward envelope on both sides of
+centre and reverses only the sample, so a backwards hit still has its attack
+on the beat. Retriggering works there too, since there is no swell to protect.
+
+**A sample with a long tail, or with silence after the sound, may come out
+inaudible when reversed.** Playback starts at the last frame, so that tail is
+what you hear first, and a short envelope can be over before the sound itself
+arrives. The generated banks are trimmed for this; kits of your own may not
+be. Lengthen the envelope, or trim the file.
+
 A hit that is interrupted does not vanish: it keeps playing for a couple of
 milliseconds with its gain running out, and so does one that reaches the end
 of its sample. A reversed hit holds at full level once it has swelled, and
@@ -301,6 +314,9 @@ tight.
   rescan picks up kits added while Rack was running.
 - **samples per bank** — how a kit of your own is cut into banks: 8 (the
   default, and a generated bank's size), 16, 32, or the whole kit in one.
+- **reversed hits decay instead of swelling** — off by default. On, a negative
+  **length** keeps the forward envelope and only reverses the sample, which is
+  what a percussive backwards hit wants.
 - **external clock takes over** — whether **clk in** may take the tempo from
   the **tempo** knob.
 - **pattern input window** — the voltage window the two pattern jacks read:

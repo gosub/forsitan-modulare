@@ -1125,7 +1125,55 @@ static void testDeclick() {
 	       steady2 > 1e-4 && worst < 3.0 * steady2);
 }
 
-SMOKE_MAIN(testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+// ── the menu option that keeps a reversed hit percussive ─────────────────────
+// Off, a negative length mirrors the envelope and the hit swells. On, the
+// envelope is the forward one and only the sample runs backwards, so the
+// attack is still at the front.
+static void testReverseDecays() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "reverse_decays_setup", 0, false);
+		return;
+	}
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	selectSample(m, 4, loudestSample(m, fr, 4));
+	m.params[Vates::LENGTH_PARAM].setValue(-0.55f);
+	m.reverseDecays = true;
+	run(m, fr, 0.5);
+	pressTrigger(m, fr);
+
+	// the envelope has to fall from the first moment, as it does forwards
+	Stats first = runStats(m, fr, 0.15, Vates::ENV_OUTPUT);
+	double startedAt = m.voicePos;
+	Stats second = runStats(m, fr, 0.15, Vates::ENV_OUTPUT);
+	report("vates", "reverse_decays_falls", second.rms() / std::max(first.rms(), 1e-9),
+	       second.rms() < first.rms());
+	report("vates", "reverse_decays_starts_full", first.peak,
+	       first.peak > 9.5f);
+	// and the sample still plays backwards
+	report("vates", "reverse_decays_plays_backward", startedAt - m.voicePos,
+	       m.voicePos < startedAt);
+
+	// with the option off the same setting swells instead
+	Vates m2;
+	long fr2 = 0;
+	if (!waitForBanks(m2, fr2)) {
+		report("vates", "reverse_swell_setup", 0, false);
+		return;
+	}
+	m2.params[Vates::LEVEL_PARAM].setValue(1.f);
+	selectSample(m2, 4, loudestSample(m2, fr2, 4));
+	m2.params[Vates::LENGTH_PARAM].setValue(-0.55f);
+	run(m2, fr2, 0.5);
+	pressTrigger(m2, fr2);
+	Stats a = runStats(m2, fr2, 0.15, Vates::ENV_OUTPUT);
+	Stats b = runStats(m2, fr2, 0.15, Vates::ENV_OUTPUT);
+	report("vates", "reverse_default_still_swells", b.rms() / std::max(a.rms(), 1e-9),
+	       b.rms() > a.rms());
+}
+
+SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

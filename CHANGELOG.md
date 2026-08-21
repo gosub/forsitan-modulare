@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     centre is the shortest hit, right lengthens the decay, and left lengthens
     the *attack* and plays the sample backwards. It latches at the trigger, so
     modulation flips the direction between hits and never inside one, and a
-    reversed swell refuses to be retriggered while it is still rising. Two
+    reversed swell refuses to be retriggered while it is still rising. A menu
+    option keeps the forward envelope on both sides of centre and reverses
+    only the sample, for backwards hits that stay percussive. Two
     pitch inputs, because they are two jobs: **free** bends continuously,
     **note** is quantized to the root and scale and only updates on a trigger.
 

@@ -173,6 +173,11 @@ struct Vates : Module {
 	// is the Rack reading: zero is neutral, positive randomizes, negative
 	// inverts.
 	bool hardwareCvWindow = false;
+	// Reversed hits swell by default, as on the hardware: the envelope is the
+	// mirror of the forward one. With this on they keep the forward shape and
+	// only the sample runs backwards, which is what a reversed drum hit wants
+	// — an attack you can put on a beat.
+	bool reverseDecays = false;
 
 	// ── voice ────────────────────────────────────────────────────────────────
 	std::shared_ptr<void> voiceHold;      // keeps the bank or kit alive
@@ -183,7 +188,8 @@ struct Vates : Module {
 	float voiceSrcRate = kGenRate;
 	bool voiceActive = false;
 	bool voiceReverse = false;
-	bool voiceAttack = false;             // in the rising phase of a reverse hit
+	bool voiceSwell = false;              // this hit swells rather than decays
+	bool voiceAttack = false;             // in the rising phase of a swell
 	float env = 0.f, envCoef = 0.f;
 	bool envHold = false;                 // no-decay: play to the end
 	float release = 1.f;
@@ -578,14 +584,14 @@ struct Vates : Module {
 		float T = 0.005f * std::pow(1200.f, mag);   // 5 ms .. 6 s
 		envHold = mag > 0.98f;
 
-		if (!voiceReverse) {
-			voicePos = 0.0;
+		voiceSwell = voiceReverse && !reverseDecays;
+		voicePos = voiceReverse ? (double)(L->size() - 2) : 0.0;
+		if (!voiceSwell) {
 			env = 1.f;
 			voiceAttack = false;
 			envCoef = std::exp(-1.f / std::max(T * 0.25f * sr, 1.f));
 		}
 		else {
-			voicePos = (double)(L->size() - 2);
 			env = 0.f;
 			voiceAttack = true;
 			// the swell reaches full level as the sample runs out, or in T,
@@ -766,7 +772,7 @@ struct Vates : Module {
 						voiceAttack = false;
 					}
 				}
-				else if (!envHold && !voiceReverse)
+				else if (!envHold && !voiceSwell)
 					env *= envCoef;
 
 				// a hit stops when it runs out of sample — at the head going
@@ -1013,6 +1019,7 @@ struct Vates : Module {
 		scaleIndex = imber_dsp::kDefaultScale;
 		honourExternalClock = true;
 		hardwareCvWindow = false;
+		reverseDecays = false;
 		bankSeed = (uint64_t)random::u32() | 1ull;
 		pendingGen = true;
 		bankBase = 0;
@@ -1030,6 +1037,7 @@ struct Vates : Module {
 		json_object_set_new(root, "samplesPerBank", json_integer(samplesPerBank));
 		json_object_set_new(root, "bank", json_integer(bankBase));
 		json_object_set_new(root, "hardwareCvWindow", json_boolean(hardwareCvWindow));
+		json_object_set_new(root, "reverseDecays", json_boolean(reverseDecays));
 		return root;
 	}
 
@@ -1050,6 +1058,8 @@ struct Vates : Module {
 			bankBase = std::max(0, (int)json_integer_value(j));
 		if (json_t* j = json_object_get(root, "hardwareCvWindow"))
 			hardwareCvWindow = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "reverseDecays"))
+			reverseDecays = json_boolean_value(j);
 	}
 };
 
@@ -1328,6 +1338,8 @@ struct VatesWidget : ModuleWidget {
 			m->pendingGen = true;
 		}));
 
+		menu->addChild(createBoolPtrMenuItem("Reversed hits decay instead of swelling", "",
+		                                     &m->reverseDecays));
 		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
 			&m->honourExternalClock));
 
