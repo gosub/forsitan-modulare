@@ -72,6 +72,64 @@ static void testVorax() {
     m.inputs[Vorax::BODY_CV_INPUT].setVoltage(0.f);
     m.params[Vorax::BODY_PARAM].setValue(0.f);
 
+    // the menu's short glide, which only bites with a cable in the body CV
+    // input: the delay length must then follow 20 Hz modulation instead of
+    // smoothing it away. A static +-2 V at knob 0.5 is ~1900 samples deep.
+    auto modDepth = [](bool fast, bool patched) {
+        Vorax v;
+        v.fastBodyCv = fast;
+        v.params[Vorax::BODY_PARAM].setValue(0.5f);
+        if (patched) v.inputs[Vorax::BODY_CV_INPUT].channels = 1;
+        long f = 0;
+        for (int i = 0; i < (int)(2 * SR); i++) v.process(makeArgs(f++));
+        float lo = 1e9f, hi = -1e9f;
+        for (int i = 0; i < (int)(0.5 * SR); i++) {
+            v.inputs[Vorax::BODY_CV_INPUT].setVoltage(
+                2.f * std::sin(2.f * M_PI * 20.f * i / SR));
+            v.process(makeArgs(f++));
+            if (i > (int)(0.25 * SR)) {
+                lo = std::min(lo, v.engine.fbDelaySamp);
+                hi = std::max(hi, v.engine.fbDelaySamp);
+            }
+        }
+        return hi - lo;
+    };
+    Vorax fresh;
+    report("vorax", "body_fast_default_off", (float)fresh.fastBodyCv,
+           !fresh.fastBodyCv);
+    float slowDepth = modDepth(false, true);
+    float fastDepth = modDepth(true, true);
+    float unpatchedDepth = modDepth(true, false);
+    report("vorax", "body_glide_smooths_20hz", slowDepth, slowDepth < 100.f);
+    report("vorax", "body_fast_follows_20hz", fastDepth, fastDepth > 1500.f);
+    // no cable, no short glide: the option alone must not retime anything
+    report("vorax", "body_fast_needs_a_cable", unpatchedDepth,
+           unpatchedDepth < 100.f);
+
+    // the short glide with everything hostile: a delay line swept this hard
+    // still has to stay finite and inside the rails
+    Vorax hv;
+    hv.fastBodyCv = true;
+    hv.inputs[Vorax::BODY_CV_INPUT].channels = 1;
+    hv.params[Vorax::FEEDBACK_PARAM].setValue(12.f);
+    hv.params[Vorax::BODY_PARAM].setValue(0.5f);
+    hv.params[Vorax::VERB_MIX_PARAM].setValue(1.f);
+    hv.params[Vorax::VERB_DECAY_PARAM].setValue(1.f);
+    hv.params[Vorax::ECHO_SEND_PARAM].setValue(1.f);
+    hv.params[Vorax::ECHO_FB_PARAM].setValue(1.5f);
+    Stats fh;
+    long hf = 0;
+    for (int i = 0; i < (int)(10 * SR); i++) {
+        hv.inputs[Vorax::BODY_CV_INPUT].setVoltage(
+            5.f * std::sin(2.f * M_PI * 200.f * i / SR));
+        hv.process(makeArgs(hf++));
+        fh.add(hv.outputs[Vorax::LEFT_OUTPUT].getVoltage());
+        fh.add(hv.outputs[Vorax::RIGHT_OUTPUT].getVoltage());
+    }
+    report("vorax", "body_fast_hostile_nans", fh.nans, fh.nans == 0);
+    report("vorax", "body_fast_hostile_bounded", fh.peak, fh.peak <= 10.01f);
+    report("vorax", "body_fast_hostile_alive", fh.rms(), fh.rms() > 0.05);
+
     // feedback back down: the drone must die away
     m.params[Vorax::FEEDBACK_PARAM].setValue(-60.f);
     m.params[Vorax::ECHO_FB_PARAM].setValue(0.f);

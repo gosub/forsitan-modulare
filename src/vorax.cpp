@@ -30,6 +30,9 @@
 //           LPF CV, TIME CV
 //   Out   : L, R
 //   Light : LEVEL (output amplitude)
+//   Menu  : fast body CV — with a cable in BODY CV, drops the two glides
+//           on the body delay (t60 1 s on the parameter, tau 0.2 s on the
+//           delay length) to ~1 ms, turning slow drift into warble
 
 #include "forsitan.hpp"
 
@@ -508,6 +511,12 @@ struct Engine {
         fbDelaySampTarget = clamp(delayS * sr, 1.f, (float)maxFbDelaySamp - 1.f);
     }
 
+    // the firmware glides the delay length itself with a 0.2 s time
+    // constant, in series with the smoothing on the parameter
+    void setFeedbackDelayGlide(float tauS) {
+        fbDelaySmoothCoef = onepoleCoef(tauS, sr);
+    }
+
     void process(float in, float& outL, float& outR) {
         fbDelaySamp += (fbDelaySampTarget - fbDelaySamp) * fbDelaySmoothCoef;
 
@@ -561,6 +570,10 @@ struct Smoothed {
         coef = onepoleCoefT60(smoothTimeS, rate);
         primed = true;
     }
+    // retime without jumping: the value carries over, only the slope changes
+    void setSmoothTime(float smoothTimeS, float rate) {
+        coef = onepoleCoefT60(smoothTimeS, rate);
+    }
     float tick() {
         value += (target - value) * coef;
         return value;
@@ -608,12 +621,24 @@ struct Vorax : Module {
     };
 
     static constexpr int kControlDiv = 16;
+    // the firmware's glide on the body delay, and the option's short one.
+    // The short glide is ticked per sample instead of per control block,
+    // so what reaches the delay line stays continuous under fast CV.
+    static constexpr float kBodyGlideS = 1.0f;
+    static constexpr float kBodyGlideFastS = 0.005f;
+    // the delay length's own glide, in series with the one above
+    static constexpr float kBodyDelayGlideS = 0.2f;
+    static constexpr float kBodyDelayGlideFastS = 0.0005f;
 
     vorax_dsp::Engine engine;
     vorax_dsp::Smoothed smPitch, smFeedback, smBody, smLpf, smHpf,
         smVerbMix, smVerbDecay, smEchoSend, smEchoTime, smEchoFb, smVolume;
     int controlPhase = 0;
     float levelEnvL = 0.f, levelEnvR = 0.f;
+    float controlRate = 0.f;
+    // menu option, off by default: the hardware always glides
+    bool fastBodyCv = false;
+    bool bodyFast = false;   // whether the short glide is active right now
 
     Vorax() {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
@@ -646,11 +671,11 @@ struct Vorax : Module {
     void initEngine(float sampleRate) {
         sr = sampleRate;
         engine.init(sr);
-        float controlRate = sr / kControlDiv;
+        controlRate = sr / kControlDiv;
         // initial values and smoothing times match the firmware registry
         smPitch.setup(40.f, 0.2f, controlRate);
         smFeedback.setup(-60.f, 0.05f, controlRate);
-        smBody.setup(0.001f, 1.0f, controlRate);
+        smBody.setup(0.001f, kBodyGlideS, controlRate);
         smLpf.setup(18000.f, 0.05f, controlRate);
         smHpf.setup(250.f, 0.05f, controlRate);
         smVerbMix.setup(0.f, 0.05f, controlRate);
@@ -659,11 +684,46 @@ struct Vorax : Module {
         smEchoTime.setup(0.5f, 0.1f, controlRate);
         smEchoFb.setup(0.f, 0.05f, controlRate);
         smVolume.setup(0.5f, 0.05f, controlRate);
+        bodyFast = false;
         controlPhase = 0;
     }
 
     void onReset() override {
+        fastBodyCv = false;
         sr = 0.f;   // force re-init on the next process()
+    }
+
+    json_t* dataToJson() override {
+        json_t* rootJ = json_object();
+        json_object_set_new(rootJ, "fastBodyCv", json_boolean(fastBodyCv));
+        return rootJ;
+    }
+
+    void dataFromJson(json_t* rootJ) override {
+        json_t* j;
+        if ((j = json_object_get(rootJ, "fastBodyCv")))
+            fastBodyCv = json_boolean_value(j);
+    }
+
+    // body: EXP map 1..100 ms, CV adds to the knob position so a volt
+    // moves it a tenth of a turn, the same curve as the hand does
+    float bodyTarget() {
+        float t = params[BODY_PARAM].getValue()
+                + 0.1f * inputs[BODY_CV_INPUT].getVoltage();
+        t = clamp(t, 0.f, 1.f);
+        return 0.001f + t * t * 0.099f;
+    }
+
+    // the short glide follows the cable: it is only in effect while the
+    // option is on and something is patched into the body CV input
+    void updateBodyGlide() {
+        bool fast = fastBodyCv && inputs[BODY_CV_INPUT].isConnected();
+        if (fast == bodyFast) return;
+        bodyFast = fast;
+        smBody.setSmoothTime(fast ? kBodyGlideFastS : kBodyGlideS,
+                             fast ? sr : controlRate);
+        engine.setFeedbackDelayGlide(fast ? kBodyDelayGlideFastS
+                                          : kBodyDelayGlideS);
     }
 
     void updateControls() {
@@ -678,15 +738,10 @@ struct Vorax : Module {
                  + 7.2f * inputs[FEEDBACK_CV_INPUT].getVoltage();
         smFeedback.target = clamp(fb, -60.f, 12.f);
 
-        // body: EXP map 1..100 ms, CV adds to the knob position so a volt
-        // moves it a tenth of a turn, the same curve as the hand does
-        float t = params[BODY_PARAM].getValue()
-                + 0.1f * inputs[BODY_CV_INPUT].getVoltage();
-        t = clamp(t, 0.f, 1.f);
-        smBody.target = 0.001f + t * t * 0.099f;
+        smBody.target = bodyTarget();
 
         // loop filter cutoffs: LOG maps, LPF gets 1V/oct CV
-        t = params[LPF_PARAM].getValue();
+        float t = params[LPF_PARAM].getValue();
         float lpf = 100.f * std::pow(180.f, t);
         lpf *= std::pow(2.f, inputs[LPF_CV_INPUT].getVoltage());
         smLpf.target = clamp(lpf, 100.f, 18000.f);
@@ -718,7 +773,8 @@ struct Vorax : Module {
         // tick smoothers and apply to the engine
         engine.setStringPitch(smPitch.tick());
         engine.setFeedbackGain(smFeedback.tick());
-        engine.setFeedbackDelay(smBody.tick());
+        if (!bodyFast)
+            engine.setFeedbackDelay(smBody.tick());
         engine.fbLpf.setCutoff(smLpf.tick());
         engine.fbHpf.setCutoff(smHpf.tick());
         engine.verbMix = clamp(smVerbMix.tick(), 0.f, 1.f);
@@ -736,10 +792,16 @@ struct Vorax : Module {
     void process(const ProcessArgs& args) override {
         if (sr != args.sampleRate)
             initEngine(args.sampleRate);
-        if (controlPhase == 0)
+        if (controlPhase == 0) {
+            updateBodyGlide();
             updateControls();
+        }
         if (++controlPhase >= kControlDiv)
             controlPhase = 0;
+        if (bodyFast) {
+            smBody.target = bodyTarget();
+            engine.setFeedbackDelay(smBody.tick());
+        }
 
         float in = inputs[AUDIO_INPUT].getVoltage() * 0.2f;
         float outL, outR;
@@ -838,6 +900,13 @@ struct VoraxWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.10f, 103.50f)), module, Vorax::LEVEL_L_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(45.90f, 103.50f)), module, Vorax::LEVEL_R_LIGHT));
         // @layout:end
+    }
+
+    void appendContextMenu(Menu* menu) override {
+        Vorax* module = getModule<Vorax>();
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createBoolPtrMenuItem("Fast body CV", "",
+            &module->fastBodyCv));
     }
 };
 
