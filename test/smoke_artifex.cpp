@@ -544,7 +544,34 @@ static void testAbuse() {
 	report("artifex", "abuse_bounded", worst, worst < 12.f);
 }
 
-SMOKE_MAIN(testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
+// ── crossing the filter knob does not click, and it is inside the loop ───────
+static void testFilterCrossing() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.5f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	m.params[Artifex::FILTER_PARAM].setValue(-0.5f);
+	runTone(m, fr, 0.5, 220.f, 3.f);
+
+	Rec steadyRec;
+	runTone(m, fr, 0.2, 220.f, 3.f, &steadyRec);
+	m.params[Artifex::FILTER_PARAM].setValue(0.5f);
+	Rec crossRec;
+	runTone(m, fr, 0.2, 220.f, 3.f, &crossRec);
+
+	double steady = 0.0, cross = 0.0;
+	for (size_t i = 1; i < steadyRec.l.size(); i++)
+		steady = std::max(steady, (double)std::fabs(steadyRec.l[i] - steadyRec.l[i - 1]));
+	for (size_t i = 1; i < crossRec.l.size(); i++)
+		cross = std::max(cross, (double)std::fabs(crossRec.l[i] - crossRec.l[i - 1]));
+	report("artifex", "filter_crossing_is_quiet", cross / std::max(steady, 1e-9),
+	       cross < 3.0 * steady);
+}
+
+SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
            testReplayer, testStereo, testEnvelope, testModeSelect,
            testFeedbackSafety, testAbuse)

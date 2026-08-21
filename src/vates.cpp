@@ -205,6 +205,8 @@ struct Vates : Module {
 
 	// ── fx ───────────────────────────────────────────────────────────────────
 	Svf filt[2], filtB[2];
+	float filtSmooth = 0.f;
+	bool filtWasLow = false;
 	Delay dly[2], mod[2];
 	float dlyFb[2] = {0.f, 0.f};
 	float modPhase = 0.f;
@@ -738,11 +740,33 @@ struct Vates : Module {
 		}
 
 		// ── filter ───────────────────────────────────────────────────────────
-		float fParam = clamp(params[FILTER_PARAM].getValue()
-		                     + inputs[FILTER_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
-		if (std::fabs(fParam) > 0.01f) {
-			bool lowpass = fParam < 0.f;
-			float mag = std::fabs(fParam);
+		// The knob is smoothed before it reaches any coefficient: a mouse
+		// drag steps a parameter once per frame, and a four-pole filter that
+		// jumps its cutoff in one sample clicks.
+		float fTarget = clamp(params[FILTER_PARAM].getValue()
+		                      + inputs[FILTER_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+		filtSmooth += (fTarget - filtSmooth)
+		              * (1.f - std::exp(-args.sampleTime / 0.010f));
+		float fParam = filtSmooth;
+		float mag = std::fabs(fParam);
+		bool lowpass = fParam < 0.f;
+
+		// Crossing the centre swaps a lowpass for a highpass and moves the
+		// cutoff from 20 kHz to 25 Hz. No integrator state survives that, so
+		// both sections are cleared on the way through — which costs nothing,
+		// because the wet path is faded out here and nobody hears it.
+		if (lowpass != filtWasLow) {
+			for (int c = 0; c < 2; c++) {
+				filt[c].reset();
+				filtB[c].reset();
+			}
+			filtWasLow = lowpass;
+		}
+
+		// the wet path fades in over the first twentieth of the travel, which
+		// is the stretch where the filter is transparent anyway
+		float fWet = clamp(mag * 20.f, 0.f, 1.f);
+		if (fWet > 1e-4f) {
 			// A DJ filter has to be able to take the track away at either
 			// end. The lowpass floor sits under the kick and the highpass
 			// ceiling above the air, so the far end of the travel is silence
@@ -759,11 +783,13 @@ struct Vates : Module {
 			float k2 = 1.f / (1.8f + 1.2f * mag);
 			float lp, hp;
 			for (int c = 0; c < 2; c++) {
-				float x = (c == 0) ? outL : outR;
+				float dry = (c == 0) ? outL : outR;
+				float x = dry;
 				filt[c].process(x, g, k1, lp, hp);
 				x = lowpass ? lp : hp;
 				filtB[c].process(x, g, k2, lp, hp);
 				x = lowpass ? lp : hp;
+				x = dry + (x - dry) * fWet;
 				if (c == 0)
 					outL = x;
 				else

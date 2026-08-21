@@ -42,6 +42,21 @@ static bool waitForBanks(Vates& m, long& frame) {
 	return false;
 }
 
+// The largest jump between two consecutive output samples: a click is a step,
+// and a step shows up here and nowhere else.
+static double slew(Vates& m, long& frame, double seconds) {
+	long n = (long)(seconds * SR);
+	double worst = 0.0;
+	float prev = m.outputs[Vates::LEFT_OUTPUT].getVoltage();
+	for (long i = 0; i < n; i++) {
+		m.process(makeArgs(frame++));
+		float y = m.outputs[Vates::LEFT_OUTPUT].getVoltage();
+		worst = std::max(worst, (double)std::fabs(y - prev));
+		prev = y;
+	}
+	return worst;
+}
+
 static void selectSample(Vates& m, int bank, int sample) {
 	m.bankBase = bank;
 	m.params[Vates::SAMPLE_PARAM].setValue((sample + 0.5f) / vates_bank::kSamplesPerBank);
@@ -864,7 +879,49 @@ static void testAbuse() {
 	       std::max(l.peak, r.peak) <= 10.001f);
 }
 
-SMOKE_MAIN(testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+// ── crossing the filter knob through the centre does not click ───────────────
+// The lowpass and the highpass are different filters at opposite ends of the
+// frequency range sharing one set of integrators, so the crossing used to put
+// a step of several volts into the output — 83 times the signal's own slew.
+static void testFilterCrossing() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "filter_crossing_setup", 0, false);
+		return;
+	}
+	selectSample(m, 4, 0);                          // tones: sustained material
+	m.params[Vates::LENGTH_PARAM].setValue(1.f);    // play it whole
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	m.params[Vates::FILTER_PARAM].setValue(-0.5f);
+	run(m, fr, 0.01);
+	pressTrigger(m, fr);
+	run(m, fr, 0.3);
+
+	// what the signal's own slew rate is, with the knob standing still
+	double steady = slew(m, fr, 0.2);
+	// and what it is when the knob jumps across the centre in one frame
+	m.params[Vates::FILTER_PARAM].setValue(0.5f);
+	double crossing = slew(m, fr, 0.2);
+	// then in and out of the centre itself
+	m.params[Vates::FILTER_PARAM].setValue(0.f);
+	double toCentre = slew(m, fr, 0.1);
+	m.params[Vates::FILTER_PARAM].setValue(-0.3f);
+	double fromCentre = slew(m, fr, 0.1);
+
+	report("vates", "filter_signal_moves", steady, steady > 1e-4);
+	report("vates", "filter_crossing_is_quiet", crossing / std::max(steady, 1e-9),
+	       crossing < 3.0 * steady);
+	// A little looser than the crossing: moving to the centre and back is a
+	// real filter sweep, and how much high end a sweep uncovers depends on
+	// the sample the seed happened to generate. A click is an order of
+	// magnitude, not a factor of two.
+	report("vates", "filter_centre_is_quiet",
+	       std::max(toCentre, fromCentre) / std::max(steady, 1e-9),
+	       std::max(toCentre, fromCentre) < 4.0 * steady);
+}
+
+SMOKE_MAIN(testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

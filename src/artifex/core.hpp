@@ -81,6 +81,8 @@ struct Core {
 	Svf fbFilt[2];
 
 	int lastMode = -1;
+	float filtSm = 0.f;
+	bool filtWasLow = false;
 	float fbState[2] = {0.f, 0.f};
 
 	// per-mode state
@@ -166,18 +168,26 @@ struct Core {
 	// The filter lives in the feedback path only: it colours what comes back
 	// round without touching the dry signal. Open at the centre, a lowpass to
 	// the left and a highpass to the right.
-	float loopFilter(int c, float x, float filt) {
-		if (std::fabs(filt) < 0.01f)
+	//
+	// It reads the smoothed knob, never the raw one, and its wet path fades
+	// in over the first twentieth of the travel: crossing the centre swaps a
+	// lowpass for a highpass, and no integrator state survives that. A step
+	// here would be worse than elsewhere — it goes straight back into the
+	// loop and comes round again.
+	float loopFilter(int c, float x) {
+		float wet = clamp(std::fabs(filtSm) * 20.f, 0.f, 1.f);
+		if (wet < 1e-4f)
 			return x;
-		bool lowpass = filt < 0.f;
-		float mag = std::fabs(filt);
+		bool lowpass = filtSm < 0.f;
+		float mag = std::fabs(filtSm);
 		float fc = lowpass ? 80.f * std::pow(250.f, 1.f - mag)
 		                   : 20.f * std::pow(200.f, mag);
 		fc = clamp(fc, 20.f, 0.45f * sr);
 		float g = std::tan((float)M_PI * fc / sr);
 		float lp, hp;
 		fbFilt[c].process(x, g, 1.4f, lp, hp);
-		return lowpass ? lp : hp;
+		float y = lowpass ? lp : hp;
+		return x + (y - x) * wet;
 	}
 
 	static float softClip(float x) {
@@ -195,6 +205,18 @@ struct Core {
 	void process(const Ctl& ct, float inL, float inR, float& outL, float& outR) {
 		if (ct.mode != lastMode)
 			enterMode(ct.mode);
+
+		// the filter knob, smoothed, with the states cleared as it crosses
+		// the centre — where the wet path above is faded out, so the clearing
+		// is inaudible
+		filtSm += (clamp(ct.filter, -1.f, 1.f) - filtSm)
+		          * (1.f - std::exp(-ct.dt / 0.010f));
+		bool low = filtSm < 0.f;
+		if (low != filtWasLow) {
+			for (int c = 0; c < 2; c++)
+				fbFilt[c].reset();
+			filtWasLow = low;
+		}
 
 		float in[2] = {inL, inR};
 		float out[2] = {0.f, 0.f};
@@ -229,7 +251,7 @@ struct Core {
 
 	// The global loop: the module's own output, filtered, back into its input.
 	float loopIn(int c, float x, const Ctl& ct, float fb) {
-		return x + loopFilter(c, fbState[c], ct.filter) * fb * 0.95f;
+		return x + loopFilter(c, fbState[c]) * fb * 0.95f;
 	}
 
 	// ── 1. delay ─────────────────────────────────────────────────────────────
@@ -271,7 +293,7 @@ struct Core {
 			float d = clamp(base * detune(c, ct.stereo), 0.002f, maxT) * sr;
 			float wet = tape[c].read(d);
 			tape[c].write(softClip((in[c] + wet * fb * 0.98f) * 0.2f) * 5.f);
-			float heard = loopFilter(c, wet, ct.filter);
+			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;
 		}
 	}
@@ -294,7 +316,7 @@ struct Core {
 			float depth = (5.f * amt) * 0.001f * sr;
 			float wet = flg[c].read(base + depth * m);
 			flg[c].write(softClip((in[c] + wet * fb * 0.95f) * 0.2f) * 5.f);
-			float heard = loopFilter(c, wet, ct.filter);
+			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - 0.5f * amt) + heard * amt;
 		}
 	}
@@ -360,7 +382,7 @@ struct Core {
 				freezePos[c] -= freezeFrames;
 			if (freezePos[c] < 0.0)
 				freezePos[c] += freezeFrames;
-			float heard = loopFilter(c, wet, ct.filter);
+			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;
 		}
 	}
@@ -507,7 +529,7 @@ struct Core {
 			// fade the ends of the ramp so the wrap is a click and not a bang
 			float e = std::min(grainPhase[c], 1.f - grainPhase[c]) * 20.f;
 			wet *= clamp(e, 0.f, 1.f);
-			float heard = loopFilter(c, wet, ct.filter);
+			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt * 1.4f;
 		}
 	}
@@ -538,7 +560,7 @@ struct Core {
 			float sp = speed * detune(c, ct.stereo);
 			int n = tape[c].size();
 			float held = tape[c].at((float)tapePos[c]);
-			float x = in[c] + loopFilter(c, fbState[c], ct.filter) * fb * 0.9f;
+			float x = in[c] + loopFilter(c, fbState[c]) * fb * 0.9f;
 			// What the tape holds after this sample is what you hear: while
 			// it is recording you are listening to the head, which is how a
 			// tape works and how the amount knob crossfades the old audio
@@ -591,7 +613,7 @@ struct Core {
 				float g = 0.5f - 0.5f * std::cos(2.f * (float)M_PI * ph);
 				wet += shf[c].read(d) * g;
 			}
-			float heard = loopFilter(c, wet, ct.filter);
+			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;
 		}
 	}
