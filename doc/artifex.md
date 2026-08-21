@@ -247,13 +247,18 @@ untouched rhythm back, select it again with the rhythm knob.
 
 **reset** returns both sequences to step one.
 
-### the displays
+### the display
 
-Two, above everything else. The left one names the mode and its number; the
-right one reads the time parameter in whatever unit the mode uses — a delay
-time in milliseconds, a clock division when it is synced, a frequency for the
-panner, a rhythm number for the slicer, an interval for the shifter. Right-click
-the left one to jump straight to a mode.
+One, centred above everything else. The left half names the mode and its
+number; the right half reads the time parameter in whatever unit the mode uses
+— a delay time in milliseconds, a clock division when it is synced, a frequency
+for the panner, a rhythm number for the slicer, an interval for the shifter.
+Right-click anywhere on it to jump straight to a mode.
+
+It is written in the mode's own colour, the one in each mode's heading above.
+The hardware carries them on a single RGB LED, and they are the fastest way to
+know what the box is doing without reading anything: with the mode under CV you
+can see it change across the room.
 
 ## Context menu
 

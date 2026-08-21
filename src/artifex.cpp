@@ -24,6 +24,27 @@ const char* kModeNames[9] = {
 	"slicer", "pitcher", "replayer", "shifter",
 };
 
+// One colour per mode. On the hardware a single RGB LED carries them, and
+// they are the fastest way to know what the box is doing without reading
+// anything; here they are the display's text colour. Chosen to stay legible
+// on the display's near-black rather than to match a datasheet, and mode 5
+// lands on the panel's own accent yellow.
+struct ModeColor {
+	unsigned char r, g, b;
+};
+
+const ModeColor kModeColors[9] = {
+	{0x4c, 0xd9, 0x64},   // 1 delay       green
+	{0x3c, 0xd8, 0xdc},   // 2 flanger     cyan
+	{0x6a, 0x93, 0xff},   // 3 freezer     blue
+	{0xf0, 0xf0, 0xf0},   // 4 panner      white
+	{0xff, 0xd5, 0x00},   // 5 crusher     yellow
+	{0xa8, 0xe6, 0x3a},   // 6 slicer      light green
+	{0xff, 0x5a, 0x4a},   // 7 pitcher     red
+	{0xff, 0x9b, 0x2e},   // 8 replayer    orange
+	{0xff, 0x6f, 0xc0},   // 9 shifter     pink
+};
+
 }   // namespace
 
 struct Artifex : Module {
@@ -459,13 +480,14 @@ struct Artifex : Module {
 	}
 };
 
-// ── the displays ──────────────────────────────────────────────────────────────
-// Left names the mode, right reads the time parameter in whatever unit the
-// mode uses. Both read a char buffer the audio thread fills, and both open a
-// picker on right-click.
+// ── the display ───────────────────────────────────────────────────────────────
+// One panel on the module's centre line: the mode's name and number to the
+// left, the time parameter it reads to the right, both in that mode's colour.
+// They were two displays either side of the panel, which spent a third of the
+// top row saying two short words. Both texts are char buffers the audio thread
+// fills; a right-click anywhere on it opens the mode picker.
 struct ArtifexDisplay : Widget {
 	Artifex* module = nullptr;
-	bool isMode = true;
 
 	void drawLayer(const DrawArgs& args, int layer) override {
 		if (layer != 1)
@@ -482,18 +504,34 @@ struct ArtifexDisplay : Widget {
 			asset::system("res/fonts/ShareTechMono-Regular.ttf"));
 		if (!font)
 			return;
+
+		const ModeColor& c = kModeColors[module ? clamp(module->mode, 0, 8) : 0];
+		NVGcolor named = nvgRGB(c.r, c.g, c.b);
+		// The reading is the same colour stepped back, so the two halves read
+		// as one display with the mode named first and its value second.
+		NVGcolor reading = nvgRGB((unsigned char)(c.r * 0.70f),
+		                          (unsigned char)(c.g * 0.70f),
+		                          (unsigned char)(c.b * 0.70f));
+
 		nvgFontFaceId(args.vg, font->handle);
-		nvgFontSize(args.vg, 13.0);
-		nvgFillColor(args.vg, nvgRGB(0xff, 0xd5, 0x00));
+		nvgFontSize(args.vg, 15.0);
+
+		const float pad = 6.0;
 		nvgTextAlign(args.vg, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
-		const char* text = "artifex";
-		if (module)
-			text = isMode ? module->uiModeText : module->uiTimeText;
-		nvgText(args.vg, 5.0, box.size.y * 0.5f, text, NULL);
+		nvgFillColor(args.vg, named);
+		nvgText(args.vg, pad, box.size.y * 0.5f,
+		        module ? module->uiModeText : "artifex", NULL);
+
+		if (module) {
+			nvgTextAlign(args.vg, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
+			nvgFillColor(args.vg, reading);
+			nvgText(args.vg, box.size.x - pad, box.size.y * 0.5f,
+			        module->uiTimeText, NULL);
+		}
 	}
 
 	void onButton(const event::Button& e) override {
-		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_RIGHT && module && isMode) {
+		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_RIGHT && module) {
 			e.consume(this);
 			showMenu();
 			return;
@@ -677,19 +715,12 @@ struct ArtifexWidget : ModuleWidget {
         addChild(createLightCentered<SmallLight<RedLight>>(mm2px(Vec(61.50f, 115.00f)), module, Artifex::IN_R_LIGHT));
         // @layout:end
 
-		ArtifexDisplay* modeDisp = new ArtifexDisplay;
-		modeDisp->module = module;
-		modeDisp->isMode = true;
-		modeDisp->box.pos = mm2px(Vec(8.f, 9.5f));
-		modeDisp->box.size = mm2px(Vec(60.f, 8.f));
-		addChild(modeDisp);
-
-		ArtifexDisplay* timeDisp = new ArtifexDisplay;
-		timeDisp->module = module;
-		timeDisp->isMode = false;
-		timeDisp->box.pos = mm2px(Vec(74.24f, 9.5f));
-		timeDisp->box.size = mm2px(Vec(60.f, 8.f));
-		addChild(timeDisp);
+		// centred under the title, on the panel's midline
+		ArtifexDisplay* disp = new ArtifexDisplay;
+		disp->module = module;
+		disp->box.size = mm2px(Vec(80.f, 8.f));
+		disp->box.pos = mm2px(Vec(142.24f * 0.5f - 40.f, 9.5f));
+		addChild(disp);
 	}
 
 	void appendContextMenu(Menu* menu) override {
