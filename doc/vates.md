@@ -175,7 +175,8 @@ sing on the way through and not enough to boom when it arrives.
 | **rate** | in sync, the clock divider, from two bars a cycle to four cycles a step; in free, 0.01–20 Hz. Clockwise is faster in both, so the knob does not reverse its meaning when the switch flips. |
 | **lfo mod** | attenuverter and input for the rate — in sync it moves the division, since a phase-locked LFO has nothing to detune. |
 | **reset** | a rising edge restarts the triangle at its peak. |
-| **tri**, **pulse**, **saw** | triangle, its rising-edge pulse, and the position in the cycle, all 0–10V. |
+| **pwm** | how much of the cycle the triangle spends rising, 2–98%, which is the pulse output's duty cycle. |
+| **tri**, **saw**, **pulse** | triangle, the position in the cycle, and the rising-edge pulse, all 0–10V. |
 
 **sync means phase-locked**, not merely a synced rate: the LFO takes its
 phase from the step clock, so it cannot drift against the pattern and a
@@ -189,10 +190,17 @@ manual admits that modulation never crosses between them, only speeds the
 LFO up or down. So the mode is a switch here and the knob means one thing at
 a time.
 
-The LFO is patch-programmable, which survives intact: **pulse** into **lfo
+**pwm** skews the triangle rather than gating a separate square: the pulse is
+high exactly while the triangle rises, so one control moves both. At 50% it is
+the symmetric triangle with a square beside it; wind it either way and the
+triangle becomes a ramp or a saw while the pulse narrows or widens to match.
+The **saw** output is unaffected — it stays the plain phasor, so it is still
+the position in the bar.
+
+The LFO is patch-programmable too, which survives intact: **pulse** into **lfo
 mod** tilts the triangle into a ramp or a saw, **tri** into **lfo mod**
 bends it exponential or logarithmic, **pulse** into **reset** turns it into
-a saw outright.
+a saw outright. **pwm** is the same tilt as a knob.
 
 ### clock and pattern
 

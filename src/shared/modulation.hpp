@@ -94,6 +94,7 @@ struct ModIn {
 	float lfoRateMod = 0.f;       // -1..1, already attenuverted
 	bool lfoSynced = true;
 	float lfoResetVoltage = 0.f;
+	float pulseWidth = 0.5f;      // 0..1, the fraction of the cycle spent rising
 };
 
 struct Modulation {
@@ -245,10 +246,22 @@ struct Modulation {
 			lfoPhase += lfoHz * in.dt;
 			lfoPhase -= std::floor(lfoPhase);
 		}
-		// peak at phase 0, falling to the trough at 0.5, rising back after:
-		// pulse is high exactly while the triangle rises
-		tri = lfoPhase < 0.5f ? 1.f - 2.f * lfoPhase : 2.f * lfoPhase - 1.f;
-		lfoRising = lfoPhase >= 0.5f;
+		// Peak at phase 0, falling to the trough, rising back after — and
+		// pulse is high exactly while the triangle rises, so the width knob
+		// skews the triangle and the pulse follows it. That is the same
+		// relationship the hardware gets by patching its pulse output back
+		// into its own rate input; here it is a control. At the default half
+		// it is the plain symmetric triangle with a square beside it.
+		float w = clamp(in.pulseWidth, 0.02f, 0.98f);
+		float fall = 1.f - w;
+		if (lfoPhase < fall) {
+			tri = 1.f - lfoPhase / fall;
+			lfoRising = false;
+		}
+		else {
+			tri = (lfoPhase - fall) / w;
+			lfoRising = true;
+		}
 	}
 };
 

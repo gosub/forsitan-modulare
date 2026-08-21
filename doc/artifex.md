@@ -207,7 +207,9 @@ what the hardware suggests and what it is best at.
 ### lfo
 
 Triangle and pulse as on the hardware, plus a saw, and it is the same LFO
-vates has. The switch chooses sync or free: synced, the rate knob picks a
+vates has, down to the **pwm** trimpot: it skews the triangle, and since the
+pulse is high exactly while the triangle rises, that skew *is* the pulse's
+duty cycle. The saw stays a plain phasor. The switch chooses sync or free: synced, the rate knob picks a
 division of the clock and the phase is locked to the pattern, so the saw is a
 usable bar phasor; free, it runs 0.01–20 Hz.
 

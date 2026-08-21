@@ -739,7 +739,7 @@ static void testLfo() {
 	Vates m;
 	long fr = 0;
 	m.params[Vates::SYNC_PARAM].setValue(0.f);      // free
-	m.params[Vates::RATE_PARAM].setValue(0.55f);
+	m.params[Vates::RATE_PARAM].setValue(0.95f);   // ~14 Hz: many whole cycles
 	run(m, fr, 0.2);
 
 	int cycles = 0;
@@ -921,7 +921,52 @@ static void testFilterCrossing() {
 	       std::max(toCentre, fromCentre) < 4.0 * steady);
 }
 
-SMOKE_MAIN(testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+// ── the pulse width knob skews the triangle and the pulse follows it ─────────
+// The pulse is high exactly while the triangle rises, so one control moves
+// both: the duty cycle is the knob, and the triangle becomes a ramp or a saw
+// on the way. That is what the hardware gets by patching its pulse back into
+// its own rate input.
+static void testPulseWidth() {
+	const float widths[3] = {0.2f, 0.5f, 0.8f};
+	for (int k = 0; k < 3; k++) {
+		Vates m;
+		long fr = 0;
+		m.params[Vates::SYNC_PARAM].setValue(0.f);      // free running
+		m.params[Vates::RATE_PARAM].setValue(0.95f);   // ~14 Hz: many whole cycles
+		m.params[Vates::PWM_PARAM].setValue(widths[k]);
+		run(m, fr, 0.2);
+
+		// Whole cycles only: counted between the first rising edge and the
+		// last, so a partial cycle at either end cannot skew the ratio.
+		long n = (long)(4.0 * SR);
+		long high = 0, span = 0;
+		bool counting = false, was = false;
+		float triMin = 100.f, triMax = -100.f;
+		for (long i = 0; i < n; i++) {
+			m.process(makeArgs(fr++));
+			bool now = m.outputs[Vates::PULSE_OUTPUT].getVoltage() > 5.f;
+			if (now && !was)
+				counting = true;              // the first rising edge starts it
+			if (counting) {
+				span++;
+				if (now)
+					high++;
+			}
+			was = now;
+			float t = m.outputs[Vates::TRI_OUTPUT].getVoltage();
+			triMin = std::min(triMin, t);
+			triMax = std::max(triMax, t);
+		}
+		double duty = span ? (double)high / span : 0.0;
+		char name[64];
+		std::snprintf(name, sizeof name, "pulse_width_%.0f", widths[k] * 100.f);
+		report("vates", name, duty, std::fabs(duty - widths[k]) < 0.03);
+		std::snprintf(name, sizeof name, "pulse_width_%.0f_tri_range", widths[k] * 100.f);
+		report("vates", name, triMax - triMin, triMin < 0.2f && triMax > 9.8f);
+	}
+}
+
+SMOKE_MAIN(testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

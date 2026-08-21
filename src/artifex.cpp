@@ -48,6 +48,7 @@ struct Artifex : Module {
 		RHYTHM_PARAM,
 		GAIN_PARAM,
 		LEVEL_PARAM,
+		PWM_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
@@ -166,6 +167,7 @@ struct Artifex : Module {
 		// it is the first thing the manual tells you to set.
 		configParam(GAIN_PARAM, 0.f, 4.f, 1.f, "Input gain", " dB", -10.f, 20.f);
 		configParam(LEVEL_PARAM, 0.f, 1.f, 0.8f, "Level");
+		configParam(PWM_PARAM, 0.02f, 0.98f, 0.5f, "LFO pulse width", "%", 0.f, 100.f);
 
 		configInput(LEFT_INPUT, "Left audio");
 		configInput(RIGHT_INPUT, "Right audio");
@@ -300,6 +302,7 @@ struct Artifex : Module {
 		min.lfoRateMod = inputs[LFO_INPUT].getVoltage() * 0.2f * params[LFO_ATT_PARAM].getValue();
 		min.lfoSynced = params[SYNC_PARAM].getValue() > 0.5f;
 		min.lfoResetVoltage = inputs[LFO_RESET_INPUT].getVoltage();
+		min.pulseWidth = params[PWM_PARAM].getValue();
 		modul.process(min);
 
 		// ── mode ─────────────────────────────────────────────────────────────
@@ -544,6 +547,7 @@ struct ArtifexWidget : ModuleWidget {
 // @elem TRI_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem PULSE_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem SAW_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem PWM_PARAM Trimpot 3.03 param "" 0.0
 // @elem GSW_PARAM CKSSThreePos 2.3 param "" 0.0
 // @elem G_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem CSW_PARAM CKSSThreePos 2.3 param "" 0.0
@@ -584,10 +588,11 @@ struct ArtifexWidget : ModuleWidget {
 // @elem LABEL_ENV label 0.0 label "env" 0.0 57.00 90.00
 // @elem BOX_TRI panel_box 7.0 box "" 0.0 92.00 84.50
 // @elem LABEL_TRI label 0.0 label "tri" 0.0 92.00 90.00
-// @elem BOX_PULSE panel_box 7.0 box "" 0.0 108.00 84.50
-// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 108.00 90.00
-// @elem BOX_SAW panel_box 7.0 box "" 0.0 124.00 84.50
-// @elem LABEL_SAW label 0.0 label "saw" 0.0 124.00 90.00
+// @elem BOX_PULSE panel_box 7.0 box "" 0.0 124.00 84.50
+// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 124.00 90.00
+// @elem BOX_SAW panel_box 7.0 box "" 0.0 108.00 84.50
+// @elem LABEL_SAW label 0.0 label "saw" 0.0 108.00 90.00
+// @elem LABEL_PWM label 0.0 label "pwm" 0.0 136.60 90.00
 // @elem LABEL_G label 0.0 label "gate ptrn" 0.0 20.75 107.50
 // @elem LABEL_C label 0.0 label "cv ptrn" 0.0 42.75 107.50
 // @elem LABEL_PAT_RESET label 0.0 label "reset" 0.0 71.12 107.50
@@ -639,8 +644,9 @@ struct ArtifexWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(71.12f, 82.50f)), module, Artifex::LFO_RESET_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(57.00f, 82.50f)), module, Artifex::ENV_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(92.00f, 82.50f)), module, Artifex::TRI_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(108.00f, 82.50f)), module, Artifex::PULSE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.00f, 82.50f)), module, Artifex::SAW_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(124.00f, 82.50f)), module, Artifex::PULSE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(108.00f, 82.50f)), module, Artifex::SAW_OUTPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(136.60f, 82.50f)), module, Artifex::PWM_PARAM));
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(16.00f, 98.00f)), module, Artifex::GSW_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.50f, 100.00f)), module, Artifex::G_INPUT));
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(38.00f, 98.00f)), module, Artifex::CSW_PARAM));

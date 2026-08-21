@@ -70,6 +70,7 @@ struct Vates : Module {
 		GSW_PARAM,
 		CSW_PARAM,
 		LEVEL_PARAM,
+		PWM_PARAM,
 		PARAMS_LEN
 	};
 	enum InputId {
@@ -245,6 +246,7 @@ struct Vates : Module {
 		configSwitch(GSW_PARAM, 0.f, 2.f, 1.f, "Gate pattern", {"invert", "as is", "randomize"});
 		configSwitch(CSW_PARAM, 0.f, 2.f, 1.f, "CV pattern", {"invert", "as is", "randomize"});
 		configParam(LEVEL_PARAM, 0.f, 1.f, 0.8f, "Level");
+		configParam(PWM_PARAM, 0.02f, 0.98f, 0.5f, "LFO pulse width", "%", 0.f, 100.f);
 
 		configInput(BANK_INPUT, "Bank");
 		configInput(SAMPLE_INPUT, "Sample");
@@ -674,6 +676,7 @@ struct Vates : Module {
 		min.lfoRateMod = inputs[LFO_INPUT].getVoltage() * 0.2f * params[LFO_ATT_PARAM].getValue();
 		min.lfoSynced = params[SYNC_PARAM].getValue() > 0.5f;
 		min.lfoResetVoltage = inputs[LFO_RESET_INPUT].getVoltage();
+		min.pulseWidth = params[PWM_PARAM].getValue();
 		modul.process(min);
 
 		float stepSeconds = modul.stepSeconds;
@@ -1086,6 +1089,7 @@ struct VatesWidget : ModuleWidget {
 // @elem TRI_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem PULSE_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem SAW_OUTPUT PJ301MPort 4.01 output "" 0.0
+// @elem PWM_PARAM Trimpot 3.03 param "" 0.0
 // @elem TEMPO_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem CLK_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem RHYTHM_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -1122,12 +1126,13 @@ struct VatesWidget : ModuleWidget {
 // @elem LABEL_FREERUN label 0.0 label "free" 0.0 8.00 92.50
 // @elem LABEL_RATE label 0.0 label "rate" 0.0 21.00 91.00
 // @elem LABEL_LFO_RESET label 0.0 label "reset" 0.0 66.04 90.00
-// @elem BOX_SAW panel_box 7.0 box "" 0.0 114.00 84.50
+// @elem BOX_SAW panel_box 7.0 box "" 0.0 98.00 84.50
 // @elem BOX_TRI panel_box 7.0 box "" 0.0 82.00 84.50
 // @elem LABEL_TRI label 0.0 label "tri" 0.0 82.00 90.00
-// @elem BOX_PULSE panel_box 7.0 box "" 0.0 98.00 84.50
-// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 98.00 90.00
-// @elem LABEL_SAW label 0.0 label "saw" 0.0 114.00 90.00
+// @elem BOX_PULSE panel_box 7.0 box "" 0.0 114.00 84.50
+// @elem LABEL_PULSE label 0.0 label "pulse" 0.0 114.00 90.00
+// @elem LABEL_SAW label 0.0 label "saw" 0.0 98.00 90.00
+// @elem LABEL_PWM label 0.0 label "pwm" 0.0 126.50 90.00
 // @elem LABEL_TEMPO label 0.0 label "tempo" 0.0 110.00 73.50
 // @elem LABEL_CLK label 0.0 label "clk" 0.0 121.00 73.50
 // @elem LABEL_RHYTHM label 0.0 label "rhythm" 0.0 22.01 126.50
@@ -1179,8 +1184,9 @@ struct VatesWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(44.00f, 82.50f)), module, Vates::LFO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 82.50f)), module, Vates::LFO_RESET_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(82.00f, 82.50f)), module, Vates::TRI_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 82.50f)), module, Vates::PULSE_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 82.50f)), module, Vates::SAW_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(114.00f, 82.50f)), module, Vates::PULSE_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(98.00f, 82.50f)), module, Vates::SAW_OUTPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(126.50f, 82.50f)), module, Vates::PWM_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(110.00f, 65.00f)), module, Vates::TEMPO_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.00f, 65.00f)), module, Vates::CLK_INPUT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.51f, 118.00f)), module, Vates::RHYTHM_PARAM));

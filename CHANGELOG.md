@@ -46,8 +46,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     −1 V inverts, so a gate resting at 0 V leaves the pattern alone (the
     hardware's own 0–5 V window, where 0 V inverts, is a menu option).
 
-    Plus an LFO with triangle, pulse and saw outputs, phase-locked to the
-    clock when synced rather than merely running at a synced rate — so at
+    Plus an LFO with triangle, saw and pulse outputs and a **pwm** trimpot
+    that skews the triangle — the pulse is high exactly while the triangle
+    rises, so one control sets both the shape and the duty cycle — phase-locked
+    to the clock when synced rather than merely running at a synced rate — so at
     sixteen steps a cycle its saw *is* the position in the bar, and patched
     into **sample** at full attenuverter it sweeps a whole bank once a bar,
     since ten volts is one bank. It is patch-programmable through its own
@@ -69,7 +71,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     FX Wizard — the other face of the hardware vates comes from, and it shares
     that module's whole lower half: the same tempo generator, the same 32
     rhythms, the same pattern generator with its two editing switches and the
-    same phase-locked LFO, because on the hardware they are one board.
+    same phase-locked LFO with its pwm trimpot, because on the hardware they
+    are one board.
 
     Nine modes sit inside one filtered feedback loop, and the three knobs
     above them keep their meaning across all nine: **time** is always the
