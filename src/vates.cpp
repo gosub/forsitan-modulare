@@ -276,10 +276,22 @@ struct Vates : Module {
 
 		forsitan_sampler::loadSettingsOnce();
 		bankSeed = (uint64_t)random::u32() | 1ull;
+		allocDelays(44100.f);
+	}
+
+	// The delay lines are sized from the engine rate, not from a guess at it:
+	// a fixed sample count is a different number of seconds at every rate,
+	// and the delay would quietly stop being in tempo at the fast ones.
+	void allocDelays(float sampleRate) {
+		int n = (int)(3.4f * sampleRate) + 4;
 		for (int i = 0; i < 2; i++) {
-			dly[i].init((int)(1.6f * 96000.f));
-			mod[i].init((int)(0.05f * 96000.f));
+			dly[i].init(n);
+			mod[i].init((int)(0.05f * sampleRate) + 4);
 		}
+	}
+
+	void onSampleRateChange(const SampleRateChangeEvent& e) override {
+		allocDelays(e.sampleRate);
 	}
 
 	~Vates() {
@@ -804,10 +816,20 @@ struct Vates : Module {
 		float fxParam = clamp(params[FX_PARAM].getValue()
 		                      + inputs[FX_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
 		if (fxParam < -0.01f) {
-			// tempo-synced delay, three eighths of a beat as on the hardware
+			// Tempo-synced delay at three eighths of a note, as the hardware
+			// states — a dotted quarter, a beat and a half — with the right
+			// channel a plain beat against it, so the two run a 3:2 cross
+			// rhythm and the cross-feedback below throws it side to side.
 			float amt = -fxParam;
 			float beat = stepSeconds * 4.f;
-			float t = clamp(beat * 0.375f, 0.005f, 1.5f) * sr;
+			float maxT = (float)(dly[0].size() - 4) / sr;
+			float t = beat * 1.5f;
+			// A dotted quarter does not fit the buffer at every tempo. Halving
+			// the division keeps the delay in tempo, where clamping it to
+			// whatever fits would leave it in no tempo at all.
+			while (t > maxT && t > 0.02f)
+				t *= 0.5f;
+			t = clamp(t, 0.005f, maxT) * sr;
 			float wetL = dly[0].read(t);
 			float wetR = dly[1].read(t * 0.667f);
 			float fb = 0.25f + 0.35f * amt;

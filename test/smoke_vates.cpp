@@ -966,7 +966,60 @@ static void testPulseWidth() {
 	}
 }
 
-SMOKE_MAIN(testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+// ── the fx delay lands on the beat it claims ─────────────────────────────────
+// Three eighths of a note is a dotted quarter — a beat and a half — and it has
+// to stay there at every tempo. It was a dotted *sixteenth* at first: 3/8 of a
+// beat rather than of a note, four times too short.
+static void testFxDelayTime() {
+	const float bpm[2] = {120.f, 60.f};
+	for (int k = 0; k < 2; k++) {
+		Vates m;
+		long fr = 0;
+		if (!waitForBanks(m, fr)) {
+			report("vates", "fx_delay_setup", 0, false);
+			return;
+		}
+		selectSample(m, 0, 4);
+		// A click, so the dry hit is over long before the echo: the sample
+		// under it is generated from a seed, and its own tail must not be
+		// what the search finds.
+		m.params[Vates::LENGTH_PARAM].setValue(0.05f);
+		m.params[Vates::LEVEL_PARAM].setValue(1.f);
+		m.params[Vates::FX_PARAM].setValue(-1.f);
+		m.params[Vates::TEMPO_PARAM].setValue(bpm[k]);
+		run(m, fr, 0.05);
+		pressTrigger(m, fr);
+
+		double beat = 60.0 / bpm[k];
+		long n = (long)(3.0 * beat * SR);
+		long guard = (long)(0.05 * SR);
+		double dry = 0.0, best = 0.0;
+		long at = -1;
+		for (long i = 0; i < n; i++) {
+			m.process(makeArgs(fr++));
+			double v = std::fabs(m.outputs[Vates::LEFT_OUTPUT].getVoltage());
+			if (i < guard) {
+				dry = std::max(dry, v);
+				continue;
+			}
+			// the first thing loud enough to be the echo, not the loudest
+			// thing anywhere: later repeats are quieter, and a sample with a
+			// tail would otherwise win
+			if (at < 0 && v > 0.4 * dry) {
+				at = i;
+				best = v;
+			}
+		}
+		if (at < 0)
+			at = 0;
+		double beats = ((double)at / SR) / beat;
+		char name[64];
+		std::snprintf(name, sizeof name, "fx_delay_at_%.0f_bpm", bpm[k]);
+		report("vates", name, beats, best > 0.05 && std::fabs(beats - 1.5) < 0.05);
+	}
+}
+
+SMOKE_MAIN(testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

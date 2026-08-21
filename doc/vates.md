@@ -154,10 +154,26 @@ Two more knobs that do different things on each side of centre:
 | knob | left | centre | right |
 |------|------|--------|-------|
 | **filter** | resonant lowpass, closing to 30 Hz | open | resonant highpass, opening to 14 kHz |
-| **fx** | tempo-synced delay at 3/8, wetter | dry | chorus/flanger with soft clipping, deeper |
+| **fx** | tempo-synced delay, wetter | dry | chorus/flanger with soft clipping, deeper |
 
 Both take CV. Sweeping **fx** across centre is a musical move — a beat that
 falls out of the delay and into the flanger.
+
+**fx** is the hardware's pair, and the knob is an amount on each side rather
+than a parameter. The delay is fixed at **three eighths of a note — a dotted
+quarter, a beat and a half**, 750 ms at 120 BPM — with the right channel a
+plain beat against it, so the two run a 3:2 cross rhythm and the feedback
+throws it side to side. Turning the knob out raises the wet from nothing and
+the feedback from 0.25 to 0.6. At a tempo slow enough that a dotted quarter
+would not fit the buffer, the division halves rather than the time being
+clamped: it stays in tempo, just at a shorter one.
+
+To the right, one knob crosses a chorus into a flanger. The swept delay
+shortens from 8 ms to 1.5 ms and its depth from ±2.5 ms to ±0.7 ms — a chorus
+range becoming a flanger range, with the first notch sweeping 227–625 Hz at
+the top — while the feedback climbs to 0.7 and the output drive to twice, so
+the further out you go the more the resonance rings and the more it clips. The
+sweep itself is 0.35 Hz throughout, with the two channels in quadrature.
 
 **filter** is a DJ filter, which is a specific thing: four poles, 24 dB per
 octave, and a range that reaches past the material at both ends. Full left is

@@ -58,8 +58,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     seconds after it stops, a DJ filter — four poles, 24 dB per octave, a
     lowpass closing to 30 Hz on one side of centre and a highpass opening to
     14 kHz on the other, so either end of the sweep takes the sample away
-    rather than muffling it — and a tempo-synced delay that becomes
-    a chorus and then a flanger as the **fx** knob crosses.
+    rather than muffling it — and an **fx** knob that crosses a
+    tempo-synced delay — three eighths of a note, with the right channel a
+    plain beat against it for a 3:2 cross rhythm — into a chorus and then a
+    flanger, the swept delay shortening from 8 ms to 1.5 ms as the feedback
+    and the soft clipping climb.
 
     The hardware's SHIFT and BANK layers, which give every knob two or three
     jobs, are unpacked into real controls: holding one thing while turning
