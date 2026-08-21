@@ -26,7 +26,8 @@
 //   Knobs : PITCH, FEEDBACK (the mysterious big knob), BODY, LPF, HPF,
 //           VERB MIX, VERB DECAY, ECHO SEND, ECHO TIME, ECHO FB, VOLUME
 //   Switch: HALF (instantly halves echo time for doppler warps)
-//   In    : audio IN (injected into the loop), V/OCT, FB CV, LPF CV, TIME CV
+//   In    : audio IN (injected into the loop), V/OCT, FB CV, BODY CV,
+//           LPF CV, TIME CV
 //   Out   : L, R
 //   Light : LEVEL (output amplitude)
 
@@ -590,6 +591,9 @@ struct Vorax : Module {
         FEEDBACK_CV_INPUT,
         LPF_CV_INPUT,
         TIME_CV_INPUT,
+        // appended, never inserted: a saved patch stores cables by port
+        // index, so renumbering the existing ones would rewire old patches
+        BODY_CV_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -630,6 +634,7 @@ struct Vorax : Module {
         configInput(FEEDBACK_CV_INPUT, "Feedback gain CV (7.2 dB/V)");
         configInput(LPF_CV_INPUT, "Loop lowpass cutoff CV (1V/oct)");
         configInput(TIME_CV_INPUT, "Echo time CV (1V/oct)");
+        configInput(BODY_CV_INPUT, "Body delay CV (0.1 knob turn/V)");
         configOutput(LEFT_OUTPUT, "Left");
         configOutput(RIGHT_OUTPUT, "Right");
         configBypass(AUDIO_INPUT, LEFT_OUTPUT);
@@ -673,8 +678,11 @@ struct Vorax : Module {
                  + 7.2f * inputs[FEEDBACK_CV_INPUT].getVoltage();
         smFeedback.target = clamp(fb, -60.f, 12.f);
 
-        // body: EXP map 1..100 ms
-        float t = params[BODY_PARAM].getValue();
+        // body: EXP map 1..100 ms, CV adds to the knob position so a volt
+        // moves it a tenth of a turn, the same curve as the hand does
+        float t = params[BODY_PARAM].getValue()
+                + 0.1f * inputs[BODY_CV_INPUT].getVoltage();
+        t = clamp(t, 0.f, 1.f);
         smBody.target = 0.001f + t * t * 0.099f;
 
         // loop filter cutoffs: LOG maps, LPF gets 1V/oct CV
@@ -774,6 +782,7 @@ struct VoraxWidget : ModuleWidget {
 // @elem FEEDBACK_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem LPF_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem TIME_CV_INPUT PJ301MPort 4.18 input "" 0.0
+// @elem BODY_CV_INPUT PJ301MPort 4.18 input "" 0.0
 // @elem LEFT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem RIGHT_OUTPUT PJ301MPort 4.18 output "" 0.0
 // @elem LEVEL_L_LIGHT SmallLight 1.5 light "" 0.0
@@ -795,6 +804,7 @@ struct VoraxWidget : ModuleWidget {
 // @elem LABEL_FBCV label 0.0 label "fb" 0.0 25.40 96.50
 // @elem LABEL_LPFCV label 0.0 label "lpf" 0.0 35.35 96.50
 // @elem LABEL_TIMECV label 0.0 label "time" 0.0 45.30 96.50
+// @elem LABEL_BODYCV label 0.0 label "body" 0.0 10.40 114.00
 // @elem LABEL_L label 0.0 label "L" 0.0 25.10 114.00
 // @elem LABEL_R label 0.0 label "R" 0.0 40.90 114.00
 // @elem BOX_L panel_box 7.0 box "" 0.0 25.10 108.50
@@ -822,6 +832,7 @@ struct VoraxWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.40f, 89.00f)), module, Vorax::FEEDBACK_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(35.35f, 89.00f)), module, Vorax::LPF_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.30f, 89.00f)), module, Vorax::TIME_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.40f, 106.50f)), module, Vorax::BODY_CV_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.10f, 106.50f)), module, Vorax::LEFT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(40.90f, 106.50f)), module, Vorax::RIGHT_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(30.10f, 103.50f)), module, Vorax::LEVEL_L_LIGHT));

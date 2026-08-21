@@ -48,6 +48,30 @@ static void testVorax() {
     report("vorax", "hostile_nans", h.nans, h.nans == 0);
     report("vorax", "hostile_bounded", h.peak, h.peak <= 10.01f);
     report("vorax", "hostile_alive", h.rms(), h.rms() > 0.05);
+    // body CV: a volt moves the knob a tenth of a turn, so knob 0.3 + 5 V
+    // must land on the same delay time as knob 0.8, and the sum clamps
+    m.inputs[Vorax::BODY_CV_INPUT].setChannels(1);
+    m.params[Vorax::BODY_PARAM].setValue(0.8f);
+    m.inputs[Vorax::BODY_CV_INPUT].setVoltage(0.f);
+    m.controlPhase = 0;
+    m.process(makeArgs(frame++));
+    float knobOnly = m.smBody.target;
+    m.params[Vorax::BODY_PARAM].setValue(0.3f);
+    m.inputs[Vorax::BODY_CV_INPUT].setVoltage(5.f);
+    m.controlPhase = 0;
+    m.process(makeArgs(frame++));
+    float withCv = m.smBody.target;
+    report("vorax", "body_cv_maps", withCv - knobOnly,
+           std::fabs(withCv - knobOnly) < 1e-6f);
+    m.params[Vorax::BODY_PARAM].setValue(1.f);
+    m.inputs[Vorax::BODY_CV_INPUT].setVoltage(10.f);
+    m.controlPhase = 0;
+    m.process(makeArgs(frame++));
+    report("vorax", "body_cv_clamped", m.smBody.target,
+           std::fabs(m.smBody.target - 0.1f) < 1e-6f);
+    m.inputs[Vorax::BODY_CV_INPUT].setVoltage(0.f);
+    m.params[Vorax::BODY_PARAM].setValue(0.f);
+
     // feedback back down: the drone must die away
     m.params[Vorax::FEEDBACK_PARAM].setValue(-60.f);
     m.params[Vorax::ECHO_FB_PARAM].setValue(0.f);
