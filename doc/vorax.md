@@ -60,6 +60,7 @@ saturated warbles; the feedback goes up to 1.5 for endlessly growing
 | **fb** | feedback gain CV, 7.2 dB/V |
 | **lpf** | loop lowpass cutoff CV, 1V/oct |
 | **time** | echo time CV, 1V/oct (positive voltage shortens) |
+| **body** | body delay CV (bottom left), added to the body knob a tenth of a turn per volt: 0–10 V spans it |
 | **l / r** | stereo output |
 
 ## Tips
@@ -68,7 +69,11 @@ saturated warbles; the feedback goes up to 1.5 for endlessly growing
   **feedback**. The point where the drone blooms depends on every other
   knob in the loop.
 - Sweeping **body** while the loop oscillates bends the pitch like tape
-  wow; parking it very short adds a metallic comb color.
+  wow; parking it very short adds a metallic comb color. The **body** CV
+  input does the same with no hand on the knob. The delay time keeps the
+  ~1 s glide it has under the knob, so modulation below about 1 Hz
+  arrives whole while faster modulation is smoothed into a drift instead
+  of a warble.
 - Narrow the loop filters (**lpf** down, **hpf** up) to choke the drone
   to a whistle, then open them to let it roar back.
 - **echo fb** past 1.0 with a long **time** builds a saturating canon

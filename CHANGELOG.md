@@ -94,6 +94,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     Oversampling (1x to 16x, 4x default) only filters the outputs. About 1.2 %
     of a core.
 
+### Changed
+  - **vorax** gains a **body** CV input, bottom left beside the outputs, on a
+    request from a user who found the knob to be where the module's most
+    interesting textures live and had no way to modulate it. A volt moves the
+    knob a tenth of a turn, so 0-10 V spans it and the CV rides the same
+    square-law curve the hand does. The body delay keeps its ~1 s glide, which
+    means modulation under about 1 Hz arrives whole and faster modulation
+    smooths into a drift rather than a warble. The jack is appended after the
+    existing ones, so patches saved with earlier versions keep their cables.
+
 ## [2.15.0] - 2026-08-18
 ### Fixed
   - **materiae**'s file-local helper types are in an anonymous namespace, where
