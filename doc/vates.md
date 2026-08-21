@@ -144,6 +144,11 @@ module that clicked out of the browser would be telling you nothing.
 
 The value is latched at the trigger, so modulation flips the direction
 between hits and never mid-sample. **env** outputs the envelope, 0–10V.
+
+A hit that is interrupted does not vanish: it keeps playing for a couple of
+milliseconds with its gain running out, and so does one that reaches the end
+of its sample. A reversed hit holds at full level once it has swelled, and
+stopping that dead is a step, not a silence.
 During the attack of a reversed hit a new trigger is ignored, so reversed
 swells are not cut short by the sequence that is playing them.
 

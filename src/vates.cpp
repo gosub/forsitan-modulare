@@ -40,6 +40,11 @@ static const float kGenRate = 44100.f;
 
 static const int kSteps = forsitan_mod::kSteps;
 
+// How long a voice takes to get out of the way, whether it was interrupted by
+// another one or simply ran out of sample. Long enough not to be a step,
+// short enough not to smear a drum hit.
+static const float kDeclick = 0.003f;
+
 using forsitan_dsp::Svf;
 using forsitan_dsp::Delay;
 using forsitan_mod::rhythmPattern;
@@ -182,6 +187,19 @@ struct Vates : Module {
 	float env = 0.f, envCoef = 0.f;
 	bool envHold = false;                 // no-decay: play to the end
 	float release = 1.f;
+
+	// The hit that is being replaced. A trigger cannot simply drop the voice
+	// it interrupts: a reverse hit holds at full level once it has swelled,
+	// so cutting it is a step of the whole amplitude. It keeps playing here
+	// for a couple of milliseconds while its gain runs down to nothing.
+	const std::vector<float>* fadeL = nullptr;
+	const std::vector<float>* fadeR = nullptr;
+	std::shared_ptr<void> fadeHold;
+	double fadePos = 0.0;
+	float fadeStep = 0.f;                 // frames per sample, signed
+	float fadeGain = 0.f;
+	float fadeFall = 0.f;
+	bool fadeActive = false;
 
 	// ── selection ────────────────────────────────────────────────────────────
 	int bankIndex = 0;
@@ -529,6 +547,22 @@ struct Vates : Module {
 		if (!L || L->size() < 2)
 			return;
 
+		// hand the voice being replaced to the fade slot before overwriting it
+		if (voiceActive && voiceL && voiceL->size() > 2) {
+			float g = env * release;
+			if (g > 1e-4f) {
+				fadeL = voiceL;
+				fadeR = voiceR;
+				fadeHold = voiceHold;
+				fadePos = voicePos;
+				float rate = voiceRateNow() * voiceSrcRate / sr;
+				fadeStep = voiceReverse ? -rate : rate;
+				fadeGain = g;
+				fadeFall = g / std::max(kDeclick * sr, 1.f);
+				fadeActive = true;
+			}
+		}
+
 		voiceHold = hold;
 		voiceL = L;
 		voiceR = R;
@@ -735,13 +769,15 @@ struct Vates : Module {
 				else if (!envHold && !voiceReverse)
 					env *= envCoef;
 
-				// a reversed hit stops when it reaches the head of the
-				// sample; fade the last few ms so the stop does not click
-				if (voiceReverse) {
-					float togo = (float)voicePos / std::max(rate, 1e-6f) / sr;
-					if (togo < 0.003f)
-						release = clamp(togo / 0.003f, 0.f, 1.f);
-				}
+				// a hit stops when it runs out of sample — at the head going
+				// backwards, at the tail going forwards. Either way the last
+				// few milliseconds fade, or the stop is a step.
+				float togo = voiceReverse
+				             ? (float)voicePos
+				             : (float)((double)(n - 1) - voicePos);
+				togo = togo / std::max(rate, 1e-6f) / sr;
+				if (togo < kDeclick)
+					release = clamp(togo / kDeclick, 0.f, 1.f);
 				float a = env * release;
 				outL *= a;
 				outR *= a;
@@ -752,6 +788,24 @@ struct Vates : Module {
 		if (!voiceActive) {
 			env = 0.f;
 			voiceHold.reset();
+		}
+
+		// the hit that was interrupted, running out
+		if (fadeActive && fadeL) {
+			size_t fn = fadeL->size();
+			if (fadePos < 0.0 || fadePos >= (double)(fn - 1) || fadeGain <= 0.f) {
+				fadeActive = false;
+				fadeHold.reset();
+			}
+			else {
+				size_t i0 = (size_t)fadePos;
+				float fr2 = (float)(fadePos - i0);
+				size_t i1 = std::min(i0 + 1, fn - 1);
+				outL += ((*fadeL)[i0] + ((*fadeL)[i1] - (*fadeL)[i0]) * fr2) * fadeGain;
+				outR += ((*fadeR)[i0] + ((*fadeR)[i1] - (*fadeR)[i0]) * fr2) * fadeGain;
+				fadePos += fadeStep;
+				fadeGain -= fadeFall;
+			}
 		}
 
 		// ── filter ───────────────────────────────────────────────────────────

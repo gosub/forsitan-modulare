@@ -1078,7 +1078,54 @@ static void testFxFeedback() {
 	       && early.nans + mid.nans + late.nans == 0);
 }
 
-SMOKE_MAIN(testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+// ── a hit that is interrupted, or that runs out, gets out of the way ─────────
+// A reverse hit holds at full level once it has swelled, so a trigger that
+// replaces it used to cut it dead: a step of the whole amplitude, 25 times the
+// signal's own slew. It only showed at short lengths, because a long attack
+// makes the retrigger be refused instead.
+static void testDeclick() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "declick_setup", 0, false);
+		return;
+	}
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	selectSample(m, 4, loudestSample(m, fr, 4));
+
+	// reverse, with an attack short enough that the retrigger is accepted
+	m.params[Vates::LENGTH_PARAM].setValue(-0.2f);
+	run(m, fr, 0.5);
+	pressTrigger(m, fr);
+	run(m, fr, 0.12);
+	double steady = slew(m, fr, 0.05);
+	m.params[Vates::TRIG_PARAM].setValue(1.f);
+	double step = slew(m, fr, 0.002);
+	m.params[Vates::TRIG_PARAM].setValue(0.f);
+	report("vates", "retrigger_is_quiet", step / std::max(steady, 1e-9),
+	       steady > 1e-4 && step < 3.0 * steady);
+
+	// and the far end of the knob, where a sample plays to its end and stops
+	m.params[Vates::LENGTH_PARAM].setValue(1.f);
+	run(m, fr, 1.0);
+	pressTrigger(m, fr);
+	double steady2 = slew(m, fr, 0.2);
+	double worst = 0.0;
+	float prev = m.outputs[Vates::LEFT_OUTPUT].getVoltage();
+	for (long i = 0; i < (long)(6.0 * SR) && m.voiceActive; i++) {
+		m.process(makeArgs(fr++));
+		float y = m.outputs[Vates::LEFT_OUTPUT].getVoltage();
+		worst = std::max(worst, (double)std::fabs(y - prev));
+		prev = y;
+	}
+	m.process(makeArgs(fr++));
+	worst = std::max(worst,
+	                 (double)std::fabs(m.outputs[Vates::LEFT_OUTPUT].getVoltage() - prev));
+	report("vates", "sample_end_is_quiet", worst / std::max(steady2, 1e-9),
+	       steady2 > 1e-4 && worst < 3.0 * steady2);
+}
+
+SMOKE_MAIN(testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)
