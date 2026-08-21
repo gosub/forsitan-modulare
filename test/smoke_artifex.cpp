@@ -446,6 +446,30 @@ static void testEnvelope() {
 	float quiet = m.outputs[Artifex::ENV_OUTPUT].getVoltage();
 	report("artifex", "env_follows_input", loud, loud > 1.f);
 	report("artifex", "env_falls_on_silence", quiet, quiet < loud * 0.5f);
+
+	// Full scale is the clip point, not the rail: an input driven past
+	// kClipVolts — where the lamps light and the mode buffers fold — must
+	// read 10 V, so the follower and the panel agree on what "too loud" is.
+	Artifex hot;
+	fr = 0;
+	setMode(hot, artifex_fx::MODE_DELAY);
+	hot.params[Artifex::AMT_PARAM].setValue(0.f);
+	hot.params[Artifex::GAIN_PARAM].setValue(4.f);
+	runTone(hot, fr, 2.0, 200.f, 5.f);
+	float pinned = hot.outputs[Artifex::ENV_OUTPUT].getVoltage();
+	report("artifex", "env_full_scale_at_the_clip_point", pinned, pinned > 9.5f);
+
+	// And a signal that sits just under it does not reach full scale, so the
+	// top of the range still means something.
+	Artifex warm;
+	fr = 0;
+	setMode(warm, artifex_fx::MODE_DELAY);
+	warm.params[Artifex::AMT_PARAM].setValue(0.f);
+	warm.params[Artifex::GAIN_PARAM].setValue(1.f);
+	runTone(warm, fr, 2.0, 200.f, 2.5f);
+	float half = warm.outputs[Artifex::ENV_OUTPUT].getVoltage();
+	report("artifex", "env_below_the_clip_point_has_headroom", half,
+	       half > 4.f && half < 6.f);
 }
 
 // ── mode changes from CV wait for the clock, and the knob does not ────────────

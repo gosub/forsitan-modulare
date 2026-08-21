@@ -322,7 +322,11 @@ struct Artifex : Module {
 			inL = inR = m;
 		}
 
-		// envelope follower on the input, 0-10 V
+		// Envelope follower on the input, full scale at the clip point rather
+		// than at the rail: 10 V out is the same level the input lamps light
+		// at, so a follower patched into feedback or amount has its whole
+		// range over the part of the gain knob that is actually usable.
+		// Reading against the rail instead pinned it from about gain 2 up.
 		float rect = std::max(std::fabs(inL), std::fabs(inR));
 		float coef = rect > envFollow ? 0.002f : 0.0002f;
 		envFollow += (rect - envFollow) * coef;
@@ -391,7 +395,7 @@ struct Artifex : Module {
 		lights[IN_L_LIGHT].setBrightnessSmooth(std::fabs(inL) > clip ? 1.f : 0.f, args.sampleTime);
 		lights[IN_R_LIGHT].setBrightnessSmooth(std::fabs(inR) > clip ? 1.f : 0.f, args.sampleTime);
 
-		outputs[ENV_OUTPUT].setVoltage(clamp(envFollow, 0.f, 10.f));
+		outputs[ENV_OUTPUT].setVoltage(clamp(envFollow * (10.f / clip), 0.f, 10.f));
 		outputs[TRI_OUTPUT].setVoltage(modul.tri * 10.f);
 		outputs[PULSE_OUTPUT].setVoltage(modul.lfoRising ? 10.f : 0.f);
 		outputs[SAW_OUTPUT].setVoltage(modul.lfoPhase * 10.f);

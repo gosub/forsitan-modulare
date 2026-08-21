@@ -198,11 +198,15 @@ centre; stereo runs from mono at zero to as far apart as the mode allows.
 **L** and **R** inputs, with **L** normalled to **R** so a mono source fills
 both. The **gain** trimpot beside them runs to +12 dB, and it matters more
 here than on most modules: the feedback loop reacts to how hard you drive it.
-The two lamps go red when the input clips.
+The two lamps go red at 5 V, which is where the effect starts folding the
+signal rather than where the rail is — so they light while you can still do
+something about it.
 
 **level** sets the output, and **env** is an envelope follower on the input —
 patch it to the feedback or amount modulation input for ducking, which is
-what the hardware suggests and what it is best at.
+what the hardware suggests and what it is best at. It reads 10 V at that same
+5 V clip point, so a lit lamp and a full-scale envelope mean the same thing,
+and the follower keeps its range over the part of the gain knob you use.
 
 ### lfo
 
