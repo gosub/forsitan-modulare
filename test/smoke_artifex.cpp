@@ -433,6 +433,40 @@ static void testStereo() {
 	report("artifex", "stereo_widens", width[1], width[1] > width[0] + 0.1);
 }
 
+// ── nothing clicks when the write pointer comes round ─────────────────────────
+// The tape's read position, folded into range, could round up to exactly the
+// buffer length and index one past the end of the vector: one garbage sample
+// every wrap, 1.15 s apart, and the 2 ms delay hit it every time. Run past two
+// wraps at the shortest delay and assert the output stays smooth.
+static void testWrapClick() {
+	Artifex m;
+	long fr = 0;
+	// The harness steps process() at SR, but the core only learns the rate
+	// from the event Rack sends when the module is added. Without this it
+	// builds its buffers for 44.1 kHz, and 0.002 * 44100 is 88.2 samples --
+	// nowhere near the integer boundary the bug needs.
+	Module::SampleRateChangeEvent sre;
+	sre.sampleRate = SR;
+	sre.sampleTime = 1.f / SR;
+	m.onSampleRateChange(sre);
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::TIME_PARAM].setValue(1.f);    // 2 ms, the worst case
+	m.params[Artifex::AMT_PARAM].setValue(1.f);     // all wet, nothing to mask it
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	Rec rec;
+	runTone(m, fr, 3.0, 220.f, 5.f, &rec);
+
+	// A click is a step the 220 Hz tone cannot make. Skip the first delay
+	// period, where the empty buffer legitimately steps up to the signal.
+	double worst = 0.0;
+	size_t from = (size_t)(0.05 * SR);
+	for (size_t i = from + 1; i < rec.l.size(); i++)
+		worst = std::max(worst, (double)std::fabs(rec.l[i] - rec.l[i - 1]));
+	// one sample of a 5 V 220 Hz sine moves at most 2*pi*220/SR * 5 V
+	double slew = 2.0 * M_PI * 220.0 / SR * 5.0;
+	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
+}
+
 // ── the envelope follower reads the input ─────────────────────────────────────
 static void testEnvelope() {
 	Artifex m;
@@ -597,5 +631,5 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testEnvelope, testModeSelect,
+           testReplayer, testStereo, testWrapClick, testEnvelope, testModeSelect,
            testFeedbackSafety, testAbuse)

@@ -62,10 +62,7 @@ struct Delay {
 		float rp = (float)w - d;
 		while (rp < 0.f)
 			rp += n;
-		int i0 = (int)rp;
-		float fr = rp - i0;
-		int i1 = (i0 + 1) % n;
-		return buf[i0] + (buf[i1] - buf[i0]) * fr;
+		return lerp(rp, n);
 	}
 	// absolute read, for buffers used as tape rather than as a delay
 	float at(float pos) const {
@@ -73,11 +70,32 @@ struct Delay {
 			return 0.f;
 		int n = (int)buf.size();
 		float p = pos - std::floor(pos / n) * n;
-		int i0 = (int)p;
-		if (i0 < 0 || i0 >= n)
+		if (p < 0.f)
+			p = 0.f;
+		return lerp(p, n);
+	}
+
+	// Interpolated read at a position already folded into [0, n) -- or so the
+	// arithmetic that folded it believes. A position a hair below zero, once
+	// n is added to it, rounds up to exactly n: floats near 55204 (the tape at
+	// 48 kHz) are 1/256 apart, so anything within 1/512 of the wrap lands on
+	// the boundary itself. Truncating that gave an index one past the end of
+	// the vector, which is undefined behaviour and in practice read whatever
+	// the heap held next -- one garbage sample every time the write pointer
+	// came round, 1.15 s apart at the default buffer. The 2 ms delay hit it on
+	// every wrap, since 0.002f * sr is a hair over 96 samples.
+	//
+	// A position that rounds to n is the wrap itself, so it folds to zero.
+	float lerp(float pos, int n) const {
+		int i0 = (int)pos;
+		float fr = pos - (float)i0;
+		if (i0 >= n) {
+			i0 -= n;
+			fr = 0.f;
+		}
+		if (i0 < 0)
 			i0 = 0;
-		float fr = p - i0;
-		int i1 = (i0 + 1) % n;
+		int i1 = i0 + 1 < n ? i0 + 1 : 0;
 		return buf[i0] + (buf[i1] - buf[i0]) * fr;
 	}
 	void poke(int i, float x) {
