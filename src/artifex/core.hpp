@@ -210,9 +210,24 @@ struct Core {
 		return x + (y - x) * wet;
 	}
 
+	// Linear below kClipVolts, saturating above it -- and continuous at the
+	// join, which the obvious form is not. tanh(1) is 0.762, so branching
+	// straight into tanh dropped 0.238 -- 1.19 V -- the instant a signal
+	// crossed the boundary, and climbed back the instant it recrossed. Every
+	// mode sat on that step, because 5 V is where ordinary material sits: at
+	// the flanger's normal level it read as a click twice per cycle of a tone,
+	// and it was the largest discontinuity anywhere in the module.
+	//
+	// Starting the curve where the line ends matches the value and the slope
+	// at the join, since d/dx tanh(0) is 1, so nothing happens there at all.
+	// The asymptote moves from 1 to 2: kClipVolts is still where folding
+	// begins, and a fully folded signal now reaches the rail rather than
+	// stopping at nominal.
 	static float softClip(float x) {
-		if (x > 1.f || x < -1.f)
-			return std::tanh(x);
+		if (x > 1.f)
+			return 1.f + std::tanh(x - 1.f);
+		if (x < -1.f)
+			return -1.f - std::tanh(-x - 1.f);
 		return x;
 	}
 

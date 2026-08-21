@@ -467,6 +467,29 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ── the limiter is continuous where it starts folding ─────────────────────────
+// softClip branched straight into tanh above kClipVolts, and tanh(1) is 0.762,
+// so a signal crossing 5 V dropped 1.19 V on the way through and climbed back
+// on the way out. Drive a tone that crosses it four times a cycle and assert
+// the output stays smooth.
+static void testClipContinuity() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::AMT_PARAM].setValue(0.f);     // dry: only the limiter
+	m.params[Artifex::GAIN_PARAM].setValue(2.f);    // +-10 V in, so it folds
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	Rec rec;
+	runTone(m, fr, 0.5, 220.f, 5.f, &rec);
+
+	double worst = 0.0;
+	for (size_t i = (size_t)(0.05 * SR) + 1; i < rec.l.size(); i++)
+		worst = std::max(worst, (double)std::fabs(rec.l[i] - rec.l[i - 1]));
+	// the folded tone is steeper than the bare one, but only by its own shape
+	double slew = 2.0 * M_PI * 220.0 / SR * 10.0;
+	report("artifex", "clip_is_continuous", worst / slew, worst < slew * 1.5);
+}
+
 // ── sweeping the time knob bends, it does not click ───────────────────────────
 // A parameter in Rack moves once per UI frame, so a knob drag arrives as ~60
 // steps a second. A delay that teleports its read position clicks on every one
@@ -666,6 +689,7 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testWrapClick, testDelaySweep, testEnvelope,
+           testReplayer, testStereo, testWrapClick, testClipContinuity, testDelaySweep,
+           testEnvelope,
            testModeSelect,
            testFeedbackSafety, testAbuse)
