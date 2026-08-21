@@ -88,6 +88,31 @@ static const float kSliceAttack = 0.002f;
 // still feels connected.
 static const float kDelayGlide = 0.050f;
 
+// The flanger and the pitcher multiply a knob straight into a read position
+// too, and need the same treatment for the same reason -- but not the bend.
+// Twenty milliseconds bridges the 16.7 ms between two UI frames and is short
+// enough that the knob still feels direct.
+static const float kKnobGlide = 0.020f;
+
+// A one-pole glide that snaps the first time it is asked. The mode's state is
+// reset on entering it, so arriving somewhere gives you the knob rather than a
+// slide from wherever the last mode left this.
+struct Glide {
+	float v = 0.f;
+	bool primed = false;
+	void reset() { primed = false; }
+	float operator()(float target, float dt, float tau) {
+		if (!primed) {
+			v = target;
+			primed = true;
+		}
+		else {
+			v += (target - v) * (1.f - std::exp(-dt / tau));
+		}
+		return v;
+	}
+};
+
 struct Core {
 	float sr = 44100.f;
 	float bufSeconds = kHardwareBuffer;
@@ -105,7 +130,10 @@ struct Core {
 
 	// per-mode state
 	float modPhase[2] = {0.f, 0.f};      // flanger, panner
-	float delaySm = -1.f;     // the delay time, glided; negative = not yet set
+	Glide delayGl;            // delay: the time, which is also its pitch bend
+	Glide flangeGl;           // flanger: the sweep depth, off the amount knob
+	Glide pitchWinGl;         // pitcher: the window, off the time knob
+	Glide pitchAmtGl;         // pitcher: the shift, off the amount knob
 	int panDir = 1;
 	double freezeStart[2] = {0.0, 0.0};
 	double freezePos[2] = {0.0, 0.0};
@@ -168,7 +196,10 @@ struct Core {
 			tapePos[c] = 0.0;
 		}
 		panDir = 1;
-		delaySm = -1.f;
+		delayGl.reset();
+		flangeGl.reset();
+		pitchWinGl.reset();
+		pitchAmtGl.reset();
 		crushDip = 0.f;
 		grainStretch = 0.f;
 		// Arriving in the replayer loads the tape, which is what a trigger
@@ -326,13 +357,10 @@ struct Core {
 
 		// The display reads the knob; the tape follows it. Arriving in the
 		// mode snaps, so the first repeat is the time you asked for.
-		if (delaySm <= 0.f)
-			delaySm = base;
-		else
-			delaySm += (base - delaySm) * (1.f - std::exp(-ct.dt / kDelayGlide));
+		float glided = delayGl(base, ct.dt, kDelayGlide);
 
 		for (int c = 0; c < 2; c++) {
-			float d = clamp(delaySm * detune(c, ct.stereo), 0.002f, maxT) * sr;
+			float d = clamp(glided * detune(c, ct.stereo), 0.002f, maxT) * sr;
 			float wet = tape[c].read(d);
 			tape[c].write(softClip((in[c] + wet * fb * 0.98f) / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
@@ -347,6 +375,10 @@ struct Core {
 		float hz = 0.02f * std::pow(500.f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = hz;
+		// The modulator's rate is integrated into a phase, so a step in it is
+		// harmless. The depth is not: it multiplies the read position, and a
+		// knob that moves once per frame moves the tap in jumps.
+		float dep = flangeGl(amt, ct.dt, kKnobGlide);
 		for (int c = 0; c < 2; c++) {
 			float f = hz * detune(c, ct.stereo);
 			if (ct.trig)
@@ -355,7 +387,7 @@ struct Core {
 			modPhase[c] -= std::floor(modPhase[c]);
 			float m = std::sin(2.f * (float)M_PI * modPhase[c]);
 			float base = 5.5f * 0.001f * sr;
-			float depth = (5.f * amt) * 0.001f * sr;
+			float depth = (5.f * dep) * 0.001f * sr;
 			float wet = flg[c].read(base + depth * m);
 			flg[c].write(softClip((in[c] + wet * fb * 0.95f) / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
@@ -554,8 +586,12 @@ struct Core {
 		if (ct.trig)
 			grainStretch = 1.f;
 		grainStretch *= std::exp(-ct.dt / 0.25f);
+		// Both knobs scale the tap position here, so both jump it when they
+		// move. The ramp restarting is the mode's own crudeness and stays;
+		// the knobs clicking on top of it was never part of that.
+		window = pitchWinGl(window, ct.dt, kKnobGlide);
 		window *= 1.f + 3.f * grainStretch;
-		float shift = amt;                       // 0 = unity, 1 = an octave up
+		float shift = pitchAmtGl(amt, ct.dt, kKnobGlide);
 
 		for (int c = 0; c < 2; c++) {
 			float w = clamp(window * detune(c, ct.stereo), 0.002f, 0.4f);
