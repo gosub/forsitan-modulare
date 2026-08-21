@@ -95,8 +95,9 @@ the time knob.
 A delay whose time is swept by a sine. **amount** sets how far it sweeps and
 how much of it you hear: around the middle, with no feedback, it is a stereo
 chorus; with feedback it is a flanger; at the extremes the sweep is deep
-enough to be pitch modulation. **stereo** detunes the two modulators, which
-is what opens the image.
+enough to be pitch modulation. The depth scales the tap's position, so it
+glides towards the knob rather than stepping with it. **stereo** detunes the
+two modulators, which is what opens the image.
 
 ### 3. freezer (blue)
 
@@ -144,7 +145,9 @@ Pitch shifting up by sweeping a delay tap with a ramp — crude on purpose,
 with the transient duplication that goes with it. **time** is the window
 size: long, and it chops rhythmically; short, and it turns into formant
 shift. **amount** is how far the ramp sweeps, which is the shift interval,
-and also the dry/wet. **trig** briefly stretches the window.
+and also the dry/wet. **trig** briefly stretches the window. Both knobs scale
+the tap's position, so both glide towards where you put them rather than
+jumping: the ramp restarting is the mode's crudeness, a knob clicking is not.
 
 ### 8. replayer (orange)
 
