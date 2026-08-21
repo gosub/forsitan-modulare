@@ -832,9 +832,14 @@ struct Vates : Module {
 			t = clamp(t, 0.005f, maxT) * sr;
 			float wetL = dly[0].read(t);
 			float wetR = dly[1].read(t * 0.667f);
-			float fb = 0.25f + 0.35f * amt;
-			dly[0].write(outL + wetR * fb);
-			dly[1].write(outR + wetL * fb);
+			// The two lines feed each other, so the round trip is fb*fb, not
+			// fb: 0.6 here was only 0.36 of loop gain and the tail died in a
+			// few seconds. The write saturates, as the chorus path already
+			// does, which is what lets the top of the knob sit near
+			// self-sustaining without the tail clipping the output.
+			float fb = 0.25f + 0.6f * amt;
+			dly[0].write(std::tanh(outL + wetR * fb));
+			dly[1].write(std::tanh(outR + wetL * fb));
 			outL += wetL * amt * 0.8f;
 			outR += wetR * amt * 0.8f;
 		}

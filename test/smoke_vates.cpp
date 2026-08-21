@@ -83,6 +83,27 @@ static void pressTrigger(Vates& m, long& frame) {
 	m.params[Vates::TRIG_PARAM].setValue(0.f);
 }
 
+// Which sample of a bank still has signal in it a third of a second in, so a
+// test that needs something under the knobs is not at the mercy of the seed:
+// the generated tones include pads that open slowly and stabs that are over.
+static int loudestSample(Vates& m, long& frame, int bank) {
+	int best = 0;
+	float bestPeak = 0.f;
+	for (int s = 0; s < vates_bank::kSamplesPerBank; s++) {
+		selectSample(m, bank, s);
+		m.params[Vates::LENGTH_PARAM].setValue(1.f);
+		run(m, frame, 0.01);
+		pressTrigger(m, frame);
+		run(m, frame, 0.3);
+		Stats st = runStats(m, frame, 0.2, Vates::LEFT_OUTPUT);
+		if (st.peak > bestPeak) {
+			bestPeak = st.peak;
+			best = s;
+		}
+	}
+	return best;
+}
+
 // Process until the pattern generator has advanced n steps, whatever the
 // tempo works out to in frames.
 static void runSteps(Vates& m, long& frame, int n) {
@@ -890,9 +911,9 @@ static void testFilterCrossing() {
 		report("vates", "filter_crossing_setup", 0, false);
 		return;
 	}
-	selectSample(m, 4, 0);                          // tones: sustained material
-	m.params[Vates::LENGTH_PARAM].setValue(1.f);    // play it whole
 	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	selectSample(m, 4, loudestSample(m, fr, 4));    // tones: sustained material
+	m.params[Vates::LENGTH_PARAM].setValue(1.f);    // play it whole
 	m.params[Vates::FILTER_PARAM].setValue(-0.5f);
 	run(m, fr, 0.01);
 	pressTrigger(m, fr);
@@ -1019,7 +1040,45 @@ static void testFxDelayTime() {
 	}
 }
 
-SMOKE_MAIN(testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+// ── the delay's tail is long at full feedback, and still a tail ──────────────
+// The two lines feed each other, so the round trip is fb*fb: the number in the
+// code is not the loop gain, and it is the loop gain that decides whether this
+// decays. The saturator in the write path is what keeps a long tail off the
+// output rail.
+static void testFxFeedback() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "fx_feedback_setup", 0, false);
+		return;
+	}
+	selectSample(m, 0, 4);
+	m.params[Vates::LENGTH_PARAM].setValue(0.05f);      // a click
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	m.params[Vates::FX_PARAM].setValue(-1.f);           // full feedback
+	m.params[Vates::TEMPO_PARAM].setValue(120.f);
+	run(m, fr, 0.05);
+	pressTrigger(m, fr);
+
+	// Four seconds in it must still be ringing, thirty seconds in it must
+	// not. The windows are a second and a bit wide because the echoes are
+	// 0.75 s apart: a narrow one lands between repeats as often as on them.
+	Stats early = runStats(m, fr, 1.2, Vates::LEFT_OUTPUT);
+	run(m, fr, 2.5);
+	Stats mid = runStats(m, fr, 1.2, Vates::LEFT_OUTPUT);
+	run(m, fr, 25.0);
+	Stats late = runStats(m, fr, 1.2, Vates::LEFT_OUTPUT);
+
+	report("vates", "fx_feedback_rings", mid.rms() / std::max(early.rms(), 1e-9),
+	       mid.rms() > 0.05 * early.rms());
+	report("vates", "fx_feedback_decays", late.rms() / std::max(early.rms(), 1e-9),
+	       late.rms() < 0.01 * early.rms());
+	report("vates", "fx_feedback_bounded", std::max(early.peak, mid.peak),
+	       std::max(early.peak, mid.peak) < 11.f
+	       && early.nans + mid.nans + late.nans == 0);
+}
+
+SMOKE_MAIN(testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

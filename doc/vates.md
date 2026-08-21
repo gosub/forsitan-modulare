@@ -164,7 +164,10 @@ than a parameter. The delay is fixed at **three eighths of a note — a dotted
 quarter, a beat and a half**, 750 ms at 120 BPM — with the right channel a
 plain beat against it, so the two run a 3:2 cross rhythm and the feedback
 throws it side to side. Turning the knob out raises the wet from nothing and
-the feedback from 0.25 to 0.6. At a tempo slow enough that a dotted quarter
+the feedback from 0.25 to 0.85 — and since the two lines feed *each other*,
+that is a round trip of 0.72, which at the top leaves a tail running some ten
+seconds. The write path saturates, so a long tail thickens instead of clipping
+the output. At a tempo slow enough that a dotted quarter
 would not fit the buffer, the division halves rather than the time being
 clamped: it stays in tempo, just at a shorter one.
 
