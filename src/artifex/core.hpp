@@ -66,6 +66,14 @@ struct Ctl {
 // written against.
 static const float kHardwareBuffer = 1.15f;
 
+// Where the signal starts folding. Every buffer write and the output limiter
+// alike run softClip over x / kClipVolts and scale back, so the path is exactly
+// linear below this and asymptotic to it above. It is therefore also the level
+// the input lamps and the envelope follower in src/artifex.cpp read against:
+// three different numbers for the same ceiling would light the lamps after the
+// sound had already been squashed.
+static const float kClipVolts = 5.f;
+
 // How long the slicer's envelope takes to open. Short enough to be a chop,
 // long enough not to click.
 static const float kSliceAttack = 0.002f;
@@ -240,7 +248,7 @@ struct Core {
 			if (!std::isfinite(out[c]))
 				out[c] = 0.f;
 			if (ct.limiter)
-				out[c] = softClip(out[c] * 0.2f) * 5.f;
+				out[c] = softClip(out[c] / kClipVolts) * kClipVolts;
 			else
 				out[c] = clamp(out[c], -20.f, 20.f);
 			fbState[c] = out[c];
@@ -292,7 +300,7 @@ struct Core {
 		for (int c = 0; c < 2; c++) {
 			float d = clamp(base * detune(c, ct.stereo), 0.002f, maxT) * sr;
 			float wet = tape[c].read(d);
-			tape[c].write(softClip((in[c] + wet * fb * 0.98f) * 0.2f) * 5.f);
+			tape[c].write(softClip((in[c] + wet * fb * 0.98f) / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;
 		}
@@ -315,7 +323,7 @@ struct Core {
 			float base = 5.5f * 0.001f * sr;
 			float depth = (5.f * amt) * 0.001f * sr;
 			float wet = flg[c].read(base + depth * m);
-			flg[c].write(softClip((in[c] + wet * fb * 0.95f) * 0.2f) * 5.f);
+			flg[c].write(softClip((in[c] + wet * fb * 0.95f) / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - 0.5f * amt) + heard * amt;
 		}
@@ -442,7 +450,7 @@ struct Core {
 				float x = loopIn(c, in[c], ct, fb * 0.5f);
 				// soft, not clamped: a hard clip with feedback into it turns
 				// every mode setting into the same full-scale square
-				float q = std::round(softClip(x * 0.2f) * levels) / levels;
+				float q = std::round(softClip(x / kClipVolts) * levels) / levels;
 				if (xorAmt > 0.001f) {
 					// XOR the sample with a shift of itself: the top bits
 					// survive, so it still follows the signal, and the low
@@ -567,7 +575,7 @@ struct Core {
 			// against the new one in a single number.
 			float wet = held;
 			if (rec > 0.001f) {
-				wet = softClip((held * keep + x * rec) * 0.2f) * 5.f;
+				wet = softClip((held * keep + x * rec) / kClipVolts) * kClipVolts;
 				tape[c].poke((int)tapePos[c], wet);
 			}
 			// a stopped tape still reads, which is how the centre holds a

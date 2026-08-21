@@ -383,9 +383,13 @@ struct Artifex : Module {
 		outputs[RIGHT_OUTPUT].setVoltage(clamp(outR, -10.f, 10.f));
 		lights[LEFT_LIGHT].setBrightnessSmooth(std::fabs(outL) * 0.2f, args.sampleTime);
 		lights[RIGHT_LIGHT].setBrightnessSmooth(std::fabs(outR) * 0.2f, args.sampleTime);
-		// the input lamps go red when the gain stage clips, as on the hardware
-		lights[IN_L_LIGHT].setBrightnessSmooth(std::fabs(inL) > 9.f ? 1.f : 0.f, args.sampleTime);
-		lights[IN_R_LIGHT].setBrightnessSmooth(std::fabs(inR) > 9.f ? 1.f : 0.f, args.sampleTime);
+		// The input lamps go red when the gain stage clips, as on the hardware.
+		// That is kClipVolts and not the rail: every mode's buffer write folds
+		// there, so a lamp set to the rail would stay dark through the first
+		// several dB of compression.
+		float clip = artifex_fx::kClipVolts;
+		lights[IN_L_LIGHT].setBrightnessSmooth(std::fabs(inL) > clip ? 1.f : 0.f, args.sampleTime);
+		lights[IN_R_LIGHT].setBrightnessSmooth(std::fabs(inR) > clip ? 1.f : 0.f, args.sampleTime);
 
 		outputs[ENV_OUTPUT].setVoltage(clamp(envFollow, 0.f, 10.f));
 		outputs[TRI_OUTPUT].setVoltage(modul.tri * 10.f);
