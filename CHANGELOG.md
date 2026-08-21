@@ -53,8 +53,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     since ten volts is one bank. It is patch-programmable through its own
     rate input as on the hardware, and there is an
     internal clock that hands over to **clk in** and takes the tempo back two
-    seconds after it stops, a resonant filter that is a lowpass on one side of
-    centre and a highpass on the other, and a tempo-synced delay that becomes
+    seconds after it stops, a DJ filter — four poles, 24 dB per octave, a
+    lowpass closing to 30 Hz on one side of centre and a highpass opening to
+    14 kHz on the other, so either end of the sweep takes the sample away
+    rather than muffling it — and a tempo-synced delay that becomes
     a chorus and then a flanger as the **fx** knob crosses.
 
     The hardware's SHIFT and BANK layers, which give every knob two or three

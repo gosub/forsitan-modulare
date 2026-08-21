@@ -153,11 +153,19 @@ Two more knobs that do different things on each side of centre:
 
 | knob | left | centre | right |
 |------|------|--------|-------|
-| **filter** | resonant lowpass, closing | open | resonant highpass, opening |
+| **filter** | resonant lowpass, closing to 30 Hz | open | resonant highpass, opening to 14 kHz |
 | **fx** | tempo-synced delay at 3/8, wetter | dry | chorus/flanger with soft clipping, deeper |
 
 Both take CV. Sweeping **fx** across centre is a musical move — a beat that
 falls out of the delay and into the flanger.
+
+**filter** is a DJ filter, which is a specific thing: four poles, 24 dB per
+octave, and a range that reaches past the material at both ends. Full left is
+30 Hz, which is under the kick — at that end the sample is gone, not muffled.
+Full right is 14 kHz, above the air, so the sweep takes the track away rather
+than leaving the hats behind. Resonance is not a separate knob: it rises with
+the travel, from flat near the centre to about +4 dB at the ends, enough to
+sing on the way through and not enough to boom when it arrives.
 
 ### lfo
 

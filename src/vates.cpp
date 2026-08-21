@@ -204,7 +204,7 @@ struct Vates : Module {
 	forsitan_mod::Modulation modul;
 
 	// ── fx ───────────────────────────────────────────────────────────────────
-	Svf filt[2];
+	Svf filt[2], filtB[2];
 	Delay dly[2], mod[2];
 	float dlyFb[2] = {0.f, 0.f};
 	float modPhase = 0.f;
@@ -743,16 +743,32 @@ struct Vates : Module {
 		if (std::fabs(fParam) > 0.01f) {
 			bool lowpass = fParam < 0.f;
 			float mag = std::fabs(fParam);
-			float fc = lowpass ? 80.f * std::pow(250.f, 1.f - mag)
-			                   : 20.f * std::pow(200.f, mag);
+			// A DJ filter has to be able to take the track away at either
+			// end. The lowpass floor sits under the kick and the highpass
+			// ceiling above the air, so the far end of the travel is silence
+			// rather than a thump or a hi-hat you can still hear.
+			float fc = lowpass ? 30.f * std::pow(667.f, 1.f - mag)
+			                   : 25.f * std::pow(560.f, mag);
 			fc = clamp(fc, 20.f, 0.45f * sr);
 			float g = std::tan((float)M_PI * fc / sr);
-			float k = 1.f / (0.707f + 1.6f * mag);
+			// Four poles: at two, the bass never quite leaves as the highpass
+			// climbs. The pair is Butterworth-damped, and the resonance goes
+			// into the second section only — raising the Q of both would
+			// square the peak instead of tilting it.
+			float k1 = 1.f / 0.541f;
+			float k2 = 1.f / (1.8f + 1.2f * mag);
 			float lp, hp;
-			filt[0].process(outL, g, k, lp, hp);
-			outL = lowpass ? lp : hp;
-			filt[1].process(outR, g, k, lp, hp);
-			outR = lowpass ? lp : hp;
+			for (int c = 0; c < 2; c++) {
+				float x = (c == 0) ? outL : outR;
+				filt[c].process(x, g, k1, lp, hp);
+				x = lowpass ? lp : hp;
+				filtB[c].process(x, g, k2, lp, hp);
+				x = lowpass ? lp : hp;
+				if (c == 0)
+					outL = x;
+				else
+					outR = x;
+			}
 		}
 
 		// ── fx ───────────────────────────────────────────────────────────────
