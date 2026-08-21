@@ -66,6 +66,10 @@ struct Ctl {
 // written against.
 static const float kHardwareBuffer = 1.15f;
 
+// How long the slicer's envelope takes to open. Short enough to be a chop,
+// long enough not to click.
+static const float kSliceAttack = 0.002f;
+
 struct Core {
 	float sr = 44100.f;
 	float bufSeconds = kHardwareBuffer;
@@ -93,6 +97,7 @@ struct Core {
 	float crushPhase[2] = {0.f, 0.f};
 	float crushDip = 0.f;
 	float sliceEnv[2] = {0.f, 0.f};
+	float sliceAtk[2] = {0.f, 0.f};
 	float grainPhase[2] = {0.f, 0.f};
 	float grainStretch = 0.f;
 	double tapePos[2] = {0.0, 0.0};
@@ -132,6 +137,7 @@ struct Core {
 		for (int c = 0; c < 2; c++) {
 			fbFilt[c].reset();
 			fbState[c] = 0.f;
+			sliceAtk[c] = 0.f;
 			modPhase[c] = 0.f;
 			crushPhase[c] = 0.f;
 			crushHold[c] = 0.f;
@@ -437,9 +443,15 @@ struct Core {
 		int pat = clamp((int)(t * 31.999f), 0, 31);
 		uiUnit = UNIT_RHYTHM;
 		uiTime = (float)(pat + 1);
-		float decay = 1.f * std::pow(0.03f, amt);
-		float coef = std::exp(-ct.dt / std::max(decay * 0.3f, 1e-4f));
+		// A slice is only ever quieter than what went in, so the range stops
+		// at 60 ms rather than at a click, the tail is half the stated decay
+		// rather than a third of it, and short slices get some of their
+		// loudness back: chopping a drone into a rhythm should not also turn
+		// the volume down.
+		float decay = 1.f * std::pow(0.06f, amt);
+		float coef = std::exp(-ct.dt / std::max(decay * 0.5f, 1e-4f));
 		float wetMix = clamp(amt * 6.f, 0.f, 1.f);
+		float makeup = 1.f + 0.6f * amt;
 
 		for (int c = 0; c < 2; c++) {
 			if (ct.stepped) {
@@ -450,13 +462,20 @@ struct Core {
 				if (fb > 0.001f && (next() % 1000u) < (uint32_t)(fb * 700.f))
 					hit = !hit;
 				if (hit)
-					sliceEnv[c] = 1.f;
+					sliceAtk[c] = kSliceAttack;
 			}
 			if (ct.trig)
-				sliceEnv[c] = 1.f;
-			sliceEnv[c] *= coef;
+				sliceAtk[c] = kSliceAttack;
+			// a couple of milliseconds of attack: an envelope that jumps
+			// straight to one clicks on every step
+			if (sliceAtk[c] > 0.f) {
+				sliceAtk[c] -= ct.dt;
+				sliceEnv[c] = std::min(1.f, sliceEnv[c] + ct.dt / kSliceAttack);
+			}
+			else
+				sliceEnv[c] *= coef;
 			float x = loopIn(c, in[c], ct, fb * 0.5f);
-			float wet = x * sliceEnv[c];
+			float wet = x * sliceEnv[c] * makeup;
 			out[c] = x * (1.f - wetMix) + wet * wetMix;
 		}
 	}
@@ -497,7 +516,14 @@ struct Core {
 	// A tape loop. Time is the speed and the sign of it; amount decides
 	// whether the tape is locked or being written over.
 	void doReplayer(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
-		float speed = (t - 0.5f) * 4.f;          // -2 .. +2, stopped at centre
+		// The tape never stops. A knob whose centre is exactly zero puts a
+		// dead spot in the middle of its travel — the head holds one sample
+		// and the mode outputs a DC level — so the centre is the *slowest*
+		// speed instead, a quarter, and which side of it you are on is the
+		// direction. Two octaves down at the centre, two up at the ends.
+		float u = (t - 0.5f) * 2.f;              // -1 .. +1
+		float mag = 0.25f * std::pow(8.f, std::fabs(u));
+		float speed = u < 0.f ? -mag : mag;
 		uiUnit = UNIT_SPEED;
 		uiTime = speed;
 		if (ct.trig)

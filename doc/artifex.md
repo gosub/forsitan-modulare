@@ -68,7 +68,7 @@ jack does the same thing by hand.
 | 5 | **crusher** | sample rate | crush depth, then XOR | distorted backdrop | L/R rate detune | dip the rate |
 | 6 | **slicer** | which rhythm chops | decay + wet | chance of an inverted step | a different rhythm per channel | fire the envelope |
 | 7 | **pitcher** | window size | shift amount + wet | global | L/R window detune | enlarge the window |
-| 8 | **replayer** | tape speed and direction | record/lock | feedback into the tape | L/R speed detune | fill the tape |
+| 8 | **replayer** | tape speed and direction, never stopped | record/lock | feedback into the tape | L/R speed detune | fill the tape |
 | 9 | **shifter** | shift, down below centre and up above | dry/wet | global | a different shift per channel | resync both channels |
 
 ### 1. delay (green)
@@ -124,8 +124,10 @@ everything.
 The pattern generator, applied to the amplitude of the signal. **time**
 chooses which of the 32 rhythms does the chopping — the same table the
 **rhythm** knob reads — and each hit fires a decay envelope whose length is
-**amount**. Left is a long decay that only breathes; right is a short one
-that turns a drone into a rhythm part. **feedback** adds a chance of any step
+**amount**. Left is a second-long decay that only breathes; right is 60 ms,
+which turns a drone into a rhythm part. Short slices get some of their
+loudness back automatically: chopping a drone into a rhythm should not also
+turn the volume down. **feedback** adds a chance of any step
 inverting, so the pattern keeps changing, and **stereo** gives the two
 channels different rhythms.
 

@@ -278,10 +278,7 @@ struct Artifex : Module {
 			std::snprintf(uiTimeText, sizeof(uiTimeText), "%+.1f semi", v);
 			break;
 		default:
-			if (std::fabs(v) < 0.02f)
-				std::snprintf(uiTimeText, sizeof(uiTimeText), "held");
-			else
-				std::snprintf(uiTimeText, sizeof(uiTimeText), "%+.2f x", v);
+			std::snprintf(uiTimeText, sizeof(uiTimeText), "%+.2f x", v);
 			break;
 		}
 	}

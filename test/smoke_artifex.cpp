@@ -304,6 +304,13 @@ static void testSlicer() {
 		quiet = std::min(quiet, e);
 	}
 	report("artifex", "slicer_chops", loud - quiet, loud > 0.3 && quiet < 0.05);
+
+	// A slice can only ever be quieter than what went in, but it must not be
+	// *inaudible*: the first version of the decay range put the shortest
+	// setting an order of magnitude under the dry signal.
+	double dry = 3.0 / std::sqrt(2.0);
+	double wet = rmsOf(rec.l, (size_t)(0.5 * SR), rec.l.size());
+	report("artifex", "slicer_stays_audible", wet / dry, wet > 0.25 * dry);
 }
 
 // ── the two pitch modes move pitch, in the direction they claim ───────────────
@@ -374,6 +381,20 @@ static void testReplayer() {
 	double a = zcr(fwd.l, 0, fwd.l.size() / 3);
 	double b = zcr(fwd.l, 2 * fwd.l.size() / 3, fwd.l.size());
 	report("artifex", "replayer_plays_forward", b - a, b > a);
+
+	// The tape never stops. With the centre of the knob mapped to a speed of
+	// zero the head held one sample and the mode put out a DC level — it
+	// played a slice and then sat there.
+	m.params[Artifex::TIME_PARAM].setValue(0.5f);
+	Rec mid;
+	runSilence(m, fr, 0.5, &mid);
+	double moving = 0.0;
+	for (size_t i = 1; i < mid.l.size(); i++)
+		moving += std::fabs(mid.l[i] - mid.l[i - 1]);
+	moving /= std::max<size_t>(1, mid.l.size() - 1);
+	report("artifex", "replayer_centre_keeps_moving", moving, moving > 1e-3);
+	report("artifex", "replayer_centre_audible", rmsOf(mid.l, 0, mid.l.size()),
+	       rmsOf(mid.l, 0, mid.l.size()) > 0.1);
 
 	// the same tape backwards: the sweep now falls
 	m.params[Artifex::TIME_PARAM].setValue(0.25f);
