@@ -70,16 +70,38 @@ saturated warbles; the feedback goes up to 1.5 for endlessly growing
   knob in the loop.
 - Sweeping **body** while the loop oscillates bends the pitch like tape
   wow; parking it very short adds a metallic comb color. The **body** CV
-  input does the same with no hand on the knob. The delay time keeps the
-  ~1 s glide it has under the knob, so modulation below about 1 Hz
-  arrives whole while faster modulation is smoothed into a drift instead
-  of a warble.
+  input does the same with no hand on the knob, and by default at the
+  same speed: the delay time keeps the two glides the hardware puts on
+  it, which together pass modulation under about half a hertz nearly
+  whole, half of it at 1 Hz, and none of it by 5 Hz. **Fast body CV** in
+  the right-click menu is the other character.
 - Narrow the loop filters (**lpf** down, **hpf** up) to choke the drone
   to a whistle, then open them to let it roar back.
 - **echo fb** past 1.0 with a long **time** builds a saturating canon
   that never quite explodes — ride the **half** switch for octave-ish
   doppler jumps.
 - Patch a slow LFO into **fb** and the plant breathes on its own.
+
+## Right-click menu
+
+**Fast body CV** (off by default). The body delay is smoothed twice on
+its way to the delay line: the parameter glides with a 1 s t60, and the
+delay length itself with a 0.2 s time constant. That is the hardware's
+behaviour and it is why **body** always sweeps rather than jumps. With
+this option on *and* a cable in the **body** CV input, both drop to about
+a millisecond and the delay length is computed every sample instead of
+every sixteenth, so modulation arrives at full depth up to about 50 Hz
+and is still two thirds there at 200 Hz.
+
+It is a different instrument rather than a faster one. Under the
+faithful glide an LFO on **body** bends the drone like tape wow; past a
+few hertz it does nothing at all. With the short glide the same LFO
+frequency-modulates the loop's delay, throwing sidebands off the drone
+and turning the feedback into a rough, metallic warble. Audio-rate
+modulation is where it stops being an effect and becomes the sound.
+
+Pull the cable and the glide comes back, so the option costs nothing
+when the jack is empty and old patches sound as they always did.
 
 ## Attribution
 

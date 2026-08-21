@@ -99,10 +99,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     request from a user who found the knob to be where the module's most
     interesting textures live and had no way to modulate it. A volt moves the
     knob a tenth of a turn, so 0-10 V spans it and the CV rides the same
-    square-law curve the hand does. The body delay keeps its ~1 s glide, which
-    means modulation under about 1 Hz arrives whole and faster modulation
-    smooths into a drift rather than a warble. The jack is appended after the
-    existing ones, so patches saved with earlier versions keep their cables.
+    square-law curve the hand does. The jack is appended after the existing
+    inputs, so patches saved with earlier versions keep their cables.
+
+    By default it is as slow as the hand is. The hardware smooths the body
+    delay twice over — a 1 s t60 on the parameter and a 0.2 s time constant on
+    the delay length itself — so modulation under half a hertz arrives nearly
+    whole, half of it survives at 1 Hz and none of it at 5 Hz. **Fast body CV**
+    in the right-click menu, off by default, drops both to about a millisecond
+    and computes the delay length every sample rather than every sixteenth,
+    while a cable is in that jack: full depth to 50 Hz and two thirds of it at
+    200 Hz. That is a different sound rather than a faster control — an LFO
+    that used to bend the drone like tape wow now frequency-modulates the loop
+    and throws sidebands off it. Pull the cable and the glide comes back.
 
 ## [2.15.0] - 2026-08-18
 ### Fixed
