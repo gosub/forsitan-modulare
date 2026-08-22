@@ -58,6 +58,13 @@ Two more knobs shape the loop rather than the mode:
 freeze, fill, dip — and it is listed per mode below. The button beside the
 jack does the same thing by hand.
 
+Four of the modes reset a phase that a read position or a gain depends on, and
+two swap the buffer under the playhead, so a trig lands the output somewhere it
+was not heading. The jump is taken back out: the step is measured against where
+the last two samples were going and subtracted, relaxing over two milliseconds.
+What the mode does survives — the throw still throws, the freeze still catches —
+and the click it used to arrive on does not.
+
 ## The nine modes
 
 | # | mode | time | amount | feedback | stereo | trig |

@@ -8,6 +8,8 @@
 // non-finite or off the rails with the feedback wide open.
 
 #include "smoke_harness.hpp"
+
+#include <string>
 #include "../src/artifex.cpp"
 
 #include <vector>
@@ -467,6 +469,73 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ── a trig does its job without a click ───────────────────────────────────────
+// The flanger, the panner, the pitcher and the shifter all reset a phase that a
+// read position or a gain depends on, so the output landed somewhere it was not
+// heading. What the mode does is wanted; the step it arrived on is not.
+static void testTrigDeclick() {
+	const int modes[4] = {artifex_fx::MODE_FLANGER, artifex_fx::MODE_PANNER,
+	                      artifex_fx::MODE_PITCHER, artifex_fx::MODE_SHIFTER};
+	const char* names[4] = {"flanger", "panner", "pitcher", "shifter"};
+	// 317 ms is not a whole number of 220 Hz cycles -- at 300 ms every trig
+	// would land on the same zero crossing of the tone and jump nothing
+	const double period = 0.317;
+	for (int k = 0; k < 4; k++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, modes[k]);
+		m.params[Artifex::TIME_PARAM].setValue(0.35f);
+		m.params[Artifex::AMT_PARAM].setValue(0.7f);
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.inputs[Artifex::TRIG_INPUT].channels = 1;
+		runTone(m, fr, 1.0, 220.f, 5.f);
+
+		double worst = 0.0;
+		for (int t = 0; t < 6; t++) {
+			// The step that matters is between the last sample before the trig
+			// and the first one after it, so the recording has to start before
+			// the trig rather than at it.
+			Rec rec;
+			runTone(m, fr, 0.01, 220.f, 5.f, &rec);
+			size_t mark = rec.l.size();
+			m.inputs[Artifex::TRIG_INPUT].setVoltage(5.f);
+			runTone(m, fr, 0.002, 220.f, 5.f, &rec);
+			m.inputs[Artifex::TRIG_INPUT].setVoltage(0.f);
+			runTone(m, fr, period - 0.012, 220.f, 5.f, &rec);
+			for (size_t i = mark; i < mark + (size_t)(0.005 * SR)
+			                      && i < rec.l.size(); i++)
+				worst = std::max(worst, (double)std::fabs(rec.l[i] - rec.l[i - 1]));
+		}
+		double slew = 2.0 * M_PI * 220.0 / SR * 5.0;
+		report("artifex", (std::string("trig_no_click_") + names[k]).c_str(),
+		       worst / slew, worst < slew * 6.0);
+	}
+
+	// and the panner's throw still lands on the other side
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_PANNER);
+	m.params[Artifex::TIME_PARAM].setValue(0.12f);   // slow enough to hold a side
+	m.params[Artifex::AMT_PARAM].setValue(0.7f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.inputs[Artifex::TRIG_INPUT].channels = 1;
+	runTone(m, fr, 0.9, 220.f, 5.f);
+	Rec before, after;
+	runTone(m, fr, 0.1, 220.f, 5.f, &before);
+	m.inputs[Artifex::TRIG_INPUT].setVoltage(5.f);
+	runTone(m, fr, 0.002, 220.f, 5.f);
+	m.inputs[Artifex::TRIG_INPUT].setVoltage(0.f);
+	runTone(m, fr, 0.05, 220.f, 5.f);                // let the throw arrive
+	runTone(m, fr, 0.1, 220.f, 5.f, &after);
+	double bl = rmsOf(before.l, 0, before.l.size());
+	double br = rmsOf(before.r, 0, before.r.size());
+	double al = rmsOf(after.l, 0, after.l.size());
+	double ar = rmsOf(after.r, 0, after.r.size());
+	report("artifex", "trig_still_throws_the_pan", (bl - br) - (al - ar),
+	       (bl > br) != (al > ar));
+}
+
 // ── the three filter placements from the context menu ─────────────────────────
 static double tonePeak(Artifex& m, long& fr, float hz, double secs) {
 	Rec rec;
@@ -888,7 +957,7 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
+           testReplayer, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep,
            testEnvelope,
            testModeSelect,

@@ -94,6 +94,14 @@ static const float kDelayGlide = 0.050f;
 // enough that the knob still feels direct.
 static const float kKnobGlide = 0.020f;
 
+// How long the step a trig leaves behind takes to relax away. A trig resets a
+// phase in the flanger, the panner, the pitcher and the shifter, and swaps the
+// buffer under the playhead in the freezer and the replayer; either way the
+// output moves somewhere it was not heading, and a step in a waveform is a
+// click. Two milliseconds is long enough to carry the step and short enough
+// that a triggered stereo throw still lands on the beat.
+static const float kTrigDeclick = 0.002f;
+
 // The tone control, at either of two slopes.
 //
 // Two poles is artifex's own: gentle, and narrow enough in range that the far
@@ -177,6 +185,9 @@ struct Core {
 	ToneFilter modeFilt[2];   // where the mode puts it: its wet path, or its loop
 	ToneFilter outFilt[2];    // on the module's output, dry included
 	ToneFilter fbLoopFilt[2]; // inside the delay's and the flanger's own feedback
+	float declick[2] = {0.f, 0.f};   // the step a trig left, on its way out
+	float declickZ1[2] = {0.f, 0.f}; // the last two samples actually emitted,
+	float declickZ2[2] = {0.f, 0.f}; // so the step can be measured against them
 
 	int lastMode = -1;
 	float filtSm = 0.f;
@@ -257,6 +268,8 @@ struct Core {
 			tapePos[c] = 0.0;
 		}
 		panDir = 1;
+		for (int c = 0; c < 2; c++)
+			declick[c] = 0.f;
 		delayGl.reset();
 		flangeGl.reset();
 		pitchWinGl.reset();
@@ -379,9 +392,27 @@ struct Core {
 		default:              doShifter(ct, in, out, t, amt, fb); break;
 		}
 
+		// Take the step a trig leaves out of the output. What the mode did is
+		// wanted -- a new chunk, a reset modulator, a thrown pan -- but the
+		// jump it arrives on is not: the signal lands somewhere it was not
+		// heading, and that is a click rather than a gesture.
+		//
+		// The step is measured against where the last two emitted samples were
+		// going, not against the last one alone. A straight line through them
+		// predicts an ordinary waveform to within the second difference, which
+		// for a 220 Hz tone at 5 V is four millivolts -- so on a trig that
+		// happens not to jump anything, almost nothing is subtracted.
+		float declickDecay = std::exp(-ct.dt / kTrigDeclick);
+
 		for (int c = 0; c < 2; c++) {
 			if (!std::isfinite(out[c]))
 				out[c] = 0.f;
+			if (ct.trig)
+				declick[c] = out[c] - (2.f * declickZ1[c] - declickZ2[c]);
+			out[c] -= declick[c];
+			declick[c] *= declickDecay;
+			declickZ2[c] = declickZ1[c];
+			declickZ1[c] = out[c];
 			out[c] = outputFilter(c, out[c]);
 			if (ct.limiter)
 				out[c] = softClip(out[c] / kClipVolts) * kClipVolts;
