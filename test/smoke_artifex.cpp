@@ -467,6 +467,68 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ── the delay syncs to clk, and to trig only when clk is quiet ────────────────
+// Everything else clock-driven in the module follows clk; the delay used to
+// follow the trig input alone, which is where the hardware takes a clock but
+// not where anyone patches one here.
+static void clockFor(Artifex& m, long& fr, int inputId, double period, int n) {
+	m.inputs[inputId].channels = 1;
+	for (int k = 0; k < n; k++) {
+		m.inputs[inputId].setVoltage(5.f);
+		runSilence(m, fr, 0.002);
+		m.inputs[inputId].setVoltage(0.f);
+		runSilence(m, fr, period - 0.002);
+	}
+}
+
+static void testDelayClockSync() {
+	// nothing patched: the knob is free and the display reads a time
+	{
+		Artifex m;
+		long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::TIME_PARAM].setValue(0.42f);
+		runSilence(m, fr, 0.5);
+		report("artifex", "delay_free_without_a_clock", m.core.uiUnit,
+		       m.core.uiUnit == artifex_fx::UNIT_MS);
+	}
+	// a clock at clk: it snaps, and to a division of that clock
+	{
+		Artifex m;
+		long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::TIME_PARAM].setValue(0.42f);
+		clockFor(m, fr, Artifex::CLK_INPUT, 0.25, 4);
+		double ratio = m.core.uiTime;
+		double off = std::fabs(ratio - std::floor(ratio * 12.0 + 0.5) / 12.0);
+		report("artifex", "delay_syncs_to_clk", m.core.uiUnit,
+		       m.core.uiUnit == artifex_fx::UNIT_DIV);
+		report("artifex", "delay_clk_division_is_exact", off, off < 0.02);
+	}
+	// both patched: clk defines the bar, so a rhythm at trig cannot redefine it
+	{
+		Artifex m;
+		long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::TIME_PARAM].setValue(0.42f);
+		m.inputs[Artifex::TRIG_INPUT].channels = 1;
+		m.inputs[Artifex::CLK_INPUT].channels = 1;
+		// interleaved: a 0.25 s clock at clk against a 0.1 s one at trig.
+		// Rack's SchmittTrigger starts high, so the first edge of each is
+		// swallowed -- run long enough for both to be measured anyway.
+		for (int k = 0; k < 24; k++) {
+			m.inputs[Artifex::CLK_INPUT].setVoltage(k % 5 == 0 ? 5.f : 0.f);
+			m.inputs[Artifex::TRIG_INPUT].setVoltage(k % 2 == 0 ? 5.f : 0.f);
+			runSilence(m, fr, 0.05);
+		}
+		// both were measured; the delay takes the clk one
+		report("artifex", "trig_clock_also_measured", m.trigPeriod,
+		       m.trigPeriod > 0.08f && m.trigPeriod < 0.12f);
+		report("artifex", "clk_beats_trig_for_sync", m.modul.stepSeconds,
+		       m.modul.stepSeconds > 0.2f && m.modul.stepSeconds < 0.3f);
+	}
+}
+
 // ── the limiter is continuous where it starts folding ─────────────────────────
 // softClip branched straight into tanh above kClipVolts, and tanh(1) is 0.762,
 // so a signal crossing 5 V dropped 1.19 V on the way through and climbed back
@@ -689,7 +751,8 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testWrapClick, testClipContinuity, testDelaySweep,
+           testReplayer, testStereo, testDelayClockSync, testWrapClick,
+           testClipContinuity, testDelaySweep,
            testEnvelope,
            testModeSelect,
            testFeedbackSafety, testAbuse)

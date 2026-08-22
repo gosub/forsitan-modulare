@@ -61,7 +61,7 @@ jack does the same thing by hand.
 
 | # | mode | time | amount | feedback | stereo | trig |
 |---|------|------|--------|----------|--------|------|
-| 1 | **delay** | delay time, 1.15 s → 2 ms | dry/wet | repeats | L/R delay detune | snap to clock divisions |
+| 1 | **delay** | delay time, 1.15 s → 2 ms | dry/wet | repeats | L/R delay detune | a clock here snaps the time, if clk has none |
 | 2 | **flanger** | modulator frequency | sweep depth + wet | resonance | L/R modulator detune | reset the modulator |
 | 3 | **freezer** | repeat length | wet, and refreezes | feeds new audio in | L/R repeat detune | freeze a new chunk |
 | 4 | **panner** | pan frequency, up to audio rate | sine → square | global | L/R pan detune | reset, and flip the direction |
@@ -84,11 +84,17 @@ it, up as you shorten it, and further the faster you move. It applies to the
 clock snap below as well, so stepping between divisions bends rather than
 cuts.
 
-With a clock at **clk** the time knob snaps to the nearest division of the
-tempo — 1/256 through 32 bars, whichever of them fall inside the delay's own
-range — and the display says which. Short times turn the delay into a comb
-filter, and with feedback up it becomes a tuned resonator you can play from
-the time knob.
+With a clock at **clk** the time knob snaps to the nearest division of it —
+1/256 through 32 bars, whichever of them fall inside the delay's own range —
+and the display says which. That is the module's own clock, the one the
+freezer, the slicer, the LFO and the pattern all follow. A clock at the
+**trig** input snaps the delay too, which is where the hardware takes one, but
+only while **clk** is carrying none: patching a rhythm into trig should stutter
+the mode, not redefine what a bar is. With neither, nothing snaps and the knob
+is free.
+
+Short times turn the delay into a comb filter, and with feedback up it becomes
+a tuned resonator you can play from the time knob.
 
 ### 2. flanger (cyan)
 

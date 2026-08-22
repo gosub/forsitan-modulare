@@ -135,7 +135,7 @@ struct Artifex : Module {
 	bool limiter = true;
 	float stepHold = 0.f;         // the step input, sampled on the clock
 	float sinceTrig = 10.f;       // for the delay's clock sync
-	float trigPeriod = 0.f;
+	float trigPeriod = 0.f;       // measured at the trig input
 	int uiTick = 0;
 
 	// What the displays show. Plain char buffers written by the audio thread
@@ -393,7 +393,14 @@ struct Artifex : Module {
 		ct.stepped = modul.stepped;
 		ct.step = modul.step;
 		ct.stepSeconds = modul.stepSeconds;
-		ct.trigPeriod = trigPeriod;
+		// What the delay snaps its time to. A clock at **clk** is the module's
+		// clock -- it is what the freezer, the slicer, the LFO and the pattern
+		// all follow -- so the delay follows it too. A clock at the trig input
+		// still works, which is where the hardware takes one and all this
+		// module had until now, but only when clk is not carrying one:
+		// patching a rhythm into trig should stutter the mode, not redefine
+		// what a bar is. With neither, nothing snaps and the knob is free.
+		ct.trigPeriod = modul.externalClock ? modul.stepSeconds : trigPeriod;
 		ct.limiter = limiter;
 		ct.dt = args.sampleTime;
 
