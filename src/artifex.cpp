@@ -453,6 +453,9 @@ struct Artifex : Module {
 		uiModeShown = -1;
 		bufSeconds = artifex_fx::kHardwareBuffer;
 		limiter = true;
+		core.fourPole = false;
+		core.filterDry = false;
+		core.filterInLoop = false;
 		core.setRates(core.sr, bufSeconds);
 		modul.resetSequence();
 		modul.loadedRhythm = -1;
@@ -466,6 +469,9 @@ struct Artifex : Module {
 		json_object_set_new(root, "monoInput", json_boolean(monoInput));
 		json_object_set_new(root, "bufSeconds", json_real(bufSeconds));
 		json_object_set_new(root, "limiter", json_boolean(limiter));
+		json_object_set_new(root, "filterFourPole", json_boolean(core.fourPole));
+		json_object_set_new(root, "filterDry", json_boolean(core.filterDry));
+		json_object_set_new(root, "filterInLoop", json_boolean(core.filterInLoop));
 		return root;
 	}
 
@@ -484,6 +490,12 @@ struct Artifex : Module {
 		}
 		if (json_t* j = json_object_get(root, "limiter"))
 			limiter = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "filterFourPole"))
+			core.fourPole = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "filterDry"))
+			core.filterDry = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "filterInLoop"))
+			core.filterInLoop = json_boolean_value(j);
 	}
 };
 
@@ -750,6 +762,20 @@ struct ArtifexWidget : ModuleWidget {
 				m->core.setRates(m->core.sr, m->bufSeconds);
 			}));
 		menu->addChild(createBoolPtrMenuItem("Feedback safety limiter", "", &m->limiter));
+
+		menu->addChild(new MenuSeparator);
+		menu->addChild(createMenuLabel("Filter"));
+		std::vector<std::string> slopeNames = {"12 dB/oct (gentle)",
+		                                       "24 dB/oct (reaches past the material)"};
+		menu->addChild(createIndexSubmenuItem("Slope", slopeNames,
+			[=]() { return m->core.fourPole ? 1 : 0; },
+			[=](int v) { m->core.fourPole = (v == 1); }));
+		menu->addChild(createBoolMenuItem("Filter the dry signal too", "",
+			[=]() { return m->core.filterDry; },
+			[=](bool v) { m->core.filterDry = v; }));
+		menu->addChild(createBoolMenuItem("Filter inside the feedback", "",
+			[=]() { return m->core.filterInLoop; },
+			[=](bool v) { m->core.filterInLoop = v; }));
 		menu->addChild(createBoolPtrMenuItem("Mode changes wait for the clock", "",
 		                                     &m->quantizeModeChanges));
 		menu->addChild(createBoolPtrMenuItem("Sum the inputs to mono", "", &m->monoInput));

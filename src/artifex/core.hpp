@@ -94,6 +94,57 @@ static const float kDelayGlide = 0.050f;
 // enough that the knob still feels direct.
 static const float kKnobGlide = 0.020f;
 
+// The tone control, at either of two slopes.
+//
+// Two poles is artifex's own: gentle, and narrow enough in range that the far
+// ends of the travel still let the material through -- at the top of the
+// highpass a 4 kHz component is down 2.9 dB and 10 kHz is untouched.
+//
+// Four is the one vates carries, Butterworth-damped with the resonance in the
+// second section only, and reaching far enough past the material to take it
+// away at either end. The two modules are two faces of one board, so this is
+// the same filter arriving here; it is a choice rather than a replacement
+// because the shallow one is the gentler tone control and some patches want
+// that.
+struct ToneFilter {
+	Svf a, b;
+
+	void reset() {
+		a.reset();
+		b.reset();
+	}
+
+	// `filt` is the smoothed knob, -1 to +1, open at the centre.
+	float process(float x, float filt, float sr, bool fourPole) {
+		// the wet path fades in over the first twentieth of the travel, which
+		// is the stretch where the filter is transparent anyway
+		float wet = clamp(std::fabs(filt) * 20.f, 0.f, 1.f);
+		if (wet < 1e-4f)
+			return x;
+		bool lowpass = filt < 0.f;
+		float mag = std::fabs(filt);
+		float fc = fourPole
+		           ? (lowpass ? 30.f * std::pow(667.f, 1.f - mag)
+		                      : 25.f * std::pow(560.f, mag))
+		           : (lowpass ? 80.f * std::pow(250.f, 1.f - mag)
+		                      : 20.f * std::pow(200.f, mag));
+		fc = clamp(fc, 20.f, 0.45f * sr);
+		float g = std::tan((float)M_PI * fc / sr);
+		float lp, hp, y;
+		if (fourPole) {
+			a.process(x, g, 1.f / 0.541f, lp, hp);
+			y = lowpass ? lp : hp;
+			b.process(y, g, 1.f / (1.8f + 1.2f * mag), lp, hp);
+			y = lowpass ? lp : hp;
+		}
+		else {
+			a.process(x, g, 1.4f, lp, hp);
+			y = lowpass ? lp : hp;
+		}
+		return x + (y - x) * wet;
+	}
+};
+
 // A one-pole glide that snaps the first time it is asked. The mode's state is
 // reset on entering it, so arriving somewhere gives you the knob rather than a
 // slide from wherever the last mode left this.
@@ -121,11 +172,19 @@ struct Core {
 	Delay frz[2];         // the chunk the freezer is holding
 	Delay flg[2];         // the flanger's short modulated line
 	Delay shf[2];         // the shifter's window
-	Svf fbFilt[2];
+	// Three places the filter can sit, one instance each so that moving it
+	// never means filtering something twice.
+	ToneFilter modeFilt[2];   // where the mode puts it: its wet path, or its loop
+	ToneFilter outFilt[2];    // on the module's output, dry included
+	ToneFilter fbLoopFilt[2]; // inside the delay's and the flanger's own feedback
 
 	int lastMode = -1;
 	float filtSm = 0.f;
 	bool filtWasLow = false;
+	// settings, from the context menu
+	bool fourPole = false;      // 24 dB/oct and the wider range, as vates has
+	bool filterDry = false;     // the filter moves to the output, dry included
+	bool filterInLoop = false;  // the delay and the flanger feed back filtered
 	float fbState[2] = {0.f, 0.f};
 
 	// per-mode state
@@ -166,7 +225,9 @@ struct Core {
 			frz[c].init(n);
 			flg[c].init((int)(0.05f * sr) + 4);
 			shf[c].init((int)(0.3f * sr) + 4);
-			fbFilt[c].reset();
+			modeFilt[c].reset();
+			outFilt[c].reset();
+			fbLoopFilt[c].reset();
 			tapePos[c] = 0.0;
 			freezePos[c] = 0.0;
 		}
@@ -182,7 +243,9 @@ struct Core {
 
 	void enterMode(int mode) {
 		for (int c = 0; c < 2; c++) {
-			fbFilt[c].reset();
+			modeFilt[c].reset();
+			outFilt[c].reset();
+			fbLoopFilt[c].reset();
 			fbState[c] = 0.f;
 			sliceAtk[c] = 0.f;
 			modPhase[c] = 0.f;
@@ -224,20 +287,32 @@ struct Core {
 	// lowpass for a highpass, and no integrator state survives that. A step
 	// here would be worse than elsewhere — it goes straight back into the
 	// loop and comes round again.
+	// Where the mode itself puts the filter: on its wet path if it has one,
+	// inside the global loop if it does not. With the filter moved to the
+	// output this goes quiet, so nothing is filtered twice.
 	float loopFilter(int c, float x) {
-		float wet = clamp(std::fabs(filtSm) * 20.f, 0.f, 1.f);
-		if (wet < 1e-4f)
+		if (filterDry)
 			return x;
-		bool lowpass = filtSm < 0.f;
-		float mag = std::fabs(filtSm);
-		float fc = lowpass ? 80.f * std::pow(250.f, 1.f - mag)
-		                   : 20.f * std::pow(200.f, mag);
-		fc = clamp(fc, 20.f, 0.45f * sr);
-		float g = std::tan((float)M_PI * fc / sr);
-		float lp, hp;
-		fbFilt[c].process(x, g, 1.4f, lp, hp);
-		float y = lowpass ? lp : hp;
-		return x + (y - x) * wet;
+		return modeFilt[c].process(x, filtSm, sr, fourPole);
+	}
+
+	// The delay and the flanger keep their own feedback line, and take it from
+	// before the filter -- so a repeat is filtered once, on its way out, and
+	// the tail does not darken pass by pass. Routing it through here is what
+	// makes it a dub delay instead. Its own instance, so it works whether or
+	// not the filter has moved to the output.
+	float feedbackFilter(int c, float x) {
+		if (!filterInLoop)
+			return x;
+		return fbLoopFilt[c].process(x, filtSm, sr, fourPole);
+	}
+
+	// The whole output, dry included. The global-feedback modes get the filter
+	// inside their loop for free here, since fbState is taken after it.
+	float outputFilter(int c, float x) {
+		if (!filterDry)
+			return x;
+		return outFilt[c].process(x, filtSm, sr, fourPole);
 	}
 
 	// Linear below kClipVolts, saturating above it -- and continuous at the
@@ -278,8 +353,11 @@ struct Core {
 		          * (1.f - std::exp(-ct.dt / 0.010f));
 		bool low = filtSm < 0.f;
 		if (low != filtWasLow) {
-			for (int c = 0; c < 2; c++)
-				fbFilt[c].reset();
+			for (int c = 0; c < 2; c++) {
+				modeFilt[c].reset();
+				outFilt[c].reset();
+				fbLoopFilt[c].reset();
+			}
 			filtWasLow = low;
 		}
 
@@ -304,6 +382,7 @@ struct Core {
 		for (int c = 0; c < 2; c++) {
 			if (!std::isfinite(out[c]))
 				out[c] = 0.f;
+			out[c] = outputFilter(c, out[c]);
 			if (ct.limiter)
 				out[c] = softClip(out[c] / kClipVolts) * kClipVolts;
 			else
@@ -361,7 +440,8 @@ struct Core {
 		for (int c = 0; c < 2; c++) {
 			float d = clamp(glided * detune(c, ct.stereo), 0.002f, maxT) * sr;
 			float wet = tape[c].read(d);
-			tape[c].write(softClip((in[c] + wet * fb * 0.98f) / kClipVolts) * kClipVolts);
+			tape[c].write(softClip((in[c] + feedbackFilter(c, wet) * fb * 0.98f)
+			                       / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;
 		}
@@ -388,7 +468,8 @@ struct Core {
 			float base = 5.5f * 0.001f * sr;
 			float depth = (5.f * dep) * 0.001f * sr;
 			float wet = flg[c].read(base + depth * m);
-			flg[c].write(softClip((in[c] + wet * fb * 0.95f) / kClipVolts) * kClipVolts);
+			flg[c].write(softClip((in[c] + feedbackFilter(c, wet) * fb * 0.95f)
+			                      / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - 0.5f * amt) + heard * amt;
 		}

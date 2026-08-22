@@ -467,6 +467,101 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ── the three filter placements from the context menu ─────────────────────────
+static double tonePeak(Artifex& m, long& fr, float hz, double secs) {
+	Rec rec;
+	runTone(m, fr, secs, hz, 2.f, &rec);
+	double pk = 0.0;
+	for (size_t i = rec.l.size() * 2 / 3; i < rec.l.size(); i++)
+		pk = std::max(pk, (double)std::fabs(rec.l[i]));
+	return 20.0 * std::log10(std::max(pk, 1e-9) / 2.0);
+}
+
+static void setFilter(Artifex& m, bool four, bool dry, bool loop) {
+	m.core.fourPole = four;
+	m.core.filterDry = dry;
+	m.core.filterInLoop = loop;
+}
+
+static void testFilterPlacement() {
+	// the dry path: untouched by default, filtered when the menu says so
+	double clean, filtered;
+	{
+		Artifex m; long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::AMT_PARAM].setValue(0.f);     // pure dry
+		m.params[Artifex::FILTER_PARAM].setValue(-1.f); // lowpass, hard left
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		setFilter(m, false, false, false);
+		clean = tonePeak(m, fr, 220.f, 1.0);
+	}
+	{
+		Artifex m; long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::AMT_PARAM].setValue(0.f);
+		m.params[Artifex::FILTER_PARAM].setValue(-1.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		setFilter(m, false, true, false);
+		filtered = tonePeak(m, fr, 220.f, 1.0);
+	}
+	report("artifex", "filter_leaves_the_dry_alone", clean, clean > -1.0);
+	report("artifex", "filter_dry_option_filters_it", filtered, filtered < clean - 10.0);
+
+	// the slope: four poles must take a 4 kHz tone away where two cannot
+	double two, four;
+	{
+		Artifex m; long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FILTER_PARAM].setValue(1.f);  // highpass, hard right
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		setFilter(m, false, false, false);
+		two = tonePeak(m, fr, 4000.f, 1.0);
+	}
+	{
+		Artifex m; long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FILTER_PARAM].setValue(1.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		setFilter(m, true, false, false);
+		four = tonePeak(m, fr, 4000.f, 1.0);
+	}
+	report("artifex", "filter_12db_leaves_4k_alone", two, two > -8.0);
+	report("artifex", "filter_24db_takes_4k_away", four, four < -30.0);
+
+	// in the loop: repeats have to darken pass by pass, not just once
+	double slope[2] = {0.0, 0.0};
+	for (int loop = 0; loop < 2; loop++) {
+		Artifex m; long fr = 0;
+		setMode(m, artifex_fx::MODE_DELAY);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(0.8f);
+		m.params[Artifex::TIME_PARAM].setValue(0.5f);
+		m.params[Artifex::FILTER_PARAM].setValue(-0.5f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		setFilter(m, false, false, loop == 1);
+		Rec rec;
+		runTone(m, fr, 0.01, 1000.f, 4.f, &rec);
+		runSilence(m, fr, 0.29, &rec);
+		const double d = 0.04775;                  // the knob-0.5 delay time
+		double pk[6] = {0, 0, 0, 0, 0, 0};
+		for (size_t i = 0; i < rec.l.size(); i++) {
+			int k = (int)(i / SR / d);
+			if (k >= 1 && k <= 5)
+				pk[k] = std::max(pk[k], (double)std::fabs(rec.l[i]));
+		}
+		slope[loop] = 20.0 * std::log10(std::max(pk[5], 1e-9)
+		                                / std::max(pk[1], 1e-9));
+	}
+	// fb 0.8 over four passes is -7.7 dB in theory; the tape's own softClip and
+	// the interpolation take a little more. The check that matters is the
+	// difference below, not this bound.
+	report("artifex", "filter_out_of_loop_decays_evenly", slope[0], slope[0] > -12.0);
+	report("artifex", "filter_in_loop_darkens_each_pass", slope[1],
+	       slope[1] < slope[0] - 2.0);
+}
+
 // ── the freezer's time knob moves the loop without re-capturing ───────────────
 // The loop length used to be written only inside the refreeze branch, so the
 // knob did nothing at all until a trig or amount leaving zero caught a new
@@ -793,7 +888,7 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testFreezerLength, testDelayClockSync, testWrapClick,
+           testReplayer, testStereo, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep,
            testEnvelope,
            testModeSelect,

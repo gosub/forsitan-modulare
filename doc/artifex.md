@@ -46,9 +46,10 @@ though the mode decides what they act on:
 
 Two more knobs shape the loop rather than the mode:
 
-- **filter** sits *in the feedback path*, open at the centre, a lowpass to
-  the left and a highpass to the right. It darkens or brightens the tail
-  without touching the dry signal.
+- **filter** is open at the centre, a lowpass to the left and a highpass to
+  the right, and it does not touch the dry signal — it colours the effect,
+  not what you put in. *Where* it sits inside the effect depends on the mode,
+  and the context menu can move it; see [the filter](#the-filter) below.
 - **stereo** detunes the mode's own time parameter between left and right.
   At zero the two channels are identical; turned up they drift apart, and in
   most modes that is the whole stereo image.
@@ -74,8 +75,10 @@ jack does the same thing by hand.
 ### 1. delay (green)
 
 A clean stereo delay, 1.15 s at the far left down to 2 ms at the far right.
-Feedback is taken *before* the filter, as on the hardware, so the filter
-colours the loop rather than gating it.
+Feedback is taken *before* the filter, as on the hardware, so a repeat is
+filtered once on its way out and the tail does not darken pass by pass. The
+context menu's **filter inside the feedback** changes that, and turns the mode
+into a dub delay.
 
 The tape glides towards the time knob instead of jumping to it, over about
 50 ms. Moving the knob therefore bends the pitch of whatever is already in the
@@ -190,6 +193,49 @@ centre and up above it, with unity in the middle. Feedback with a small shift
 is where it earns its keep: each pass shifts again, so the tail walks away in
 pitch. **stereo** gives the two channels different shifts, and a small
 detune is a very wide unison.
+
+## The filter
+
+The **filter** knob is one control, but the nine modes are not built alike and
+it cannot sit in the same place in all of them. Three of them produce a wet
+signal distinct from the dry, so the filter goes on that; four process the whole
+signal and have no separate wet, so the only place for it is the global feedback
+loop; two have both.
+
+| mode | on the effect's output | inside the feedback |
+|------|:---:|:---:|
+| delay, flanger, freezer | ● | |
+| panner, crusher, slicer, replayer | | ● |
+| pitcher, shifter | ● | ● |
+
+What is the same everywhere: the dry signal is untouched, so at **amount** fully
+left the filter does nothing at all, and at half you are mixing filtered effect
+against unfiltered input.
+
+Three context-menu settings change this.
+
+- **Slope** — **12 dB/oct** is artifex's own: one state-variable section,
+  gentle, and narrow enough in range that the ends of the travel leave the
+  material audible. At the top of the highpass a 4 kHz component is down about
+  4 dB and 10 kHz is untouched. **24 dB/oct** is the filter [vates](vates.md)
+  carries: two sections, Butterworth-damped with the resonance in the second
+  only, over a wider range of corners. The same 4 kHz tone goes down about
+  55 dB, so the knob can take the material away at either end rather than
+  merely thinning it. The shallow one is the default because it is the gentler
+  tone control and that is what the effect path usually wants.
+- **Filter the dry signal too** — moves the filter out of the mode and onto the
+  module's output, where it catches dry and effect together, and the knob
+  becomes a filter on everything you hear. Nothing is filtered twice: the mode's
+  own filtering steps aside when this is on. It also puts the filter inside the
+  global feedback loop for free, since that loop is taken after the output.
+- **Filter inside the feedback** — the delay and the flanger keep their own
+  feedback line and take it from *before* the filter, so each repeat is filtered
+  once. Turn this on and the feedback goes through the filter as well, so every
+  pass is filtered again and the tail darkens (or thins) as it decays. With a
+  lowpass half-left and feedback at 0.8, repeats fall about 2.2 dB apart with
+  this off and about 3.0 dB with it on. It is the difference between a delay
+  with a tone control and a dub delay. The other seven modes already have the
+  filter in their loop, so it does nothing there.
 
 ## The panel
 
@@ -306,6 +352,8 @@ can see it change across the room.
   on its own tempo.
 - **Feedback safety** — a soft limiter in the loop, on by default. Off, the
   loop can run away, which is a legitimate thing to want.
+- **Slope**, **Filter the dry signal too**, **Filter inside the feedback** —
+  see [the filter](#the-filter).
 
 ## What was left behind
 
