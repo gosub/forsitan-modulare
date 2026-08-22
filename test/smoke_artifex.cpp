@@ -467,6 +467,48 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ── the freezer's time knob moves the loop without re-capturing ───────────────
+// The loop length used to be written only inside the refreeze branch, so the
+// knob did nothing at all until a trig or amount leaving zero caught a new
+// chunk. Shortening the loop is how a frozen bar becomes a pitch, and that has
+// to work on the held audio rather than on a fresh capture.
+static void testFreezerLength() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_FREEZER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.60f);
+	runTone(m, fr, 2.0, 220.f, 5.f);
+
+	// a trig with the tape full catches all the history there is
+	m.params[Artifex::TRIG_PARAM].setValue(1.f);
+	runTone(m, fr, 0.01, 220.f, 5.f);
+	m.params[Artifex::TRIG_PARAM].setValue(0.f);
+	runTone(m, fr, 0.05, 220.f, 5.f);
+	float captured = m.core.capturedFrames;
+	report("artifex", "freezer_catches_the_whole_tape", captured / SR,
+	       captured > 1.0f * SR);
+
+	// now the knob alone, with nothing re-capturing
+	float held = m.core.capturedFrames;
+	float lengths[4] = {0.f, 0.f, 0.f, 0.f};
+	float knobs[4] = {0.55f, 0.70f, 0.85f, 0.95f};
+	for (int i = 0; i < 4; i++) {
+		m.params[Artifex::TIME_PARAM].setValue(knobs[i]);
+		runTone(m, fr, 0.2, 220.f, 5.f);
+		lengths[i] = m.core.freezeFrames;
+	}
+	bool shrinks = lengths[0] > lengths[1] && lengths[1] > lengths[2]
+	               && lengths[2] > lengths[3];
+	report("artifex", "freezer_length_follows_the_knob", lengths[0] / lengths[3],
+	       shrinks && lengths[0] > lengths[3] * 10.f);
+	report("artifex", "freezer_keeps_its_capture", m.core.capturedFrames - held,
+	       m.core.capturedFrames == held);
+	// short enough at the top to be a pitch rather than a rhythm
+	report("artifex", "freezer_shortest_is_a_pitch", SR / lengths[3],
+	       SR / lengths[3] > 100.f);
+}
+
 // ── the delay syncs to clk, and to trig only when clk is quiet ────────────────
 // Everything else clock-driven in the module follows clk; the delay used to
 // follow the trig input alone, which is where the hardware takes a clock but
@@ -751,7 +793,7 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
-           testReplayer, testStereo, testDelayClockSync, testWrapClick,
+           testReplayer, testStereo, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep,
            testEnvelope,
            testModeSelect,

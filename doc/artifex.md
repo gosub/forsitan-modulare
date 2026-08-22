@@ -108,13 +108,30 @@ two modulators, which is what opens the image.
 ### 3. freezer (blue)
 
 Captures a chunk of audio and loops it. Three things freeze a new chunk:
-arriving in the mode, moving **amount** away from zero, and a **trig**.
+arriving in the mode, moving **amount** away from zero, and a **trig**. A
+clock at **clk** is deliberately not one of them — that would make the mode a
+rhythmic re-sampler rather than a freezer.
 
-**time** sets the chunk length: to the left it is a division of the tempo, so
-the freeze is rhythmic; to the right it shrinks until the loop is short
-enough to be a pitch, and you are freezing the timbre rather than the bar.
-**feedback** here does not run the global loop — it lets new audio bleed into
-the frozen buffer, thickening it.
+**time** sets the loop length, and it moves it *live*, on the audio already
+held: to the left it is a division of the tempo, so the freeze is rhythmic; to
+the right it shrinks until the loop is short enough to be a pitch, and you are
+freezing the timbre rather than the bar. Turning it from one end to the other
+takes a frozen bar down to a few milliseconds without ever re-capturing, which
+is the mode's best gesture.
+
+A freeze catches as much history as it has, not only the length you asked for,
+which is what leaves the knob somewhere to go. The one time that bites is
+arriving in the mode: it freezes as soon as it has the length the knob is
+asking for, so there is nothing older to lengthen into yet. Give it a second
+and hit **trig** and it takes the whole buffer, after which the knob has its
+full range. The longest divisions need a buffer to fit in — 16 steps at 120 BPM
+is two seconds, so at the hardware's 1.15 s they clamp; the context menu's
+larger buffers hold them.
+
+The loop is the *end* of what was caught: shortening keeps the audio nearest
+the freeze point, which is what you had just heard, rather than the oldest of
+it. **feedback** here does not run the global loop — it lets new audio bleed
+into the frozen buffer, thickening it.
 
 ### 4. panner (white)
 

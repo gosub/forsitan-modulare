@@ -135,10 +135,9 @@ struct Core {
 	Glide pitchWinGl;         // pitcher: the window, off the time knob
 	Glide pitchAmtGl;         // pitcher: the shift, off the amount knob
 	int panDir = 1;
-	double freezeStart[2] = {0.0, 0.0};
 	double freezePos[2] = {0.0, 0.0};
-	float freezeLen = 0.1f;
-	float freezeFrames = 0.f;
+	float freezeFrames = 0.f;    // the loop length now, which the knob moves
+	float capturedFrames = 0.f;  // how much history the last freeze caught
 	double recorded = 0.0;        // frames recorded since arriving in the mode
 	bool frozen = false;
 	bool wasSilentAmount = true;
@@ -170,7 +169,6 @@ struct Core {
 			fbFilt[c].reset();
 			tapePos[c] = 0.0;
 			freezePos[c] = 0.0;
-			freezeStart[c] = 0.0;
 		}
 		lastMode = -1;
 	}
@@ -209,6 +207,7 @@ struct Core {
 		fillLeft = (mode == MODE_REPLAYER) ? bufSeconds : 0.f;
 		frozen = false;
 		recorded = 0.0;
+		capturedFrames = 0.f;
 		// Arriving in the freezer captures a chunk, as on the hardware — but
 		// it has to record one first. Leaving this true would freeze the
 		// empty buffer on the first sample and hold silence for good.
@@ -431,31 +430,51 @@ struct Core {
 		if (!frozen && ready)
 			refreeze = true;
 
+		// A freeze catches everything it can, not just the length asked for,
+		// so the time knob can go on choosing how much of it loops. Catching
+		// only `len` meant the knob did nothing at all until something
+		// re-captured, and the way to hear a frozen bar shrink into a pitch
+		// is to shorten the loop, not to freeze a shorter one.
 		if (refreeze) {
-			freezeLen = len;
-			freezeFrames = std::max(len * sr, 4.f);
-			int frames = (int)freezeFrames;
+			float maxFrames = (bufSeconds - 0.02f) * sr;
+			capturedFrames = clamp((float)recorded, len * sr, maxFrames);
+			int frames = (int)capturedFrames;
 			for (int c = 0; c < 2; c++) {
-				float start = (float)tape[c].w - freezeFrames;
-				for (int i = 0; i < frames; i++)
-					frz[c].poke(i, tape[c].at(start + (float)i));
+				// the last `frames` samples ending at the freeze moment, in
+				// order, as two spans rather than a modulo per sample
+				int n = tape[c].size();
+				int from = ((tape[c].w - frames) % n + n) % n;
+				int first = std::min(frames, n - from);
+				std::copy(tape[c].buf.begin() + from,
+				          tape[c].buf.begin() + from + first,
+				          frz[c].buf.begin());
+				std::copy(tape[c].buf.begin(),
+				          tape[c].buf.begin() + (frames - first),
+				          frz[c].buf.begin() + first);
 				freezePos[c] = 0.0;
 			}
 			frozen = true;
 		}
 
+		// The loop is the last `freezeFrames` before the freeze moment: the
+		// captured chunk ends there, so shortening keeps the audio nearest to
+		// it -- what you had just heard -- rather than the oldest of it.
+		// Lengthening is limited by how much history the freeze actually got.
+		freezeFrames = clamp(len * sr, 4.f, std::max(capturedFrames, 4.f));
+		float base = capturedFrames - freezeFrames;
+
 		for (int c = 0; c < 2; c++) {
 			float rate = detune(c, ct.stereo);
-			float wet = frz[c].at((float)freezePos[c]);
+			// the knob can shorten the loop under the playhead, so wrap it
+			// round rather than assuming one subtraction is enough
+			if (freezePos[c] >= (double)freezeFrames || freezePos[c] < 0.0)
+				freezePos[c] -= std::floor(freezePos[c] / freezeFrames) * freezeFrames;
+			float wet = frz[c].at(base + (float)freezePos[c]);
 			// feedback here bleeds new audio into the frozen buffer rather
 			// than running the global loop, thickening what is held
 			if (fb > 0.001f)
-				frz[c].poke((int)freezePos[c], wet + in[c] * fb * 0.5f);
+				frz[c].poke((int)(base + (float)freezePos[c]), wet + in[c] * fb * 0.5f);
 			freezePos[c] += rate;
-			if (freezePos[c] >= freezeFrames)
-				freezePos[c] -= freezeFrames;
-			if (freezePos[c] < 0.0)
-				freezePos[c] += freezeFrames;
 			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;
 		}
