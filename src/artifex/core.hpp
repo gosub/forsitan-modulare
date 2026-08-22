@@ -205,6 +205,9 @@ struct Core {
 	Glide pitchWinGl;         // pitcher: the window, off the time knob
 	Glide pitchAmtGl;         // pitcher: the shift, off the amount knob
 	int panDir = 1;
+	float panFrom[2] = {0.f, 0.f};   // where the pan was when the trig landed
+	float panLast[2] = {0.f, 0.f};   // and where it is now, to throw from next
+	float panFade = 1.f;             // 0..1 across the throw
 	double freezePos[2] = {0.0, 0.0};
 	float freezeFrames = 0.f;    // the loop length now, which the knob moves
 	float capturedFrames = 0.f;  // how much history the last freeze caught
@@ -218,6 +221,8 @@ struct Core {
 	float sliceAtk[2] = {0.f, 0.f};
 	float grainPhase[2] = {0.f, 0.f};
 	float grainStretch = 0.f;
+	float grainW[2] = {0.f, 0.f};      // the window this grain was started with
+	float grainShift[2] = {0.f, 0.f};  // and the shift, latched with it
 	double tapePos[2] = {0.0, 0.0};
 	float fillLeft = 0.f;
 	float shiftPhase[2] = {0.f, 0.f};
@@ -264,12 +269,17 @@ struct Core {
 			crushHold[c] = 0.f;
 			sliceEnv[c] = 0.f;
 			grainPhase[c] = 0.f;
+			grainW[c] = 0.f;
 			shiftPhase[c] = (float)c * 0.5f;
 			tapePos[c] = 0.0;
 		}
 		panDir = 1;
-		for (int c = 0; c < 2; c++)
+		panFade = 1.f;
+		for (int c = 0; c < 2; c++) {
 			declick[c] = 0.f;
+			panFrom[c] = 0.f;
+			panLast[c] = 0.f;
+		}
 		delayGl.reset();
 		flangeGl.reset();
 		pitchWinGl.reset();
@@ -489,10 +499,16 @@ struct Core {
 		// harmless. The depth is not: it multiplies the read position, and a
 		// knob that moves once per frame moves the tap in jumps.
 		float dep = flangeGl(amt, ct.dt, kKnobGlide);
+		// As in the panner: a reset to phase zero is a reset to the *centre* of
+		// the sweep, and the tap has to jump there from wherever it was --
+		// which in a delay line is a click nothing downstream can take back
+		// out. Mirroring the phase leaves sin() where it is and reverses which
+		// way it travels, so a trig turns the sweep round with no jump at all.
+		if (ct.trig)
+			for (int c = 0; c < 2; c++)
+				modPhase[c] = 0.5f - modPhase[c] - std::floor(0.5f - modPhase[c]);
 		for (int c = 0; c < 2; c++) {
 			float f = hz * detune(c, ct.stereo);
-			if (ct.trig)
-				modPhase[c] = 0.f;
 			modPhase[c] += f * ct.dt;
 			modPhase[c] -= std::floor(modPhase[c]);
 			float m = std::sin(2.f * (float)M_PI * modPhase[c]);
@@ -601,11 +617,32 @@ struct Core {
 		uiTime = hz;
 		float depth = clamp(amt * 2.f, 0.f, 1.f);
 		float hard = clamp(amt * 2.f - 1.f, 0.f, 1.f);
+		// A trig throws the pan to the other side. It used to do that by
+		// setting the phase to zero, and zero is the *centre* of the sweep --
+		// so a pan sitting at one side, which is where it sits for most of its
+		// cycle once amount hardens the sine towards a square, jumped half the
+		// signal's amplitude in one sample to arrive in the middle. That is a
+		// click, and taking the step back out of the output afterwards only
+		// turns it into a thump: the correction is a transient of its own.
+		//
+		// So the phase goes to the *peak* on the side being thrown to rather
+		// than to the centre, and the modulator glides there instead of
+		// jumping. The glide is what makes it a throw: a gain moving smoothly
+		// across in a few tens of milliseconds is a sound crossing the image,
+		// where the same distance in one sample is only a click. It is capped
+		// at a quarter of the modulator's own period so that up at ring
+		// modulation rates it stays out of the way.
 		if (ct.trig) {
 			panDir = -panDir;
-			for (int c = 0; c < 2; c++)
-				modPhase[c] = 0.f;
+			float peak = (panDir > 0) ? 0.25f : 0.75f;
+			for (int c = 0; c < 2; c++) {
+				modPhase[c] = peak;
+				panFrom[c] = panLast[c];
+			}
+			panFade = 0.f;
 		}
+		float throwTime = std::min(0.025f, 0.25f / std::max(hz, 0.01f));
+		panFade = std::min(1.f, panFade + ct.dt / throwTime);
 		for (int c = 0; c < 2; c++) {
 			float f = hz * detune(c, ct.stereo);
 			modPhase[c] += f * ct.dt * (float)panDir;
@@ -613,6 +650,8 @@ struct Core {
 			float m = std::sin(2.f * (float)M_PI * modPhase[c]);
 			// clipping the sine towards a square as amount goes up
 			m = std::tanh(m * (1.f + hard * 30.f)) / std::tanh(1.f + hard * 30.f);
+			m = panFrom[c] + (m - panFrom[c]) * panFade;
+			panLast[c] = m;
 			float s = (c == 0) ? m : -m;
 			float x = loopIn(c, in[c], ct, fb);
 			out[c] = x * (1.f - depth * 0.5f * (1.f - s));
@@ -728,12 +767,25 @@ struct Core {
 			float w = clamp(window * detune(c, ct.stereo), 0.002f, 0.4f);
 			float x = loopIn(c, in[c], ct, fb);
 			tape[c].write(x);
-			grainPhase[c] += ct.dt / w;
-			if (grainPhase[c] >= 1.f)
+			if (grainW[c] <= 0.f) {
+				grainW[c] = w;
+				grainShift[c] = shift;
+			}
+			grainPhase[c] += ct.dt / grainW[c];
+			// A grain reads a ramp whose length and reach are both scaled by
+			// the window, so changing either mid-grain moves the tap under the
+			// playhead -- a jump if it is sudden, a chirp if it is smoothed.
+			// Both are taken at the boundary instead, where the crossfade
+			// below has the grain at zero and nothing can be heard changing.
+			// A trig quadrupling the window is exactly that kind of change.
+			if (grainPhase[c] >= 1.f) {
 				grainPhase[c] -= std::floor(grainPhase[c]);
+				grainW[c] = w;
+				grainShift[c] = shift;
+			}
 			// the tap walks from a window back towards now: a falling delay
 			// raises the pitch, and the ramp restarting is the duplication
-			float d = (1.f - grainPhase[c]) * w * shift * sr + 2.f;
+			float d = (1.f - grainPhase[c]) * grainW[c] * grainShift[c] * sr + 2.f;
 			float wet = tape[c].read(d);
 			// fade the ends of the ramp so the wrap is a click and not a bang
 			float e = std::min(grainPhase[c], 1.f - grainPhase[c]) * 20.f;
@@ -797,9 +849,17 @@ struct Core {
 		float semis = (t - 0.5f) * 24.f;         // an octave either way
 		uiUnit = UNIT_SEMI;
 		uiTime = semis;
-		if (ct.trig)
-			for (int c = 0; c < 2; c++)
-				shiftPhase[c] = (float)c * 0.5f;
+		// "Resync" means putting the two channels back into their half-a-window
+		// relationship, not putting both at a fixed phase -- the second jumps
+		// the left channel's read position for no reason, and at phase zero its
+		// near tap is crossfaded out entirely, so the jump is to whatever the
+		// far tap happens to be holding. Squaring the right one up to the left
+		// leaves the left untouched and moves the right only by however far it
+		// had actually drifted.
+		if (ct.trig) {
+			shiftPhase[1] = shiftPhase[0] + 0.5f;
+			shiftPhase[1] -= std::floor(shiftPhase[1]);
+		}
 		float window = 0.08f;                    // seconds of crossfade window
 
 		for (int c = 0; c < 2; c++) {

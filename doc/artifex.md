@@ -58,21 +58,26 @@ Two more knobs shape the loop rather than the mode:
 freeze, fill, dip — and it is listed per mode below. The button beside the
 jack does the same thing by hand.
 
-Four of the modes reset a phase that a read position or a gain depends on, and
-two swap the buffer under the playhead, so a trig lands the output somewhere it
-was not heading. The jump is taken back out: the step is measured against where
-the last two samples were going and subtracted, relaxing over two milliseconds.
-What the mode does survives — the throw still throws, the freeze still catches —
-and the click it used to arrive on does not.
+Four of the modes used to reset a phase that a read position or a gain depends
+on, which landed the output somewhere it was not heading — a click, and not a
+gesture. None of them jump any more: the panner and the flanger turn round from
+where they are, the shifter squares its right channel up to its left instead of
+moving both, and the pitcher takes its new window at a grain boundary where the
+crossfade already has it silent. What each trig *does* is unchanged.
+
+Behind that, a step left at the output by anything else — the freezer and the
+replayer swap the buffer under the playhead, which is a discontinuity by
+nature — is measured against where the last two samples were heading and
+subtracted, relaxing over two milliseconds.
 
 ## The nine modes
 
 | # | mode | time | amount | feedback | stereo | trig |
 |---|------|------|--------|----------|--------|------|
 | 1 | **delay** | delay time, 1.15 s → 2 ms | dry/wet | repeats | L/R delay detune | a clock here snaps the time, if clk has none |
-| 2 | **flanger** | modulator frequency | sweep depth + wet | resonance | L/R modulator detune | reset the modulator |
+| 2 | **flanger** | modulator frequency | sweep depth + wet | resonance | L/R modulator detune | turn the sweep round |
 | 3 | **freezer** | repeat length | wet, and refreezes | feeds new audio in | L/R repeat detune | freeze a new chunk |
-| 4 | **panner** | pan frequency, up to audio rate | sine → square | global | L/R pan detune | reset, and flip the direction |
+| 4 | **panner** | pan frequency, up to audio rate | sine → square | global | L/R pan detune | throw the pan to the other side |
 | 5 | **crusher** | sample rate | crush depth, then XOR | distorted backdrop | L/R rate detune | dip the rate |
 | 6 | **slicer** | which rhythm chops | decay + wet | chance of an inverted step | a different rhythm per channel | fire the envelope |
 | 7 | **pitcher** | window size | shift amount + wet | global | L/R window detune | enlarge the window |
@@ -148,9 +153,12 @@ into the frozen buffer, thickening it.
 Amplitude modulation in opposite phase on the two channels. Slow, it is an
 autopanner. Fast, it crosses into audio rate and becomes stereo ring
 modulation. **amount** clips the modulating sine towards a square, so the pan
-goes from a sway to a hard alternation. **trig** resets the modulator and
-flips which side it moves to next, which is how you get triggered stereo
-throws.
+goes from a sway to a hard alternation. **trig** throws it to the other side:
+the modulator goes to the peak on that side and *glides* there over about
+25 ms, capped at a quarter of its own period so it stays out of the way up at
+ring-modulation rates. The glide is the throw — a gain crossing the image in a
+few tens of milliseconds is a sound moving, where the same distance in one
+sample is only a click.
 
 ### 5. crusher (yellow)
 
@@ -178,9 +186,14 @@ Pitch shifting up by sweeping a delay tap with a ramp — crude on purpose,
 with the transient duplication that goes with it. **time** is the window
 size: long, and it chops rhythmically; short, and it turns into formant
 shift. **amount** is how far the ramp sweeps, which is the shift interval,
-and also the dry/wet. **trig** briefly stretches the window. Both knobs scale
-the tap's position, so both glide towards where you put them rather than
-jumping: the ramp restarting is the mode's crudeness, a knob clicking is not.
+and also the dry/wet. **trig** briefly stretches the window.
+
+Both knobs scale the tap's position, and so does the trig's stretch, so a grain
+takes its window and its shift when it starts and keeps them until it ends.
+Changing any of them mid-grain would drag the tap under the playhead — a jump
+if it were sudden, a chirp if it were smoothed — and at a grain boundary the
+crossfade already has that grain at zero. The ramp restarting is the mode's own
+crudeness; a knob or a trig clicking is not.
 
 ### 8. replayer (orange)
 

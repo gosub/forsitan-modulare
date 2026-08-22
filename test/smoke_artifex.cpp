@@ -491,7 +491,7 @@ static void testTrigDeclick() {
 		m.inputs[Artifex::TRIG_INPUT].channels = 1;
 		runTone(m, fr, 1.0, 220.f, 5.f);
 
-		double worst = 0.0;
+		double worst = 0.0, bend = 0.0;
 		for (int t = 0; t < 6; t++) {
 			// The step that matters is between the last sample before the trig
 			// and the first one after it, so the recording has to start before
@@ -504,12 +504,22 @@ static void testTrigDeclick() {
 			m.inputs[Artifex::TRIG_INPUT].setVoltage(0.f);
 			runTone(m, fr, period - 0.012, 220.f, 5.f, &rec);
 			for (size_t i = mark; i < mark + (size_t)(0.005 * SR)
-			                      && i < rec.l.size(); i++)
+			                      && i < rec.l.size(); i++) {
 				worst = std::max(worst, (double)std::fabs(rec.l[i] - rec.l[i - 1]));
+				bend = std::max(bend, (double)std::fabs(rec.l[i] - 2.f * rec.l[i - 1]
+				                                        + rec.l[i - 2]));
+			}
 		}
+		// A step shows in the first difference. A *pop* shows in the second:
+		// taking the step back out of the output afterwards leaves the signal
+		// continuous but its slope still broken, and the correction is a
+		// transient of its own. Both have to be near what the tone does alone.
 		double slew = 2.0 * M_PI * 220.0 / SR * 5.0;
+		double bendRef = slew * 2.0 * M_PI * 220.0 / SR;
 		report("artifex", (std::string("trig_no_click_") + names[k]).c_str(),
 		       worst / slew, worst < slew * 6.0);
+		report("artifex", (std::string("trig_no_pop_") + names[k]).c_str(),
+		       bend / bendRef, bend < bendRef * 12.0);
 	}
 
 	// and the panner's throw still lands on the other side
