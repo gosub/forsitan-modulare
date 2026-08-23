@@ -168,7 +168,19 @@ right, where the decimator holds for exactly one sample and passes the signal
 through untouched. **amount** deepens the effect and then folds in an XOR of
 the sample with itself towards the top, which is where it stops sounding like
 a bitcrusher and starts sounding broken. Feedback adds a distorted tonal bed
-under everything.
+under everything: it thickens through most of the travel and then, near the
+top, tips over into a howl of its own. That howl is pitched, and the pitch
+follows the time knob — about 170 Hz with the rate at the bottom, 1.7 kHz at
+the top.
+
+Unlike the other modes, the crusher's loop closes around the sample-and-hold
+rather than through the module's global one-sample path, and it is AC-coupled
+on the way round. Both are needed. A memoryless loop around a saturator has
+no pitch in it — under unity gain it is only a gain, and over unity its fixed
+point moves to a rail and stays there, which is silence with an offset on it.
+The hold gives the loop a delay and the AC coupling leaves it nothing to
+latch onto, so it oscillates instead, at a frequency the coupling sets and
+the crush rate scales.
 
 amount is the crush depth, not a dry/wet: past the first tenth of its travel
 the decimated path is all you hear. That first tenth fades the decimated path

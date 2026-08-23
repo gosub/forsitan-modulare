@@ -590,6 +590,63 @@ static void testCrusherAmount() {
 	       top > mid * 1.5);
 }
 
+// ââ the crusher's feedback is a backdrop, not a trim âââââââââââââââââ
+// It used to run through the global one-sample path at half gain, which is a
+// memoryless loop around a saturator: no pitch in it, and a whole knob's travel
+// worth 3% of level. Raising that gain past one only moves the fixed point to a
+// rail and latches there. It now closes around the sample-and-hold, AC-coupled
+// with a corner that follows the crush rate, so it howls and the howl is
+// pitched.
+static void testCrusherFeedback() {
+	struct Local {
+		// rms, mean and rms frequency of what is left after the input stops
+		static void tail(float t, float fb, double* rms, double* dc, double* hz) {
+			Artifex m;
+			long fr = 0;
+			Module::SampleRateChangeEvent sre;
+			sre.sampleRate = SR;
+			sre.sampleTime = 1.f / SR;
+			m.onSampleRateChange(sre);
+			setMode(m, artifex_fx::MODE_CRUSHER);
+			m.params[Artifex::TIME_PARAM].setValue(t);
+			m.params[Artifex::AMT_PARAM].setValue(0.4f);
+			m.params[Artifex::FBK_PARAM].setValue(fb);
+			m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+			runTone(m, fr, 0.5, 220.f, 2.f);        // something to start it
+			Rec rec;
+			runSilence(m, fr, 1.0, &rec);
+			double sum = 0.0, s2 = 0.0, d2 = 0.0;
+			size_t from = rec.l.size() / 2;
+			for (size_t i = from; i < rec.l.size(); i++) {
+				sum += rec.l[i];
+				s2 += (double)rec.l[i] * rec.l[i];
+				if (i > from) {
+					double d = rec.l[i] - rec.l[i - 1];
+					d2 += d * d;
+				}
+			}
+			size_t n = rec.l.size() - from;
+			*dc = sum / (double)n;
+			*rms = std::sqrt(s2 / (double)n);
+			*hz = s2 > 1e-9 ? std::sqrt(d2 / s2) * SR / (2.0 * M_PI) : 0.0;
+		}
+	};
+	double rms, dc, lo, hi, unused;
+	// wide open it sustains on its own, and stays centred while it does
+	Local::tail(0.5f, 1.f, &rms, &dc, &unused);
+	report("artifex", "crusher_feedback_sustains", rms, rms > 1.0);
+	report("artifex", "crusher_feedback_does_not_latch", std::fabs(dc),
+	       std::fabs(dc) < 0.25);
+	// and shut it stays shut
+	double quiet;
+	Local::tail(0.5f, 0.f, &quiet, &dc, &unused);
+	report("artifex", "crusher_feedback_off_is_silent", quiet, quiet < 0.05);
+	// the backdrop is pitched, and the pitch follows the crush rate
+	Local::tail(0.1f, 1.f, &rms, &dc, &lo);
+	Local::tail(0.9f, 1.f, &rms, &dc, &hi);
+	report("artifex", "crusher_feedback_tracks_the_rate", hi / lo, hi > lo * 4.0);
+}
+
 
 // ── a trig does its job without a click ───────────────────────────────────────
 // The flanger, the panner, the pitcher and the shifter all reset a phase that a
@@ -1090,7 +1147,7 @@ static void testFilterCrossing() {
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
            testReplayer, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
-           testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount,
+           testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
            testModeSelect,
            testFeedbackSafety, testAbuse)

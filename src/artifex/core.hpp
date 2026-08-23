@@ -216,6 +216,7 @@ struct Core {
 	bool wasSilentAmount = true;
 	float crushHold[2] = {0.f, 0.f};
 	float crushPhase[2] = {0.f, 0.f};
+	float crushFbLp[2] = {0.f, 0.f};
 	float crushDip = 0.f;
 	float sliceEnv[2] = {0.f, 0.f};
 	float sliceAtk[2] = {0.f, 0.f};
@@ -267,6 +268,7 @@ struct Core {
 			modPhase[c] = 0.f;
 			crushPhase[c] = 0.f;
 			crushHold[c] = 0.f;
+			crushFbLp[c] = 0.f;
 			sliceEnv[c] = 0.f;
 			grainPhase[c] = 0.f;
 			grainW[c] = 0.f;
@@ -696,7 +698,24 @@ struct Core {
 			crushPhase[c] += f * ct.dt;
 			if (crushPhase[c] >= 1.f) {
 				crushPhase[c] -= std::floor(crushPhase[c]);
-				float x = loopIn(c, in[c], ct, fb * 0.5f);
+				// The loop runs around the sample-and-hold rather than
+				// through the global one-sample path, and it runs AC.
+				// Straight, at a gain under one it is only a gain: a
+				// memoryless loop around a saturator has no pitch to it, and
+				// the knob did nothing but turn the mode up. Over one, it
+				// stops being memoryless the wrong way -- the fixed point
+				// moves to a rail and it latches there, 4.6 V of DC and
+				// silence. Taking the hold's own period as the loop delay
+				// and blocking DC leaves it nothing to latch onto: it
+				// oscillates instead, near a third of the crush rate, so the
+				// backdrop is pitched and follows the time knob.
+				float tick = 1.f / std::max(f, 1.f);
+				float corner = clamp(f * 0.012f, 4.f, 400.f);
+				float hpC = clamp(1.f - std::exp(-2.f * (float)M_PI * corner * tick),
+				                  0.f, 1.f);
+				float y = fbState[c];
+				crushFbLp[c] += (y - crushFbLp[c]) * hpC;
+				float x = in[c] + loopFilter(c, y - crushFbLp[c]) * fb * 1.25f;
 				// soft, not clamped: a hard clip with feedback into it turns
 				// every mode setting into the same full-scale square
 				float s = softClip(x / kClipVolts);
