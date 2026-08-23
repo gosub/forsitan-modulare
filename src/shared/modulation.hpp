@@ -20,13 +20,19 @@ using namespace rack;
 static const int kSteps = 16;
 
 // ── the rhythm table ──────────────────────────────────────────────────────────
-// 32 sixteen-step gate patterns, step 0 in the high bit. Sixteen written by
-// hand — the ones a drummer would recognise — then the sixteen euclidean
-// distributions E(1..16, 16), which fill in every density between them. The
-// hardware loads its rhythms from a web app that rebuilds the firmware; this
-// is the knob that replaces it.
+// 32 sixteen-step gate patterns, step 0 in the high bit. Twenty-two written by
+// hand — the ones a drummer would recognise — then the euclidean distributions
+// E(k, 16), which fill in the densities between them. The hardware loads its
+// rhythms from a web app that rebuilds the firmware; this is the knob that
+// replaces it.
+//
+// The euclidean half skips six densities, because at 16 steps those *are* the
+// hand-written patterns: E(1) is the downbeat alone, E(2) half notes, E(4)
+// four on the floor, E(6) tresillo, E(8) eighths, E(16) sixteenths. Running
+// the series straight from 1 to 16 spent six of the knob's thirty-two
+// positions repeating patterns it already had, note for note.
 inline uint16_t rhythmPattern(int i) {
-	static const uint16_t classic[16] = {
+	static const uint16_t hand[22] = {
 		0x8888,   // four on the floor
 		0x0808,   // backbeat
 		0x2222,   // offbeat eighths
@@ -43,11 +49,19 @@ inline uint16_t rhythmPattern(int i) {
 		0x8080,   // half notes
 		0x9249,   // dotted eighths
 		0x9632,   // syncopated
+		0x8100,   // charleston
+		0x9222,   // bo diddley
+		0x9294,   // dembow
+		0x922A,   // amen
+		0x2A2A,   // montuno
+		0xB4B4,   // funk
 	};
+	// the onset counts the hand-written half does not already contain
+	static const int density[10] = {3, 5, 7, 9, 10, 11, 12, 13, 14, 15};
 	i = clamp(i, 0, 31);
-	if (i < 16)
-		return classic[i];
-	int k = i - 15;   // 1..16 onsets
+	if (i < 22)
+		return hand[i];
+	int k = density[i - 22];
 	uint16_t p = 0;
 	for (int s = 0; s < kSteps; s++)
 		if ((s * k) % kSteps < k)

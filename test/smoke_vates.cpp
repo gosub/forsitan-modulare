@@ -686,6 +686,24 @@ static void testPitchTracking() {
 	       std::fabs(m.voiceRateNow() - 8.f) < 1e-4f);
 }
 
+// ── the thirty-two rhythms are thirty-two rhythms ───────────────────────────
+// The euclidean half used to run E(1..16, 16) straight through, and at sixteen
+// steps six of those densities are the hand-written patterns note for note --
+// E(4) is four on the floor, E(16) is sixteenths. Six of the knob's thirty-two
+// positions were repeats of another one.
+static void testRhythmTable() {
+	int repeats = 0, empty = 0;
+	for (int i = 0; i < 32; i++) {
+		if (forsitan_mod::rhythmPattern(i) == 0)
+			empty++;
+		for (int j = i + 1; j < 32; j++)
+			if (forsitan_mod::rhythmPattern(i) == forsitan_mod::rhythmPattern(j))
+				repeats++;
+	}
+	report("vates", "rhythms_are_all_distinct", repeats, repeats == 0);
+	report("vates", "no_silent_rhythm", empty, empty == 0);
+}
+
 // ── the rhythm CV picks patterns ──────────────────────────────────────────────
 // Same ten-volts-is-the-whole-list scale as bank and sample, offsetting the
 // knob and wrapping past the end. Its own module: selecting a rhythm reloads
@@ -703,7 +721,11 @@ static void testRhythmCv() {
 
 	m.inputs[Vates::RHYTHM_INPUT].setVoltage(10.f);   // the last of the 32
 	run(m, fr, 0.2);
-	report("vates", "rhythm_cv_top", m.modul.gateWork, m.modul.gateWork == 0xFFFF);
+	// against the table rather than a literal: which pattern sits last is the
+	// table's business, that ten volts reaches it is this test's
+	report("vates", "rhythm_cv_top", m.modul.gateWork,
+	       m.modul.gateWork == forsitan_mod::rhythmPattern(31)
+	       && m.modul.gateWork != forsitan_mod::rhythmPattern(0));
 
 	m.inputs[Vates::RHYTHM_INPUT].setVoltage(5.f);    // halfway: "funk"
 	run(m, fr, 0.2);
@@ -1175,5 +1197,5 @@ static void testReverseDecays() {
 
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
+           testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse)

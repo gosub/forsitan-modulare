@@ -360,9 +360,12 @@ the module returns to its own clock two seconds after that signal stops.
 **clk** out passes the running clock on.
 
 The pattern generator runs sixteen steps of gate and CV, always on the clock.
-**rhythm** chooses one of 32 patterns — sixteen classic ones and sixteen
-euclidean distributions E(1..16, 16) — with a CV input that covers the whole
-list over ten volts and wraps.
+**rhythm** chooses one of 32 patterns — twenty-two written by hand and ten
+euclidean distributions E(k, 16) — with a CV input that covers the whole list
+over ten volts and wraps. The euclidean half skips six densities, because at
+sixteen steps those *are* patterns the first half already holds: E(1) is the
+downbeat alone, E(2) half notes, E(4) four on the floor, E(6) tresillo, E(8)
+eighths, E(16) sixteenths.
 
 The two three-position switches edit the pattern as it plays:
 

@@ -285,7 +285,9 @@ pattern on every step. **pattern input window** in the context menu switches
 to it for anyone who wants the original's response.
 
 The hardware's rhythms come from a web app that rebuilds the firmware. Here
-they are 32 patterns on a knob, and the switches make them yours.
+they are 32 patterns on a knob — twenty-two written by hand, then the
+euclidean distributions E(k, 16) for the densities the first half does not
+already contain — and the switches make them yours.
 
 ### the displays
 
