@@ -171,11 +171,17 @@ a bitcrusher and starts sounding broken. Feedback adds a distorted tonal bed
 under everything.
 
 amount is the crush depth, not a dry/wet: past the first tenth of its travel
-the decimated path is all you hear, and the bottom half spends its range on
-bit depth, reaching two bits by the middle. Only the time knob will give the
-signal back, and only with amount low enough to leave the bit depth alone —
-around a quarter of the way up it is still nine bits, which is inaudible next
-to what the rate is doing.
+the decimated path is all you hear. That first tenth fades the decimated path
+in; the bit depth then runs twelve bits down to three across the rest of the
+bottom half, and the top half holds it there and folds in the mangling. Only
+the time knob will give the signal back, and only with amount low enough to
+leave the bit depth alone — around a quarter of the way up it is still nearly
+nine bits, which is inaudible next to what the rate is doing.
+
+Sixteen bits down to two, which is where the depth used to run, spent the
+knob's first quarter between -100 and -60 dB of error, none of which you can
+hear, then did the whole audible job in the second quarter and hit its floor
+at the middle.
 
 The mangling works on the quantizer's own level index rather than on a
 fixed-width word, so it always has the bits the crusher left to scramble, and

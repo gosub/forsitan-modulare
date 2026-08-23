@@ -681,7 +681,8 @@ struct Core {
 		// across half a knob spent its first quarter between -100 and -60 dB,
 		// which is nothing you can hear, and then did the whole audible job in
 		// the second quarter.
-		float bits = 16.f - 14.f * clamp(amt * 2.f, 0.f, 1.f);
+		float crush = clamp((amt - 0.1f) / 0.4f, 0.f, 1.f);
+		float bits = 12.f - 9.f * crush;
 		float xorAmt = clamp(amt * 2.f - 1.f, 0.f, 1.f);
 		// an integer count, so the mangling below can wrap inside it
 		int levels = (int)(std::pow(2.f, bits) + 0.5f);

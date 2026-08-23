@@ -563,6 +563,22 @@ static void testCrusherAmount() {
 	}
 	report("artifex", "crusher_mangling_has_no_dc", worstDc, worstDc < 0.02);
 
+	// and every step of the knob has to do something: no plateau, no floor
+	double prev = -1e9, worstStep = 1e9;
+	bool monotone = true;
+	for (float amt = 0.15f; amt <= 1.001f; amt += 0.05f) {
+		double dc, e;
+		Local::at(amt, &dc, &e);
+		if (prev > -1e8) {
+			double d = e - prev;
+			monotone = monotone && d > 0.0;
+			worstStep = std::min(worstStep, d);
+		}
+		prev = e;
+	}
+	report("artifex", "crusher_amount_never_stalls", worstStep,
+	       monotone && worstStep > 0.5);
+
 	// The mangling has to add harmonics. It used to add an offset instead:
 	// the rms frequency sat at 792 Hz from half travel to the top, unmoved,
 	// while the only thing the knob changed was how far up the waveform had
