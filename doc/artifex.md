@@ -163,10 +163,19 @@ sample is only a click.
 ### 5. crusher (yellow)
 
 Downsampling and bit mangling. **time** is the sample rate it decimates to,
-**amount** deepens the effect and then folds in an XOR of the sample with
-itself towards the top, which is where it stops sounding like a bitcrusher
-and starts sounding broken. Feedback adds a distorted tonal bed under
-everything.
+from 200 Hz at the far left up to the patch's own sample rate at the far
+right, where the decimator holds for exactly one sample and passes the signal
+through untouched. **amount** deepens the effect and then folds in an XOR of
+the sample with itself towards the top, which is where it stops sounding like
+a bitcrusher and starts sounding broken. Feedback adds a distorted tonal bed
+under everything.
+
+amount is the crush depth, not a dry/wet: past the first tenth of its travel
+the decimated path is all you hear, and the bottom half spends its range on
+bit depth, reaching two bits by the middle. Only the time knob will give the
+signal back, and only with amount low enough to leave the bit depth alone —
+around a quarter of the way up it is still nine bits, which is inaudible next
+to what the rate is doing.
 
 ### 6. slicer (light green)
 

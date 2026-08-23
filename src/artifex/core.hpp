@@ -663,7 +663,12 @@ struct Core {
 	// sample with a shift of itself, which is where it stops sounding like a
 	// bitcrusher and starts sounding broken.
 	void doCrusher(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
-		float rate = 200.f * std::pow(150.f, t);
+		// The top of the knob is the running sample rate, not a fixed number
+		// of kHz: there the decimator holds for exactly one sample and passes
+		// the signal through untouched. Stopping short of that — at sr/2, say
+		// — leaves a sample-and-hold on every other sample, which is a good
+		// 30 dB of grain that no knob position can get rid of.
+		float rate = 200.f * std::pow(sr / 200.f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = rate;
 		if (ct.trig)
@@ -679,7 +684,7 @@ struct Core {
 		float wetMix = clamp(amt * 10.f, 0.f, 1.f);
 
 		for (int c = 0; c < 2; c++) {
-			float f = clamp(rate * detune(c, ct.stereo), 20.f, 0.5f * sr);
+			float f = clamp(rate * detune(c, ct.stereo), 20.f, sr);
 			crushPhase[c] += f * ct.dt;
 			if (crushPhase[c] >= 1.f) {
 				crushPhase[c] -= std::floor(crushPhase[c]);

@@ -469,6 +469,46 @@ static void testWrapClick() {
 	report("artifex", "delay_min_no_wrap_click", worst / slew, worst < slew * 2.0);
 }
 
+// ââ the crusher reaches both ends ââââââââââââââââââââââââââââââââ
+// The rate used to stop at sr/2, which is a sample-and-hold on every other
+// sample: about 30 dB of grain sitting under the far right of the knob, so no
+// setting of it ever gave the signal back. The top of the travel is the
+// running sample rate, where the decimator holds for one sample and does
+// nothing.
+static void testCrusherRange() {
+	// error against the input, in dB, at one point of the time knob
+	struct Local {
+		static double errDb(float t) {
+			Artifex m;
+			long fr = 0;
+			// the core takes its rate from the event, not from process()
+			Module::SampleRateChangeEvent sre;
+			sre.sampleRate = SR;
+			sre.sampleTime = 1.f / SR;
+			m.onSampleRateChange(sre);
+			setMode(m, artifex_fx::MODE_CRUSHER);
+			m.params[Artifex::TIME_PARAM].setValue(t);
+			m.params[Artifex::AMT_PARAM].setValue(0.25f);  // 9 bits, well clear
+			m.params[Artifex::FBK_PARAM].setValue(0.f);
+			m.params[Artifex::LEVEL_PARAM].setValue(1.f);  // so clean can be clean
+			Rec rec;
+			runTone(m, fr, 0.5, 220.f, 4.f, &rec);
+			double se = 0.0, si = 0.0;
+			for (size_t i = rec.l.size() / 2; i < rec.l.size(); i++) {
+				double e = rec.l[i] - rec.in[i];
+				se += e * e;
+				si += (double)rec.in[i] * rec.in[i];
+			}
+			return 20.0 * std::log10(std::sqrt(se / si) + 1e-12);
+		}
+	};
+	double clean = Local::errDb(1.f);
+	double wrecked = Local::errDb(0.f);
+	report("artifex", "crusher_right_end_is_clean", clean, clean < -50.0);
+	report("artifex", "crusher_left_end_is_wrecked", wrecked, wrecked > -6.0);
+}
+
+
 // ── a trig does its job without a click ───────────────────────────────────────
 // The flanger, the panner, the pitcher and the shifter all reset a phase that a
 // read position or a gain depends on, so the output landed somewhere it was not
@@ -968,7 +1008,7 @@ static void testFilterCrossing() {
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
            testReplayer, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
-           testClipContinuity, testDelaySweep,
+           testClipContinuity, testDelaySweep, testCrusherRange,
            testEnvelope,
            testModeSelect,
            testFeedbackSafety, testAbuse)
