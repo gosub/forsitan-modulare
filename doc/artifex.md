@@ -206,10 +206,11 @@ every negative one and put the waveform entirely above zero.
 The pattern generator, applied to the amplitude of the signal. **time**
 chooses which of the 32 rhythms does the chopping — the same table the
 **rhythm** knob reads — and each hit fires a decay envelope whose length is
-**amount**. Left is a second-long decay that only breathes; right is 60 ms,
-which turns a drone into a rhythm part. Short slices get some of their
-loudness back automatically: chopping a drone into a rhythm should not also
-turn the volume down. **feedback** adds a chance of any step
+**amount**. The first tenth of its travel fades the chopping in, so a knob at
+zero passes the signal through; from there it is a second-long decay that only
+breathes, down to 60 ms at the far right, which turns a drone into a rhythm
+part. Short slices get some of their loudness back automatically: chopping a
+drone into a rhythm should not also turn the volume down. **feedback** adds a chance of any step
 inverting, so the pattern keeps changing, and **stereo** gives the two
 channels different rhythms.
 

@@ -757,10 +757,17 @@ struct Core {
 		// rather than a third of it, and short slices get some of their
 		// loudness back: chopping a drone into a rhythm should not also turn
 		// the volume down.
-		float decay = 1.f * std::pow(0.06f, amt);
+		//
+		// The decay starts where the wet fade below finishes rather than at
+		// zero. Stacked on top of each other, the long end of the range was
+		// unreachable: the second the chopping was fully there, at a sixth of
+		// the travel, the decay had already come down to 0.63 s, and the 1 s
+		// the knob claims sat at the one position where the mode is dry.
+		float slice = clamp((amt - 0.1f) / 0.9f, 0.f, 1.f);
+		float decay = 1.f * std::pow(0.06f, slice);
 		float coef = std::exp(-ct.dt / std::max(decay * 0.5f, 1e-4f));
-		float wetMix = clamp(amt * 6.f, 0.f, 1.f);
-		float makeup = 1.f + 0.6f * amt;
+		float wetMix = clamp(amt * 10.f, 0.f, 1.f);
+		float makeup = 1.f + 0.6f * slice;
 
 		for (int c = 0; c < 2; c++) {
 			if (ct.stepped) {

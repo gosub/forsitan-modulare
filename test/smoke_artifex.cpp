@@ -315,6 +315,47 @@ static void testSlicer() {
 	report("artifex", "slicer_stays_audible", wet / dry, wet > 0.25 * dry);
 }
 
+// ── the slicer's long decay is reachable ─────────────────────────────────────
+// The wet fade and the decay range used to be stacked on the same tenth of the
+// knob, so the long end could only be had dry. At amount 0 the mode chopped
+// nothing at all and a drone came out a drone; by the time it was fully
+// chopping, at a sixth of the travel, the decay was down to 0.63 s.
+static void testSlicerDecay() {
+	Artifex m;
+	long fr = 0;
+	Module::SampleRateChangeEvent sre;
+	sre.sampleRate = SR;
+	sre.sampleTime = 1.f / SR;
+	m.onSampleRateChange(sre);
+	setMode(m, artifex_fx::MODE_SLICER);
+	m.params[Artifex::TIME_PARAM].setValue(0.f);    // four on the floor
+	m.params[Artifex::AMT_PARAM].setValue(0.12f);   // just past the wet fade
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::TEMPO_PARAM].setValue(30.f);  // a hit every 2 s
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	Rec rec;
+	runTone(m, fr, 6.0, 300.f, 3.f, &rec);
+
+	// the envelope in 5 ms blocks, over the second half
+	size_t blk = (size_t)(0.005 * SR);
+	std::vector<double> env;
+	for (size_t i = rec.l.size() / 2; i + blk < rec.l.size(); i += blk)
+		env.push_back(rmsOf(rec.l, i, i + blk));
+	double loud = 0.0, quiet = 1e9;
+	size_t peak = 0;
+	for (size_t i = 0; i < env.size(); i++) {
+		if (env[i] > loud) { loud = env[i]; peak = i; }
+		quiet = std::min(quiet, env[i]);
+	}
+	// it has to be chopping here, not blending
+	report("artifex", "slicer_chops_past_the_fade", quiet / loud, quiet < 0.1 * loud);
+	// and the slice it chops has to be the long one the knob claims
+	double decay = (double)(env.size() - peak) * 0.005;
+	for (size_t i = peak; i < env.size(); i++)
+		if (env[i] < loud * 0.1) { decay = (double)(i - peak) * 0.005; break; }
+	report("artifex", "slicer_reaches_a_long_decay", decay, decay > 0.8);
+}
+
 // ── the two pitch modes move pitch, in the direction they claim ───────────────
 static void testPitch() {
 	// the shifter is the one that has to be in tune, so it is measured:
@@ -1145,7 +1186,7 @@ static void testFilterCrossing() {
 }
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
-           testFreezer, testPanner, testCrusher, testSlicer, testPitch,
+           testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
