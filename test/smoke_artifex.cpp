@@ -508,6 +508,72 @@ static void testCrusherRange() {
 	report("artifex", "crusher_left_end_is_wrecked", wrecked, wrecked > -6.0);
 }
 
+// ââ the amount knob works all the way up âââââââââââââââââââââââââ
+// Two ways it did not. The bit depth hit its floor at half travel, so the
+// second half had nothing left to crush; and the mangling that was supposed to
+// take over there ran an XOR on a signed integer, where two negative operands
+// give a positive result -- every negative sample flipped up, and above 0.8 the
+// output never crossed zero at all.
+static void testCrusherAmount() {
+	struct Local {
+		// mean, error-against-input and rms frequency, at one amount
+		static void at(float amt, double* dc, double* errDb, double* hz = NULL) {
+			Artifex m;
+			long fr = 0;
+			Module::SampleRateChangeEvent sre;
+			sre.sampleRate = SR;
+			sre.sampleTime = 1.f / SR;
+			m.onSampleRateChange(sre);
+			setMode(m, artifex_fx::MODE_CRUSHER);
+			m.params[Artifex::TIME_PARAM].setValue(1.f);   // no decimation
+			m.params[Artifex::AMT_PARAM].setValue(amt);
+			m.params[Artifex::FBK_PARAM].setValue(0.f);
+			m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+			Rec rec;
+			runTone(m, fr, 0.5, 220.f, 4.f, &rec);
+			double sum = 0.0, se = 0.0, si = 0.0;
+			size_t from = rec.l.size() / 2;
+			for (size_t i = from; i < rec.l.size(); i++) {
+				double e = rec.l[i] - rec.in[i];
+				sum += rec.l[i];
+				se += e * e;
+				si += (double)rec.in[i] * rec.in[i];
+			}
+			*dc = sum / (double)(rec.l.size() - from);
+			*errDb = 20.0 * std::log10(std::sqrt(se / si) + 1e-12);
+			if (hz) {
+				// energy of the first difference over energy: the rms
+				// frequency, without needing a transform
+				double d2 = 0.0, e2 = 0.0;
+				for (size_t i = from + 1; i < rec.l.size(); i++) {
+					double d = rec.l[i] - rec.l[i - 1];
+					d2 += d * d;
+					e2 += (double)rec.l[i] * rec.l[i];
+				}
+				*hz = std::sqrt(d2 / e2) * SR / (2.0 * M_PI);
+			}
+		}
+	};
+	// a symmetric input must come out symmetric, mangling and all
+	double worstDc = 0.0;
+	for (float amt = 0.5f; amt <= 1.001f; amt += 0.1f) {
+		double dc, e;
+		Local::at(amt, &dc, &e);
+		worstDc = std::max(worstDc, std::fabs(dc));
+	}
+	report("artifex", "crusher_mangling_has_no_dc", worstDc, worstDc < 0.02);
+
+	// The mangling has to add harmonics. It used to add an offset instead:
+	// the rms frequency sat at 792 Hz from half travel to the top, unmoved,
+	// while the only thing the knob changed was how far up the waveform had
+	// been pushed.
+	double dc, e, mid, top;
+	Local::at(0.5f, &dc, &e, &mid);
+	Local::at(1.0f, &dc, &e, &top);
+	report("artifex", "crusher_mangling_adds_harmonics", top / mid,
+	       top > mid * 1.5);
+}
+
 
 // ── a trig does its job without a click ───────────────────────────────────────
 // The flanger, the panner, the pitcher and the shifter all reset a phase that a
@@ -1008,7 +1074,7 @@ static void testFilterCrossing() {
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testPitch,
            testReplayer, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
-           testClipContinuity, testDelaySweep, testCrusherRange,
+           testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount,
            testEnvelope,
            testModeSelect,
            testFeedbackSafety, testAbuse)

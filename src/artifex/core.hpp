@@ -675,9 +675,16 @@ struct Core {
 			crushDip = 1.f;
 		crushDip *= std::exp(-ct.dt / 0.15f);
 		rate *= std::pow(0.05f, crushDip);
+		// The knob is bit depth in the bottom half and mangling in the top,
+		// but the depth only starts once the wet fade below has finished, and
+		// it starts at twelve bits rather than sixteen. Sixteen down to two
+		// across half a knob spent its first quarter between -100 and -60 dB,
+		// which is nothing you can hear, and then did the whole audible job in
+		// the second quarter.
 		float bits = 16.f - 14.f * clamp(amt * 2.f, 0.f, 1.f);
 		float xorAmt = clamp(amt * 2.f - 1.f, 0.f, 1.f);
-		float levels = std::pow(2.f, bits);
+		// an integer count, so the mangling below can wrap inside it
+		int levels = (int)(std::pow(2.f, bits) + 0.5f);
 		// amount owns the crushing itself, but the rule that a knob at zero
 		// leaves the signal alone holds here too: the first tenth of the
 		// travel fades the decimated path in
@@ -691,17 +698,28 @@ struct Core {
 				float x = loopIn(c, in[c], ct, fb * 0.5f);
 				// soft, not clamped: a hard clip with feedback into it turns
 				// every mode setting into the same full-scale square
-				float q = std::round(softClip(x / kClipVolts) * levels) / levels;
+				float s = softClip(x / kClipVolts);
+				int k = (int)(std::fabs(s) * (float)levels + 0.5f);
+				float q = (float)k / (float)levels;
 				if (xorAmt > 0.001f) {
-					// XOR the sample with a shift of itself: the top bits
-					// survive, so it still follows the signal, and the low
-					// ones scramble. Folding in a shift *up* instead would
-					// just be full-scale noise at every setting.
-					int32_t i = (int32_t)(q * 32767.f);
-					float mangled = clamp((float)(i ^ (i >> 3)) / 32767.f, -1.f, 1.f);
-					q = q * (1.f - xorAmt) + mangled * xorAmt;
+					// Gray-code the quantizer's own level index: the mangling
+					// has to live in the bits the crusher left, or it does
+					// nothing. Run on a fixed 15-bit word instead it either
+					// dies -- past the middle of the knob there are two bits
+					// left and XOR-ing the ones below them changes nothing the
+					// quantizer keeps -- or, taken on the signed integer, it
+					// flips every negative sample positive, which is where the
+					// 2.2 V of DC on a 4 V sine came from. Here the sign is
+					// carried outside and the index wraps inside the range, so
+					// the result is odd and bounded at any depth.
+					int g = (k ^ (k >> 1)) % (levels + 1);
+					// blended as a level, not as an index: with eight levels
+					// left, rounding the blend back to an integer makes the
+					// second half of the knob a staircase of three plateaus
+					q += ((float)g / (float)levels - q) * xorAmt;
 				}
-				crushHold[c] = q * 5.f;
+				q = clamp(q, 0.f, 1.f);
+				crushHold[c] = (s < 0.f ? -q : q) * 5.f;
 			}
 			out[c] = in[c] * (1.f - wetMix) + crushHold[c] * wetMix;
 		}

@@ -177,6 +177,12 @@ signal back, and only with amount low enough to leave the bit depth alone —
 around a quarter of the way up it is still nine bits, which is inaudible next
 to what the rate is doing.
 
+The mangling works on the quantizer's own level index rather than on a
+fixed-width word, so it always has the bits the crusher left to scramble, and
+it carries the sign outside the operation. It has to: the XOR of two negative
+two's-complement numbers is positive, so run on the signed sample it flipped
+every negative one and put the waveform entirely above zero.
+
 ### 6. slicer (light green)
 
 The pattern generator, applied to the amplitude of the signal. **time**
