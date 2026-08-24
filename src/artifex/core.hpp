@@ -769,13 +769,21 @@ struct Core {
 		float wetMix = clamp(amt * 10.f, 0.f, 1.f);
 		float makeup = 1.f + 0.6f * slice;
 
+		// One coin for the step, not one per channel. Drawn inside the loop
+		// below the two channels got different numbers, so feedback alone
+		// pulled them apart into two different rhythms with the stereo knob
+		// at zero -- and stereo is the only thing allowed to do that.
+		bool flip = false;
+		if (ct.stepped && fb > 0.001f)
+			flip = (next() % 1000u) < (uint32_t)(fb * 700.f);
+
 		for (int c = 0; c < 2; c++) {
 			if (ct.stepped) {
 				// stereo gives the two channels different rhythms
 				int p = pat + (c == 1 ? (int)(ct.stereo * 8.f + 0.5f) : 0);
 				bool hit = (forsitan_mod::rhythmPattern(p & 31)
 				            & (uint16_t)(0x8000u >> (ct.step & 15))) != 0;
-				if (fb > 0.001f && (next() % 1000u) < (uint32_t)(fb * 700.f))
+				if (flip)
 					hit = !hit;
 				if (hit)
 					sliceAtk[c] = kSliceAttack;

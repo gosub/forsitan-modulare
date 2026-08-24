@@ -448,32 +448,64 @@ static void testReplayer() {
 	report("artifex", "replayer_plays_backward", c - d, d < c);
 }
 
-// ── the stereo knob pulls the channels apart ──────────────────────────────────
+// ── stereo is the only thing that pulls the channels apart ───────────────────
+// The slicer drew its inversion coin inside the per-channel loop, so with
+// feedback up the two channels got different numbers and played two different
+// rhythms with the stereo knob at zero. The old check only ever looked at the
+// flanger, which is why the other eight modes went unwatched.
 static void testStereo() {
-	double width[2] = {0.0, 0.0};
-	for (int k = 0; k < 2; k++) {
-		Artifex m;
-		long fr = 0;
-		setMode(m, artifex_fx::MODE_FLANGER);
-		m.params[Artifex::AMT_PARAM].setValue(1.f);
-		m.params[Artifex::FBK_PARAM].setValue(0.3f);
-		m.params[Artifex::TIME_PARAM].setValue(0.4f);
-		m.params[Artifex::STEREO_PARAM].setValue(k == 0 ? 0.f : 1.f);
-		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
-		m.params[Artifex::GAIN_PARAM].setValue(1.f);
-		Rec rec;
-		runTone(m, fr, 2.0, 300.f, 3.f, &rec);
-		double sum = 0.0, diff = 0.0;
-		for (size_t i = rec.l.size() / 2; i < rec.l.size(); i++) {
-			double s = 0.5 * (rec.l[i] + rec.r[i]);
-			double d = 0.5 * (rec.l[i] - rec.r[i]);
-			sum += s * s;
-			diff += d * d;
+	struct Local {
+		// how far apart the two outputs are: 0 identical, 1 uncorrelated
+		static double width(int mode, float stereo) {
+			Artifex m;
+			long fr = 0;
+			Module::SampleRateChangeEvent sre;
+			sre.sampleRate = SR;
+			sre.sampleTime = 1.f / SR;
+			m.onSampleRateChange(sre);
+			setMode(m, mode);
+			m.params[Artifex::TIME_PARAM].setValue(0.4f);
+			m.params[Artifex::AMT_PARAM].setValue(0.5f);
+			m.params[Artifex::FBK_PARAM].setValue(0.5f);
+			m.params[Artifex::STEREO_PARAM].setValue(stereo);
+			m.params[Artifex::TEMPO_PARAM].setValue(120.f);
+			m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+			m.params[Artifex::GAIN_PARAM].setValue(1.f);
+			Rec rec;
+			runTone(m, fr, 4.0, 317.f, 3.f, &rec);
+			double sum = 0.0, diff = 0.0;
+			for (size_t i = rec.l.size() / 2; i < rec.l.size(); i++) {
+				double a = 0.5 * (rec.l[i] + rec.r[i]);
+				double d = 0.5 * (rec.l[i] - rec.r[i]);
+				sum += a * a;
+				diff += d * d;
+			}
+			return std::sqrt(diff / std::max(sum, 1e-12));
 		}
-		width[k] = std::sqrt(diff / std::max(sum, 1e-12));
+	};
+	// Every mode but the panner, whose two channels moving in opposite
+	// directions is the whole mode. The shifter holds its two channels half a
+	// crossfade window apart by design, which is worth about 1.6%.
+	double worst = 0.0;
+	int culprit = -1;
+	for (int mode = 0; mode < kModes; mode++) {
+		if (mode == artifex_fx::MODE_PANNER)
+			continue;
+		double w = Local::width(mode, 0.f);
+		if (w > worst) {
+			worst = w;
+			culprit = mode;
+		}
 	}
-	report("artifex", "stereo_mono_at_zero", width[0], width[0] < 0.05);
-	report("artifex", "stereo_widens", width[1], width[1] > width[0] + 0.1);
+	report("artifex", "stereo_mono_at_zero", worst, worst < 0.05);
+	if (worst >= 0.05)
+		std::printf("# widest at stereo 0 was mode %d\n", culprit + 1);
+
+	// and the knob still opens them up, on a mode from each half of the table
+	double flanger = Local::width(artifex_fx::MODE_FLANGER, 1.f);
+	double slicer = Local::width(artifex_fx::MODE_SLICER, 1.f);
+	report("artifex", "stereo_widens_the_flanger", flanger, flanger > 0.15);
+	report("artifex", "stereo_widens_the_slicer", slicer, slicer > 0.15);
 }
 
 // ── nothing clicks when the write pointer comes round ─────────────────────────

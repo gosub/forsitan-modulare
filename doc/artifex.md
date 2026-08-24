@@ -211,8 +211,9 @@ zero passes the signal through; from there it is a second-long decay that only
 breathes, down to 60 ms at the far right, which turns a drone into a rhythm
 part. Short slices get some of their loudness back automatically: chopping a
 drone into a rhythm should not also turn the volume down. **feedback** adds a chance of any step
-inverting, so the pattern keeps changing, and **stereo** gives the two
-channels different rhythms.
+inverting, so the pattern keeps changing — one coin per step, both channels,
+so **stereo** stays the only thing that tells them apart — and **stereo**
+gives the two channels different rhythms.
 
 ### 7. pitcher (red)
 
