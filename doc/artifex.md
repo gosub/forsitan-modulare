@@ -215,6 +215,15 @@ inverting, so the pattern keeps changing — one coin per step, both channels,
 so **stereo** stays the only thing that tells them apart — and **stereo**
 gives the two channels different rhythms.
 
+That last one is a selector rather than a width control, and the only one on
+the module: everywhere else stereo detunes the two channels by up to ±35% of
+a rate, which is continuous, and a rhythm is not a continuous quantity. Here
+it steps the right channel 0 to 8 places further along the same table, nine
+positions in all, so half travel is +4 and the top is +8 — a different pairing,
+not a wider one. Which pairs sound widest depends on the two rhythms, not on
+the knob: against four on the floor the widest is a quarter of the way up, and
+against son clave it is three quarters.
+
 ### 7. pitcher (red)
 
 Pitch shifting up by sweeping a delay tap with a ramp — crude on purpose,
