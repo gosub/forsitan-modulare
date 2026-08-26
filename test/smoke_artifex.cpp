@@ -1958,6 +1958,255 @@ static void testFeedbackSafety() {
 }
 
 // ── every knob at every extreme, in every mode ────────────────────────────────
+// ── stress and edges ────────────────────────────────────────────────────────
+// These were the last of the listening tests that were really arithmetic.
+
+// Everything at maximum, in every mode, on a hot input: finite and bounded is
+// what testAbuse already checks. What it did not check is the two failures
+// that matter more than a rail -- a mode that goes permanently silent, and one
+// that parks on a DC offset. Both are survivable-looking on a scope and both
+// make the module useless until it is reset.
+static void testExtremesStaySane() {
+	int worstSilent = -1, worstDc = -1;
+	double quietest = 1e9, mostDc = 0.0;
+	for (int mode = 0; mode < kModes; mode++) {
+		Artifex m;
+		long fr = 0;
+		setMode(m, mode);
+		m.params[Artifex::TIME_PARAM].setValue(1.f);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(1.f);
+		m.params[Artifex::STEREO_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(4.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::TEMPO_PARAM].setValue(300.f);
+		Rec rec;
+		runTone(m, fr, 6.0, 220.f, 5.f, &rec);
+		// the last second only: settling is allowed, staying dead is not
+		size_t from = rec.l.size() > (size_t)SR ? rec.l.size() - (size_t)SR : 0;
+		double e = 0.0, dc = 0.0;
+		for (size_t i = from; i < rec.l.size(); i++) {
+			e += (double)rec.l[i] * rec.l[i];
+			dc += rec.l[i];
+		}
+		size_t n = rec.l.size() - from;
+		double rms = std::sqrt(e / n), off = std::fabs(dc / n);
+		if (rms < quietest) { quietest = rms; worstSilent = mode; }
+		if (off > mostDc) { mostDc = off; worstDc = mode; }
+	}
+	if (quietest <= 0.01)
+		std::printf("# quietest at the extremes was mode %d\n", worstSilent + 1);
+	if (mostDc >= 0.5)
+		std::printf("# most DC at the extremes was mode %d\n", worstDc + 1);
+	report("artifex", "extremes_never_go_silent", quietest, quietest > 0.01);
+	report("artifex", "extremes_leave_no_dc", mostDc, mostDc < 0.5);
+}
+
+// Cycling modes with a long tail and the feedback up. A discontinuity is
+// expected -- the modes hold different buffers -- but not a full-scale pop.
+static void testModeCyclingDoesNotPop() {
+	Artifex m;
+	long fr = 0;
+	m.params[Artifex::TIME_PARAM].setValue(0.2f);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.8f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	setMode(m, 0);
+	runTone(m, fr, 2.0, 220.f, 3.f);            // fill the tails
+	float worst = 0.f;
+	int worstMode = 0;
+	float z1 = 0.f, z2 = 0.f;
+	for (int k = 0; k < kModes * 3; k++) {
+		setMode(m, k % kModes);
+		Rec rec;
+		runTone(m, fr, 0.25, 220.f, 3.f, &rec);
+		// Only the first few milliseconds: what is being checked is the step
+		// AT the change, and a mode left running with the feedback up is
+		// entitled to be as loud and as wild as its knobs say. Measuring the
+		// whole quarter second instead called the pitcher's feedback -- which
+		// climbs to the limiter and thrashes there, correctly, and is bounded
+		// by feedback_bounded -- a pop at a mode change it had nothing to do
+		// with.
+		size_t look = std::min(rec.l.size(), (size_t)(0.005 * SR));
+		for (size_t i = 0; i < look; i++) {
+			// the step against where the last two samples were heading
+			float pred = 2.f * z1 - z2;
+			float jump = std::fabs(rec.l[i] - pred);
+			if (jump > worst) { worst = jump; worstMode = k % kModes; }
+			z2 = z1;
+			z1 = rec.l[i];
+		}
+	}
+	if (worst >= 6.f)
+		std::printf("# worst pop was entering mode %d\n", worstMode + 1);
+	report("artifex", "mode_cycling_does_not_pop", worst, worst < 6.f);
+}
+
+// The numbers on the display are in seconds, hertz and semitones, so none of
+// them may move with the sample rate. This is the check that a rate-dependent
+// coefficient somewhere would fail, and it covers four modes at once.
+static void testSampleRateInvariance() {
+	struct Local {
+		static void readings(float sr, double* out) {
+			const int knobs = 3;
+			const float pos[knobs] = {0.25f, 0.5f, 0.75f};
+			int w = 0;
+			for (int mode = 0; mode < kModes; mode++) {
+				for (int k = 0; k < knobs; k++) {
+					Artifex m;
+					long fr = 0;
+					Module::SampleRateChangeEvent sre;
+					sre.sampleRate = sr;
+					sre.sampleTime = 1.f / sr;
+					m.onSampleRateChange(sre);
+					setMode(m, mode);
+					m.params[Artifex::TIME_PARAM].setValue(pos[k]);
+					m.params[Artifex::TEMPO_PARAM].setValue(120.f);
+					for (long i = 0; i < (long)(0.4 * sr); i++) {
+						m.inputs[Artifex::LEFT_INPUT].channels = 1;
+						m.inputs[Artifex::LEFT_INPUT].setVoltage(
+						    2.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / sr));
+						Module::ProcessArgs a;
+						a.sampleRate = sr;
+						a.sampleTime = 1.f / sr;
+						a.frame = fr++;
+						m.process(a);
+					}
+					// The crusher's rate spans 200 Hz to the sample rate --
+					// its top has to be sr for the clean end to be clean --
+					// so its reading is *supposed* to move, and neither the
+					// rate nor rate/sr is the invariant. The knob position
+					// recovered from it is: rate = 200 (sr/200)^t.
+					out[w++] = mode == artifex_fx::MODE_CRUSHER
+					           ? std::log(m.core.uiTime / 200.0)
+					             / std::log((double)sr / 200.0)
+					           : m.core.uiTime;
+				}
+			}
+		}
+	};
+	const float rates[4] = {44100.f, 48000.f, 96000.f, 192000.f};
+	double ref[kModes * 3];
+	Local::readings(48000.f, ref);
+	double worst = 0.0;
+	int worstMode = 0;
+	float worstRate = 0.f;
+	for (int r = 0; r < 4; r++) {
+		double got[kModes * 3];
+		Local::readings(rates[r], got);
+		for (int i = 0; i < kModes * 3; i++) {
+			double denom = std::max(std::fabs(ref[i]), 1e-3);
+			double err = std::fabs(got[i] - ref[i]) / denom;
+			if (err > worst) {
+				worst = err;
+				worstMode = i / 3;
+				worstRate = rates[r];
+			}
+		}
+	}
+	if (worst >= 0.02)
+		std::printf("# worst was mode %d at %.0f Hz\n", worstMode + 1, worstRate);
+	report("artifex", "display_reads_the_same_at_every_rate", worst, worst < 0.02);
+}
+
+// Bypass passes audio, and coming out of it does not leave the module dead.
+static void testBypass() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_DELAY);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(0.6f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	Rec pre;
+	runTone(m, fr, 1.0, 220.f, 3.f, &pre);
+	// Rack bypasses by routing the configured input straight to the output
+	// without calling process(), so the check that matters here is that the
+	// module still works after the gap rather than what happens during it.
+	double gap = 0.5;
+	for (long i = 0; i < (long)(gap * SR); i++)
+		fr++;
+	Rec post;
+	runTone(m, fr, 1.0, 220.f, 3.f, &post);
+	double a = rmsOf(pre.l, pre.l.size() / 2, pre.l.size());
+	double b = rmsOf(post.l, post.l.size() / 2, post.l.size());
+	report("artifex", "alive_after_a_bypass_gap", b, b > a * 0.5);
+}
+
+// A duplicated module comes up on its own state, not on a stale buffer: the
+// json round-trip is what Ctrl+D actually does.
+static void testStateRoundTrip() {
+	Artifex a;
+	long fr = 0;
+	setMode(a, artifex_fx::MODE_FREEZER);
+	a.params[Artifex::AMT_PARAM].setValue(0.8f);
+	a.bufSeconds = 2.5f;
+	a.core.fourPole = true;
+	a.core.filterInLoop = true;
+	a.core.filterDry = true;
+	a.quantizeModeChanges = false;
+	a.honourExternalClock = false;
+	a.monoInput = true;
+	runTone(a, fr, 1.0, 220.f, 3.f);
+	json_t* j = a.dataToJson();
+	Artifex b;
+	b.dataFromJson(j);
+	json_decref(j);
+	int same = (b.bufSeconds == a.bufSeconds)
+	           + (b.core.fourPole == a.core.fourPole)
+	           + (b.core.filterInLoop == a.core.filterInLoop)
+	           + (b.core.filterDry == a.core.filterDry)
+	           + (b.quantizeModeChanges == a.quantizeModeChanges)
+	           + (b.honourExternalClock == a.honourExternalClock)
+	           + (b.monoInput == a.monoInput);
+	report("artifex", "state_survives_a_duplicate", same, same == 7);
+	// and the copy makes sound rather than coming up on a stale buffer
+	long fr2 = 0;
+	Rec rec;
+	setMode(b, artifex_fx::MODE_FREEZER);
+	runTone(b, fr2, 2.0, 220.f, 3.f, &rec);
+	double rms = rmsOf(rec.l, rec.l.size() / 2, rec.l.size());
+	report("artifex", "duplicate_makes_sound", rms, rms > 0.05);
+}
+
+// A long run with the feedback modulated: no drift into silence, no DC piling
+// up, no noise floor climbing. Two minutes rather than the twenty a person
+// would have had to sit through, which is still a hundred laps of the tape.
+static void testLongRunStability() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_REPLAYER);
+	m.params[Artifex::TIME_PARAM].setValue(0.8f);
+	m.params[Artifex::AMT_PARAM].setValue(0.85f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	double rmsFirst = 0.0, rmsLast = 0.0, dcLast = 0.0;
+    long total = (long)(120.0 * SR);
+	double e = 0.0, dc = 0.0;
+	long n = 0;
+	for (long i = 0; i < total; i++) {
+		// feedback wandering slowly across its range
+		float fb = 0.5f + 0.45f * std::sin(2.f * (float)M_PI * 0.03f * (float)i / SR);
+		m.params[Artifex::FBK_PARAM].setValue(fb);
+		float x = 2.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR)
+		          + 0.5f * std::sin(2.f * (float)M_PI * 313.f * (float)fr / SR);
+		step(m, fr, x, x);
+		float y = m.outputs[Artifex::LEFT_OUTPUT].getVoltage();
+		e += (double)y * y;
+		dc += y;
+		n++;
+		if (i == (long)(10.0 * SR)) {
+			rmsFirst = std::sqrt(e / n);
+			e = dc = 0.0;
+			n = 0;
+		}
+	}
+	rmsLast = std::sqrt(e / n);
+	dcLast = std::fabs(dc / n);
+	double ratio = rmsLast / std::max(rmsFirst, 1e-9);
+	report("artifex", "long_run_does_not_fade_or_climb", ratio,
+	       ratio > 0.25 && ratio < 4.0);
+	report("artifex", "long_run_leaves_no_dc", dcLast, dcLast < 0.05);
+}
+
 static void testAbuse() {
 	long nans = 0;
 	float worst = 0.f;
@@ -2021,4 +2270,6 @@ SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudibl
            testEnvelope,
            testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock,
            testLfoModAttenuverter, testSteppedVersusFreeCv, testPatternGateDrivesTrig,
-           testFeedbackSafety, testAbuse)
+           testFeedbackSafety, testAbuse, testExtremesStaySane,
+           testModeCyclingDoesNotPop, testSampleRateInvariance, testBypass,
+           testStateRoundTrip, testLongRunStability)
