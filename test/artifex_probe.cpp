@@ -20,6 +20,7 @@
 #include <cstring>
 #include <ctime>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace artifex_fx;
@@ -343,6 +344,77 @@ static void measureLoopEnvelope(float sr) {
 	}
 }
 
+// What the filter and the stereo knob actually do in each mode. The suite
+// asserts the filter's reach and its placement options, and that stereo is
+// mono at zero, but not that every mode answers both knobs -- which is the
+// one part of the shared loop a listening test was still being asked for.
+static void measureSharedLoop(float sr) {
+	printf("\nthe shared loop, per mode: what each knob is worth\n");
+	printf("  mode      | filter L..R | stereo width | feedback\n");
+	for (int m = 0; m < MODE_COUNT; m++) {
+		auto bright = [&](float filt, float stereo, float fb) {
+			Core* c = makeCore(sr, kHardwareBuffer, m);
+			Ctl ct;
+			ct.mode = m;
+			ct.dt = 1.f / sr;
+			ct.time = 0.35f;
+			// Fully wet: the dry is never filtered, so any of it in the mix
+			// dilutes the reading rather than telling you about the filter.
+			ct.amount = 1.f;
+			ct.feedback = fb;
+			ct.filter = filt;
+			ct.stereo = stereo;
+			ct.stepSeconds = 0.125f;
+			double ph = 0.0, lo = 0.0, loE = 0.0, hiE = 0.0, sE = 0.0, dE = 0.0;
+			double k = 1.0 - std::exp(-2.0 * M_PI * 1500.0 / sr);
+			uint32_t rng = 99991u;
+			for (long i = 0; i < (long)(4.0 * sr); i++) {
+				// noise bursts on a beat: something for every mode to bite on
+				rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5;
+				float n = ((float)(rng >> 8) / 8388608.f - 1.f);
+				ph += 2.0 / sr;
+				if (ph >= 1.0) ph -= 1.0;
+				float env = ph < 0.1 ? 1.f - (float)(ph / 0.1) : 0.f;
+				float x = n * 2.f * env;
+				ct.stepped = (i % (long)(0.125 * sr)) == 0;
+				if (ct.stepped)
+					ct.step = (ct.step + 1) % 16;
+				float a = 0.f, b = 0.f;
+				c->process(ct, x, x, a, b);
+				if (i > (long)(1.0 * sr)) {
+					lo += (a - lo) * k;
+					loE += lo * lo;
+					hiE += (a - lo) * (a - lo);
+					double sm = 0.5 * (a + b), df = 0.5 * (a - b);
+					sE += sm * sm; dE += df * df;
+				}
+			}
+			delete c;
+			double br = 10.0 * std::log10((hiE + 1e-12) / (loE + 1e-12));
+			double wd = std::sqrt(dE / std::max(sE, 1e-12));
+			return std::make_pair(br, wd);
+		};
+		// Four modes put the filter inside the global loop rather than on a
+		// wet path, so it does nothing there until the loop is carrying
+		// something: measured with feedback well up, as the mode asks.
+		const float fb = 0.8f;
+		double dark = bright(-1.f, 0.f, fb).first;
+		double open = bright(0.f, 0.f, fb).first;
+		double thin = bright(1.f, 0.f, fb).first;
+		double w0 = bright(0.f, 0.f, fb).second;
+		double w1 = bright(0.f, 1.f, fb).second;
+		double fb0 = bright(0.f, 0.f, 0.f).first;
+		printf("  %-9s | %5.1f dB     | %.3f -> %.3f | %+5.1f dB\n",
+		       kNames[m], thin - dark, w0, w1, open - fb0);
+		(void)open;
+	}
+	printf("  (filter L..R is how far the knob moves the brightness, fully\n");
+	printf("   wet; stereo width is 0 for mono; feedback is what turning it\n");
+	printf("   up adds. The replayer reads nought for the filter because its\n");
+	printf("   feedback goes into the tape, and a locked tape is not\n");
+	printf("   recording -- that is the mode working, not the filter failing.)\n");
+}
+
 // Which modes keep going with no input and the feedback wide open.
 static void measureSelfOscillation(float sr) {
 	printf("\nself-oscillation: feedback 1.0, limiter off, silence in\n");
@@ -531,6 +603,7 @@ int main(int argc, char** argv) {
 		measureOverwrite(sr);
 		measureRecordHead(sr);
 		measureLoopEnvelope(sr);
+		measureSharedLoop(sr);
 		measureSelfOscillation(sr);
 		measureCpu(sr);
 		return 0;

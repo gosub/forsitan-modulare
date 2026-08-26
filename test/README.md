@@ -113,6 +113,11 @@ and only re-running this noticed. It prints four tables:
   by residual while stepping the envelope by a third. **Known open defect:**
   the seam is crossfaded only when the tape is locked, so coming off the lock
   lets it through once a play lap.
+- **the shared loop, per mode** — what the filter, stereo and feedback knobs
+  are each worth in every mode. The suite asserts the filter's reach and its
+  placement options and that stereo is mono at zero; this says whether each
+  *mode* answers those knobs, which is the part a listening test was still
+  being asked for.
 - **self-oscillation** — with feedback wide open, the limiter off and silence
   in, which modes sustain, which decay and which need input.
 - **CPU** — `process()` as a percentage of real time per mode, at both buffer
