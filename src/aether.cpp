@@ -22,11 +22,15 @@
 // doc/aether.md for the sources and for what is inference rather than
 // documentation.
 //
+// Both signal outputs are a dry/wet against the input jack, so the module can
+// sit in an effect send without a mixer beside it.
+//
 // Controls:
-//   Knobs : LEVEL, CARRIER, DEMOD, ERROR, TONE
+//   Knobs : LEVEL, CARRIER, DEMOD, ERROR, TONE, OUT MIX, ERROR MIX
 //   Trim  : CARRIER CV, DEMOD CV (attenuators)
 //   Switch: TYPE (the three phase comparators)
-//   In    : IN, CARRIER CV, CARRIER CLK, DEMOD CV, DEMOD CLK
+//   In    : IN, CARRIER CV, CARRIER CLK, DEMOD CV, DEMOD CLK,
+//           OUT MIX CV, ERROR MIX CV (each attenuated by its own knob)
 //   Out   : OUT, ERROR, TX (carrier clock), RX (demodulator clock)
 //   Lights: output level, error level
 
@@ -45,6 +49,8 @@ struct Aether : Module {
         ERROR_PARAM,
         TONE_PARAM,
         TYPE_PARAM,
+        OUT_MIX_PARAM,
+        ERROR_MIX_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -53,6 +59,8 @@ struct Aether : Module {
         CARRIER_CLK_INPUT,
         DEMOD_CV_INPUT,
         DEMOD_CLK_INPUT,
+        OUT_MIX_INPUT,
+        ERROR_MIX_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -95,6 +103,8 @@ struct Aether : Module {
         configParam(TONE_PARAM, 0.f, 1.f, 0.7f, "Tone", " Hz",
                     (float)(aether::kToneMax / aether::kToneMin),
                     (float)aether::kToneMin);
+        configParam(OUT_MIX_PARAM, 0.f, 1.f, 1.f, "Out dry/wet", "%", 0.f, 100.f);
+        configParam(ERROR_MIX_PARAM, 0.f, 1.f, 1.f, "Error dry/wet", "%", 0.f, 100.f);
         configSwitch(TYPE_PARAM, 0.f, 2.f, 0.f, "Loop type",
                      {"1 — exclusive-or, locks to harmonics",
                       "2 — phase-frequency, quiet when unlocked",
@@ -104,6 +114,8 @@ struct Aether : Module {
         configInput(CARRIER_CLK_INPUT, "Carrier clock (replaces the internal one)");
         configInput(DEMOD_CV_INPUT, "Demodulator CV");
         configInput(DEMOD_CLK_INPUT, "Demodulator clock (replaces the internal one)");
+        configInput(OUT_MIX_INPUT, "Out dry/wet CV (the knob attenuates it)");
+        configInput(ERROR_MIX_INPUT, "Error dry/wet CV (the knob attenuates it)");
         configOutput(SIGNAL_OUTPUT, "Recovered signal");
         configOutput(ERROR_OUTPUT, "Error");
         configOutput(CARRIER_OUTPUT, "Carrier clock");
@@ -131,6 +143,16 @@ struct Aether : Module {
         if (json_t* j = json_object_get(root, "oversampling"))
             osIndex = clamp((int)json_integer_value(j), 0, 4);
         lastOsIndex = -1;
+    }
+
+    // A dry/wet with no attenuverter: unpatched the knob is the amount, and
+    // patched it becomes the CV's attenuator, so 0-10 V spans dry to wet at a
+    // knob left where it already was.
+    float mixAmount(int paramId, int inputId) {
+        float m = params[paramId].getValue();
+        if (inputs[inputId].isConnected())
+            m *= inputs[inputId].getVoltage() * 0.1f;
+        return clamp(m, 0.f, 1.f);
     }
 
     void process(const ProcessArgs& args) override {
@@ -195,8 +217,20 @@ struct Aether : Module {
         for (int i = 0; i < OUTPUTS_LEN; i++) {
             v[i] = osOut[i].downsample();
             if (!std::isfinite(v[i])) { v[i] = 0.f; engine.reset(); }
-            outputs[i].setVoltage(clamp(v[i], -10.f, 10.f));
         }
+
+        // The dry side of both mixes is the signal at the jack, untouched by
+        // LEVEL: an effect's dry path is the one that does nothing. With
+        // nothing patched it is silence, so the broken radio only speaks at
+        // the wet end.
+        const float dry = inputs[SIGNAL_INPUT].getVoltage();
+        v[SIGNAL_OUTPUT] = crossfade(dry, v[SIGNAL_OUTPUT],
+                                     mixAmount(OUT_MIX_PARAM, OUT_MIX_INPUT));
+        v[ERROR_OUTPUT] = crossfade(dry, v[ERROR_OUTPUT],
+                                    mixAmount(ERROR_MIX_PARAM, ERROR_MIX_INPUT));
+
+        for (int i = 0; i < OUTPUTS_LEN; i++)
+            outputs[i].setVoltage(clamp(v[i], -10.f, 10.f));
 
         outEnv += (std::fabs(v[SIGNAL_OUTPUT]) * 0.2f - outEnv) * 0.002f;
         errEnv += (std::fabs(v[ERROR_OUTPUT]) * 0.2f - errEnv) * 0.002f;
@@ -234,6 +268,10 @@ struct AetherWidget : ModuleWidget {
 // @elem ERROR_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem OUT_LIGHT SmallLight 1.0 light "" 0.0
 // @elem ERROR_LIGHT SmallLight 1.0 light "" 0.0
+// @elem OUT_MIX_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem OUT_MIX_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem ERROR_MIX_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem ERROR_MIX_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem LABEL_IN label 0.0 label "in" 0.0 11.00 27.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 26.50 28.50
 // @elem LABEL_TYPE label 0.0 label "type" 0.0 45.00 28.50
@@ -253,6 +291,10 @@ struct AetherWidget : ModuleWidget {
 // @elem LABEL_OUT label 0.0 label "out" 0.0 24.00 113.50
 // @elem BOX_ERR panel_box 7.0 box "" 0.0 47.00 108.00
 // @elem LABEL_ERR label 0.0 label "error" 0.0 47.00 113.50
+// @elem LABEL_OMIX label 0.0 label "mix" 0.0 9.50 106.50
+// @elem LABEL_OMIXCV label 0.0 label "cv" 0.0 9.50 119.50
+// @elem LABEL_EMIX label 0.0 label "mix" 0.0 61.50 106.50
+// @elem LABEL_EMIXCV label 0.0 label "cv" 0.0 61.50 119.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 35.56 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -278,6 +320,10 @@ struct AetherWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(47.00f, 106.00f)), module, Aether::ERROR_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(29.00f, 103.00f)), module, Aether::OUT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(52.00f, 103.00f)), module, Aether::ERROR_LIGHT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(9.50f, 98.00f)), module, Aether::OUT_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.50f, 112.00f)), module, Aether::OUT_MIX_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(61.50f, 98.00f)), module, Aether::ERROR_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.50f, 112.00f)), module, Aether::ERROR_MIX_INPUT));
         // @layout:end
     }
 
