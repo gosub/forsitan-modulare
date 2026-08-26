@@ -6,3 +6,4 @@
 .DS_Store
 __pycache__/
 *.pyc
+/test/audition/config.json
