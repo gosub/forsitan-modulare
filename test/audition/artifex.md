@@ -34,9 +34,16 @@ Two kinds of item:
 - **Decide —** an open question of taste, resting on numbers the harness
   produces. An empty box means the choice is still mine to guess at.
 
-A section's ```scene block is the bench the runner builds for it, and an
-item's `scene:` line is what that item changes. They are the **Start:** line
-in a form a script can read, kept beside it so the two cannot drift apart.
+The bench below is the code every item starts from; a section adds to it and
+an item changes it. It is the **Start:** line in a form the runner can build,
+kept beside it so the two cannot drift apart.
+
+```python
+fx = vcv.module("artifex", gain=1.0, level=0.8)
+out = vcv.module("Audio 2")
+fx["left"] >> out[0]
+fx["right"] >> out[1]
+```
 
 Anything that yields a number rather than a verdict is not in this list. It
 lives in `test/artifex_probe measure`, which prints overwrite times, the
@@ -239,59 +246,60 @@ half travel.
 **Start:** 220 Hz sine at 2 V · **time** until the display reads **+1.0x** ·
 **amount** fully right (locked) · scope on **out L**.
 
-```scene
-source = sine 220
-fxmode = replayer
-time = 0.8333
-amt = 100%
-fbk = 0%
+```python
+sine = vcv.module("VCO", freq=vcv.hz(220))
+sine["sine"] >> fx["left"]
+fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
 ```
 
 - [x] 3.8.1. Sweep **time** and check the display against what you hear:
       centre a quarter speed, the ends two octaves. No silence at dead centre.
-      `scene: time = 0.5`
+      `fx.set(time=0.5)`
 - [x] 3.8.2. Left backwards, right forwards. Cross the centre slowly on speech
       or drums: continuous, no click or jump.
-      `scene: source = drums`
+      `vcv.source("drums", loop=1, play=1) >> fx`
 - [x] 3.8.3. **Clicks.** At several speeds: hit **trig** repeatedly; take
       **amount** to 0.9 and back; to 0.5 and back; jump **time**. No click, dip
       or bump, and a 2 V tone stays a 2 V tone. Speed changes glide over a few
       tens of ms — that is the tape motor, not a fault.
-      `scene: source = drums`
+      `vcv.source("drums", loop=1, play=1) >> fx`
 - [x] 3.8.4. Same, overdubbing: **amount** 0.75. **trig**, retune the sine to
       110 Hz, **trig** again. Nothing once a lap.
-      `scene: amt = 75%`
+      `fx.set(amt="75%")`
 - [x] 3.8.5. **amount** fully right locks, and so does the last fiftieth of
       the travel. Easing down off the lock lets the input in gently, no cliff.
       Move further left: new audio overwrites until nothing of the original is
       left.
 - [x] 3.8.6. Drop **amount** to 0.9 and leave it: nothing once a lap, from
       then on.
-      `scene: amt = 90%`
+      `fx.set(amt="90%")`
 - [-] 3.8.7. The locked loop sits at the level that went in — whatever amount
       you recorded at, and both kinds of material: non-repeating, and a
       sustained drone. Neither should drift over a dozen laps.
 - [-] 3.8.8. Overdubbing a steady tone combs, and that is not a fault. Around
       half travel the two weights come out equal and the nulls go all the way
       down. Sweep for it, then move off it.
-      `scene: amt = 50%`
+      `fx.set(amt="50%")`
 - [-] 3.8.9. **feedback** applies to incoming signal only: lock the tape and
       turn it up. Little or no effect on what is playing.
-      `scene: fbk = 60%`
+      `fx.set(fbk="60%")`
 - [-] 3.8.10. **trig** fills the tape over one lap, not instantly. Steady tone,
       **amount** fully right, trig repeatedly at several speeds: nothing during
       the fill or at the moment it ends.
 - [-] 3.8.11. **Decide —** every fade in the mode is 10 ms, the overlap of a
       diagonal tape splice. On percussive material, does a **trig** land too
       soft? Gesture speed and splice length are one number and can be split.
-      `scene: source = drums`
+      `vcv.source("drums", loop=1, play=1) >> fx`
 - [-] 3.8.12. **Decide —** the record head writes to one slot while the play
       head reads between two, leaving a tone at any speed but 1x. Run
-      `artifex_probe measure` for where it sits, then sweep **time** slowly
-      through 0.85 with **amount** at 0.5 and listen for it. An interpolated
-      write would remove it and darken the tape away from 1x. Audible enough
-      to be worth that?
-      `scene: amt = 50%, time = 0.85`
+      `artifex_probe measure` for where it sits, then open the **VCA** to sweep
+      **time** through 0.85 and listen for it. An interpolated write would
+      remove it and darken the tape away from 1x. Audible enough to be worth
+      that?
+      ```python
+      fx.set(amt="50%", time=0.85, time_att=0.15)
+      vcv.modulate(fx["free"], rate=0.05)
+      ```
 
 ### 3.9 shifter (pink)
 
