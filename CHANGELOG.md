@@ -90,7 +90,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     Both signal outputs are a dry/wet against the **in** jack, so the module can
     sit in an effect send with nothing beside it. The bottom row is that mix,
-    read across: trimmer, **cv**, **out**, **error**, **cv**, trimmer. Neither
+    read across: **cv**, trimmer, **out**, **error**, trimmer, **cv**, each
+    trimmer sharing one **mix** label with its jack. Neither
     has an attenuverter — unpatched the trimmer is the amount, and patched it
     is the attenuator for the **cv** jack beside it, so 0-10 V sweeps dry to
     wet from wherever the hand left it. Both start fully wet, which is where

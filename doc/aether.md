@@ -80,7 +80,7 @@ standalone oscillator when nothing is patched at all.
 | **in** | signal in. Unpatched, it is a +5 V bias |
 | **cv** ×2 | exponential CV over each clock, 1 V/oct at a fully open attenuator. **Unpatched, each is fed the signal itself**, so its attenuator becomes audio-rate FM depth |
 | **clk** ×2 | external clock in. Any signal crossing zero replaces that side's internal clock, and that side's CV stops doing anything |
-| **cv** ×2 (bottom) | CV over the **mix** trimmer beside it. Patched, that trimmer becomes its attenuator: 0–10 V is dry to wet |
+| **cv** ×2 (bottom, outermost) | CV over the **mix** trimmer they share a label with. Patched, that trimmer becomes its attenuator: 0–10 V is dry to wet |
 | **out** | the recovered signal, with a level LED |
 | **error** | a comparator across input and output, with a level LED |
 | **tx** | the carrier clock, a wide-range square. Not 1 V/oct |
@@ -163,9 +163,10 @@ behaviours agree with the trimmer fully clockwise. Negative volts do not push
 past dry.
 
 They are trimmers rather than knobs because the whole mix is one row —
-trimmer, **cv**, **out**, **error**, **cv**, trimmer — and six full-sized
+**cv**, trimmer, **out**, **error**, trimmer, **cv** — and six full-sized
 controls do not fit across 14 HP: a knob apiece leaves a fifth of a
-millimetre at each panel edge.
+millimetre at each panel edge. Each trimmer and its jack share one **mix**
+label between them, as the clock **cv** clusters above do.
 
 Both default to fully wet, and with nothing in **in** the dry side is silence
 — the broken radio only speaks at the wet end of the knob.

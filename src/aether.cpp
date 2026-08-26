@@ -24,8 +24,9 @@
 //
 // Both signal outputs are a dry/wet against the input jack, so the module can
 // sit in an effect send without a mixer beside it. The bottom row is that
-// mix: trimmer, cv, out, error, cv, trimmer — a knob apiece would have left
-// a fifth of a millimetre at the panel edges.
+// mix: cv, trimmer, out, error, trimmer, cv — a knob apiece would have left
+// a fifth of a millimetre at the panel edges. One "mix" label names each
+// trimmer and its jack, the way a knob names its own CV cluster.
 //
 // Controls:
 //   Knobs : LEVEL, CARRIER, DEMOD, ERROR, TONE
@@ -293,10 +294,8 @@ struct AetherWidget : ModuleWidget {
 // @elem LABEL_OUT label 0.0 label "out" 0.0 27.50 111.50
 // @elem BOX_ERR panel_box 7.0 box "" 0.0 43.50 106.00
 // @elem LABEL_ERR label 0.0 label "error" 0.0 43.50 111.50
-// @elem LABEL_OMIX label 0.0 label "mix" 0.0 5.80 111.50
-// @elem LABEL_OMIXCV label 0.0 label "cv" 0.0 14.50 111.50
-// @elem LABEL_EMIX label 0.0 label "mix" 0.0 65.30 111.50
-// @elem LABEL_EMIXCV label 0.0 label "cv" 0.0 56.60 111.50
+// @elem LABEL_OMIX label 0.0 label "mix" 0.0 11.60 111.50
+// @elem LABEL_EMIX label 0.0 label "mix" 0.0 59.50 111.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 35.56 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -322,10 +321,10 @@ struct AetherWidget : ModuleWidget {
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(43.50f, 104.00f)), module, Aether::ERROR_OUTPUT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(32.50f, 101.00f)), module, Aether::OUT_LIGHT));
         addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(48.50f, 101.00f)), module, Aether::ERROR_LIGHT));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(5.80f, 104.00f)), module, Aether::OUT_MIX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.50f, 104.00f)), module, Aether::OUT_MIX_INPUT));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(65.30f, 104.00f)), module, Aether::ERROR_MIX_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(56.60f, 104.00f)), module, Aether::ERROR_MIX_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(15.90f, 104.00f)), module, Aether::OUT_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(7.30f, 104.00f)), module, Aether::OUT_MIX_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(55.20f, 104.00f)), module, Aether::ERROR_MIX_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(63.80f, 104.00f)), module, Aether::ERROR_MIX_INPUT));
         // @layout:end
     }
 
