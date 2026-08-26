@@ -55,6 +55,76 @@ cutting a release. The essentials:
   `res/<name>.svg`, add the `plugin.json` entry (with `manualUrl`), create
   `doc/<slug>.md`, and add the readme table row.
 
+## Auditions
+
+Every new module gets an **audition**: `test/audition/<slug>.md`, the pass a
+human does by ear and eye. It is the companion to `make check`, not a copy of
+it, and the split between them is the whole discipline.
+
+- **If it yields a number, it is not an audition item.** It belongs in
+  `test/smoke_<slug>` or `test/<slug>_probe measure`. A figure measured by
+  hand is measured once, against whatever the build was that afternoon, and is
+  wrong by the next commit — artifex carried a hand-measured "8x" that was
+  -78 dB by the time anyone re-ran it. Automating section 4-7 of that audition
+  cut 39 items to 13 and grew the harness from 96 checks to 115.
+- **Keep it short.** An audition nobody finishes tests nothing. Prefer a
+  dozen items per module over fifty; if a behaviour needs more than a few
+  lines, it is more than one item, so split it rather than lengthen it.
+- **Two lines per item: what to set, and what to expect** — including "this is
+  not a fault" where a surprising behaviour is intended. No bug history, no
+  DSP mechanism, no argument for the design. Concrete numbers to check against
+  are welcome; explanations are not.
+- **The section carries the setup, not the first item.** Each section opens
+  with a **Start:** line naming source and every knob that matters, and the
+  items say only what they change. Where a setting is not findable by eye,
+  name the readout: "time until the display reads +1.0x", not "time at 5/6".
+- Two kinds of item: plain ones, which are tests, and **Decide —** ones, open
+  questions of taste resting on numbers the harness prints.
+- `- [ ] N.N.N.` with 6-space continuation, wrapped at 80 columns. **Tick
+  marks belong to the user**: anchor edits on the text without the checkbox,
+  and never tick a box on their behalf.
+
+### Running one
+
+`tools/audition/audition.py` builds the scene as a patch and launches Rack on
+it, with the item's text in a Notes module beside the rack:
+
+```
+python3 tools/audition/audition.py artifex --list
+python3 tools/audition/audition.py artifex 3.8.6
+python3 tools/audition/audition.py artifex 3.8.6 --dry-run
+```
+
+The scene lives **in the audition**, beside the words it belongs to, so the
+instruction and the setup cannot drift apart. A section's ```scene block is
+its bench; an item's `scene:` line is a delta on it:
+
+````
+```scene
+source = sine 220
+fxmode = replayer
+time = 0.8333
+amt = 100%
+```
+````
+
+- `source` is `silence`, `sine <hz>`, or a name from the config.
+- Everything else is a **knob by name**, resolved out of `src/<slug>.cpp` by
+  `tools/audition/modspec.py` — the enum gives the index, `configParam` the
+  range, `configSwitch` the labels, so `fxmode = replayer` and `amt = 90%`
+  both work. Never write an index: new params are *appended* to a shipped
+  module, so every index after an insertion point would shift while the
+  audition kept the old number and silently set the wrong knob. An unknown
+  name raises rather than auditioning the wrong control.
+- `menu = key=value` sets context-menu state (the module's `dataToJson` keys).
+- The patch sets the **starting state only**. Gestures ("sweep time slowly")
+  and source amplitude stay prose.
+
+`test/audition/config.json` holds everything local to one machine — where Rack
+is, the sound card, sample paths — and is **not tracked**. Copy
+`config.example.json`. This is what keeps `~/dl/...` paths out of the repo
+while still letting the runner launch anything.
+
 ## Build
 
 ```
