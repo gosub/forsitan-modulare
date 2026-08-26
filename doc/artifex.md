@@ -362,8 +362,11 @@ play head could hide.
 The other pitch shifter — a crossfaded pair of taps, which avoids the
 pitcher's stuttering at the cost of its bite. **time** shifts down below the
 centre and up above it, with unity in the middle. Feedback with a small shift
-is where it earns its keep: each pass shifts again, so the tail walks away in
-pitch. **stereo** gives the two channels different shifts, and a small
+is where it earns its keep: the output returns to the input and is shifted
+again, so a held note becomes a stack of intervals sounding at once, each
+layer another interval away and quieter than the last. It is not a delay, but
+the shift is done by sweeping an 80 ms window, so on a transient the layers
+arrive spread over that window and the stack becomes a cascade instead. **stereo** gives the two channels different shifts, and a small
 detune is a very wide unison.
 
 ## The filter
