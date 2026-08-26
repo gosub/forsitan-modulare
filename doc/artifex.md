@@ -82,7 +82,7 @@ subtracted, relaxing over two milliseconds.
 | 6 | **slicer** | which rhythm chops | decay + wet | chance of an inverted step | a different rhythm per channel | fire the envelope |
 | 7 | **pitcher** | window size | shift amount + wet | global | L/R window detune | enlarge the window |
 | 8 | **replayer** | tape speed and direction, never stopped | record/lock | feedback into the tape | L/R speed detune | fill the tape |
-| 9 | **shifter** | shift, down below centre and up above | dry/wet | global | a different shift per channel | resync both channels |
+| 9 | **shifter** | shift, down below centre and up above | dry/wet | global | a different shift per channel | resync the channels (nothing at stereo 0) |
 
 ### 1. delay (green)
 
@@ -366,8 +366,13 @@ is where it earns its keep: the output returns to the input and is shifted
 again, so a held note becomes a stack of intervals sounding at once, each
 layer another interval away and quieter than the last. It is not a delay, but
 the shift is done by sweeping an 80 ms window, so on a transient the layers
-arrive spread over that window and the stack becomes a cascade instead. **stereo** gives the two channels different shifts, and a small
-detune is a very wide unison.
+arrive spread over that window and the stack becomes a cascade instead.
+
+**stereo** gives the two channels different shifts, and a small detune is a
+very wide unison. **trig** squares the right channel back up to
+half a window from the left, which is where the two started: different shifts
+run at different rates, so the image wanders, and a trig puts it back. At
+stereo 0 there is one rate, nothing drifts, and the trig has nothing to do.
 
 ## The filter
 
