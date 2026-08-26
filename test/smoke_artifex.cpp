@@ -13,6 +13,7 @@
 #include "../src/artifex.cpp"
 
 #include <vector>
+#include <algorithm>
 
 static const int kModes = 9;
 
@@ -398,32 +399,626 @@ static void testPitch() {
 	report("artifex", "pitcher_goes_up", up, up > 440.0);
 }
 
-// ── the replayer runs its tape backwards below the centre ─────────────────────
-static void testReplayer() {
+// ── the replayer's loop does not click once a lap ────────────────────────────
+// One slot along from the newest sample on the tape is a sample written a whole
+// lap earlier, and the play head crossing that splice stepped by however far
+// apart the two moments were: 3 V of it with the tape locked, once every lap.
+static void testReplayerSplice() {
+	const float knob[4] = {5.f / 6.f, 0.84f, 0.75f, 1.f / 6.f};
+	// The step at the splice depends on where a lap falls in the tone's cycle,
+	// so drive four of them: a lap of 345 cycles joins by itself, 344.25 meets
+	// its own peak. n is 55204 samples.
+	const double lap[4] = {345.0, 344.5, 344.25, 344.75};
+	double worst = 0.0;
+	for (int k = 0; k < 4; k++) {
+		Artifex m;
+		long fr = 0;
+		Module::SampleRateChangeEvent sre;
+		sre.sampleRate = SR;
+		sre.sampleTime = 1.f / SR;
+		m.onSampleRateChange(sre);
+		setMode(m, artifex_fx::MODE_REPLAYER);
+		m.params[Artifex::TIME_PARAM].setValue(knob[k]);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);   // locked: the tape is all you hear
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		float hz = (float)(lap[k] * SR / 55204.0);
+		Rec rec;
+		runTone(m, fr, 6.0, hz, 3.f, &rec);
+		double slew = 2.0 * M_PI * hz / SR * 3.0;
+		// skip the first laps, where the tape is still filling
+		for (size_t i = (size_t)(3.0 * SR) + 1; i < rec.l.size(); i++)
+			worst = std::max(worst, (double)std::fabs(rec.l[i] - rec.l[i - 1]) / slew);
+	}
+	// as a multiple of what one sample of the tone moves by itself
+	report("artifex", "replayer_splice_does_not_click", worst, worst < 2.5);
+}
+
+// ── the loop join neither steps nor bumps ───────────────────────────────────
+// Two things met here. The loop was shortened by a fixed millisecond to make
+// room for the join, which picks a length with no relation to what is on the
+// tape: 220 Hz on a 1.15 s tape is 253.02 cycles, six degrees from joining
+// itself, and a millisecond off moves that to seventy-two. Then, once the
+// length was chosen by looking at the tape instead, the two ends matched -- and
+// an equal-power crossfade of two signals that match sums them to +3 dB. The
+// step became a bump, 2.25 V once a lap on a tape holding 2.
+static void testReplayerJoin() {
+	double worstBump = 0.0;
+	const float hz[4] = {220.f, 317.f, 55.f, 1000.f};
+	for (int k = 0; k < 4; k++) {
+		Artifex m;
+		long fr = 0;
+		Module::SampleRateChangeEvent sre;
+		sre.sampleRate = SR;
+		sre.sampleTime = 1.f / SR;
+		m.onSampleRateChange(sre);
+		setMode(m, artifex_fx::MODE_REPLAYER);
+		m.params[Artifex::TIME_PARAM].setValue(5.f / 6.f);   // +1.00x
+		m.params[Artifex::AMT_PARAM].setValue(1.f);          // locked all through
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		runTone(m, fr, 3.0, hz[k], 2.f);                     // past the fill
+		Rec rec;
+		runTone(m, fr, 5.0, hz[k], 2.f, &rec);               // four laps
+		// nothing on the tape can be louder than what went onto it
+		double peak = 0.0;
+		for (size_t i = 0; i < rec.l.size(); i++)
+			peak = std::max(peak, (double)std::fabs(rec.l[i]));
+		worstBump = std::max(worstBump, peak / 2.0);
+	}
+	report("artifex", "replayer_join_does_not_bump", worstBump, worstBump < 1.03);
+}
+
+// ── leaving the lock does not leave the tape clicking ───────────────────────
+// The edge the tape already had is where a recording pass begins, and it fades
+// by `keep` each time the record head laps over it -- once per lap, not a
+// little every sample. Ducking it for exactly one lap is right only for a
+// fill, where keep is zero and one lap erases everything: at a knob near the
+// top keep is 0.995, so a lap later the edge is still all but intact, and it
+// clicked every lap from then on.
+static void testReplayerUnlock() {
+	double worst = 0.0;
+	const float to[4] = {0.9f, 0.75f, 0.5f, 0.f};
+	for (int k = 0; k < 4; k++) {
+		Artifex m;
+		long fr = 0;
+		Module::SampleRateChangeEvent sre;
+		sre.sampleRate = SR;
+		sre.sampleTime = 1.f / SR;
+		m.onSampleRateChange(sre);
+		setMode(m, artifex_fx::MODE_REPLAYER);
+		m.params[Artifex::TIME_PARAM].setValue(5.f / 6.f);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		runTone(m, fr, 3.0, 220.f, 2.f);            // fill and settle, locked
+		m.params[Artifex::AMT_PARAM].setValue(to[k]);
+		Rec rec;
+		runTone(m, fr, 4.0, 220.f, 2.f, &rec);      // three laps of overdub
+		std::vector<double> d2;
+		for (size_t i = 2; i < rec.l.size(); i++)
+			d2.push_back(std::fabs((double)rec.l[i] - 2.0 * rec.l[i - 1] + rec.l[i - 2]));
+		std::vector<double> sorted = d2;
+		std::sort(sorted.begin(), sorted.end());
+		worst = std::max(worst, sorted.back()
+		                        / std::max(sorted[(size_t)(sorted.size() * 0.999)], 1e-9));
+	}
+	report("artifex", "replayer_unlock_does_not_click", worst, worst < 40.0);
+}
+
+// ── nothing the replayer does makes a click ─────────────────────────────────
+// Measured the right way. Curvature against the same signal's own curvature
+// catches a step, which is what the early faults were, but it is nearly blind
+// to what fixing them leaves behind -- a two-millisecond fade, a small dip, a
+// corner where a ramp stops. Those are quiet, smooth, and completely audible
+// on a sustained tone.
+//
+// So: for any sinusoid at w, x[n] = 2cos(w)x[n-1] - x[n-2] exactly, whatever
+// its amplitude and phase. The residual of that is zero for a clean tone,
+// immune to slow drift, and shows anything else at all. The plain second
+// difference is the same expression with the coefficient rounded to 2, which
+// leaves 2-2cos(w) of the tone behind and sets a floor 62 dB down that
+// everything interesting hides under.
+static void testReplayerClicks() {
+	struct Local {
+		// worst 1 ms of residual, in dB below the signal
+		static double run(float knob, int scenario, long trigOffset) {
+			Artifex m;
+			long fr = 0;
+			Module::SampleRateChangeEvent sre;
+			sre.sampleRate = SR;
+			sre.sampleTime = 1.f / SR;
+			m.onSampleRateChange(sre);
+			setMode(m, artifex_fx::MODE_REPLAYER);
+			m.params[Artifex::TIME_PARAM].setValue(knob);
+			m.params[Artifex::AMT_PARAM].setValue(1.f);
+			m.params[Artifex::FBK_PARAM].setValue(0.f);
+			m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+			m.params[Artifex::GAIN_PARAM].setValue(1.f);
+			runTone(m, fr, trigOffset != 0 ? 3.0 : 4.0, 220.f, 2.f);
+			if (trigOffset < 0) {
+				// Wait for the moment that matters instead of guessing at it.
+				// The worst trig is the one that lands with the play head on
+				// the record head: a lap later the fill ends with the head
+				// still inside the duck's window, which is where the duck, the
+				// loop fold and the crossfade all arrive at once. Sampling the
+				// lap at random misses it -- the window is a few hundred
+				// samples out of fifty-five thousand.
+				int n = m.core.tape[0].size();
+				for (long i = 0; i < (long)(3.0 * SR); i++) {
+					double gap = m.core.tapePos[0] - m.core.tapeWrite[0];
+					gap -= std::floor(gap / n) * n;
+					if (gap > 0.5 * n)
+						gap -= n;
+					if (std::fabs(gap) < 2.0)
+						break;
+					float x = 2.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR);
+					step(m, fr, x, x);
+				}
+			}
+			else
+				for (long i = 0; i < trigOffset; i++) {
+					float x = 2.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR);
+					step(m, fr, x, x);
+				}
+			Rec rec;
+			std::vector<bool> nearHead;
+			long n = (long)(trigOffset != 0 ? 4.0 * SR : 8.0 * SR);
+			for (long i = 0; i < n; i++) {
+				switch (scenario) {
+				case 0:                                     // a trig
+					if (i == 100) m.params[Artifex::TRIG_PARAM].setValue(1.f);
+					if (i == 300) m.params[Artifex::TRIG_PARAM].setValue(0.f);
+					break;
+				case 1:                                     // off the lock and back
+					if (i == (long)(2.0 * SR)) m.params[Artifex::AMT_PARAM].setValue(0.9f);
+					if (i == (long)(5.0 * SR)) m.params[Artifex::AMT_PARAM].setValue(1.f);
+					break;
+				case 2:                                     // a deep overdub and back
+					if (i == (long)(2.0 * SR)) m.params[Artifex::AMT_PARAM].setValue(0.5f);
+					if (i == (long)(5.0 * SR)) m.params[Artifex::AMT_PARAM].setValue(1.f);
+					break;
+				case 3:                                     // the speed, twice
+					if (i == (long)(2.0 * SR)) m.params[Artifex::TIME_PARAM].setValue(0.4f);
+					if (i == (long)(5.0 * SR)) m.params[Artifex::TIME_PARAM].setValue(0.9f);
+					break;
+				}
+				float x = 2.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR);
+				step(m, fr, x, x);
+				rec.l.push_back(m.outputs[Artifex::LEFT_OUTPUT].getVoltage());
+				// Whether this sample was read near a live record head.
+				// Crossing the head while a pass is writing is a real take
+				// boundary faded through in a couple of milliseconds -- it
+				// is the effect, not a defect -- so those stretches are
+				// excluded and everything else is held to the floor.
+				int nt = m.core.tape[0].size();
+				double gap = m.core.tapePos[0] - m.core.tapeWrite[0];
+				gap -= std::floor(gap / nt) * nt;
+				float win = artifex_fx::kEdgeFade * SR
+				            * std::max(std::fabs(m.core.uiTime - 1.f), 1.f);
+				nearHead.push_back(m.core.passFade > 0.f
+				                   && (gap < 2.f * win || gap > nt - 4.0));
+			}
+			// what the tape should be playing, and the predictor tuned to it
+			double f = 220.0 * std::fabs(m.core.uiTime);
+			double c2 = 2.0 * std::cos(2.0 * M_PI * f / SR);
+			double e = 0.0;
+			for (size_t i = 0; i < rec.l.size(); i++)
+				e += (double)rec.l[i] * rec.l[i];
+			double rms = std::sqrt(e / rec.l.size());
+			size_t blk = (size_t)(0.001 * SR);
+			std::vector<double> env;
+			for (size_t i = 2; i + blk < rec.l.size(); i += blk) {
+				double q = 0.0;
+				bool masked = false;
+				for (size_t j = i; j < i + blk; j++) {
+					double r = rec.l[j] - c2 * rec.l[j - 1] + rec.l[j - 2];
+					q += r * r;
+					masked = masked || nearHead[j];
+				}
+				if (!masked)
+					env.push_back(std::sqrt(q / blk));
+			}
+			std::vector<double> sorted = env;
+			std::sort(sorted.begin(), sorted.end());
+			// Against the floor, not against the signal. Overdubbing really
+			// does change what the tape holds, so the residual there is not an
+			// artefact and an absolute threshold would either fail on it or be
+			// too slack to catch anything. A click is what stands out of the
+			// run it sits in.
+			double floorDb = 20.0 * std::log10(sorted[sorted.size() / 2] / rms);
+			double worstDb = 20.0 * std::log10(sorted.back() / rms);
+			(void)floorDb;
+			return worstDb - floorDb;
+		}
+	};
+	const char* names[4] = {"trig", "off the lock", "overdub", "speed"};
+	const float knob[3] = {1.f / 6.f, 0.75f, 1.f};
+	double worst = -200.0;
+	int worstS = 0;
+	for (int sc = 0; sc < 4; sc++)
+		for (int k = 0; k < 3; k++) {
+			double v = Local::run(knob[k], sc, 0);
+			if (v > worst) { worst = v; worstS = sc; }
+		}
+	// Stretches read near a live record head are excluded above -- that
+	// crossing is a real take boundary faded through in two milliseconds.
+	// What remains and sets the 25 dB line is the punch-in edge: leaving the
+	// lock starts a pass whose fade-in is written onto the tape and crossed
+	// on every later lap, 22 dB over the floor at 2x. Anything that clears
+	// that is something else.
+	if (worst >= 25.0)
+		std::printf("# worst was the %s scenario\n", names[worstS]);
+	report("artifex", "replayer_residual_over_floor_dB", worst, worst < 25.0);
+
+	// And at more than one moment. A trig does something different depending
+	// on where the play head, the record head and the seam happen to be, so
+	// one trig proves nothing: the fault this found -- the duck applied to the
+	// mix rather than to each reading, which un-ducked the ghost the instant
+	// the head left the edge -- only appeared for trigs that landed in one
+	// particular window, and measured -21 dB when it did.
+	double worstPhase = -200.0;
+	long worstOff = 0;
+	// Sampled, not exhaustive -- and that is a real limitation. The fault
+	// this was written after only showed for trigs landing in a window a few
+	// hundred samples wide out of fifty-five thousand, and a sweep this coarse
+	// walks straight past it. What found it was the same sweep run standalone
+	// at more points and more speeds; this is here to catch the next one that
+	// is not so narrow.
+	for (int i = 0; i < 24; i++) {
+		long off = 1 + (long)((double)i / 24.0 * 55204.0);
+		for (int k = 0; k < 3; k++) {
+			double v = Local::run(knob[k], 0, off);
+			if (v > worstPhase) { worstPhase = v; worstOff = off; }
+		}
+	}
+	if (worstPhase >= 25.0)
+		std::printf("# worst trig offset was %ld\n", worstOff);
+	report("artifex", "replayer_trig_at_any_moment_dB", worstPhase, worstPhase < 25.0);
+}
+
+// ── retuning between trigs does not tick once a lap ─────────────────────────
+// The user's own reproduction, verbatim: time 1x, feedback 0, amount 75%, a
+// tone, trig, a different tone, trig again. At 75% the mode never locks, so
+// none of the locked-path work applies; at 1x the play head keeps station
+// with the record head and hears what is being written directly; and the
+// second tone is chosen to meet the first half a cycle out of phase at the
+// lap, so the takes disagree as much as they can. Four separate faults lived
+// here: the vertical tangent of keep at rec = 1, the cancelling discriminant,
+// the hard clamp on the correlation, and the float read position's 1/256th
+// sample grain -- each one a tick a lap, forever, written into the tape.
+//
+// Two tones, so the residual cascades an annihilator per tone; each one is
+// exact for its own frequency and transparent to the other.
+static void testReplayerRetune() {
 	Artifex m;
 	long fr = 0;
+	Module::SampleRateChangeEvent sre;
+	sre.sampleRate = SR;
+	sre.sampleTime = 1.f / SR;
+	m.onSampleRateChange(sre);
 	setMode(m, artifex_fx::MODE_REPLAYER);
-	m.params[Artifex::AMT_PARAM].setValue(1.f);     // locked: play, do not record
+	m.params[Artifex::TIME_PARAM].setValue(5.f / 6.f);   // exactly 1x
+	m.params[Artifex::AMT_PARAM].setValue(0.75f);
 	m.params[Artifex::FBK_PARAM].setValue(0.f);
-	m.params[Artifex::TIME_PARAM].setValue(0.75f);  // forwards
 	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
 	m.params[Artifex::GAIN_PARAM].setValue(1.f);
-
-	// fill the tape with a rising sweep, then lock it and listen
-	m.params[Artifex::AMT_PARAM].setValue(0.f);
-	m.params[Artifex::TIME_PARAM].setValue(0.75f);
-	long n = (long)(1.2 * SR);
-	for (long i = 0; i < n; i++) {
-		float t = (float)i / SR;
-		float x = 3.f * std::sin(2.f * (float)M_PI * (100.f + 400.f * t) * t);
+	const float hzA = 220.f, hzB = 110.f;
+	long trigA = (long)(1.0 * SR), retune = (long)(4.0 * SR);
+	long trigB = (long)(5.0 * SR), total = (long)(10.0 * SR);
+	double ph = 0.0;
+	std::vector<float> out;
+	for (long i = 0; i < total; i++) {
+		float hz = i < retune ? hzA : hzB;
+		if (i == trigA || i == trigB)
+			m.params[Artifex::TRIG_PARAM].setValue(1.f);
+		if (i == trigA + 200 || i == trigB + 200)
+			m.params[Artifex::TRIG_PARAM].setValue(0.f);
+		ph += hz / SR;
+		ph -= std::floor(ph);
+		float x = 3.f * std::sin(2.f * (float)M_PI * (float)ph);
 		step(m, fr, x, x);
+		out.push_back(m.outputs[Artifex::LEFT_OUTPUT].getVoltage());
 	}
-	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	double cA = 2.0 * std::cos(2.0 * M_PI * hzA / SR);
+	double cB = 2.0 * std::cos(2.0 * M_PI * hzB / SR);
+	std::vector<double> r1(out.size(), 0.0), res(out.size(), 0.0);
+	for (size_t i = 2; i < out.size(); i++)
+		r1[i] = (double)out[i] - cA * out[i - 1] + out[i - 2];
+	for (size_t i = 4; i < out.size(); i++)
+		res[i] = std::fabs(r1[i] - cB * r1[i - 1] + r1[i - 2]);
+	double e = 0.0;
+	for (size_t i = 0; i < out.size(); i++)
+		e += (double)out[i] * out[i];
+	double rms = std::sqrt(e / out.size());
+	// worst 1 ms block, skipping 20 ms after each trig (the gesture) and
+	// 5 ms after the retune (the input's own frequency step)
+	size_t blk = (size_t)(0.001 * SR);
+	double worst = 0.0;
+	for (size_t i = (size_t)trigA; i + blk < res.size(); i += blk) {
+		if ((i + blk > (size_t)trigA && i < trigA + (size_t)(0.020 * SR))
+		    || (i + blk > (size_t)trigB && i < trigB + (size_t)(0.020 * SR))
+		    || (i + blk > (size_t)retune && i < retune + (size_t)(0.005 * SR)))
+			continue;
+		double q = 0.0;
+		for (size_t j = i; j < i + blk; j++)
+			q += res[j] * res[j];
+		worst = std::max(worst, std::sqrt(q / blk));
+	}
+	double worstDb = 20.0 * std::log10(worst / rms);
+	// Absolute, not floor-relative: the floor here is at the 16-bit grain
+	// and a returning once-a-lap tick measured -54 dB. -70 leaves it
+	// nowhere to hide.
+	report("artifex", "replayer_retune_overdub_dB", worstDb, worstDb < -70.0);
+}
+
+// ── the locked loop is a whole number of periods long ───────────────────────
+// chooseLoop exists to pick a length whose end already resembles its start,
+// which for anything periodic means a whole number of periods. It was scoring
+// candidates by a plain sum of squared differences, measured in a window
+// sitting on the seam -- which is exactly where a recording pass fades in, so
+// the window was material ramping up out of silence and the score was
+// smallest wherever the *other* window happened to be quietest. At 110 Hz it
+// scored 1.7 at 123.5 periods against 540 at a whole 125: it preferred
+// silence to a match, and landed half a cycle out for most tones.
+//
+// Tested as the property rather than as a level, because that is what the
+// function is for, and because the audible cost of getting it wrong depends
+// on the tone: 220 Hz on this tape is 253.018 cycles a lap and joins itself
+// whatever the search does, while 110 Hz is 126.509 and joins at the worst
+// phase there is.
+static void testReplayerLoopLength() {
+	const float hz[6] = {55.f, 110.f, 113.7f, 220.f, 440.f, 909.1f};
+	double worst = 0.0;
+	float worstHz = 0.f;
+	for (int k = 0; k < 6; k++) {
+		Artifex m;
+		long fr = 0;
+		Module::SampleRateChangeEvent sre;
+		sre.sampleRate = SR;
+		sre.sampleTime = 1.f / SR;
+		m.onSampleRateChange(sre);
+		setMode(m, artifex_fx::MODE_REPLAYER);
+		m.params[Artifex::TIME_PARAM].setValue(1.f);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);     // locked, so it chooses
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		runTone(m, fr, 4.0, hz[k], 2.f);
+		double period = SR / (double)hz[k];
+		double cycles = m.core.loopLen / period;
+		double err = std::fabs(cycles - std::floor(cycles + 0.5));
+		if (err > worst) {
+			worst = err;
+			worstHz = hz[k];
+		}
+	}
+	if (worst >= 0.05)
+		std::printf("# worst loop join was at %.1f Hz\n", worstHz);
+	report("artifex", "replayer_loop_is_whole_periods", worst, worst < 0.05);
+}
+
+// ── overdubbing does not tick where the heads cross, at any speed ───────────
+// The play head crosses the record head once a lap at every speed but one,
+// reading across an edge of *generation*: the slot behind the head carries a
+// pass of overdub the slot in front of it has not had yet.
+//
+// Swept over speed rather than checked at a point, because the fault this was
+// written after was invisible at 1x and 25 dB up at 2x: the crossing used to
+// splice in the record head's own signal, which advances one slot per sample
+// whatever the play head is doing and therefore carries the input's pitch
+// instead of the tape's. Only a speed away from one shows it, and the further
+// away the louder.
+static void testReplayerCrossing() {
+	struct Local {
+		static double run(float knob, float amt, float* speed) {
+			Artifex m;
+			long fr = 0;
+			Module::SampleRateChangeEvent sre;
+			sre.sampleRate = SR;
+			sre.sampleTime = 1.f / SR;
+			m.onSampleRateChange(sre);
+			setMode(m, artifex_fx::MODE_REPLAYER);
+			m.params[Artifex::TIME_PARAM].setValue(knob);
+			m.params[Artifex::AMT_PARAM].setValue(1.f);
+			m.params[Artifex::FBK_PARAM].setValue(0.f);
+			m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+			m.params[Artifex::GAIN_PARAM].setValue(1.f);
+			runTone(m, fr, 4.0, 220.f, 2.f);           // fill and settle, locked
+			m.params[Artifex::AMT_PARAM].setValue(amt);
+			Rec rec;
+			runTone(m, fr, 8.0, 220.f, 2.f, &rec);     // seven laps of overdub
+			*speed = m.core.uiTime;
+			// the tape's tone as the play head hears it
+			double f = 220.0 * std::fabs(m.core.uiTime);
+			double c2 = 2.0 * std::cos(2.0 * M_PI * f / SR);
+			double e = 0.0;
+			for (size_t i = 0; i < rec.l.size(); i++)
+				e += (double)rec.l[i] * rec.l[i];
+			double rms = std::sqrt(e / rec.l.size());
+			size_t blk = (size_t)(0.001 * SR);
+			double worst = 0.0;
+			// past the first 200 ms, which is the amount knob arriving
+			for (size_t i = (size_t)(0.2 * SR); i + blk < rec.l.size(); i += blk) {
+				double q = 0.0;
+				for (size_t j = i; j < i + blk; j++) {
+					double r = rec.l[j] - c2 * rec.l[j - 1] + rec.l[j - 2];
+					q += r * r;
+				}
+				worst = std::max(worst, std::sqrt(q / blk));
+			}
+			return 20.0 * std::log10(worst / rms);
+		}
+	};
+	const float knobs[7] = {0.f, 0.1f, 0.25f, 0.4f, 0.6f, 0.9f, 1.f};
+	double worst = -200.0;
+	float worstSpeed = 0.f;
+	for (int k = 0; k < 7; k++) {
+		float speed = 0.f;
+		double v = Local::run(knobs[k], 0.9f, &speed);
+		if (v > worst) {
+			worst = v;
+			worstSpeed = speed;
+		}
+	}
+	// -58 dB is where the deepest crossing sits once the generation step is
+	// spread over a splice: at the ends of the travel the heads close at
+	// three slots a sample, so a lap's worth of overdub is crossed in one
+	// splice length. The pitch fault it was written for measured -37 dB.
+	if (worst >= -58.0)
+		std::printf("# worst crossing was at %+.3fx\n", worstSpeed);
+	report("artifex", "replayer_crossing_over_speed_dB", worst, worst < -58.0);
+}
+
+// ── the replayer's loop keeps the level that went into it ────────────────────
+// The overdub crossfaded amplitudes, keep + rec = 1. Two passes of the tape
+// only line up when the speed is exactly 1, which is one point of the travel;
+// everywhere else they add in power and the loop settles at rec^2 / (1 -
+// keep^2) of the input -- a third of it, 4.8 dB down, with the knob at half.
+static void testReplayerLevel() {
+	double worst = 0.0;
+	for (int k = 0; k < 4; k++) {
+		const float amt[4] = {0.f, 0.3f, 0.5f, 0.8f};
+		Artifex m;
+		long fr = 0;
+		Module::SampleRateChangeEvent sre;
+		sre.sampleRate = SR;
+		sre.sampleTime = 1.f / SR;
+		m.onSampleRateChange(sre);
+		setMode(m, artifex_fx::MODE_REPLAYER);
+		m.params[Artifex::TIME_PARAM].setValue(0.8f);   // +0.87x, passes do not line up
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		m.params[Artifex::AMT_PARAM].setValue(amt[k]);
+		// noise, so successive passes really are uncorrelated
+		uint32_t seed = 22222;
+		double z = 0.0, s2 = 0.0;
+		long n = (long)(10.0 * SR);
+		for (long i = 0; i < n; i++) {
+			seed = seed * 1103515245u + 12345u;
+			float w = (float)((seed >> 9) & 0x7FFFFF) / 4194304.f - 1.f;
+			z += (w * 3.5 - z) * 0.3;
+			step(m, fr, (float)z, (float)z);
+			s2 += z * z;
+		}
+		double in = std::sqrt(s2 / n);
+		m.params[Artifex::AMT_PARAM].setValue(1.f);     // locked: hear the tape
+		Rec rec;
+		runSilence(m, fr, 2.0, &rec);
+		double db = 20.0 * std::log10(rmsOf(rec.l, 0, rec.l.size()) / in);
+		worst = std::min(worst, db);
+	}
+	report("artifex", "replayer_holds_its_level", worst, worst > -2.0);
+
+	// and it must not stack either. A drone correlates with what the tape
+	// holds a lap later, and a crossfade that assumes it does not settles the
+	// loop at rec / (1 - keep) of the input instead of at the input: measured,
+	// a 220 Hz tone at half travel climbed 7.4 dB over twelve laps and sat on
+	// the clip.
+	double loudest = -100.0;
+	for (int k = 0; k < 3; k++) {
+		const float amt[3] = {0.3f, 0.5f, 0.7f};
+		Artifex m;
+		long fr = 0;
+		Module::SampleRateChangeEvent sre;
+		sre.sampleRate = SR;
+		sre.sampleTime = 1.f / SR;
+		m.onSampleRateChange(sre);
+		setMode(m, artifex_fx::MODE_REPLAYER);
+		m.params[Artifex::TIME_PARAM].setValue(1.f);    // +2x, so it laps often
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		m.params[Artifex::GAIN_PARAM].setValue(1.f);
+		m.params[Artifex::AMT_PARAM].setValue(amt[k]);
+		runTone(m, fr, 14.0, 220.f, 3.f);               // a dozen laps of drone
+		m.params[Artifex::AMT_PARAM].setValue(1.f);     // lock and listen
+		Rec rec;
+		runSilence(m, fr, 2.0, &rec);
+		double db = 20.0 * std::log10(rmsOf(rec.l, 0, rec.l.size()) / (3.0 / std::sqrt(2.0)));
+		loudest = std::max(loudest, db);
+	}
+	report("artifex", "replayer_does_not_stack_a_drone", loudest, loudest < 2.0);
+}
+
+// ── the replayer's tape runs at the speed on the display ─────────────────────
+// The record head used to move with the play head, so the speed cancelled: a
+// tone written at a quarter speed and read back at a quarter speed is unity,
+// and the knob moved the number on the screen and nothing else. Only a trig,
+// which wrote at 1.0, ever put material on the tape that the speed could act
+// on. Above 1x the shared head also skipped slots -- a truncated write from a
+// position advancing by 1.32 leaves every third one holding what was there
+// before, which read back as broadcast noise.
+static void testReplayer() {
+	// Fill the tape with a rising sweep, then put the play head on the oldest
+	// sample so a lap runs oldest to newest without crossing the splice.
+	struct Local {
+		static void fill(Artifex& m, long& fr) {
+			m.params[Artifex::AMT_PARAM].setValue(0.f);      // recording
+			long n = (long)(m.core.bufSeconds * SR) + 1;
+			for (long i = 0; i < n; i++) {
+				float t = (float)i / SR;
+				float x = 3.f * std::sin(2.f * (float)M_PI * (100.f + 400.f * t) * t);
+				step(m, fr, x, x);
+			}
+			m.params[Artifex::AMT_PARAM].setValue(1.f);      // locked
+		}
+		static void seek(Artifex& m, int offset) {
+			for (int c = 0; c < 2; c++) {
+				int n = (int)m.core.tape[c].size();
+				int w = (int)m.core.tapeWrite[c];
+				m.core.tapePos[c] = (double)(((w + offset) % n + n) % n);
+			}
+		}
+	};
+	Artifex m;
+	long fr = 0;
+	Module::SampleRateChangeEvent sre;
+	sre.sampleRate = SR;
+	sre.sampleTime = 1.f / SR;
+	m.onSampleRateChange(sre);
+	setMode(m, artifex_fx::MODE_REPLAYER);
+	m.params[Artifex::FBK_PARAM].setValue(0.f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.params[Artifex::GAIN_PARAM].setValue(1.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.75f);   // +0.71x
+	Local::fill(m, fr);
+
+	// forwards from the oldest sample: the sweep rises
+	Local::seek(m, 0);
 	Rec fwd;
 	runSilence(m, fr, 0.6, &fwd);
 	double a = zcr(fwd.l, 0, fwd.l.size() / 3);
 	double b = zcr(fwd.l, 2 * fwd.l.size() / 3, fwd.l.size());
 	report("artifex", "replayer_plays_forward", b - a, b > a);
+
+	// and the pitch is the one the display names. The tape was written at 1.0
+	// whatever the knob said, so a 300 Hz tone comes back at 300 * speed.
+	for (int k = 0; k < 3; k++) {
+		const float knob[3] = {0.5f, 0.75f, 1.f};
+		const char* name[3] = {"replayer_quarter_speed", "replayer_two_thirds_speed",
+		                       "replayer_double_speed"};
+		Artifex t;
+		long tf = 0;
+		t.onSampleRateChange(sre);
+		setMode(t, artifex_fx::MODE_REPLAYER);
+		t.params[Artifex::FBK_PARAM].setValue(0.f);
+		t.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		t.params[Artifex::GAIN_PARAM].setValue(1.f);
+		t.params[Artifex::TIME_PARAM].setValue(knob[k]);
+		t.params[Artifex::AMT_PARAM].setValue(0.f);
+		runTone(t, tf, 3.0, 300.f, 3.f);
+		t.params[Artifex::AMT_PARAM].setValue(1.f);
+		Rec r;
+		runSilence(t, tf, 1.0, &r);
+		double heard = zcr(r.l, r.l.size() / 4, r.l.size());
+		double want = 300.0 * std::fabs(t.core.uiTime);
+		report("artifex", name[k], heard / want,
+		       heard > want * 0.9 && heard < want * 1.1);
+	}
 
 	// The tape never stops. With the centre of the knob mapped to a speed of
 	// zero the head held one sample and the mode put out a DC level — it
@@ -439,8 +1034,9 @@ static void testReplayer() {
 	report("artifex", "replayer_centre_audible", rmsOf(mid.l, 0, mid.l.size()),
 	       rmsOf(mid.l, 0, mid.l.size()) > 0.1);
 
-	// the same tape backwards: the sweep now falls
-	m.params[Artifex::TIME_PARAM].setValue(0.25f);
+	// the same tape backwards, from the newest sample: the sweep falls
+	m.params[Artifex::TIME_PARAM].setValue(0.25f);   // -0.71x
+	Local::seek(m, -1);
 	Rec back;
 	runSilence(m, fr, 0.6, &back);
 	double c = zcr(back.l, 0, back.l.size() / 3);
@@ -1219,7 +1815,7 @@ static void testFilterCrossing() {
 
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
-           testReplayer, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
+           testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
            testModeSelect,

@@ -241,13 +241,121 @@ crudeness; a knob or a trig clicking is not.
 
 ### 8. replayer (orange)
 
-A tape loop. **time** is the speed of the tape and the sign of it: backwards
-to the left of centre, forwards to the right, for recording and playback
-alike. **amount** decides what the tape is: fully right locks the buffer and
-you hear the loop as it stands, and as you go dry more new signal is recorded
-over it until the old audio is gone. **feedback** applies to the incoming
-signal only, not to the output. **trig** fills the whole tape with new audio
-at once.
+A tape loop. **time** is the speed of the play head and the sign of it:
+backwards to the left of centre, forwards to the right, a quarter speed at the
+centre and two octaves either way at the ends. It arrives over a few tens of
+milliseconds, the way a tape gets up to speed. **amount** decides what the
+tape is: fully right locks the buffer and you hear the loop as it stands, and
+as you go dry more new signal is recorded over it until the old audio is gone.
+**feedback** applies to the incoming signal only, not to the output. **trig**
+lays down a whole new take, over one lap.
+
+The record head runs in real time, one sample per sample, whatever the play
+head is doing. Only the play head has a speed, and that is what makes the
+speed mean anything: sharing one moving position between the two cancels it
+exactly, since material laid down at a quarter speed and read back at a
+quarter speed is unity at every setting of the knob.
+
+**What is recorded.** Overdubbing follows how much the tape and the input
+agree. There are two laws it could use and neither is right alone: crossfading
+in amplitude settles the loop at a third of what went in when the material
+does not repeat, and crossfading in power stacks a drone on itself until it
+sits on the clip. Solving for a loop that settles at the level that went in
+gives one expression that runs between them, and a running correlation picks
+the point along it. The knob sets the record level and what survives is
+derived, which is what makes the top of the travel usable: the last fiftieth
+locks outright, and below that the input arrives gently instead of at a cliff.
+
+Overdubbing a sustained tone onto its own lap-delayed copy is a comb filter,
+and at the setting where the two weights come out equal its nulls are
+complete. Every crossfade law has such a setting somewhere; this one puts it
+down where the old audio is being replaced within a couple of laps anyway,
+rather than up where you would stop and hold.
+
+**Why it does not click.** A tape loop is made of discontinuities: one slot
+along from the newest sample is a sample written a whole lap earlier, and a
+circular buffer holds exactly one lap, so there is no second copy to crossfade
+against. Enumerating the places an edge can appear and ducking each one does
+not converge — there is always another. Instead there are only two ways this
+mode can make a discontinuity, and each carries its own fade. The fade is a
+splice length, not a declick length: a diagonal cut across quarter-inch tape
+overlaps for tens of milliseconds at studio speeds, and that overlap is what
+makes a splice inaudible on any material rather than merely click-free — so
+every fade here runs ten milliseconds.
+
+- **A recording pass ramps in and out** over the splice length, so the tape
+  is continuous where a pass began and where it ended, whatever the knob did
+  to get there. The one edge a pass leaves is the record head itself, and it
+  is an edge of *generation*: the slot the head has just written carries one
+  more pass of overdub than the slot in front of it. The play head crosses it
+  once a lap at every speed but one, and the crossing is spliced by fading
+  between the two generations — at the play head's own position, so at the
+  play head's own pitch. A shadow of the last splice-length of pre-write
+  values is what makes the older generation available to fade to.
+
+  Splicing in the record head's *signal* instead is the obvious thing and is
+  wrong: the head advances one slot per sample whatever the play head is
+  doing, so it carries the input's pitch rather than the tape's, and at 2x it
+  spliced an octave-down fragment in once a lap. The window scales with
+  |speed − 1| so that one splice of tape is always one splice of wall time,
+  and vanishes at exactly 1x — where the heads keep station, nothing ever
+  crosses, and the honest reading is simply the one the tape holds.
+- **Any jump in the play head** leaves a ghost reading on from where the head
+  was, and the output crossfades to the new position. Nothing has to know why
+  the head moved: the loop wrapping, a pass ending, a fold landing somewhere
+  new, all of it is the same event.
+
+Both knobs are slewed as well, because a dry/wet mix that steps is a click
+whatever the tape is doing — moving amount off the lock in one go stepped the
+output from 2 V to 1 V in a single sample, which was the loudest thing the
+mode ever did and had nothing to do with the tape at all.
+
+Every one of those fades is eased rather than run straight. A linear ramp
+starts and stops with a corner in it, and a corner is a click of the same
+kind, only quieter: the recording ramp left one in the tape at each end, to be
+crossed once a lap for as long as it lasted, and it measured 60 dB down, which
+is faint and perfectly audible on a sustained tone.
+
+The gains themselves have to be as smooth as the ramps that drive them. The
+overdub law holds keep at √(1 − rec²), and that square root has a vertical
+tangent at rec = 1: however smoothly the record level leaves the top, keep
+departs zero at unbounded slope, once a lap after every trig. So the record
+level is slewed as an angle — rec = sin θ arrives at one with zero slope and
+keep = cos θ leaves zero with zero slope. The correlation that steers the law
+is rectified through a smooth positive part rather than a hard clamp, since it
+crosses zero at signal rate and every landing on a corner is a tick written
+into the tape. And the play head's position is read at double precision: a
+float position near the top of a 55204-sample tape moves in steps of 1/256th
+of a sample, so a head that should glide instead jumps, a step of the signal's
+slope times the jump, every hundred samples or so at 1x.
+
+**The loop's length** is chosen by looking at the tape rather than by taking a
+fixed amount off it. Locked, the tape is one continuous take, and the loop
+plays a little less than all of it so the crossfade has somewhere to fade
+into; but a set millisecond picks a length with no relation to the material. A
+220 Hz tone on a 1.15 s tape is 253.02 cycles, six degrees from joining
+itself, and a millisecond off moves that to seventy-two — the step at the seam
+traded for a bigger one a millisecond wide. So a pass ending runs one sweep
+over about a thousand candidates for the length whose end already resembles
+its start, which for anything periodic is a whole number of periods.
+
+The crossfade is then weighted by how alike its two readings actually are,
+measured while it runs. "Equal power" only conserves power for signals that
+are unrelated; two that match add in amplitude instead, and sin against cos
+sums them to +3 dB — a bump once a lap, and exactly what aligning the ends
+causes. Dividing the pair by the square root of 1 + rho·sin(2θ) is equal
+power at a correlation of zero and sums to one at a correlation of one — and
+rho is a running measurement of the two taps themselves, not one number for
+the whole fade: across a splice-length crossfade the relationship changes,
+identical at the fold and drifting apart as the splice glides toward the
+head, and a single average is wrong at both ends. Nothing in it assumes what
+the material is.
+
+A fill covers the tape in slots rather than in seconds. The buffer is a few
+samples longer than the time it is named for, and a fill counted in seconds
+stopped short of the end and left that much silence on the tape — recorded
+into the loop rather than made on the way out, which no amount of ducking the
+play head could hide.
 
 ### 9. shifter (pink)
 

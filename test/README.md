@@ -12,6 +12,7 @@ make check               # run every smoke test
 ./draen_sweep            # both banks
 ./draen_sweep hyf        # one bank: draen | hyf
 ./guttur_probe           # guttur diagnostics: shapers | forcing
+./artifex_probe measure  # artifex numbers the listening tests would ask for
 ```
 
 ## smoke_&lt;module&gt;
@@ -72,6 +73,50 @@ FILTER, SENS, THRESH, ATTACK, RELEASE, MOD, DECAY, SPREAD, INFX) or the
 switches/menu members `repeatsMode` / `clockMult` / `altRouting` / `grainCap`,
 plus `seed`, `tiltStart` / `tiltEnd`, `freezeAt` (seconds). Input is ±1 (driven
 at ±5 V internally); it appends a 6 s tail so repeats and reverb ring out.
+
+## artifex_probe
+
+Auditions and measures the nine effects. `sweep` for every mode against one
+test signal, `mode <n>` for one across its knobs, `wav <dir>` to write each
+mode out to listen to.
+
+```
+artifex_probe [sweep|mode <n>|wav <dir>|measure|scene <dir> [hz] [knob] [amt]]
+```
+
+**`scene`** renders one replayer scenario to a WAV: locked while the tape
+fills, then the amount knob dragged down at 60 Hz the way a mouse delivers
+it, then held. With no frequency it writes the reported pair, 110 Hz and
+220 Hz, whose only difference is that 220 joins its own lap and 110 lands
+half a cycle out. It exists to settle where a click heard in Rack lives:
+this drives the core with nothing else in the signal path, so if the file is
+clean and Rack is not, the difference is upstream of the DSP.
+
+**`measure`** exists so that no number lives in the listening tests. A figure
+measured by hand at the bench is measured once, against whatever the build
+was that afternoon, and is silently wrong by the next commit — the replayer's
+record-head whine was written down as a step ratio of 8x and is -78 dB now,
+and only re-running this noticed. It prints four tables:
+
+- **overwrite time** — laps and seconds for the replayer's tape to erase what
+  is on it, at three amounts and three buffer sizes. At amount 0.75 that is
+  125 laps, over two minutes at the shortest buffer.
+- **the record head's whine** — the tone left by a head that writes to one
+  slot while the play head reads between two, at `frac(|speed|)` x sample
+  rate folded about Nyquist, against the tone the tape carries. Worst near
+  1x. This is the number behind listening test 3.8.12's open question.
+- **the loop's envelope steps** — how much the level jumps as the play head
+  crosses the tape's seam while overdubbing. This is the artifact a residual
+  detector cannot see: everything else here measures curvature over three
+  samples, which finds sharp transients and is deaf to a slow disturbance.
+  The seam is slow — a lump once a lap, not a tick — and it measured -93 dB
+  by residual while stepping the envelope by a third. **Known open defect:**
+  the seam is crossfaded only when the tape is locked, so coming off the lock
+  lets it through once a play lap.
+- **self-oscillation** — with feedback wide open, the limiter off and silence
+  in, which modes sustain, which decay and which need input.
+- **CPU** — `process()` as a percentage of real time per mode, at both buffer
+  extremes.
 
 ## guttur_probe
 

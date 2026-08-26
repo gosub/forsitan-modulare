@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 // The FX core of artifex: nine modes around one filtered feedback loop.
 //
@@ -101,6 +102,13 @@ static const float kKnobGlide = 0.020f;
 // click. Two milliseconds is long enough to carry the step and short enough
 // that a triggered stereo throw still lands on the beat.
 static const float kTrigDeclick = 0.002f;
+// Every fade in the replayer: pass edges, the loop join, the ghost
+// crossfade, the window over the record head. It is a splice length, not a
+// declick length: a diagonal cut across quarter-inch tape overlaps for ten
+// to thirty milliseconds at studio speeds, and that is what makes a splice
+// sound like a splice on any material -- two milliseconds removes the click
+// but leaves the transition audible as a transient on anything correlated.
+static const float kEdgeFade = 0.010f;
 
 // The tone control, at either of two slopes.
 //
@@ -225,7 +233,33 @@ struct Core {
 	float grainW[2] = {0.f, 0.f};      // the window this grain was started with
 	float grainShift[2] = {0.f, 0.f};  // and the shift, latched with it
 	double tapePos[2] = {0.0, 0.0};
-	float fillLeft = 0.f;
+	double tapeWrite[2] = {0.0, 0.0};
+	double tapeSeam[2] = {0.0, 0.0};   // where the take on the tape begins
+	double ghostPos[2] = {0.0, 0.0};   // the reading the head has just left
+	int ghostLeft[2] = {-1, -1};       // samples of crossfade still to run
+	double loopLen = 0.0;              // how much of the tape the locked loop plays
+	// The last window's worth of pre-write tape values, so a reading just
+	// behind the record head can be given the generation the material in
+	// front of the head still has. Indexed by tape slot modulo its own
+	// length, which is unambiguous because nothing ever looks back further
+	// than the window.
+	std::vector<float> shadow[2];
+	float joinXY[2] = {0.f, 0.f};      // how alike the two crossfading readings
+	float joinXX[2] = {0.f, 0.f};      // are, measured while the crossfade runs
+	float joinYY[2] = {0.f, 0.f};
+	float corrXY[2] = {0.f, 0.f};      // how much the tape and the input agree
+	float corrXX[2] = {0.f, 0.f};
+	float corrYY[2] = {0.f, 0.f};
+	Glide speedGl;                     // the speed knob, with a motor behind it
+	float amtSm[3] = {0.f, 0.f, 0.f};  // the amount knob, slewed three times
+	float recHold[3] = {0.f, 0.f, 0.f};   // the record level, slewed three times
+	float passFade = 0.f;              // and how far into its ramp it is
+	bool wasRec = false;
+	// A fill is counted in slots, not in seconds. The tape is a few samples
+	// longer than bufSeconds -- a lap of it is 55204 samples where 1.15 s is
+	// 55200 -- so a fill measured in time stopped 44 slots short and left that
+	// much silence on the tape, a full-scale drop and return once a lap.
+	int fillLeft = 0;
 	float shiftPhase[2] = {0.f, 0.f};
 	uint32_t rng = 0x9e3779b9u;
 
@@ -242,10 +276,21 @@ struct Core {
 			frz[c].init(n);
 			flg[c].init((int)(0.05f * sr) + 4);
 			shf[c].init((int)(0.3f * sr) + 4);
+			// The window never exceeds three splices: it scales with
+			// |speed - 1|, and the speed reaches two either way.
+			shadow[c].assign((int)(kEdgeFade * sr * 4.f) + 8, 0.f);
 			modeFilt[c].reset();
 			outFilt[c].reset();
 			fbLoopFilt[c].reset();
 			tapePos[c] = 0.0;
+			tapeWrite[c] = 0.0;
+			tapeSeam[c] = 0.0;
+			ghostPos[c] = 0.0;
+			ghostLeft[c] = -1;
+			passFade = 0.f;
+			for (int q = 0; q < 3; q++)
+				recHold[q] = amtSm[q] = 0.f;
+			corrXY[c] = corrXX[c] = corrYY[c] = 0.f;
 			freezePos[c] = 0.0;
 		}
 		lastMode = -1;
@@ -274,6 +319,14 @@ struct Core {
 			grainW[c] = 0.f;
 			shiftPhase[c] = (float)c * 0.5f;
 			tapePos[c] = 0.0;
+			tapeWrite[c] = 0.0;
+			tapeSeam[c] = 0.0;
+			ghostPos[c] = 0.0;
+			ghostLeft[c] = -1;
+			passFade = 0.f;
+			for (int q = 0; q < 3; q++)
+				recHold[q] = amtSm[q] = 0.f;
+			corrXY[c] = corrXX[c] = corrYY[c] = 0.f;
 		}
 		panDir = 1;
 		panFade = 1.f;
@@ -292,7 +345,7 @@ struct Core {
 		// does there too. Without it, landing on the mode with amount hard
 		// right — the locked position — plays a buffer nobody has recorded
 		// into yet, and the mode is silent for no reason a player can see.
-		fillLeft = (mode == MODE_REPLAYER) ? bufSeconds : 0.f;
+		fillLeft = (mode == MODE_REPLAYER) ? tape[0].size() : 0;
 		frozen = false;
 		recorded = 0.0;
 		capturedFrames = 0.f;
@@ -359,6 +412,89 @@ struct Core {
 		if (x < -1.f)
 			return -1.f - std::tanh(-x - 1.f);
 		return x;
+	}
+
+	// How long the locked loop should be. Shortening the tape by a fixed
+	// amount to make room for the join picks a length with no relation to
+	// what is on it, and the phase it lands on is then whatever it is: a
+	// 220 Hz tone on a 1.15 s tape is 253.02 cycles, six degrees from
+	// joining itself, and taking a millisecond off moves that to seventy-two.
+	// The step at the splice is traded for a bigger one a millisecond wide.
+	//
+	// So look instead: the loop wants a length whose end already resembles
+	// its start, which for anything periodic is a whole number of periods.
+	// One pass over about a thousand candidates when the tape locks, coarse
+	// enough to be a few tens of microseconds.
+	double chooseLoop(int n, float join) const {
+		const int W = 128, stride = 2;
+		int hi = n - (int)join - W;
+		int lo = std::max(W + 1, hi - 1200);
+		if (hi <= lo)
+			return (double)n - join;
+		// Measured a splice past the seam, not at it. A pass fades in over
+		// exactly that distance, so a window sitting on the seam is looking
+		// at material ramping up out of silence: the sum of squares it
+		// minimises is then smallest wherever the *other* window happens to
+		// be quietest, which has nothing to do with the phase the loop joins
+		// on. It picked a length half a cycle out for most tones -- 110 Hz
+		// scored 1.7 at 123.5 periods against 540 at a whole 125, the metric
+		// preferring silence to a match. Only the offset matters, so moving
+		// both windows into the take costs nothing.
+		int s = (((int)tapeSeam[0] + (int)join) % n + n) % n;
+		double best = 1e30;
+		int bestL = hi;
+		for (int L = lo; L <= hi; L++) {
+			// Normalised. A plain sum of squares is smallest wherever the
+			// two windows are quietest, so on material that breathes at all
+			// it picks a lull rather than a match. Dividing by the energy in
+			// the two windows asks how alike they are instead of how loud.
+			double cost = 0.0, energy = 0.0;
+			for (int k = 0; k < W; k += stride) {
+				int ia = s + k;
+				if (ia >= n) ia -= n;
+				int ib = s + L + k;
+				while (ib >= n) ib -= n;
+				double a = tape[0].buf[ia], b = tape[0].buf[ib];
+				double d = a - b;
+				cost += d * d;
+				energy += a * a + b * b;
+			}
+			cost /= energy + 1e-9;
+			if (cost < best) {
+				best = cost;
+				bestL = L;
+			}
+		}
+		// A whole number of samples is not a whole number of periods of
+		// anything in particular: 220 Hz is 218.18 samples, so the closest
+		// integer loop still leaves the two ends a fraction of a sample out,
+		// and the crossfade glides across that difference once a lap. The
+		// play head reads between slots anyway, so the loop does not have to
+		// be an integer either -- fit a parabola through the cost at the best
+		// candidate and its neighbours and take the minimum.
+		double cm = matchCost(n, bestL - 1), c0 = matchCost(n, bestL);
+		double cp = matchCost(n, bestL + 1);
+		double denom = cm - 2.0 * c0 + cp;
+		double frac = denom > 1e-20 ? 0.5 * (cm - cp) / denom : 0.0;
+		return (double)bestL + std::max(-0.5, std::min(0.5, frac));
+	}
+
+	// how badly a loop of this length would join, over a short window
+	double matchCost(int n, int L) const {
+		const int W = 128, stride = 2;
+		int s = (((int)tapeSeam[0] + (int)(kEdgeFade * sr)) % n + n) % n;
+		double cost = 0.0, energy = 0.0;
+		for (int k = 0; k < W; k += stride) {
+			int ia = s + k;
+			if (ia >= n) ia -= n;
+			int ib = s + L + k;
+			while (ib >= n) ib -= n;
+			double a = tape[0].buf[ia], b = tape[0].buf[ib];
+			double d = a - b;
+			cost += d * d;
+			energy += a * a + b * b;
+		}
+		return cost / (energy + 1e-9);
 	}
 
 	// Two channels pulled apart by the stereo knob: left slows, right speeds.
@@ -854,8 +990,25 @@ struct Core {
 	}
 
 	// ── 8. replayer ──────────────────────────────────────────────────────────
-	// A tape loop. Time is the speed and the sign of it; amount decides
-	// whether the tape is locked or being written over.
+	// A tape loop. Time is the speed and the sign of it; amount decides whether
+	// the tape is locked or being written over.
+	//
+	// There are exactly two ways this mode can make a discontinuity -- change
+	// what is on the tape, or move the play head -- and each carries its own
+	// fade rather than a patch bolted on after the fact. Enumerating edges and
+	// ducking them one at a time does not converge: every pass over it found
+	// another one that had not been thought of.
+	//
+	//   * A recording pass ramps in and out over a couple of milliseconds. The
+	//     tape is therefore continuous where a pass began and where it ended,
+	//     whatever the knob did, and the only edge a pass makes is the record
+	//     head itself -- one position, known, which the play head ducks across
+	//     while the pass runs and which is gone the moment it stops.
+	//   * Any jump in the play head leaves a ghost reading on from where the
+	//     head was, and the output crossfades from it to the new position.
+	//     Nothing has to know why the head moved: the loop wrapping, a pass
+	//     ending, a speed the fold lands differently on, all of it is the same
+	//     event and gets the same treatment.
 	void doReplayer(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		// The tape never stops. A knob whose centre is exactly zero puts a
 		// dead spot in the middle of its travel — the head holds one sample
@@ -865,37 +1018,338 @@ struct Core {
 		float u = (t - 0.5f) * 2.f;              // -1 .. +1
 		float mag = 0.25f * std::pow(8.f, std::fabs(u));
 		float speed = u < 0.f ? -mag : mag;
+		// A tape has a motor: the speed arrives over a few tens of
+		// milliseconds rather than in one sample. Stepping it is a break in
+		// the slope of the read position, audible on its own, and it lands the
+		// loop's fold somewhere new at the same instant.
+		speed = speedGl(speed, ct.dt, kKnobGlide);
 		uiUnit = UNIT_SPEED;
 		uiTime = speed;
-		if (ct.trig)
-			fillLeft = bufSeconds;
-		bool filling = fillLeft > 0.f;
+
+		int n = tape[0].size();
+		float fade = std::max(kEdgeFade * sr, 1.f);
+
+		// The knob itself, slewed. It is a dry/wet mix as well as the record
+		// level, and a mix that steps is a click whatever the tape is doing --
+		// measured, moving amount off the lock in one go stepped the output
+		// from 2.00 V to 1.00 V in a sample, which is the loudest thing the
+		// mode ever did and had nothing to do with the tape at all. A knob
+		// arriving from a mouse drag moves once a block; from a menu or a CV
+		// it can move all at once.
+		// Three one-poles, not one. A linear ramp has a corner where it stops;
+		// a single pole has one where it starts, since its slope goes from
+		// nothing to everything the instant the target moves. Each pole in
+		// series buys one more order: two leave the slope continuous, three
+		// leave the curvature continuous, and curvature is what a click is.
+		float k = clamp(4.f / fade, 0.f, 1.f);
+		amtSm[0] += (amt - amtSm[0]) * k;
+		amtSm[1] += (amtSm[0] - amtSm[1]) * k;
+		amtSm[2] += (amtSm[1] - amtSm[2]) * k;
+		amt = amtSm[2];
+
+		// A trig lays down a whole new take. Where it starts is where the tape's
+		// seam will be -- the one place the loop is not continuous, because it is
+		// where the end of the take meets its beginning.
+		if (ct.trig) {
+			fillLeft = n;
+			for (int c = 0; c < 2; c++)
+				tapeSeam[c] = tapeWrite[c];
+		}
+		bool filling = fillLeft > 0;
 		if (filling)
-			fillLeft -= ct.dt;
-		float rec = filling ? 1.f : (1.f - amt);
-		float keep = filling ? 0.f : amt;
+			fillLeft--;
+
+		// The knob drives the record level and what survives is derived from it.
+		// Both orders hold the loop at unity, but deriving the record level
+		// instead makes its slope at the top of the travel vertical: a hair off
+		// fully locked would already be recording at -17 dB, loud enough to hear
+		// the input arrive on a loop you thought was held. This way the same
+		// position records at -40 dB, and the last fiftieth locks outright.
+		float recTarget = filling ? 1.f : (1.f - amt);
+		if (!filling && recTarget < 0.02f)
+			recTarget = 0.f;
+		// The record level, slewed like the knob and for the same reason --
+		// with the play head sitting on the record head at 1x it hears what
+		// is being written directly, so a corner in the record level is a
+		// corner in the output, and a fill ending steps its target from one
+		// back to whatever the knob says, once a lap after every trig.
+		//
+		// Slewed as an angle, not as a level. The overdub law below keeps
+		// keep = sqrt(1 - rec^2) at the fill's level, and that square root
+		// has a vertical tangent at rec = 1: however smoothly rec leaves the
+		// top, keep departs zero at unbounded slope -- measured 14 mV/V in
+		// the first sample of every fill end, written straight into the tape
+		// at the seam and read back once a lap from then on. On the circle
+		// there is no cliff: rec = sin(th) arrives at one with zero slope
+		// and keep = cos(th) leaves zero with zero slope, so a smooth angle
+		// makes both gains smooth to every order.
+		float thTarget = std::asin(clamp(recTarget, 0.f, 1.f));
+		if (recTarget > 0.f) {
+			recHold[0] += (thTarget - recHold[0]) * k;
+			recHold[1] += (recHold[0] - recHold[1]) * k;
+			recHold[2] += (recHold[1] - recHold[2]) * k;
+		}
+		passFade += clamp((recTarget > 0.f ? 1.f : 0.f) - passFade,
+		                  -1.f / fade, 1.f / fade);
+		// Eased. The ramp has to reach nought and one exactly, so it is
+		// linear underneath, but a linear ramp starts and stops with a corner
+		// -- and a corner in what is being written is a corner in the tape,
+		// sitting there to be crossed once a lap for as long as it lasts. It
+		// measured 60 dB down, which is quiet and completely audible on a
+		// sustained tone.
+		float pass = passFade * passFade * (3.f - 2.f * passFade);
+		float sinTh = std::sin(recHold[2]);
+		float cosTh = std::cos(recHold[2]);
+		float rec = sinTh * pass;
+		// 1 - rec^2 with no subtraction anywhere near 1: as the angle closes
+		// on ninety degrees sin rounds to 1.0f in steps of one ulp, and a
+		// keep built on 1 - rec^2 descends its last decade in sqrt-of-ulp
+		// chunks -- a 3e-4 stair once a fill, right at the seam. cos^2 of
+		// the same angle is the same number computed where float has plenty
+		// of room.
+		float oneMinusRec2 = cosTh * cosTh
+		                     + sinTh * sinTh * (1.f - pass) * (1.f + pass);
+		bool recording = passFade > 0.f;
+
+
+		// The loop's length is chosen when a pass ends, by looking at the tape:
+		// a fixed shortening picks a length with no relation to what is on it,
+		// and the phase it lands on is then whatever it is.
+		// A pass ending is what puts the seam on the tape, so that is when
+		// the seam's position is taken -- not only at a trig, as it was.
+		// The edge is a boundary in when the tape was last written, and it
+		// sits wherever the record head stopped: everything behind it has
+		// the pass on it, everything in front does not. A trig is only one
+		// way to make one; the amount knob makes one every time it crosses
+		// the lock.
+		//
+		// Leaving it at the last trig meant the crossfade was laid over a
+		// place with no edge while the real edge was crossed raw, once a
+		// lap, for as long as the loop was held. Measured with a punch-in
+		// over different material, the loop wrapped 2400 slots away from
+		// where the tape actually broke, and the break read -63 dB against
+		// a -80 dB floor.
+		if (wasRec && !recording) {
+			for (int c = 0; c < 2; c++)
+				tapeSeam[c] = tapeWrite[c];
+			loopLen = chooseLoop(n, fade);
+		}
+		else if (!recording && loopLen <= 0.0)
+			loopLen = chooseLoop(n, fade);
+		wasRec = recording;
+
+		float corrRate = 1.f - std::exp(-ct.dt / 0.100f);
 
 		for (int c = 0; c < 2; c++) {
 			float sp = speed * detune(c, ct.stereo);
-			int n = tape[c].size();
-			float held = tape[c].at((float)tapePos[c]);
 			float x = in[c] + loopFilter(c, fbState[c]) * fb * 0.9f;
-			// What the tape holds after this sample is what you hear: while
-			// it is recording you are listening to the head, which is how a
-			// tape works and how the amount knob crossfades the old audio
-			// against the new one in a single number.
-			float wet = held;
-			if (rec > 0.001f) {
-				wet = softClip((held * keep + x * rec) / kClipVolts) * kClipVolts;
-				tape[c].poke((int)tapePos[c], wet);
+
+			// ── the record head, in real time whatever the play head is doing.
+			// Sharing one moving position between them cancels the speed exactly:
+			// material laid down at a quarter speed and read back at a quarter
+			// speed is unity at every setting of the knob.
+			int w = (int)tapeWrite[c];
+			float old = tape[c].at((float)w);
+			corrXY[c] += (old * x - corrXY[c]) * corrRate;
+			corrXX[c] += (old * old - corrXX[c]) * corrRate;
+			corrYY[c] += (x * x - corrYY[c]) * corrRate;
+			// What survives depends on whether the tape and the input agree.
+			// Solving for a loop that settles at the level that went in gives
+			// keep^2 + 2*rho*rec*keep + rec^2 - 1 = 0, whose root is
+			// sqrt(1 - rec^2) when they do not -- which holds real material at
+			// unity -- and 1 - rec when they do, which is the only thing that
+			// stops a drone from stacking on itself. At rec of one it is zero,
+			// so a fill replaces outright without needing to be a special case.
+			// The correlation crosses zero all the time -- it ripples at
+			// signal rate around whatever its mean is -- and a hard clamp
+			// there is a corner: keep's slope breaks every time it lands,
+			// and while recording the break is written into the tape
+			// (measured 4e-4 at the end of every fill, replayed once a lap).
+			// The smooth positive part has no corner anywhere; at zero it
+			// reads one hundredth instead of nothing, which moves the
+			// overdub level by less than that.
+			float r = corrXY[c] / (std::sqrt(corrXX[c] * corrYY[c]) + 1e-9f);
+			float rho = std::min(0.5f * (r + std::sqrt(r * r + 0.0004f)), 1.f);
+			// The discriminant written as rho^2 rec^2 - rec^2 + 1 cancels
+			// catastrophically at rec = 1: the true value is rho^2, around
+			// 1e-6, but it is reached by adding 1 to a number a hair below
+			// -1, and float32 near 1 moves in steps of 6e-8. keep came out
+			// with a few percent of noise on it, a new value every sample --
+			// times the tape that was a -74 dB crackle written into every
+			// fill. oneMinusRec2 above carries the difference already
+			// computed where nothing cancels.
+			float disc = oneMinusRec2 + rho * rho * rec * rec;
+			float keep = clamp(-rho * rec + std::sqrt(std::max(0.f, disc)),
+			                   0.f, 1.f);
+			if (recording) {
+				int m = (int)shadow[c].size();
+				if (m > 0)
+					shadow[c][((w % m) + m) % m] = old;
+				tape[c].poke(w, softClip((old * keep + x * rec) / kClipVolts)
+				                * kClipVolts);
 			}
-			// a stopped tape still reads, which is how the centre holds a
-			// single frozen grain
-			tapePos[c] += (filling ? 1.f : sp);
-			if (tapePos[c] >= n)
-				tapePos[c] -= n;
-			if (tapePos[c] < 0.0)
-				tapePos[c] += n;
+			tapeWrite[c] += 1.0;
+			if (tapeWrite[c] >= n)
+				tapeWrite[c] -= n;
+
+			// The record head leaves one edge in the tape, and it is an edge
+			// of *generation*: the slot it has just written carries one more
+			// pass of overdub than the slot in front of it, and the two
+			// differ by exactly what a pass adds. The play head crosses that
+			// step once a lap at any speed but one, and sits on it forever at
+			// one.
+			//
+			// Substituting the head's own live signal there was wrong, and
+			// wrong in a way only a speed other than 1x shows: the head
+			// advances one slot per sample whatever the play head is doing,
+			// so its signal carries the input's pitch, not the tape's. At 2x
+			// that spliced an octave-down fragment in for the length of the
+			// window -- the output's slope halved, once a lap. At 1x the two
+			// rates coincide, which is why it measured clean there.
+			//
+			// What is wanted is the same tape position one generation older,
+			// which is a read at the play head's own position and therefore
+			// at the play head's own pitch. `shadow` keeps the last window's
+			// worth of pre-write values for exactly that: approaching the
+			// head from behind, the reading fades from the tape to its own
+			// previous generation, so it meets the older material waiting on
+			// the far side of the edge with nothing left to step over.
+			//
+			// The window is measured in tape but heard in time. The heads
+			// close at |speed - 1| slots per sample, so a window of that
+			// times the splice length is always crossed in one splice of
+			// wall time, at every speed, sampled the same number of times.
+			//
+			// It therefore vanishes at exactly 1x -- and that is right, not
+			// the flaw the old duck had there. At 1x the heads keep station
+			// and the play head never crosses the edge at all: whichever
+			// side it is on, it stays, and the honest reading is the one the
+			// tape holds. Forcing a window open there instead made a play
+			// head parked just behind the record head present the generation
+			// before the one it is sitting on, for good -- which at 1x is an
+			// overdub you can never hear.
+			float win = kEdgeFade * sr * std::fabs(sp - 1.f);
+			int shadowLen = (int)shadow[c].size();
+			// The tape as it would read if this lap's overdub had not
+			// happened yet: every slot the head has already rewritten put
+			// back to the value it held before. Reconstructed slot by slot
+			// rather than read from a parallel buffer, because a fractional
+			// read straddling the head takes one sample from each side --
+			// substituting only the whole-sample value left a one-sample
+			// spike at the crossing.
+			auto older = [&](double pos) -> float {
+				double f = std::floor(pos);
+				int i0 = (int)(((long long)f % n + n) % n);
+				int i1 = i0 + 1 < n ? i0 + 1 : 0;
+				float fr = (float)(pos - f);
+				auto pick = [&](int slot) {
+					int ds = slot - w;
+					ds -= (int)std::floor((double)ds / n + 0.5) * n;
+					if (ds <= 0 && ds > 2 - shadowLen)
+						return shadow[c][((slot % shadowLen) + shadowLen)
+						                 % shadowLen];
+					return tape[c].buf[slot];
+				};
+				float a = pick(i0);
+				return a + (pick(i1) - a) * fr;
+			};
+			auto readTape = [&](double pos) -> float {
+				float raw = tape[c].at(pos);   // double: see Delay::at
+				if (!recording || shadowLen < 4 || win <= 0.f)
+					return raw;
+				// Signed distance from the head. A slot in front of it still
+				// holds the older generation and needs nothing; one behind
+				// it has been rewritten this lap and is a generation newer
+				// than its neighbour across the edge.
+				double d = pos - (double)w;
+				d -= std::floor(d / (double)n + 0.5) * (double)n;
+				if (d >= 1.0 || d <= -(double)win)
+					return raw;
+				// One at the far edge of the window, nought at the head --
+				// and held at nought across the straddling sample, which
+				// costs no corner because the ease is flat there anyway.
+				float u = clamp((float)(-d) / win, 0.f, 1.f);
+				u = u * u * (3.f - 2.f * u);
+				float before = older(pos);
+				return before + (raw - before) * u;
+			};
+
+			// ── the play head, which the speed alone moves.
+			// One reduction, not two: bringing it into the tape and then
+			// folding it into the loop fight each other, and the position
+			// swings by the difference between them every sample -- which
+			// reads as a jump every sample, so the ghost below re-arms before
+			// it can fade and the crossfade never finishes.
+			double p = tapePos[c];
+			double before = p;
+			if (!recording) {
+				// locked, it runs a loop a little shorter than the tape so the
+				// crossfade below has material to fade into
+				double loop = loopLen > 0.0 ? loopLen : (double)n - fade;
+				double tau = p - tapeSeam[c];
+				tau -= std::floor(tau / loop) * loop;
+				p = tapeSeam[c] + tau;
+			}
+			else
+				p -= std::floor(p / (double)n) * (double)n;
+			// a jump is any move a whole number of laps cannot explain
+			double moved = p - before;
+			moved -= std::floor(moved / (double)n + 0.5) * (double)n;
+			if (std::fabs(moved) > 0.5) {
+				ghostPos[c] = before;
+				ghostLeft[c] = (int)fade;
+				joinXY[c] = joinXX[c] = joinYY[c] = 0.f;
+			}
+			tapePos[c] = p;
+
+			// Applied per reading, not to the mix: during a crossfade the two
+			// taps are in different places, and only one of them may be near
+			// the record head.
+			float wet = readTape(p);
+			if (ghostLeft[c] >= 0) {
+				// Weighted by how alike the two readings are. "Equal power" only
+				// conserves power for signals that are unrelated; two that match
+				// add in amplitude instead, and sin against cos sums them to
+				// +3 dB. Dividing by sqrt(1 + rho*sin(2*theta)) is equal power at
+				// a correlation of zero and sums to one at a correlation of one.
+				//
+				// rho is a running measurement of the two readings themselves,
+				// not one number for the whole fade: across a splice-length
+				// crossfade the relationship changes -- at a loop fold the two
+				// taps start out identical, since the splice begins as the
+				// tail's own continuation, and drift apart as it glides toward
+				// the head -- and a single average is wrong at both ends. The
+				// measurement assumes nothing about the material. It converges
+				// in an eighth of the fade, and starting it at zero is safe
+				// because the correction only has leverage mid-fade, where
+				// sin and cos are comparable; at the edges g is one whatever
+				// rho says.
+				//
+				// Counted in samples so that it lands on both ends exactly, and
+				// eased: sin and cos are a fine pair of weights but cos reaches
+				// zero with a slope of -1, so a fade driven by a linear ramp
+				// stops with a corner in it.
+				float u = (float)ghostLeft[c] / fade;        // 1 down to 0
+				float wgt = u * u * (3.f - 2.f * u);
+				float bs = readTape(ghostPos[c]);
+				float jr = clamp(8.f / fade, 0.f, 1.f);
+				joinXY[c] += (wet * bs - joinXY[c]) * jr;
+				joinXX[c] += (wet * wet - joinXX[c]) * jr;
+				joinYY[c] += (bs * bs - joinYY[c]) * jr;
+				float rj = joinXY[c]
+				           / (std::sqrt(joinXX[c] * joinYY[c]) + 1e-9f);
+				// the same smooth positive part as the overdub law, and for
+				// the same reason: a hard clamp is a corner
+				float rhoJ = std::min(0.5f * (rj + std::sqrt(rj * rj + 0.0004f)),
+				                      1.f);
+				float th = 0.5f * (float)M_PI * (1.f - wgt);
+				float sa = std::sin(th), cb = std::cos(th);
+				float g = 1.f / std::sqrt(1.f + rhoJ * 2.f * sa * cb);
+				wet = (wet * sa + bs * cb) * g;
+				ghostPos[c] += sp;
+				ghostLeft[c]--;
+			}
+			tapePos[c] += sp;
 			out[c] = in[c] * (1.f - amt) + wet * amt;
 		}
 	}

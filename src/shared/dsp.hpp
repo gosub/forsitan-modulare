@@ -74,6 +74,29 @@ struct Delay {
 			p = 0.f;
 		return lerp(p, n);
 	}
+	// The same, at double precision. A float position near the top of a
+	// 55204-sample tape moves in steps of 1/256 of a sample -- that is all
+	// the mantissa that is left -- so a head whose position accumulates in
+	// double and is then read through the float overload does not glide, it
+	// jumps a 256th of a sample at a time. Each jump is a step of the
+	// signal's slope times the jump, 3e-4 on a 3 V tone, which is a tick.
+	// Splitting slot and fraction while still in double keeps the glide.
+	float at(double pos) const {
+		if (buf.empty())
+			return 0.f;
+		int n = (int)buf.size();
+		double p = pos - std::floor(pos / (double)n) * (double)n;
+		if (p < 0.0)
+			p = 0.0;
+		int i0 = (int)p;
+		float fr = (float)(p - (double)i0);
+		if (i0 >= n) {
+			i0 -= n;
+			fr = 0.f;
+		}
+		int i1 = i0 + 1 < n ? i0 + 1 : 0;
+		return buf[i0] + (buf[i1] - buf[i0]) * fr;
+	}
 
 	// Interpolated read at a position already folded into [0, n) -- or so the
 	// arithmetic that folded it believes. A position a hair below zero, once
