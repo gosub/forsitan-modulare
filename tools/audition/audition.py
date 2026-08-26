@@ -6,14 +6,21 @@ audition.py -- set up one audition item and open it in Rack.
     python3 tools/audition/audition.py artifex --list
     python3 tools/audition/audition.py artifex 3.8.6 --dry-run
 
-The scene lives in the audition itself (test/audition/<module>.md), beside
-the words it belongs to, so the instruction and the setup cannot drift apart.
-A section's ```scene block is its bench; each item's `scene:` line is a delta
-on it. See the audition section of CLAUDE.md for the format.
+The bench is Python, and it lives in the audition itself
+(test/audition/<slug>.md) beside the words it belongs to, so the instruction
+and the setup cannot drift apart. Three levels of code run in one namespace:
+
+    the audition's own ```python block   -- the bench every item starts from
+    the section's ```python block        -- what the mode or section sets up
+    the item's code                      -- what this item changes
+
+An item's code is a one-line `code span` or an indented ```python block.
+See tools/audition/vcv.py for what the bench can say, and the audition
+section of CLAUDE.md for the shape of the file.
 
 Everything specific to one machine -- where Rack is, which sound card, which
-sample file -- is in test/audition/config.json, which is not tracked.
-Copy config.example.json and edit.
+sample file -- is in test/audition/config.json, which is not tracked. Copy
+config.example.json and edit.
 """
 import argparse
 import json
@@ -23,12 +30,10 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import modspec                                             # noqa: E402
-import vcvpatch                                            # noqa: E402
+import vcv                                                 # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 AUDITION_DIR = os.path.join(ROOT, 'test', 'audition')
-HP = 5.08
 
 
 def die(msg):
@@ -54,84 +59,67 @@ def load_config():
     return expand(cfg)
 
 
-def module_hp(slug):
-    """Panel width in HP, so the bench lays out without Rack shoving modules
-    aside on load."""
-    svg = os.path.join(ROOT, 'res', '%s.svg' % slug)
-    try:
-        with open(svg) as f:
-            head = f.read(4000)
-        m = re.search(r'\bwidth="([\d.]+)(mm)?"', head)
-        if m:
-            return max(2, int(round(float(m.group(1)) / HP)))
-    except OSError:
-        pass
-    return 20
-
-
 # ---------------------------------------------------------------- the audition
 
 class Item:
-    def __init__(self, ident, text, section, scene):
-        self.ident, self.text, self.section, self.scene = ident, text, section, scene
-
-
-def parse_scene(text):
-    """`mode=replayer, time=1.0, source=sine 220` -> a dict. Values may hold
-    spaces; keys may not."""
-    out = {}
-    for part in re.split(r',(?![^()]*\))', text):
-        part = part.strip()
-        if not part:
-            continue
-        if '=' not in part:
-            die('scene fragment %r is not key=value' % part)
-        k, v = part.split('=', 1)
-        out[k.strip().lower()] = v.strip()
-    return out
+    def __init__(self, ident, text, section, code):
+        self.ident, self.text, self.section, self.code = ident, text, section, code
 
 
 def parse_audition(slug):
-    """Read test/audition/<slug>.md into a list of items. A section's bench is
-    its ```scene block; an item's `scene:` line overrides keys in it."""
+    """Read test/audition/<slug>.md into a list of items, each carrying the
+    code that builds it: the file's bench, then the section's, then its own."""
     path = os.path.join(AUDITION_DIR, '%s.md' % slug)
     if not os.path.exists(path):
         die('no audition at %s' % os.path.relpath(path, ROOT))
     with open(path) as f:
         lines = f.read().splitlines()
 
-    items, section, base = [], '', {}
+    items, section, base, sect_code = [], '', [], []
     i = 0
     while i < len(lines):
         line = lines[i]
-        m = re.match(r'^##+\s+(.*)', line)
-        if m:
-            section, base = m.group(1).strip(), {}
-        elif re.match(r'^\s*```\s*scene\s*$', line):
+        head = re.match(r'^(#+)\s+(.*)', line)
+        fence = re.match(r'^```\s*python\s*$', line)
+        if head:
+            section, sect_code = head.group(2).strip(), []
+        elif fence:
             body, i = [], i + 1
-            while i < len(lines) and not re.match(r'^\s*```\s*$', lines[i]):
-                body.append(lines[i].strip())
+            while i < len(lines) and not re.match(r'^```\s*$', lines[i]):
+                body.append(lines[i])
                 i += 1
-            base = parse_scene(', '.join(b for b in body if b))
+            # A block before the file's first item is the bench every item
+            # starts from; after that, it belongs to the section it is in.
+            (base if not items else sect_code).append('\n'.join(body))
         else:
             m = re.match(r'^\s*-\s*\[([ x\-X])\]\s*(\d+(?:\.\d+)*)\.\s+(.*)', line)
             if m:
-                ident, text, scene = m.group(2), [m.group(3)], dict(base)
+                ident, text, code = m.group(2), [m.group(3)], []
                 j = i + 1
-                while j < len(lines) and (lines[j].startswith('      ') or not lines[j].strip()):
-                    if not lines[j].strip():
+                while j < len(lines):
+                    nxt = lines[j]
+                    if not nxt.strip():
                         if j + 1 < len(lines) and not lines[j + 1].startswith('      '):
                             break
-                        text.append('')
+                        j += 1
+                        continue
+                    if not nxt.startswith('      '):
+                        break
+                    body = nxt.strip()
+                    if re.match(r'^```\s*python\s*$', body):
+                        j += 1
+                        blk = []
+                        while j < len(lines) and not re.match(r'^\s*```\s*$', lines[j]):
+                            blk.append(lines[j][6:] if lines[j].startswith('      ') else lines[j])
+                            j += 1
+                        code.append('\n'.join(blk))
+                    elif re.match(r'^`[^`]+`$', body):
+                        code.append(body[1:-1])
                     else:
-                        body = lines[j].strip()
-                        sm = re.match(r'^`?scene:\s*(.*?)`?$', body)
-                        if sm:
-                            scene.update(parse_scene(sm.group(1)))
-                        else:
-                            text.append(body)
+                        text.append(body)
                     j += 1
-                items.append(Item(ident, ' '.join(text).strip(), section, scene))
+                items.append(Item(ident, ' '.join(text).strip(), section,
+                                  list(base) + list(sect_code) + code))
                 i = j
                 continue
         i += 1
@@ -141,89 +129,36 @@ def parse_audition(slug):
 # ---------------------------------------------------------------- the bench
 
 def build_patch(slug, item, cfg):
-    spec = modspec.load(slug, ROOT)
-    scene = dict(item.scene)
-    source = scene.pop('source', 'silence')
-    menu = scene.pop('menu', '')
-    note = scene.pop('note', '')
-
-    params = spec.defaults()
-    for k, v in scene.items():
-        c = spec.param(k)
-        params[c.index] = c.value(v)
-
-    data = dict(cfg.get('menu_defaults', {}).get(slug, {}))
-    for k, v in parse_scene(menu).items() if menu else []:
-        data[k] = {'true': True, 'false': False}.get(v.lower(), v)
-        if isinstance(data[k], str):
-            try:
-                data[k] = float(v) if '.' in v else int(v)
-            except ValueError:
-                pass
-
-    p = vcvpatch.Patch()
-    x = 0
-    src_id, src_out, src_out_r = None, 0, None
-    if source != 'silence':
-        s = resolve_source(source, cfg)
-        src_id = p.add(s['plugin'], s['model'], (x, 0),
-                       params=s.get('params'), data=s.get('data'))
-        src_out, src_out_r = s.get('out', 0), s.get('out_r')
-        x += s.get('hp', 10)
-
-    mut = p.add('forsitan', slug, (x, 0), params=params,
-                data=(data if data else None))
-    x += module_hp(slug)
-
-    a = cfg['audio']
-    audio = p.add('Core', 'AudioInterface2', (x, 0), data={
-        'audio': {'driver': a['driver'], 'deviceName': a['deviceName'],
-                  'sampleRate': float(a.get('sampleRate', 48000)),
-                  'blockSize': a.get('blockSize', 256),
-                  'inputOffset': 0, 'outputOffset': 0},
-        'dcFilter': True})
-    x += 8
-
-    p.add('Core', 'Notes', (x, 0), data={'text': note_text(slug, item, note)})
-
-    if src_id is not None:
-        p.cable(src_id, src_out, mut, spec.port('in', cfg['bench'][slug]['in'][0]))
-        if src_out_r is not None and len(cfg['bench'][slug]['in']) > 1:
-            p.cable(src_id, src_out_r, mut, spec.port('in', cfg['bench'][slug]['in'][1]))
-    for n, port in enumerate(cfg['bench'][slug]['out'][:2]):
-        p.cable(mut, spec.port('out', port), audio, n)
-    return p
-
-
-def resolve_source(source, cfg):
-    m = re.match(r'^sine\s+([\d.]+)\s*(?:hz)?$', source.strip(), re.I)
-    if m:
-        import math
-        s = dict(cfg['sine'])
-        ref = s.pop('ref', 261.6256)
-        s['params'] = {s.pop('freq_param', 0): math.log2(float(m.group(1)) / ref)}
-        return s
-    if source in cfg.get('sources', {}):
-        return cfg['sources'][source]
-    die('unknown source %r (config has: %s, plus "sine <hz>" and "silence")'
-        % (source, ', '.join(sorted(cfg.get('sources', {})))))
+    vcv.configure(cfg)
+    p = vcv.patch()
+    ns = {'vcv': vcv, 'cfg': cfg, 'slug': slug, 'item': item.ident}
+    for n, block in enumerate(item.code):
+        try:
+            exec(compile(block, '<%s %s block %d>' % (slug, item.ident, n + 1),
+                         'exec'), ns)
+        except Exception as e:
+            die('%s %s, code block %d: %s: %s'
+                % (slug, item.ident, n + 1, type(e).__name__, e))
+    if not p.modules:
+        die('%s %s built no modules -- is there a ```python bench in the audition?'
+            % (slug, item.ident))
+    notes = p.module('Notes')
+    notes.data = {'text': note_text(slug, item)}
+    return p.build()
 
 
 def plain(s):
-    """The Notes module renders no markdown, so emphasis markers would show up
-    as asterisks in the one place the text is actually read."""
+    """The Notes module renders no markdown, so emphasis markers would show as
+    asterisks in the one place the text is actually read."""
     s = re.sub(r'\*\*(.+?)\*\*', r'\1', s)
-    s = re.sub(r'`([^`]+)`', r'\1', s)
-    return s
+    return re.sub(r'`([^`]+)`', r'\1', s)
 
 
-def note_text(slug, item, extra):
+def note_text(slug, item):
     out = ['%s  %s' % (slug, item.ident), '']
     if item.section:
         out += [plain(item.section), '']
     out += [wrap(plain(item.text))]
-    if extra:
-        out += ['', wrap(plain(extra))]
     return '\n'.join(out)
 
 
@@ -248,7 +183,10 @@ def main():
     ap.add_argument('module')
     ap.add_argument('item', nargs='?')
     ap.add_argument('--list', action='store_true', help='list the items and stop')
-    ap.add_argument('--dry-run', action='store_true', help='build the patch, print it, do not launch')
+    ap.add_argument('--dry-run', action='store_true',
+                    help='build the patch and print it, do not launch Rack')
+    ap.add_argument('--code', action='store_true',
+                    help='print the code that builds the item, do not launch Rack')
     args = ap.parse_args()
 
     items = parse_audition(args.module)
@@ -258,7 +196,7 @@ def main():
             if it.section != section:
                 section = it.section
                 print('\n%s' % section)
-            print('  %-10s %s' % (it.ident, it.text[:70]))
+            print('  %-10s %s' % (it.ident, it.text[:68]))
         return
 
     hit = [i for i in items if i.ident == args.item]
@@ -266,9 +204,11 @@ def main():
         die('no item %s in %s (try --list)' % (args.item, args.module))
     item = hit[0]
 
+    if args.code:
+        print('\n# ---- \n'.join(item.code))
+        return
+
     cfg = load_config()
-    if args.module not in cfg.get('bench', {}):
-        die('config.json has no bench entry for %s' % args.module)
     p = build_patch(args.module, item, cfg)
 
     if args.dry_run:
@@ -278,7 +218,7 @@ def main():
     scratch = cfg.get('scratch', '/tmp/forsitan-audition')
     os.makedirs(scratch, exist_ok=True)
     path = p.write(os.path.join(scratch, '%s-%s.vcv' % (args.module, item.ident)))
-    print('%s %s -- %s' % (args.module, item.ident, item.text[:70]))
+    print('%s %s -- %s' % (args.module, item.ident, item.text[:68]))
     print('patch: %s' % path)
 
     r = cfg['rack']
