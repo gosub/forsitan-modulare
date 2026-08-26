@@ -1,0 +1,1016 @@
+{
+  "4msCompany/BWAVP": {
+    "inputs": [
+      "Play Trig",
+      "Loop Gate"
+    ],
+    "outputs": [
+      "Left",
+      "Right",
+      "Play Gate",
+      "End"
+    ],
+    "params": [
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Play"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Loop"
+      },
+      {
+        "default": 0.0,
+        "max": 2.0,
+        "min": 0.0,
+        "name": "Play Retrig Mode"
+      },
+      {
+        "default": 0.1015625,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Waveform Zoom"
+      },
+      {
+        "default": 0.25,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Playback Buffer Threshold"
+      },
+      {
+        "default": 3.0,
+        "max": 11.0,
+        "min": 0.0,
+        "name": "Max Buffer Size"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Buffer Strategy"
+      },
+      {
+        "default": 0.0,
+        "max": 20.0,
+        "min": 0.0,
+        "name": "Startup Delay (sec)"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": ""
+      }
+    ]
+  },
+  "Core/AudioInterface2": {
+    "inputs": [
+      "To \"device output 1\"",
+      "To \"device output 2\""
+    ],
+    "outputs": [
+      "From \"device input 1\"",
+      "From \"device input 2\""
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 2.0,
+        "min": 0.0,
+        "name": "Level"
+      }
+    ]
+  },
+  "Core/Notes": {
+    "inputs": [],
+    "outputs": [],
+    "params": []
+  },
+  "Fundamental/8vert": {
+    "inputs": [
+      "Row 1",
+      "Row 2",
+      "Row 3",
+      "Row 4",
+      "Row 5",
+      "Row 6",
+      "Row 7",
+      "Row 8"
+    ],
+    "outputs": [
+      "Row 1",
+      "Row 2",
+      "Row 3",
+      "Row 4",
+      "Row 5",
+      "Row 6",
+      "Row 7",
+      "Row 8"
+    ],
+    "params": [
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 1 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 2 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 3 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 4 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 5 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 6 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 7 gain"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Row 8 gain"
+      }
+    ]
+  },
+  "Fundamental/ADSR": {
+    "inputs": [
+      "Attack",
+      "Decay",
+      "Sustain",
+      "Release",
+      "Gate",
+      "Retrigger"
+    ],
+    "outputs": [
+      "Envelope"
+    ],
+    "params": [
+      {
+        "default": 0.5,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Attack"
+      },
+      {
+        "default": 0.5,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Decay"
+      },
+      {
+        "default": 0.5,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Sustain"
+      },
+      {
+        "default": 0.5,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Release"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Attack CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Decay CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Sustain CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Release CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Push"
+      }
+    ]
+  },
+  "Fundamental/LFO": {
+    "inputs": [
+      "Frequency modulation",
+      "",
+      "Reset",
+      "Pulse width modulation",
+      "Clock"
+    ],
+    "outputs": [
+      "Sine",
+      "Triangle",
+      "Sawtooth",
+      "Square"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Offset"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Invert"
+      },
+      {
+        "default": 1.0,
+        "max": 10.0,
+        "min": -8.0,
+        "name": "Frequency"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Frequency modulation"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": ""
+      },
+      {
+        "default": 0.5,
+        "max": 0.9900000095367432,
+        "min": 0.009999999776482582,
+        "name": "Pulse width"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Pulse width modulation"
+      }
+    ]
+  },
+  "Fundamental/Merge": {
+    "inputs": [
+      "Channel 1",
+      "Channel 2",
+      "Channel 3",
+      "Channel 4",
+      "Channel 5",
+      "Channel 6",
+      "Channel 7",
+      "Channel 8",
+      "Channel 9",
+      "Channel 10",
+      "Channel 11",
+      "Channel 12",
+      "Channel 13",
+      "Channel 14",
+      "Channel 15",
+      "Channel 16"
+    ],
+    "outputs": [
+      "Polyphonic"
+    ],
+    "params": []
+  },
+  "Fundamental/Mixer": {
+    "inputs": [
+      "Channel 1",
+      "Channel 2",
+      "Channel 3",
+      "Channel 4",
+      "Channel 5",
+      "Channel 6"
+    ],
+    "outputs": [
+      "Mix"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Level"
+      }
+    ]
+  },
+  "Fundamental/Noise": {
+    "inputs": [],
+    "outputs": [
+      "White noise",
+      "Pink noise",
+      "Red noise",
+      "Violet noise",
+      "Blue noise",
+      "Gray noise",
+      "Black noise"
+    ],
+    "params": []
+  },
+  "Fundamental/Quantizer": {
+    "inputs": [
+      "1V/octave pitch"
+    ],
+    "outputs": [
+      "Pitch"
+    ],
+    "params": [
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Pre-offset"
+      }
+    ]
+  },
+  "Fundamental/Random": {
+    "inputs": [
+      "Internal trigger rate",
+      "Shape",
+      "Trigger",
+      "External",
+      "Trigger probability",
+      "Random spread"
+    ],
+    "outputs": [
+      "Stepped",
+      "Linear",
+      "Smooth",
+      "Exponential",
+      "Trigger"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 10.965784072875977,
+        "min": -8.965784072875977,
+        "name": "Internal trigger rate"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Shape"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Offset"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": ""
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Trigger probability"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Random spread"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Internal trigger rate CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Shape CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Trigger probability CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Random spread CV"
+      }
+    ]
+  },
+  "Fundamental/SEQ3": {
+    "inputs": [
+      "Tempo",
+      "Clock",
+      "Reset",
+      "Steps",
+      "Run"
+    ],
+    "outputs": [
+      "Trigger",
+      "CV 1",
+      "CV 2",
+      "CV 3",
+      "Step 1",
+      "Step 2",
+      "Step 3",
+      "Step 4",
+      "Step 5",
+      "Step 6",
+      "Step 7",
+      "Step 8",
+      "Steps",
+      "Clock",
+      "Run",
+      "Reset"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 4.0,
+        "min": -2.0,
+        "name": "Tempo"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Run"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Reset"
+      },
+      {
+        "default": 8.0,
+        "max": 8.0,
+        "min": 1.0,
+        "name": "Steps"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 1"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 2"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 3"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 4"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 5"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 6"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 7"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 1 step 8"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 1"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 2"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 3"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 4"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 5"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 6"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 7"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 2 step 8"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 1"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 2"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 3"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 4"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 5"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 6"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 7"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "CV 3 step 8"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 1 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 2 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 3 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 4 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 5 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 6 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 7 trigger"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Step 8 trigger"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Tempo CV"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Steps CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Clock"
+      }
+    ]
+  },
+  "Fundamental/Scope": {
+    "inputs": [
+      "Ch 1",
+      "Ch 2",
+      "External trigger"
+    ],
+    "outputs": [
+      "Ch 1",
+      "Ch 2"
+    ],
+    "params": [
+      {
+        "default": 0.0,
+        "max": 8.0,
+        "min": 0.0,
+        "name": "Gain 1"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "Offset 1"
+      },
+      {
+        "default": 0.0,
+        "max": 8.0,
+        "min": 0.0,
+        "name": "Gain 2"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "Offset 2"
+      },
+      {
+        "default": 1.0,
+        "max": 7.643856048583984,
+        "min": -5.643856048583984,
+        "name": "Time"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Scope mode"
+      },
+      {
+        "default": 0.0,
+        "max": 10.0,
+        "min": -10.0,
+        "name": "Trigger threshold"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Trigger"
+      }
+    ]
+  },
+  "Fundamental/Split": {
+    "inputs": [
+      "Polyphonic"
+    ],
+    "outputs": [
+      "Channel 1",
+      "Channel 2",
+      "Channel 3",
+      "Channel 4",
+      "Channel 5",
+      "Channel 6",
+      "Channel 7",
+      "Channel 8",
+      "Channel 9",
+      "Channel 10",
+      "Channel 11",
+      "Channel 12",
+      "Channel 13",
+      "Channel 14",
+      "Channel 15",
+      "Channel 16"
+    ],
+    "params": []
+  },
+  "Fundamental/VCA": {
+    "inputs": [
+      "Channel 1 exponential CV",
+      "Channel 1 linear CV",
+      "Channel 1",
+      "Channel 2 exponential CV",
+      "Channel 2 linear CV",
+      "Channel 2"
+    ],
+    "outputs": [
+      "Channel 1",
+      "Channel 2"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Channel 1 level"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Channel 2 level"
+      }
+    ]
+  },
+  "Fundamental/VCA-1": {
+    "inputs": [
+      "CV",
+      "Channel"
+    ],
+    "outputs": [
+      "Channel"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Level"
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Response mode"
+      }
+    ]
+  },
+  "Fundamental/VCMixer": {
+    "inputs": [
+      "Mix CV",
+      "Channel 1",
+      "Channel 2",
+      "Channel 3",
+      "Channel 4",
+      "Channel 1 CV",
+      "Channel 2 CV",
+      "Channel 3 CV",
+      "Channel 4 CV"
+    ],
+    "outputs": [
+      "Mix",
+      "Channel 1",
+      "Channel 2",
+      "Channel 3",
+      "Channel 4"
+    ],
+    "params": [
+      {
+        "default": 1.0,
+        "max": 2.0,
+        "min": 0.0,
+        "name": "Mix level"
+      },
+      {
+        "default": 1.0,
+        "max": 1.4142135381698608,
+        "min": 0.0,
+        "name": "Channel 1 level"
+      },
+      {
+        "default": 1.0,
+        "max": 1.4142135381698608,
+        "min": 0.0,
+        "name": "Channel 2 level"
+      },
+      {
+        "default": 1.0,
+        "max": 1.4142135381698608,
+        "min": 0.0,
+        "name": "Channel 3 level"
+      },
+      {
+        "default": 1.0,
+        "max": 1.4142135381698608,
+        "min": 0.0,
+        "name": "Channel 4 level"
+      }
+    ]
+  },
+  "Fundamental/VCO": {
+    "inputs": [
+      "1V/octave pitch",
+      "Frequency modulation",
+      "Sync",
+      "Pulse width modulation"
+    ],
+    "outputs": [
+      "Sine",
+      "Triangle",
+      "Sawtooth",
+      "Square"
+    ],
+    "params": [
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": ""
+      },
+      {
+        "default": 1.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Sync mode"
+      },
+      {
+        "default": 0.0,
+        "max": 54.0,
+        "min": -54.0,
+        "name": "Frequency"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": ""
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Frequency modulation"
+      },
+      {
+        "default": 0.5,
+        "max": 0.9900000095367432,
+        "min": 0.009999999776482582,
+        "name": "Pulse width"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Pulse width modulation"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "FM mode"
+      }
+    ]
+  },
+  "Fundamental/VCO2": {
+    "inputs": [
+      "Frequency modulation",
+      "Sync",
+      "Wavetable position",
+      "1V/octave pitch"
+    ],
+    "outputs": [
+      "Wavetable"
+    ],
+    "params": [
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": ""
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Sync"
+      },
+      {
+        "default": 0.0,
+        "max": 75.0,
+        "min": -75.0,
+        "name": "Frequency"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "Wavetable position"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Frequency modulation"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": -1.0,
+        "name": "Wavetable position CV"
+      },
+      {
+        "default": 0.0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "FM mode"
+      }
+    ]
+  }
+}
