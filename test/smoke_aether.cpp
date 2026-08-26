@@ -8,6 +8,8 @@
 #include "smoke_harness.hpp"
 #include "../src/aether.cpp"
 
+#include <vector>
+
 static float knobFor(double hz) {
     return (float)aether::clampd(std::log2(hz / aether::kClkMin)
                                  / aether::kClkOctaves, 0.0, 1.0);
@@ -280,6 +282,92 @@ static void testOversampling() {
     report("aether", "os_consistent", hi / std::max(lo, 1e-9), hi / lo < 1.3);
 }
 
+
+// ── the dry/wet mixes ───────────────────────────────────────────────────────
+// Both signal outputs cross-fade against the signal at the jack, so that the
+// module can sit in an effect send. The engine is deterministic, so the same
+// input gives the same wet run every time and the mix can be checked against
+// arithmetic rather than against a threshold.
+struct MixRun {
+    std::vector<float> in, out, err;
+};
+
+static MixRun runMix(float knob, float cv, bool cvPatched) {
+    Aether m; long fr = 0;
+    setKnobs(m, 96000.0, 96000.0, 1.f, 0.7f, aether::PD_PFD);
+    m.params[Aether::OUT_MIX_PARAM].setValue(knob);
+    m.params[Aether::ERROR_MIX_PARAM].setValue(knob);
+    m.inputs[Aether::SIGNAL_INPUT].channels = 1;
+    if (cvPatched) {
+        m.inputs[Aether::OUT_MIX_INPUT].channels = 1;
+        m.inputs[Aether::ERROR_MIX_INPUT].channels = 1;
+        m.inputs[Aether::OUT_MIX_INPUT].setVoltage(cv);
+        m.inputs[Aether::ERROR_MIX_INPUT].setVoltage(cv);
+    }
+    MixRun r;
+    double ph = 0.0;
+    const double w = 2.0 * M_PI * 220.0 / SR;
+    const long settle = (long)(0.3 * SR), meas = (long)(0.2 * SR);
+    for (long i = 0; i < settle + meas; i++) {
+        const float x = 4.f * (float)std::sin(ph);
+        ph += w;
+        m.inputs[Aether::SIGNAL_INPUT].setVoltage(x);
+        m.process(makeArgs(fr++));
+        if (i >= settle) {
+            r.in.push_back(x);
+            r.out.push_back(m.outputs[Aether::SIGNAL_OUTPUT].getVoltage());
+            r.err.push_back(m.outputs[Aether::ERROR_OUTPUT].getVoltage());
+        }
+    }
+    return r;
+}
+
+// biggest sample-by-sample distance between a run and what it should be
+static double maxDiff(const std::vector<float>& a, const std::vector<float>& b) {
+    double d = 0.0;
+    for (size_t i = 0; i < a.size(); i++)
+        d = std::max(d, (double)std::fabs(a[i] - b[i]));
+    return d;
+}
+
+static void testMix() {
+    const MixRun dry = runMix(0.f, 0.f, false);
+    const MixRun wet = runMix(1.f, 0.f, false);
+    const MixRun half = runMix(0.5f, 0.f, false);
+
+    // fully dry is the input jack itself, on both outputs
+    report("aether", "mix_dry_is_input", maxDiff(dry.out, dry.in),
+           maxDiff(dry.out, dry.in) < 1e-4);
+    report("aether", "mix_dry_error_is_input", maxDiff(dry.err, dry.in),
+           maxDiff(dry.err, dry.in) < 1e-4);
+    // fully wet is what the module did before the mix existed
+    report("aether", "mix_wet_differs", maxDiff(wet.out, wet.in),
+           maxDiff(wet.out, wet.in) > 0.5);
+
+    // and noon is exactly halfway between the two
+    std::vector<float> mid(half.out.size());
+    for (size_t i = 0; i < mid.size(); i++)
+        mid[i] = 0.5f * (dry.in[i] + wet.out[i]);
+    report("aether", "mix_half_is_midpoint", maxDiff(half.out, mid),
+           maxDiff(half.out, mid) < 1e-4);
+
+    // patched, the knob attenuates the CV: 10 V at a full knob is fully wet,
+    // 10 V at noon is what noon was, and no volts is dry however the knob sits
+    const MixRun cvFull = runMix(1.f, 10.f, true);
+    const MixRun cvHalf = runMix(0.5f, 10.f, true);
+    const MixRun cvZero = runMix(1.f, 0.f, true);
+    report("aether", "mixcv_full_is_wet", maxDiff(cvFull.out, wet.out),
+           maxDiff(cvFull.out, wet.out) < 1e-4);
+    report("aether", "mixcv_knob_attenuates", maxDiff(cvHalf.out, half.out),
+           maxDiff(cvHalf.out, half.out) < 1e-4);
+    report("aether", "mixcv_zero_is_dry", maxDiff(cvZero.out, cvZero.in),
+           maxDiff(cvZero.out, cvZero.in) < 1e-4);
+    // negative CV cannot push past dry
+    const MixRun cvNeg = runMix(1.f, -5.f, true);
+    report("aether", "mixcv_negative_clamps", maxDiff(cvNeg.out, cvNeg.in),
+           maxDiff(cvNeg.out, cvNeg.in) < 1e-4);
+}
+
 SMOKE_MAIN(testRecovery, testNoLock, testCarrierCrush, testStandalone,
            testClockOuts, testExternalClock, testError, testTypes,
-           testAbuse, testOversampling)
+           testAbuse, testOversampling, testMix)
