@@ -86,44 +86,79 @@ it, and the split between them is the whole discipline.
 
 ### Running one
 
-`tools/audition/audition.py` builds the scene as a patch and launches Rack on
-it, with the item's text in a Notes module beside the rack:
+`tools/audition/audition.py` builds the item's bench as a patch and launches
+Rack on it, with the item's text in a Notes module beside the rack:
 
 ```
 python3 tools/audition/audition.py artifex --list
 python3 tools/audition/audition.py artifex 3.8.6
-python3 tools/audition/audition.py artifex 3.8.6 --dry-run
+python3 tools/audition/audition.py artifex 3.8.6 --dry-run   # print the patch
+python3 tools/audition/audition.py artifex 3.8.6 --code      # print the bench
 ```
 
-The scene lives **in the audition**, beside the words it belongs to, so the
-instruction and the setup cannot drift apart. A section's ```scene block is
-its bench; an item's `scene:` line is a delta on it:
+The bench is **Python, written in the audition itself**, beside the words it
+belongs to, so the instruction and the setup cannot drift apart. Three levels
+run in one namespace: the file's own ```python block is the bench every item
+starts from, a section's block is what that mode sets up, and an item's code
+is what it changes. An item's code is a one-line `code span` or an indented
+```python fence.
 
-````
-```scene
-source = sine 220
-fxmode = replayer
-time = 0.8333
-amt = 100%
+```python
+sine = vcv.module("VCO", freq=vcv.hz(220))
+sine["sine"] >> fx["left"]
+fx.set(fxmode="replayer", time=0.8333, amt="100%")
 ```
-````
 
-- `source` is `silence`, `sine <hz>`, or a name from the config.
-- Everything else is a **knob by name**, resolved out of `src/<slug>.cpp` by
-  `tools/audition/modspec.py` — the enum gives the index, `configParam` the
-  range, `configSwitch` the labels, so `fxmode = replayer` and `amt = 90%`
-  both work. Never write an index: new params are *appended* to a shipped
-  module, so every index after an insertion point would shift while the
-  audition kept the old number and silently set the wrong knob. An unknown
-  name raises rather than auditioning the wrong control.
-- `menu = key=value` sets context-menu state (the module's `dataToJson` keys).
-- The patch sets the **starting state only**. Gestures ("sweep time slowly")
-  and source amplitude stay prose.
+`tools/audition/vcv.py` is the whole surface:
+
+- `vcv.module("VCO")` / `vcv.module("artifex")` — brand optional, so "VCO",
+  "Audio 2" and "LFO" mean what Rack's browser calls them.
+- `a["port"] >> b["port"]` wires a jack to a jack; the left of `>>` is read as
+  an output and the right as an input. It returns the left, so chaining fans
+  one output out to several inputs — it never means a chain *through* the
+  middle module. `a >> b` between two modules wires L/R when both have them.
+- Patching an input that already has a cable **replaces** it, as dragging a
+  cable into an occupied jack does, so an item can swap the sine for drums in
+  one line. A module left with nothing patched to it is dropped from the rack.
+- `m.set(amt="90%", fxmode="replayer")` sets knobs, `m.menu(filterDry=True)`
+  sets context-menu state. Values take a number, a `"90%"`, or a
+  `configSwitch` label.
+- `vcv.source("drums")` is a module declared in the local config — a sample
+  player and its file.
+- `vcv.hz(220)` is a frequency knob's value for a pitch, and
+  `vcv.modulate(fx["free"], rate=0.05)` is an LFO through a **shut VCA** into
+  a CV input. That last one is how a "sweep it slowly" item is written: a
+  gesture by hand is neither repeatable nor describable, so the audition says
+  "open the VCA" and the rate is written down.
+
+**Nothing is addressed by index.** forsitan's own names come from
+`src/<slug>.cpp` (`tools/audition/modspec.py` reads the enum for the index,
+`configParam` for the range, `configSwitch` for the labels). Everyone else's
+come from `tools/audition/portmap.json`, which `gen_portmap.py` records by
+driving a real Rack through **limen** and asking `list_ports` / `list_params`:
+
+```
+python3 tools/audition/gen_portmap.py                       # the stock cast
+python3 tools/audition/gen_portmap.py --add 4msCompany/BWAVP
+```
+
+Guessing an index is how you patch the wrong jack and then audition something
+other than what the item says. The Fundamental VCO's frequency knob is param
+**2**, and the VCA's audio input is port **2**; neither is the number you
+would assume, and both were wrong here before the map was recorded. A name
+that matches nothing, or matches two controls equally, raises.
+
+Prefer **VCV Fundamental** for anything the bench needs around the module —
+it ships with Rack, so the audition runs on any machine.
 
 `test/audition/config.json` holds everything local to one machine — where Rack
 is, the sound card, sample paths — and is **not tracked**. Copy
 `config.example.json`. This is what keeps `~/dl/...` paths out of the repo
 while still letting the runner launch anything.
+
+**Any tool that starts Rack quits it through limen** (`{"cmd": "quit"}`) and
+waits. Rack writes its autosave and settings on the way out, and these tools
+run against the real user dir, so killing it damages the user's own state.
 
 ## Build
 
