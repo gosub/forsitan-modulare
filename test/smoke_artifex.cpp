@@ -1691,6 +1691,207 @@ static void testEnvelope() {
 }
 
 // ── mode changes from CV wait for the clock, and the knob does not ────────────
+// ── the shared modulation section, as artifex wires it ──────────────────────
+// The section itself is one piece of code shared with vates, and smoke_vates
+// exercises it: the rhythm table, the CV that selects from it, the pattern
+// switches and their two gate windows, the LFO free and synced, its reset.
+// What is not covered there is artifex's own wiring of it, and the handful of
+// behaviours vates has no equivalent for. These were listening tests until
+// somebody pointed out that a person was being asked to confirm arithmetic.
+
+// The pulse is high exactly while the triangle rises, at every width. That is
+// the whole definition of the pwm control, and it is a number, so it is
+// checked rather than scoped by hand.
+static void testLfoPwm() {
+	double worst = 0.0;
+	float worstPw = 0.f;
+	const float widths[5] = {0.05f, 0.25f, 0.5f, 0.75f, 0.95f};
+	for (int k = 0; k < 5; k++) {
+		Artifex m;
+		long fr = 0;
+		m.params[Artifex::PWM_PARAM].setValue(widths[k]);
+		m.params[Artifex::RATE_PARAM].setValue(0.75f);    // a few Hz, free
+		m.params[Artifex::SYNC_PARAM].setValue(0.f);
+		runSilence(m, fr, 0.5);
+		long high = 0, rising = 0, n = 0;
+		float lastTri = m.outputs[Artifex::TRI_OUTPUT].getVoltage();
+		for (long i = 0; i < (long)(2.0 * SR); i++) {
+			step(m, fr, 0.f, 0.f);
+			float tri = m.outputs[Artifex::TRI_OUTPUT].getVoltage();
+			float pulse = m.outputs[Artifex::PULSE_OUTPUT].getVoltage();
+			if (pulse > 5.f) high++;
+			if (tri > lastTri) rising++;
+			lastTri = tri;
+			n++;
+		}
+		double duty = (double)high / n, rise = (double)rising / n;
+		double err = std::fabs(duty - rise);
+		if (err > worst) {
+			worst = err;
+			worstPw = widths[k];
+		}
+	}
+	if (worst >= 0.02)
+		std::printf("# worst pulse width was %.2f\n", worstPw);
+	report("artifex", "lfo_pulse_is_high_while_tri_rises", worst, worst < 0.02);
+}
+
+// The saw is a phasor over the pattern, so a reset puts both sequences back
+// to their first step -- which shows as the saw dropping to zero.
+static void testPatternReset() {
+	Artifex m;
+	long fr = 0;
+	m.params[Artifex::TEMPO_PARAM].setValue(240.f);
+	m.params[Artifex::SYNC_PARAM].setValue(1.f);      // saw follows the pattern
+	m.params[Artifex::RATE_PARAM].setValue(0.f);      // slowest division
+	runSilence(m, fr, 1.3);                           // land somewhere mid-bar
+	float before = m.outputs[Artifex::SAW_OUTPUT].getVoltage();
+	m.inputs[Artifex::PAT_RESET_INPUT].channels = 1;
+	m.inputs[Artifex::PAT_RESET_INPUT].setVoltage(10.f);
+	runSilence(m, fr, 0.002);
+	float after = m.outputs[Artifex::SAW_OUTPUT].getVoltage();
+	report("artifex", "pattern_reset_was_mid_cycle", before, before > 0.5f);
+	report("artifex", "pattern_reset_returns_to_step_one", after, after < 0.5f);
+}
+
+// With the menu option off, a cable at clk is ignored and the tempo knob
+// keeps the section. Counted as clock pulses, since that is what changes.
+static void testHonourExternalClock() {
+	struct Local {
+		static int pulses(bool honour, double extPeriod) {
+			Artifex m;
+			long fr = 0;
+			m.honourExternalClock = honour;
+			m.params[Artifex::TEMPO_PARAM].setValue(60.f);
+			m.inputs[Artifex::CLK_INPUT].channels = 1;
+			int count = 0;
+			bool was = false;
+			double per = extPeriod;
+			for (long i = 0; i < (long)(4.0 * SR); i++) {
+				double t = (double)i / SR;
+				bool hi = std::fmod(t, per) < 0.005;
+				m.inputs[Artifex::CLK_INPUT].setVoltage(hi ? 10.f : 0.f);
+				step(m, fr, 0.f, 0.f);
+				bool now = m.outputs[Artifex::CLK_OUTPUT].getVoltage() > 5.f;
+				if (now && !was)
+					count++;
+				was = now;
+			}
+			return count;
+		}
+	};
+	// The section's own clock is sixteenths, so the knob's 60 BPM is 4 Hz and
+	// sixteen pulses in four seconds. An 8 Hz cable should double that when it
+	// is honoured and change nothing when it is not -- the first version of
+	// this fed in 240 BPM, which IS 4 Hz in sixteenths, so both cases came
+	// out identical and the check could not have failed for the right reason.
+	int on = Local::pulses(true, 0.125);
+	int off = Local::pulses(false, 0.125);
+	report("artifex", "external_clock_taken_when_honoured", on, on > 28 && on < 36);
+	report("artifex", "external_clock_ignored_when_off", off, off > 13 && off < 19);
+}
+
+// An attenuverter at zero disconnects its input, however hot the input is.
+static void testLfoModAttenuverter() {
+	struct Local {
+		static double cycles(float att, float cv) {
+			Artifex m;
+			long fr = 0;
+			m.params[Artifex::RATE_PARAM].setValue(0.5f);
+			m.params[Artifex::SYNC_PARAM].setValue(0.f);
+			m.params[Artifex::LFO_ATT_PARAM].setValue(att);
+			m.inputs[Artifex::LFO_INPUT].channels = 1;
+			m.inputs[Artifex::LFO_INPUT].setVoltage(cv);
+			runSilence(m, fr, 0.2);
+			int count = 0;
+			bool was = false;
+			for (long i = 0; i < (long)(4.0 * SR); i++) {
+				step(m, fr, 0.f, 0.f);
+				bool hi = m.outputs[Artifex::SAW_OUTPUT].getVoltage() > 5.f;
+				if (hi && !was)
+					count++;
+				was = hi;
+			}
+			return count / 4.0;
+		}
+	};
+	double none = Local::cycles(0.f, 0.f);
+	double inert = Local::cycles(0.f, 8.f);      // hot CV, attenuverter shut
+	double live = Local::cycles(1.f, 8.f);       // same CV, attenuverter open
+	double drift = std::fabs(inert - none) / std::max(none, 1e-6);
+	report("artifex", "lfo_mod_inert_at_zero_attenuverter", drift, drift < 0.02);
+	report("artifex", "lfo_mod_works_when_opened", live / std::max(none, 1e-6),
+	       live > none * 1.2);
+}
+
+// The two time CV inputs differ in when they land, not in what they do: one
+// is held until the clock steps, the other is continuous.
+static void testSteppedVersusFreeCv() {
+	struct Local {
+		// how many distinct values the delay's displayed time takes in a
+		// second -- a handful if it is quantized to a slow clock, hundreds
+		// if it follows the CV directly
+		static int levels(int input) {
+			Artifex m;
+			long fr = 0;
+			setMode(m, artifex_fx::MODE_DELAY);
+			m.params[Artifex::TEMPO_PARAM].setValue(60.f);      // a step every second
+			m.params[Artifex::TIME_ATT_PARAM].setValue(1.f);
+			m.inputs[input].channels = 1;
+			runSilence(m, fr, 0.05);
+			std::vector<float> seen;
+			for (long i = 0; i < (long)(2.0 * SR); i++) {
+				float cv = 5.f * std::sin(2.f * (float)M_PI * 0.7f * (float)i / SR);
+				m.inputs[input].setVoltage(cv);
+				step(m, fr, 0.f, 0.f);
+				if ((i % 64) == 0) {
+					float v = m.core.uiTime;
+					bool fresh = true;
+					for (size_t j = 0; j < seen.size(); j++)
+						if (std::fabs(seen[j] - v) < 1e-4f) { fresh = false; break; }
+					if (fresh)
+						seen.push_back(v);
+				}
+			}
+			return (int)seen.size();
+		}
+	};
+	int stepped = Local::levels(Artifex::STEP_INPUT);
+	int freeRun = Local::levels(Artifex::FREE_INPUT);
+	report("artifex", "step_cv_lands_on_clock_steps", stepped, stepped <= 8);
+	report("artifex", "free_cv_is_continuous", freeRun, freeRun > 50);
+}
+
+// The pattern's gate output drives the trig input, so a mode's trig action
+// fires on the rhythm. Checked on the panner, whose trig throws the image.
+static void testPatternGateDrivesTrig() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_PANNER);
+	m.params[Artifex::TEMPO_PARAM].setValue(240.f);
+	m.params[Artifex::RHYTHM_PARAM].setValue(15.f);   // sixteenths, dense
+	m.params[Artifex::TIME_PARAM].setValue(0.1f);     // slow pan
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.inputs[Artifex::TRIG_INPUT].channels = 1;
+	int throws = 0;
+	bool wasLeft = false;
+	for (long i = 0; i < (long)(4.0 * SR); i++) {
+		// the patch cable: gate out into trig in
+		m.inputs[Artifex::TRIG_INPUT].setVoltage(
+		    m.outputs[Artifex::GATE_OUTPUT].getVoltage());
+		float x = 2.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR);
+		step(m, fr, x, x);
+		bool left = m.outputs[Artifex::LEFT_OUTPUT].getVoltage()
+		            > m.outputs[Artifex::RIGHT_OUTPUT].getVoltage();
+		if (i > (long)(0.5 * SR) && left != wasLeft)
+			throws++;
+		wasLeft = left;
+	}
+	// a slow pan crosses twice a cycle on its own; the rhythm should add many
+	// more than that over three and a half seconds
+	report("artifex", "pattern_gate_fires_the_trig", throws, throws > 8);
+}
+
 static void testModeSelect() {
 	Artifex m;
 	long fr = 0;
@@ -1818,5 +2019,6 @@ SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudibl
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
-           testModeSelect,
+           testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock,
+           testLfoModAttenuverter, testSteppedVersusFreeCv, testPatternGateDrivesTrig,
            testFeedbackSafety, testAbuse)
