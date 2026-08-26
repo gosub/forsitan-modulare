@@ -63,13 +63,13 @@ standalone oscillator when nothing is patched at all.
 | **demod** | the receiver's clock, same range |
 | **error** | comparator threshold for the **error** output, ±5 V |
 | **tone** | one passive pole, 60 Hz – 12 kHz. It sits in the PLL loop *and* on the output, so it is a tracking control as much as a tone control |
-| **mix** (left) | dry/wet for **out**, wet by default — see [the two mixes](#the-two-mixes) |
-| **mix** (right) | dry/wet for **error**, the same |
 
 | trimpot | function |
 |---------|----------|
 | **cv** (left) | attenuator for the carrier's CV input |
 | **cv** (right) | attenuator for the demodulator's CV input |
+| **mix** (left) | dry/wet for **out**, wet by default — see [the two mixes](#the-two-mixes) |
+| **mix** (right) | dry/wet for **error**, the same |
 
 | switch | function |
 |--------|----------|
@@ -80,7 +80,7 @@ standalone oscillator when nothing is patched at all.
 | **in** | signal in. Unpatched, it is a +5 V bias |
 | **cv** ×2 | exponential CV over each clock, 1 V/oct at a fully open attenuator. **Unpatched, each is fed the signal itself**, so its attenuator becomes audio-rate FM depth |
 | **clk** ×2 | external clock in. Any signal crossing zero replaces that side's internal clock, and that side's CV stops doing anything |
-| **cv** ×2 (bottom) | CV over the **mix** knob above it. Patched, that knob becomes its attenuator: 0–10 V is dry to wet |
+| **cv** ×2 (bottom) | CV over the **mix** trimmer beside it. Patched, that trimmer becomes its attenuator: 0–10 V is dry to wet |
 | **out** | the recovered signal, with a level LED |
 | **error** | a comparator across input and output, with a level LED |
 | **tx** | the carrier clock, a wide-range square. Not 1 V/oct |
@@ -156,10 +156,16 @@ Each signal output has its own dry/wet against the signal at the **in** jack,
 so aether can sit in an effect send with nothing else beside it. The dry side
 is the jack itself, before **level**: it is the path that does nothing.
 
-There is no attenuverter. Unpatched, the **mix** knob is the amount. Patched,
-it becomes the attenuator for the **cv** jack below it, so 0–10 V sweeps dry
-to wet at a knob left wherever it already was, and the two behaviours agree
-at a knob fully clockwise. Negative volts do not push past dry.
+There is no attenuverter. Unpatched, the **mix** trimmer is the amount.
+Patched, it becomes the attenuator for the **cv** jack beside it, so 0–10 V
+sweeps dry to wet at a trimmer left wherever it already was, and the two
+behaviours agree with the trimmer fully clockwise. Negative volts do not push
+past dry.
+
+They are trimmers rather than knobs because the whole mix is one row —
+trimmer, **cv**, **out**, **error**, **cv**, trimmer — and six full-sized
+controls do not fit across 14 HP: a knob apiece leaves a fifth of a
+millimetre at each panel edge.
 
 Both default to fully wet, and with nothing in **in** the dry side is silence
 — the broken radio only speaks at the wet end of the knob.
@@ -179,7 +185,7 @@ wet/dry control made of square waves. It is the output to take for drums.
 - **Modem melodies.** A melodic sequence into **in**, the same pitch CV into
   the carrier's **cv**, something slower into the demodulator's **cv**.
 - **Glitch distortion.** Audio in, listen to **error**, both clocks low, and
-  use the **error** knob as the wet/dry — or the **mix** knob beside that
+  use the **error** knob as the wet/dry — or the **mix** trimmer beside that
   output, which is one against the dry signal itself.
 - **Playing the clock.** A 1 V/oct oscillator into the carrier's **clk** with
   nothing in **in**: you are now playing the transmitter's clock rate, and
@@ -233,7 +239,7 @@ What is inference, and should be treated as such:
   move the sweet spots around the knobs; they do not change the class of
   sound.
 
-What is added, and is not on the hardware at all: the two **mix** knobs and
+What is added, and is not on the hardware at all: the two **mix** trimmers and
 their CV inputs. The hardware has no dry/wet — a rack patches one — but in
 Rack the module is as likely to sit in an effect send as in a voice, and a
 crossfade there costs a knob rather than a mixer channel. Fully clockwise,
