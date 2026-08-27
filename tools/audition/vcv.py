@@ -38,20 +38,39 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 
 # Rack shows Core and Fundamental under one brand, "VCV", so an audition that
-# says "VCO" or "Audio 2" means what the module browser calls it.
-ALIASES = {
-    "audio 2": "Core/AudioInterface2", "audio2": "Core/AudioInterface2",
-    "audio": "Core/AudioInterface2", "notes": "Core/Notes",
-    "vco": "Fundamental/VCO", "vco2": "Fundamental/VCO2",
-    "lfo": "Fundamental/LFO", "vca": "Fundamental/VCA",
-    "vca-1": "Fundamental/VCA-1", "vca1": "Fundamental/VCA-1",
-    "noise": "Fundamental/Noise", "random": "Fundamental/Random",
-    "mixer": "Fundamental/Mixer", "vcmixer": "Fundamental/VCMixer",
-    "8vert": "Fundamental/8vert", "adsr": "Fundamental/ADSR",
-    "scope": "Fundamental/Scope", "split": "Fundamental/Split",
-    "merge": "Fundamental/Merge", "quantizer": "Fundamental/Quantizer",
-    "seq3": "Fundamental/SEQ3", "vcf": "Fundamental/VCF",
-}
+# says "VCO" means Fundamental/VCO. That resolution is done by looking up the
+# model slugs already in portmap.json, not from a list kept here: a table of
+# other people's modules in this file would be a second thing to maintain and
+# a first thing to go stale. Only names that are *not* the slug need saying,
+# and there is one -- the module Rack's browser calls "Audio 2".
+DISPLAY_NAMES = {"audio_2": "Core/AudioInterface2"}
+
+def resolve(spec):
+    """A module name as an audition writes it -> "plugin/Model".
+
+    "forsitan/artifex" and "Fundamental/VCO" are taken as given. A bare name
+    is matched against this repo's own src/ first, then against the model
+    slugs in portmap.json, so "VCO" finds Fundamental/VCO without anyone
+    keeping a list of Fundamental's modules here. Ambiguity raises.
+    """
+    spec = str(spec).strip()
+    if '/' in spec:
+        return spec
+    key = norm(spec)
+    if key in DISPLAY_NAMES:
+        return DISPLAY_NAMES[key]
+    if os.path.exists(os.path.join(REPO, 'src', '%s.cpp' % spec)):
+        return 'forsitan/' + spec
+    hits = [k for k in portmap() if norm(k.split('/', 1)[1]) == key]
+    if len(hits) == 1:
+        return hits[0]
+    if len(hits) > 1:
+        raise KeyError("%r is ambiguous: %s -- name the plugin too"
+                       % (spec, ', '.join(sorted(hits))))
+    raise KeyError("no module %r: not src/%s.cpp, and not in portmap.json "
+                   "(record it with gen_portmap.py --add <plugin>/<model>)"
+                   % (spec, spec))
+
 
 _portmap = None
 
@@ -204,21 +223,6 @@ class Module:
             self.params[k.index] = k.value(value)
         return self
 
-    def __rshift__(self, other):
-        """module >> module wires the obvious audio path: left to left and
-        right to right when both sides have them, otherwise the first output
-        to the first input. Anything less obvious is written jack by jack."""
-        if isinstance(other, PortRef):
-            return PortRef(self, 0) >> other
-        mine = {n: i for i, n in self.surface.outputs}
-        theirs = {n: i for i, n in other.surface.inputs}
-        pairs = [(mine[c], theirs[c]) for c in ('left', 'right') if c in mine and c in theirs]
-        if not pairs:
-            pairs = [(0, 0)]
-        for o, i in pairs:
-            self.patch.connect(PortRef(self, o), PortRef(other, i))
-        return other
-
     def menu(self, **kw):
         """Context-menu state, i.e. the module's own dataToJson keys."""
         if self.data is None:
@@ -234,10 +238,7 @@ class Patch:
         self.x = 0
 
     def module(self, spec, hp=None, **params):
-        spec = ALIASES.get(norm(spec).replace('_', ' '), None) or \
-            ALIASES.get(norm(spec), None) or spec
-        if '/' not in spec:
-            spec = 'forsitan/' + spec
+        spec = resolve(spec)
         m = Module(self, spec, None)
         if spec == 'Core/AudioInterface2' and _config.get('audio'):
             a = _config['audio']
@@ -253,6 +254,9 @@ class Patch:
         return m
 
     def _hp(self, spec):
+        """Panel width, so the bench lays out without Rack shoving modules
+        aside on load. forsitan's comes from its own panel SVG, everyone
+        else's from the portmap, where limen reported it."""
         plug, model = spec.split('/', 1)
         if plug == 'forsitan':
             svg = os.path.join(REPO, 'res', '%s.svg' % model)
@@ -263,9 +267,7 @@ class Patch:
                     return max(2, int(round(float(mm.group(1)) / 5.08)))
             except OSError:
                 pass
-        return {'Core/AudioInterface2': 8, 'Core/Notes': 16,
-                'Fundamental/VCO': 10, 'Fundamental/LFO': 10,
-                'Fundamental/VCA': 8, 'Fundamental/Random': 8}.get(spec, 10)
+        return (portmap().get(spec) or {}).get('hp') or 10
 
     def connect(self, src, dst):
         # An input takes one cable. Patching a second into it replaces the

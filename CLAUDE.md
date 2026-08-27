@@ -111,12 +111,18 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%")
 
 `tools/audition/vcv.py` is the whole surface:
 
-- `vcv.module("VCO")` / `vcv.module("artifex")` — brand optional, so "VCO",
-  "Audio 2" and "LFO" mean what Rack's browser calls them.
+- `vcv.module("VCO")` / `vcv.module("artifex")` — a bare name is matched
+  against `src/*.cpp` and then against the model slugs in the portmap, so no
+  list of other people's modules is kept here. Only a name that is not the
+  slug needs saying, and there is one: Rack's browser calls
+  `Core/AudioInterface2` "Audio 2".
 - `a["port"] >> b["port"]` wires a jack to a jack; the left of `>>` is read as
   an output and the right as an input. It returns the left, so chaining fans
   one output out to several inputs — it never means a chain *through* the
-  middle module. `a >> b` between two modules wires L/R when both have them.
+  middle module. **There is no module-to-module form**: which jacks carry the
+  audio is not something the library can know without a table of other
+  people's modules, and a heuristic there guesses silently. An audition that
+  repeats a wiring gives it a `def` in its own bench block instead.
 - Patching an input that already has a cable **replaces** it, as dragging a
   cable into an occupied jack does, so an item can swap the sine for drums in
   one line. A module left with nothing patched to it is dropped from the rack.

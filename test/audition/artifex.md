@@ -41,8 +41,14 @@ kept beside it so the two cannot drift apart.
 ```python
 fx = vcv.module("artifex", gain=1.0, level=0.8)
 out = vcv.module("Audio 2")
-fx["left"] >> out[0]
-fx["right"] >> out[1]
+fx["left"] >> out["device_output_1"]
+fx["right"] >> out["device_output_2"]
+
+def drums():
+    d = vcv.source("drums", loop=1, play=1)
+    d["left"] >> fx["left"]
+    d["right"] >> fx["right"]
+    return d
 ```
 
 Anything that yields a number rather than a verdict is not in this list. It
@@ -257,12 +263,12 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
       `fx.set(time=0.5)`
 - [x] 3.8.2. Left backwards, right forwards. Cross the centre slowly on speech
       or drums: continuous, no click or jump.
-      `vcv.source("drums", loop=1, play=1) >> fx`
+      `drums()`
 - [x] 3.8.3. **Clicks.** At several speeds: hit **trig** repeatedly; take
       **amount** to 0.9 and back; to 0.5 and back; jump **time**. No click, dip
       or bump, and a 2 V tone stays a 2 V tone. Speed changes glide over a few
       tens of ms — that is the tape motor, not a fault.
-      `vcv.source("drums", loop=1, play=1) >> fx`
+      `drums()`
 - [x] 3.8.4. Same, overdubbing: **amount** 0.75. **trig**, retune the sine to
       110 Hz, **trig** again. Nothing once a lap.
       `fx.set(amt="75%")`
@@ -289,7 +295,7 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
 - [-] 3.8.11. **Decide —** every fade in the mode is 10 ms, the overlap of a
       diagonal tape splice. On percussive material, does a **trig** land too
       soft? Gesture speed and splice length are one number and can be split.
-      `vcv.source("drums", loop=1, play=1) >> fx`
+      `drums()`
 - [-] 3.8.12. **Decide —** the record head writes to one slot while the play
       head reads between two, leaving a tone at any speed but 1x. Run
       `artifex_probe measure` for where it sits, then open the **VCA** to sweep

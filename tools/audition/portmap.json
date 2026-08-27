@@ -1,5 +1,6 @@
 {
   "4msCompany/BWAVP": {
+    "hp": 6,
     "inputs": [
       "Play Trig",
       "Loop Gate"
@@ -68,6 +69,7 @@
     ]
   },
   "Core/AudioInterface2": {
+    "hp": 5,
     "inputs": [
       "To \"device output 1\"",
       "To \"device output 2\""
@@ -86,11 +88,13 @@
     ]
   },
   "Core/Notes": {
+    "hp": 16,
     "inputs": [],
     "outputs": [],
     "params": []
   },
   "Fundamental/8vert": {
+    "hp": 8,
     "inputs": [
       "Row 1",
       "Row 2",
@@ -163,6 +167,7 @@
     ]
   },
   "Fundamental/ADSR": {
+    "hp": 9,
     "inputs": [
       "Attack",
       "Decay",
@@ -232,6 +237,7 @@
     ]
   },
   "Fundamental/LFO": {
+    "hp": 9,
     "inputs": [
       "Frequency modulation",
       "",
@@ -291,6 +297,7 @@
     ]
   },
   "Fundamental/Merge": {
+    "hp": 5,
     "inputs": [
       "Channel 1",
       "Channel 2",
@@ -315,6 +322,7 @@
     "params": []
   },
   "Fundamental/Mixer": {
+    "hp": 3,
     "inputs": [
       "Channel 1",
       "Channel 2",
@@ -336,6 +344,7 @@
     ]
   },
   "Fundamental/Noise": {
+    "hp": 3,
     "inputs": [],
     "outputs": [
       "White noise",
@@ -349,6 +358,7 @@
     "params": []
   },
   "Fundamental/Quantizer": {
+    "hp": 3,
     "inputs": [
       "1V/octave pitch"
     ],
@@ -365,6 +375,7 @@
     ]
   },
   "Fundamental/Random": {
+    "hp": 9,
     "inputs": [
       "Internal trigger rate",
       "Shape",
@@ -444,6 +455,7 @@
     ]
   },
   "Fundamental/SEQ3": {
+    "hp": 22,
     "inputs": [
       "Tempo",
       "Clock",
@@ -707,6 +719,7 @@
     ]
   },
   "Fundamental/Scope": {
+    "hp": 13,
     "inputs": [
       "Ch 1",
       "Ch 2",
@@ -768,6 +781,7 @@
     ]
   },
   "Fundamental/Split": {
+    "hp": 5,
     "inputs": [
       "Polyphonic"
     ],
@@ -792,6 +806,7 @@
     "params": []
   },
   "Fundamental/VCA": {
+    "hp": 5,
     "inputs": [
       "Channel 1 exponential CV",
       "Channel 1 linear CV",
@@ -820,6 +835,7 @@
     ]
   },
   "Fundamental/VCA-1": {
+    "hp": 3,
     "inputs": [
       "CV",
       "Channel"
@@ -843,6 +859,7 @@
     ]
   },
   "Fundamental/VCMixer": {
+    "hp": 9,
     "inputs": [
       "Mix CV",
       "Channel 1",
@@ -895,6 +912,7 @@
     ]
   },
   "Fundamental/VCO": {
+    "hp": 9,
     "inputs": [
       "1V/octave pitch",
       "Frequency modulation",
@@ -959,6 +977,7 @@
     ]
   },
   "Fundamental/VCO2": {
+    "hp": 7,
     "inputs": [
       "Frequency modulation",
       "Sync",

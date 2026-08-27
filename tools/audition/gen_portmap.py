@@ -112,6 +112,7 @@ def main():
             ports = lim.call("list_ports", id=mid) or {}
             params = lim.call("list_params", id=mid) or []
             out[spec] = {
+                "hp": r.get("hp"),
                 "inputs": [p.get("name") or "" for p in ports.get("inputs", [])],
                 "outputs": [p.get("name") or "" for p in ports.get("outputs", [])],
                 # min/max as well as the name: a bench that sets someone
@@ -121,9 +122,9 @@ def main():
                             "default": p.get("value", 0.0)}
                            for p in params],
             }
-            print("  %-28s %2d in  %2d out  %2d params"
-                  % (spec, len(out[spec]["inputs"]), len(out[spec]["outputs"]),
-                     len(out[spec]["params"])))
+            print("  %-28s %2s HP  %2d in  %2d out  %2d params"
+                  % (spec, out[spec]["hp"], len(out[spec]["inputs"]),
+                     len(out[spec]["outputs"]), len(out[spec]["params"])))
             lim.call("remove_module", id=mid)
         lim.call("quit")
         lim.close()
