@@ -41,13 +41,11 @@ kept beside it so the two cannot drift apart.
 ```python
 fx = vcv.module("artifex", gain=1.0, level=0.8)
 out = vcv.module("Audio 2")
-fx["left"] >> out["device_output_1"]
-fx["right"] >> out["device_output_2"]
+fx["left", "right"] >> out["output 1", "output 2"]
 
 def drums():
     d = vcv.source("drums", loop=1, play=1)
-    d["left"] >> fx["left"]
-    d["right"] >> fx["right"]
+    d["left", "right"] >> fx["left", "right"]
     return d
 ```
 

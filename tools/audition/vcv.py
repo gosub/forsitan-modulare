@@ -183,6 +183,41 @@ class Surface:
                                key, 'knob', where)]
 
 
+def _ports(o):
+    """Whatever was written on either side of >>, as a flat list of jacks."""
+    if isinstance(o, PortRef):
+        return [o]
+    if isinstance(o, PortGroup):
+        return list(o.refs)
+    if isinstance(o, (list, tuple)):
+        out = []
+        for x in o:
+            out.extend(_ports(x))
+        return out
+    raise TypeError(">> needs a port on both sides, got %r" % (o,))
+
+
+def _wire(src, dst):
+    """One jack to many, or N to N. Anything else is a mistake worth naming:
+    three outputs into two inputs has no reading that is not a guess."""
+    a, b = _ports(src), _ports(dst)
+    if len(a) == 1:
+        a = a * len(b)
+    if len(a) != len(b):
+        raise ValueError("cannot wire %d output%s to %d input%s"
+                         % (len(a), '' if len(a) == 1 else 's',
+                            len(b), '' if len(b) == 1 else 's'))
+    for s, d in zip(a, b):
+        s.module.patch.connect(s, d)
+    return src
+
+
+def _no_and(self, other):
+    raise TypeError("`&` binds looser than `>>`, so `a >> b & c` means "
+                    "`(a >> b) & c`. Write `a >> (b, c)`, or chain: "
+                    "`a >> b >> c`.")
+
+
 class PortRef:
     """A jack, not yet known to be an input or an output -- which side of the
     >> it lands on decides that."""
@@ -199,12 +234,27 @@ class PortRef:
         return pick(table, self.key, side, self.module.spec)
 
     def __rshift__(self, other):
-        targets = other if isinstance(other, (list, tuple)) else [other]
-        for t in targets:
-            if not isinstance(t, PortRef):
-                raise TypeError(">> needs a port on the right, got %r" % (t,))
-            self.module.patch.connect(self, t)
-        return self
+        return _wire(self, other)
+
+    __and__ = _no_and
+
+
+class PortGroup:
+    """Several jacks of one module, from m["left", "right"]."""
+
+    def __init__(self, refs):
+        self.refs = list(refs)
+
+    def __len__(self):
+        return len(self.refs)
+
+    def __iter__(self):
+        return iter(self.refs)
+
+    def __rshift__(self, other):
+        return _wire(self, other)
+
+    __and__ = _no_and
 
 
 class Module:
@@ -215,6 +265,10 @@ class Module:
         self.data = None
 
     def __getitem__(self, key):
+        # m["left", "right"] hands the tuple straight through, so a stereo
+        # pair is one line and still names both jacks.
+        if isinstance(key, tuple):
+            return PortGroup(PortRef(self, k) for k in key)
         return PortRef(self, key)
 
     def set(self, **kw):
