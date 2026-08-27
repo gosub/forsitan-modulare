@@ -43,10 +43,36 @@ fx = vcv.module("artifex", gain=1.0, level=0.8)
 out = vcv.module("Audio 2")
 fx["left", "right"] >> out["output 1", "output 2"]
 
+def sine(hz=220):
+    s = vcv.module("VCO", freq=vcv.hz(hz))
+    s["sine"] >> fx["left"] + fx["right"]
+    return s
+
 def drums():
     d = vcv.source("drums", loop=1, play=1)
     d["left", "right"] >> fx["left", "right"]
     return d
+
+def drone(hz=110, detune=0.06):
+    """Two saws a beat apart, for the pad the list asks for. Synthesized
+    rather than sampled so it is the same drone on any machine."""
+    a = vcv.module("VCO", freq=vcv.hz(hz))
+    b = vcv.module("VCO", freq=vcv.hz(hz) + detune)
+    m = vcv.module("Mixer", level=0.4)
+    a["saw"] >> m["channel 1"]
+    b["saw"] >> m["channel 2"]
+    m["mix"] >> fx["left"] + fx["right"]
+    return m
+
+def clock(hz=2.0, to="clk"):
+    c = vcv.module("LFO", freq=vcv.hz(hz, "LFO"), offset=1)
+    c["square"] >> fx[to]
+    return c
+
+def scope(port="env"):
+    s = vcv.module("Scope")
+    fx[port] >> s["ch 1"]
+    return s
 ```
 
 Anything that yields a number rather than a verdict is not in this list. It
@@ -60,19 +86,35 @@ and is -78 dB now, and nothing but the harness noticed.
 
 ## 1. Sanity — the module as a box
 
+```python
+drums()
+fx.set(fxmode="delay", amt="50%")
+```
+
 - [x] 1.1. Mode 1, **amount** fully left: signal passes unchanged. No
       colouration, no delay, no level loss.
+      `fx.set(amt=0)`
 - [x] 1.2. **level** 0→1: smooth, no zipper, no gain jump.
 - [x] 1.3. **gain** 0→4: quiet to loud. The **in** lamps go red only on real
       clipping, and per channel — drive L alone, R stays dark.
 - [x] 1.4. L only: both outs identical. Patch R: the normal releases.
+      ```python
+      sine()
+      fx["right"].unpatch()
+      ```
 - [x] 1.5. **Menu → Input → sum to mono** on hard-panned stereo: both outs
       collapse to the same signal.
+      `fx.menu(monoInput=True)`
 - [x] 1.6. **env out** on a drum loop: fast rise, smooth fall, 0 with no input,
       responds to **gain**.
+      `scope("env")`
 - [x] 1.7. **out lamps** track level and go dark when the sound stops.
 - [x] 1.8. Odd state (mode 7, 5 s buffer, safety off, hardware CV window), save,
       reload: everything returns, no burst of noise.
+      ```python
+      fx.set(fxmode="pitcher")
+      fx.menu(bufSeconds=5.0, limiter=False, hardwareCvWindow=True)
+      ```
 
 ---
 
@@ -89,18 +131,29 @@ time parameter, both in the mode's colour.
 | 4 | panner | white | 9 | shifter | pink |
 | 5 | crusher | yellow | | | |
 
+```python
+sine()
+fx.set(fxmode="replayer")
+```
+
 - [x] 2.1. Centred, both halves legible at default zoom. Turn **time**: updates
       smoothly, never collides with the mode name. Worst cases: `8 replayer`
       against `+12.0 semi`, then mode 9 at a large shift.
+      `fx.set(fxmode="replayer")`
 - [x] 2.2. All nine colours distinct on the near-black. 1 and 6 are the pair to
       check. Mode 5 should match the output badges and the logo exactly.
 - [x] 2.3. The reading is the same colour at 70%: one display with two ranks,
       not two colours. Blue (3) and red (7) are where legibility fails first.
+      `fx.set(fxmode="freezer")`
 - [x] 2.4. Name, number and colour change together, immediately.
 - [x] 2.5. The right-click picker opens from either half, marks the running
       mode, and moves the knob when you choose.
 - [x] 2.6. LFO saw → **fxmode**, attenuverter full: sweeps all nine and wraps.
       Small attenuverter: alternates between two only.
+      ```python
+      vcv.module("LFO", offset=0)["saw"] >> fx["fxmode"]
+      fx.set(fxmode_att=1.0)
+      ```
 
 ---
 
@@ -115,32 +168,56 @@ Start line does not mention is at the bench setting — **feedback** 0,
 
 **Start:** drum loop · **time** centre · **amount** 0.5 · no clock at **clk**.
 
+```python
+drums()
+fx.set(fxmode="delay", time=0.5, amt="50%")
+```
+
 - [x] 3.1.1. **time** right to left: 2 ms → 1.15 s, continuous, no zipper. The
       tape-style pitch bend should be smooth, not crunchy.
 - [x] 3.1.2. Short end, **feedback** up: a tuned comb that tracks the knob
       musically over the top quarter.
+      `fx.set(time=0.05, fbk="75%")`
 - [x] 3.1.3. Clock into **clk**: the knob snaps to divisions and the display
       names them. Change tempo — the delay follows, the name stays.
+      `clock()`
 - [x] 3.1.4. A clock at **trig** snaps it too, but only while **clk** has none.
       With both patched, clk wins. With neither, the knob is free and the
       display reads ms.
+      `clock(to="trig")`
 - [x] 3.1.5. Unpatch **clk**: back to internal tempo after ~2 s, no click.
+      `clock()`
 - [x] 3.1.6. Long delay, **feedback** ~0.7, drum loop: repeats decay.
+      `fx.set(time=0.9, fbk="70%")`
 
 ### 3.2 flanger (cyan)
 
 **Start:** 220 Hz sine · **time** centre · **amount** 0.5.
 
+```python
+sine()
+fx.set(fxmode="flanger", time=0.5, amt="50%")
+```
+
 - [x] 3.2.1. A chorus as it stands: gentle vibrato on the sine, no zipper.
 - [x] 3.2.2. **feedback** up: jet flange. At maximum it should scream without
       destroying itself.
+      `fx.set(fbk="90%")`
 - [x] 3.2.3. **amount** at the extremes: deep sweep, pitch wobbling smoothly, no
       stair-stepping.
+      `fx.set(amt="100%")`
 - [x] 3.2.4. **time** to the fast end: the modulator reaches an FM-ish buzz.
+      `fx.set(time=1.0)`
 
 ### 3.3 freezer (blue)
 
 **Start:** drum loop · **time** centre · **amount** 0 · clock at **clk**.
+
+```python
+drums()
+clock()
+fx.set(fxmode="freezer", time=0.5, amt=0)
+```
 
 - [x] 3.3.1. Move **amount** off zero: it captures at that moment, where you
       expect.
@@ -160,25 +237,36 @@ Start line does not mention is at the bench setting — **feedback** 0,
       chunk stays held until you trig or move amount.
 - [x] 3.3.7. **feedback** bleeds new audio in: thickens, then replaces, no blow
       up.
+      `fx.set(fbk="60%")`
 - [x] 3.3.8. The loop seam on a pad: some click is expected, a hard pop is a
       bug.
+      `drone()`
 
 ### 3.4 panner (white)
 
 **Start:** 220 Hz sine · **time** far left (slow) · **amount** 0 (a sine
 pan).
 
+```python
+sine()
+fx.set(fxmode="panner", time=0.0, amt=0)
+```
+
 - [x] 3.4.1. Autopan, L and R opposite. Sum to mono — a sine autopan should
       partly cancel.
 - [x] 3.4.2. **amount** up: the sway hardens to a square alternation. Listen for
       clicks at the switch points at maximum.
+      `fx.set(amt="100%")`
 - [x] 3.4.3. **time** to the top: ring modulation, sum/difference sidebands.
       Check for aliasing screech.
+      `fx.set(time=1.0)`
 - [x] 3.4.4. **trig** throws the pan across. On a sustained tone at a slow rate
       with **amount** high: every throw crosses the image, lands within ~25 ms,
       alternates sides, and does not click.
+      `fx.set(amt="90%", time=0.1)`
 - [x] 3.4.5. Take **time** up to ring-mod rates and trig again: the throw gets
       out of the way rather than smearing the modulation.
+      `fx.set(time=0.95)`
 - [x] 3.4.6. Trig the other three phase-resetting modes on a sustained tone and
       on a drum loop — **3.2 flanger** (turns the sweep round), **3.9 shifter**
       (squares R to L), **3.7 pitcher** (new window at the next grain boundary).
@@ -191,9 +279,15 @@ pan).
 **level** maximum — amount is crush depth, not a mix, and is at three bits by
 half travel.
 
+```python
+drone()
+fx.set(fxmode="crusher", time=1.0, amt=0, level=1.0)
+```
+
 - [x] 3.5.1. **amount** to a quarter, sweep **time** the full width:
       destroyed at the left, grainy through the middle, genuinely clean at the
       right. No silent regions.
+      `fx.set(amt="25%")`
 - [x] 3.5.2. **time** back to the far right, sweep **amount** slowly 0 to
       half: clean to a tenth, faint grain by a quarter, obvious by a third,
       hard crunch at half. Steady the whole way — no stretch where turning it
@@ -203,15 +297,27 @@ half travel.
       waveform must keep crossing zero all the way to the top.
 - [x] 3.5.4. **feedback** with a 2 V tone: thickens steadily, then above ~0.8
       tips into a howl that keeps going when you mute the input.
+      ```python
+      sine()
+      fx.set(fbk="85%")
+      ```
 - [x] 3.5.5. Feedback at maximum, input muted, sweep **time**: the howl is
       pitched and tracks the rate, ~170 Hz at the left to ~1.7 kHz at the right.
       Centred on a scope at every rate — an offset instead of a tone means it
       has parked at a rail.
+      `fx.set(fbk="100%", gain=0)`
 - [x] 3.5.6. **trig** dips the rate, a momentary drop on sustained material.
+      `fx.set(amt="40%")`
 
 ### 3.6 slicer (light green)
 
 **Start:** drone · clock at **clk** · **time** far left · **amount** 0.5.
+
+```python
+drone()
+clock()
+fx.set(fxmode="slicer", time=0.0, amt="50%")
+```
 
 - [x] 3.6.1. Sweep **time**: 32 rhythms, the display's right half showing the
       number, changing at 32 distinct points.
@@ -224,6 +330,7 @@ half travel.
       changing; at 1 it is near-fully inverted, not silent. With **stereo** at
       0 both channels must invert the same steps — sum to mono and nothing
       should change.
+      `fx.set(fbk="50%", stereo=0)`
 - [x] 3.6.4. **stereo** is a selector here, not a width knob: it steps the right
       channel 0 to 8 places further along the rhythm table, nine positions, so
       half travel is +4 and the top is +8. Walk all nine and check each is a
@@ -232,11 +339,18 @@ half travel.
       at three quarters. Some pairings put a very dense or very sparse rhythm
       on the right, which reads as one side chopping and the other holding.
 - [x] 3.6.5. **trig** fires the envelope by hand.
+      `fx.set(amt="60%")`
 - [x] 3.6.6. Clicks at slice edges at the shortest decay.
+      `fx.set(amt="100%")`
 
 ### 3.7 pitcher (red)
 
 **Start:** 220 Hz sine · **time** centre · **amount** 0 (no shift, dry).
+
+```python
+sine()
+fx.set(fxmode="pitcher", time=0.5, amt=0)
+```
 
 - [x] 3.7.1. Sweep **amount**: it is the shift. Crude on purpose — stutter and
       transient duplication are fine, a dead zone or drop-out is not.
@@ -309,6 +423,11 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
 
 **Start:** 220 Hz sine · **time** centre (unity) · **amount** 0.5.
 
+```python
+sine()
+fx.set(fxmode="shifter", time=0.5, amt="50%")
+```
+
 - [x] 3.9.1. Unity as it stands: sine in, sine out, no beating.
 - [x] 3.9.2. Below centre down, above up. Sweep slowly: smooth and symmetric.
       Listen for crossfade warble rather than the pitcher's stutter.
@@ -319,17 +438,24 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
       the interval), **feedback** 0.6, sine held: a stack of intervals
       sounding *at once*, each layer another interval up and quieter than the
       last. A chord, not a series of repeats.
+      `fx.set(fbk="60%")`
 - [x] 3.9.4. Same on a drum hit, where the layers are spread in time rather
       than piled up: a fast cascade climbing away from the hit. Below centre
       it falls instead. Near the ends of the travel it is out of audible
       range within a few layers.
+      ```python
+      drums()
+      fx.set(fbk="60%")
+      ```
 - [x] 3.9.5. **stereo**: a different shift per channel. Tiny = wide unison.
       Large = deliberately broken.
+      `fx.set(stereo="20%")`
 - [ ] 3.9.6. **trig** is a stereo-only control here: it squares the right
       channel back to half a window from the left. At **stereo** 0 both
       channels run at one rate and never drift, so it does nothing at all —
       correctly. Turn stereo up, let the image wander for a few seconds, then
       trig: the image snaps back, then wanders again.
+      `fx.set(stereo="50%")`
 
 ---
 
@@ -348,19 +474,31 @@ make -C test smoke_artifex && ./test/smoke_artifex | grep -E 'filter|stereo|feed
 
 What is left is the part a number cannot answer.
 
+```python
+drums()
+fx.set(fxmode="delay", time=0.8, fbk="60%", amt="80%")
+```
+
 - [ ] 4.1. **Does the filter sound like a tone control?** Mode 1, long delay,
       feedback ~0.6, **amount** high, drum loop. Sweep it end to end. It has
       the reach (the suite says 39 dB); the question is whether the travel is
       usable all the way or bunched at one end.
+      `fx.menu(filterInLoop=True)`
 - [ ] 4.2. **Decide —** the default is 12 dB/oct, a tone control that thins
       without removing. The menu's 24 dB/oct is vates' filter and takes the
       material away at both ends. Which should artifex ship as its default?
+      `fx.menu(filterFourPole=True)`
 - [ ] 4.3. **Filter inside the feedback** (menu, delay and flanger) on a dub
       delay: long time, feedback ~0.8, lowpass half-left. Each repeat darker
       than the last, dissolving into mud. The numbers are checked; judge
       whether the dissolve is musical or just muddy.
+      ```python
+      fx.set(time=0.9, fbk="80%", filter=-0.5)
+      fx.menu(filterInLoop=True)
+      ```
 - [ ] 4.4. **Buffer sizes** (1.15 / 2.5 / 5 s) change mid-freeze and mid-tail.
       A glitch is fine, a crash or permanent silence is not.
+      `fx.set(fxmode="freezer", amt="50%")`
 
 ## 5. Clock, pattern, LFO
 
@@ -380,10 +518,17 @@ option, and an LFO attenuverter at zero being genuinely inert.
 Nothing here needs ears. Two things are worth doing by hand once, because
 they are about the module in a rack rather than about the code:
 
+```python
+drone()
+fx.set(fxmode="slicer", amt="50%")
+```
+
 - [ ] 5.1. **clk out** into another module's clock input: it should drive it
       without any fiddling with thresholds.
+      `fx["clk"] >> vcv.module("Scope")["ch 1"]`
 - [ ] 5.2. An irregular or ratcheting external clock at **clk** — the tempo
       tracking should follow it rather than averaging it into mush.
+      `clock(hz=3.0)`
 
 ---
 
@@ -399,17 +544,42 @@ continuous, and the pattern's gate driving a mode's trig.
 
 What is left is what modulation is actually for, which no check can judge.
 
+```python
+drums()
+fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
+```
+
 - [ ] 6.1. **env** → **fbk**, attenuverter negative, mode 1, long delay, high
       feedback: repeats duck out of each hit and swell in the gaps. Then the
       same into **amount**. Does it breathe, or does it pump?
+      ```python
+      fx["env"] >> fx["fbk"]
+      fx.set(fbk_att=-1.0)
+      ```
 - [ ] 6.2. **Decide —** quantized mode changes (menu, default on) with fast
       mode CV and a slow clock: changes wait for the next step. Off, they are
       immediate and deliberately uglier. Is the default the right one?
+      ```python
+      vcv.module("LFO", freq=vcv.hz(3, "LFO"), offset=0)["saw"] >> fx["fxmode"]
+      clock(hz=1.0)
+      fx.set(fxmode_att=1.0)
+      fx.menu(quantizeModeChanges=True)
+      ```
 - [ ] 6.3. Pattern **cv** → **rhythm**, LFO saw → **stereo**, env → **filter**.
       Three cables, and it should never sound the same twice.
+      ```python
+      fx["cv"] >> fx["rhythm"]
+      vcv.module("LFO", offset=0)["saw"] >> fx["stereo"]
+      fx["env"] >> fx["filter"]
+      fx.set(fxmode="slicer", amt="60%")
+      ```
 - [ ] 6.4. **artifex + vates** sharing a clock (artifex **clk out** → vates
       **clk**): the two pattern generators and LFOs should agree — same
       rhythms, same phase — and stay agreed over a few minutes.
+      ```python
+      v = vcv.module("vates")
+      fx["clk"] >> v["clk"]
+      ```
 
 ---
 
@@ -429,12 +599,21 @@ checking the level neither fades nor climbs and that no DC piles up.
 
 Three things are left, because none of them can be driven from a test binary:
 
+```python
+drums()
+clock()
+fx.set(fxmode="freezer", amt="50%")
+```
+
 - [ ] 7.1. **Block sizes** 16 / 64 / 256 in Rack's engine settings, on the
       clock-synced modes. The harness steps one sample at a time and cannot
       see a block boundary.
+      `fx.set(fxmode="slicer", amt="60%")`
 - [ ] 7.2. **Bypass** mid-tail, then un-bypass. Rack bypasses by routing the
       input to the output without calling the module, so only the host can do
       it. Confirm bypass passes audio and the module comes back alive.
+      `fx.set(fxmode="delay", time=0.9, fbk="70%")`
 - [ ] 7.3. **Ctrl+D mid-freeze** in Rack. The state round-trip is checked; what
       is not is that Rack's own duplicate lands sane rather than sharing a
       buffer.
+      `fx.set(amt="60%")`

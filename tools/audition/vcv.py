@@ -243,6 +243,13 @@ class PortRef:
     def __rshift__(self, other):
         return _wire(self, other)
 
+    def unpatch(self):
+        """Pull whatever is in this input out. A section patches the bench,
+        and an item that is *about* an empty jack -- what a normalled input
+        does with nothing in it -- has to be able to say so."""
+        self.module.patch.disconnect(self)
+        return self
+
     __add__ = _join
     __and__ = _no_and
     __or__ = _no_and
@@ -262,6 +269,11 @@ class PortGroup:
 
     def __rshift__(self, other):
         return _wire(self, other)
+
+    def unpatch(self):
+        for r in self.refs:
+            r.unpatch()
+        return self
 
     __add__ = _join
     __and__ = _no_and
@@ -300,6 +312,7 @@ class Patch:
     def __init__(self):
         self.p = vcvpatch.Patch()
         self.modules = []
+        self._displaced = set()
         self.x = 0
 
     def module(self, spec, hp=None, **params):
@@ -334,29 +347,63 @@ class Patch:
                 pass
         return (portmap().get(spec) or {}).get('hp') or 10
 
+    def disconnect(self, dst):
+        for d in _ports(dst):
+            key = (id(d.module), d.resolve('in'))
+            kept = []
+            for a, b in self._cables:
+                if (id(b.module), b.resolve('in')) == key:
+                    self._displaced.add(id(a.module))
+                else:
+                    kept.append((a, b))
+            self._cables = kept
+
     def connect(self, src, dst):
         # An input takes one cable. Patching a second into it replaces the
         # first, exactly as dragging a cable into an occupied jack does in
         # Rack, so an item that wants drums where the section put a sine just
         # says so instead of having to unpatch first.
         key = (id(dst.module), dst.resolve('in'))
-        self._cables = [(s, d) for s, d in self._cables
-                        if (id(d.module), d.resolve('in')) != key]
+        kept = []
+        for s, d in self._cables:
+            if (id(d.module), d.resolve('in')) == key:
+                # Whatever used to feed this jack may now feed nothing. Note
+                # it, so build() can drop it if so.
+                self._displaced.add(id(s.module))
+            else:
+                kept.append((s, d))
+        self._cables = kept
         self._cables.append((src, dst))
 
     _cables = None
+    _displaced = None
 
     def build(self):
         # A module left with nothing patched to it is one the audition stopped
         # using -- the sine a later item replaced with drums. Leaving it in the
         # rack is just something else for the eye to land on. Notes is the
         # exception: it is there to be read, not patched.
-        live = set()
-        for s, d in (self._cables or []):
-            live.add(id(s.module))
-            live.add(id(d.module))
-        self.modules = [m for m in self.modules
-                        if id(m) in live or m.spec == 'Core/Notes']
+        # A source an item replaced -- the sine swapped for drums, the drone
+        # for a sine -- is left feeding nothing, along with whatever fed it.
+        # Only those are dropped: a module with an input and no output is
+        # usually a sink someone patched on purpose, a scope or a second
+        # module under test, and deleting it would remove the point of the item.
+        while True:
+            feeds = {id(s.module) for s, _ in (self._cables or [])}
+            touches = feeds | {id(d.module) for _, d in (self._cables or [])}
+            gone = [m for m in self.modules
+                    if id(m) not in feeds
+                    and (id(m) in self._displaced or id(m) not in touches)
+                    and m.spec != 'Core/Notes']
+            if not gone:
+                break
+            dead = {id(m) for m in gone}
+            for a, b in (self._cables or []):
+                if id(b.module) in dead:
+                    self._displaced.add(id(a.module))
+            self.modules = [m for m in self.modules if id(m) not in dead]
+            self._cables = [(a, b) for a, b in self._cables
+                            if id(a.module) not in dead and id(b.module) not in dead]
 
         self.p = vcvpatch.Patch()
         x = 0
@@ -410,6 +457,7 @@ def patch():
     global _current
     _current = Patch()
     _current._cables = []
+    _current._displaced = set()
     return _current
 
 

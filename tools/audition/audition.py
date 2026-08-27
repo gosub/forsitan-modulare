@@ -75,6 +75,19 @@ def parse_audition(slug):
     with open(path) as f:
         lines = f.read().splitlines()
 
+    # Which sections have items decides where a code block belongs: the one in
+    # "## 0. The bench" is the bench for the whole file, and a section that
+    # tests something owns its own. Without this, a block sitting above a
+    # section's first item reads as the file's bench and every later item
+    # inherits it -- which silently patched the drum loop into all 85.
+    has_items, sec = set(), ''
+    for line in lines:
+        h = re.match(r'^(#+)\s+(.*)', line)
+        if h:
+            sec = h.group(2).strip()
+        elif re.match(r'^\s*-\s*\[([ x\-X])\]\s*\d', line):
+            has_items.add(sec)
+
     items, section, base, sect_code = [], '', [], []
     i = 0
     while i < len(lines):
@@ -88,9 +101,7 @@ def parse_audition(slug):
             while i < len(lines) and not re.match(r'^```\s*$', lines[i]):
                 body.append(lines[i])
                 i += 1
-            # A block before the file's first item is the bench every item
-            # starts from; after that, it belongs to the section it is in.
-            (base if not items else sect_code).append('\n'.join(body))
+            (sect_code if section in has_items else base).append('\n'.join(body))
         else:
             m = re.match(r'^\s*-\s*\[([ x\-X])\]\s*(\d+(?:\.\d+)*)\.\s+(.*)', line)
             if m:

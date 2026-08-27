@@ -142,6 +142,11 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%")
   `configSwitch` label.
 - `vcv.source("drums")` is a module declared in the local config — a sample
   player and its file.
+- `p.unpatch()` pulls whatever is in an input out, for an item that is *about*
+  an empty jack. Otherwise a module the audition stops using is dropped by
+  itself: patching over a jack marks whatever fed it, and anything left
+  feeding nothing goes. A module with an input and no output stays — that is
+  a scope, or a second module under test, not litter.
 - `vcv.hz(220)` is a frequency knob's value for a pitch, and
   `vcv.modulate(fx["free"], rate=0.05)` is an LFO through a **shut VCA** into
   a CV input. That last one is how a "sweep it slowly" item is written: a
