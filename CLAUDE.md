@@ -117,12 +117,23 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%")
   slug needs saying, and there is one: Rack's browser calls
   `Core/AudioInterface2` "Audio 2".
 - `a["port"] >> b["port"]` wires a jack to a jack; the left of `>>` is read as
-  an output and the right as an input. It returns the left, so chaining fans
-  one output out to several inputs — it never means a chain *through* the
-  middle module. **There is no module-to-module form**: which jacks carry the
-  audio is not something the library can know without a table of other
-  people's modules, and a heuristic there guesses silently. An audition that
-  repeats a wiring gives it a `def` in its own bench block instead.
+  an output and the right as an input. `m["left", "right"]` is a group of that
+  module's jacks and `p + q` gathers jacks from any modules, so `>>` takes a
+  group on either side and wires N to N, or one to many:
+
+  ```python
+  fx["left", "right"] >> out["output 1", "output 2"]   # pairwise
+  sine["sine"] >> fx["left"] + fx["right"]             # one to many
+  ```
+
+  Three into two raises. **Use `+`, not `&` or `|`**: those bind looser than
+  `>>`, so `a >> b & c` means `(a >> b) & c` and never what it reads like, and
+  `a >> b, c` is worse — it builds a tuple and drops the second cable
+  silently. Both are refused with a message.
+- **There is no module-to-module form** (`a >> b`): which jacks carry the audio
+  is not something the library can know without a table of other people's
+  modules, and a heuristic there guesses silently. An audition that repeats a
+  wiring gives it a `def` in its own bench block instead.
 - Patching an input that already has a cable **replaces** it, as dragging a
   cable into an occupied jack does, so an item can swap the sine for drums in
   one line. A module left with nothing patched to it is dropped from the rack.

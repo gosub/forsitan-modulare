@@ -212,10 +212,17 @@ def _wire(src, dst):
     return src
 
 
+def _join(self, other):
+    """`+` gathers jacks into a group, and binds tighter than `>>`, so
+    `a >> b + c` reads as one output into two inputs without parentheses.
+    `&` and `|` both bind looser and would have meant `(a >> b) & c`."""
+    return PortGroup(_ports(self) + _ports(other))
+
+
 def _no_and(self, other):
-    raise TypeError("`&` binds looser than `>>`, so `a >> b & c` means "
-                    "`(a >> b) & c`. Write `a >> (b, c)`, or chain: "
-                    "`a >> b >> c`.")
+    raise TypeError("`&` and `|` bind looser than `>>`, so `a >> b & c` means "
+                    "`(a >> b) & c`. Use `+`, which binds tighter: "
+                    "`a >> b + c`.")
 
 
 class PortRef:
@@ -236,7 +243,9 @@ class PortRef:
     def __rshift__(self, other):
         return _wire(self, other)
 
+    __add__ = _join
     __and__ = _no_and
+    __or__ = _no_and
 
 
 class PortGroup:
@@ -254,7 +263,9 @@ class PortGroup:
     def __rshift__(self, other):
         return _wire(self, other)
 
+    __add__ = _join
     __and__ = _no_and
+    __or__ = _no_and
 
 
 class Module:
