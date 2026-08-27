@@ -320,13 +320,18 @@ def configure(cfg):
 
 
 def source(name, **params):
-    """A source declared in config.json: a sample player with its file, a
-    field recording, whatever this machine has."""
+    """A source declared in config.json, by the name the audition calls it.
+
+    The audition says "drums"; the config says which module plays it and which
+    file it plays. That indirection is the only reason an audition can ask for
+    real material at all: a plugin someone happens to have installed and a path
+    into their sample library are exactly what must not be committed.
+    """
     src = (_config.get('sources') or {}).get(name)
     if src is None:
         raise KeyError("no source %r in config.json (has: %s)"
                        % (name, ', '.join(sorted(_config.get('sources') or {})) or 'none'))
-    m = current().module('%s/%s' % (src['plugin'], src['model']), hp=src.get('hp'))
+    m = current().module('%s/%s' % (src['plugin'], src['model']))
     if 'data' in src:
         m.data = src['data']
     if src.get('params'):

@@ -19,7 +19,6 @@
     "drums": {
       "plugin": "4msCompany",
       "model": "BWAVP",
-      "hp": 8,
       "data": "/path/to/a/drum/loop.wav"
     }
   }
