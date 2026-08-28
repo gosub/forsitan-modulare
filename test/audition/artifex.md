@@ -469,16 +469,16 @@ drums()
 fx.set(fxmode="delay", time=0.8, fbk="60%", amt="80%")
 ```
 
-- [ ] 4.1. **Does the filter sound like a tone control?** Mode 1, long delay,
+- [x] 4.1. **Does the filter sound like a tone control?** Mode 1, long delay,
       feedback ~0.6, **amount** high, drum loop. Sweep it end to end. It has
       the reach (the suite says 39 dB); the question is whether the travel is
       usable all the way or bunched at one end.
       `fx.menu(filterInLoop=True)`
-- [ ] 4.2. **Decide -** the default is 12 dB/oct, a tone control that thins
+- [x] 4.2. **Decide -** the default is 12 dB/oct, a tone control that thins
       without removing. The menu's 24 dB/oct is vates' filter and takes the
       material away at both ends. Which should artifex ship as its default?
       `fx.menu(filterFourPole=True)`
-- [ ] 4.3. **Filter inside the feedback** (menu, delay and flanger) on a dub
+- [x] 4.3. **Filter inside the feedback** (menu, delay and flanger) on a dub
       delay: long time, feedback ~0.8, lowpass half-left. Each repeat darker
       than the last, dissolving into mud. The numbers are checked; judge
       whether the dissolve is musical or just muddy.
@@ -486,7 +486,7 @@ fx.set(fxmode="delay", time=0.8, fbk="60%", amt="80%")
       fx.set(time=0.9, fbk="80%", filter=-0.5)
       fx.menu(filterInLoop=True)
       ```
-- [ ] 4.4. **Buffer sizes** (1.15 / 2.5 / 5 s) change mid-freeze and mid-tail.
+- [x] 4.4. **Buffer sizes** (1.15 / 2.5 / 5 s) change mid-freeze and mid-tail.
       A glitch is fine, a crash or permanent silence is not.
       `fx.set(fxmode="freezer", amt="50%")`
 
@@ -515,7 +515,11 @@ fx.set(fxmode="slicer", amt="50%")
 
 - [ ] 5.1. **clk out** into another module's clock input: it should drive it
       without any fiddling with thresholds.
-      `fx["clk"] >> vcv.module("Scope")["ch 1"]`
+      ```python
+      seq = vcv.module("SEQ3")
+      fx["clk"] >> seq["clock"]
+      scope("clk")
+      ```
 - [ ] 5.2. An irregular or ratcheting external clock at **clk** - the tempo
       tracking should follow it rather than averaging it into mush.
       `clock(hz=3.0)`
