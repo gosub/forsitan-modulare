@@ -139,7 +139,7 @@ def parse_audition(slug):
 
 # ---------------------------------------------------------------- the bench
 
-def build_patch(slug, item, cfg):
+def build_patch(slug, item, cfg, items=()):
     vcv.configure(cfg)
     p = vcv.patch()
     ns = {'vcv': vcv, 'cfg': cfg, 'slug': slug, 'item': item.ident}
@@ -154,7 +154,7 @@ def build_patch(slug, item, cfg):
         die('%s %s built no modules -- is there a ```python bench in the audition?'
             % (slug, item.ident))
     notes = p.module('Notes')
-    notes.data = {'text': note_text(slug, item)}
+    notes.data = {'text': note_text(slug, item, list(items) or [item])}
     return p.build()
 
 
@@ -165,11 +165,24 @@ def plain(s):
     return re.sub(r'`([^`]+)`', r'\1', s)
 
 
-def note_text(slug, item):
-    out = ['%s  %s' % (slug, item.ident), '']
+def note_text(slug, item, items):
+    """What the Notes module beside the rack says: the item, and where you are.
+
+    The text is the markdown paragraph with its emphasis stripped, since Rack
+    renders none of it. The footer is there because the thing you want the
+    moment an item is done is the next one's number, and the alternative is
+    going back to the file to find it."""
+    kin = [i for i in items if i.section == item.section]
+    at = kin.index(item) + 1 if item in kin else 0
+    out = ['%s  %s   (%d of %d)' % (slug, item.ident, at, len(kin)), '']
     if item.section:
         out += [plain(item.section), '']
     out += [wrap(plain(item.text))]
+
+    order = [i.ident for i in items]
+    n = order.index(item.ident)
+    out += ['', '-' * 34]
+    out += ['next:  %s' % order[n + 1]] if n + 1 < len(order) else ['last item']
     return '\n'.join(out)
 
 
@@ -220,7 +233,7 @@ def main():
         return
 
     cfg = load_config()
-    p = build_patch(args.module, item, cfg)
+    p = build_patch(args.module, item, cfg, items)
 
     if args.dry_run:
         print(json.dumps(p.to_json(), indent=2))
