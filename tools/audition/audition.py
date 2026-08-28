@@ -220,7 +220,7 @@ def main():
             if it.section != section:
                 section = it.section
                 print('\n%s' % section)
-            print('  %-10s %s' % (it.ident, it.text[:68]))
+            print('  %-10s %s' % (it.ident, plain(it.text)[:68]))
         return
 
     hit = [i for i in items if i.ident == args.item]
@@ -242,7 +242,7 @@ def main():
     scratch = cfg.get('scratch', '/tmp/forsitan-audition')
     os.makedirs(scratch, exist_ok=True)
     path = p.write(os.path.join(scratch, '%s-%s.vcv' % (args.module, item.ident)))
-    print('%s %s -- %s' % (args.module, item.ident, item.text[:68]))
+    print('%s %s -- %s' % (args.module, item.ident, plain(item.text)[:68]))
     print('patch: %s' % path)
 
     r = cfg['rack']

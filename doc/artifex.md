@@ -417,6 +417,13 @@ Three context-menu settings change this.
   with a tone control and a dub delay. The other seven modes already have the
   filter in their loop, so it does nothing there.
 
+  Combine it with the **24 dB/oct** slope and the delay and the flanger will
+  howl: a resonant filter adds gain of its own at the corner, and inside a
+  feedback line that is enough to take the loop past unity where the feedback
+  knob alone would not. That is the sound working as intended, and the limiter
+  holds it at full scale rather than letting it run away, but it is why the
+  shallow slope is the default rather than a compromise.
+
 ## The panel
 
 ### fx mode

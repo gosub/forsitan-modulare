@@ -1957,6 +1957,44 @@ static void testFeedbackSafety() {
 	report("artifex", "feedback_bounded", worst, worst < 12.f);
 }
 
+// ── the resonant filter inside the feedback loop ──────────────────────────────
+// A filter in a feedback path adds its own gain at the corner, so a resonant
+// one can push the loop past unity where the feedback knob alone would not.
+// testFeedbackSafety leaves the menu at its defaults, which means the shallow
+// filter sitting outside the loop, and never reaches this: found by ear on
+// audition 4.3, where 24 dB/oct inside the loop howls in delay and flanger.
+// Howling is allowed. Leaving the rails is not.
+static void testFilterInLoopSafety() {
+	float worst = 0.f;
+	long nans = 0;
+	// the two modes the menu option applies to
+	const int modes[] = {artifex_fx::MODE_DELAY, artifex_fx::MODE_FLANGER};
+	for (int mi = 0; mi < 2; mi++) {
+		for (int four = 0; four < 2; four++) {
+			// across the whole knob: the corner is where the resonance sits
+			for (int step = 0; step <= 8; step++) {
+				Artifex m;
+				long fr = 0;
+				setMode(m, modes[mi]);
+				setFilter(m, four != 0, false, true);
+				m.params[Artifex::AMT_PARAM].setValue(1.f);
+				m.params[Artifex::FBK_PARAM].setValue(1.f);
+				m.params[Artifex::GAIN_PARAM].setValue(4.f);
+				m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+				m.params[Artifex::TIME_PARAM].setValue(0.85f);
+				m.params[Artifex::FILTER_PARAM].setValue(-1.f + 0.25f * step);
+				Rec rec;
+				runTone(m, fr, 1.0, 180.f, 8.f, &rec);
+				runSilence(m, fr, 2.0, &rec);
+				worst = std::max(worst, std::max(rec.sl.peak, rec.sr.peak));
+				nans += rec.sl.nans + rec.sr.nans;
+			}
+		}
+	}
+	report("artifex", "filter_in_loop_finite", nans, nans == 0);
+	report("artifex", "filter_in_loop_bounded", worst, worst < 12.f);
+}
+
 // ── every knob at every extreme, in every mode ────────────────────────────────
 // ── stress and edges ────────────────────────────────────────────────────────
 // These were the last of the listening tests that were really arithmetic.
@@ -2270,6 +2308,6 @@ SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudibl
            testEnvelope,
            testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock,
            testLfoModAttenuverter, testSteppedVersusFreeCv, testPatternGateDrivesTrig,
-           testFeedbackSafety, testAbuse, testExtremesStaySane,
+           testFeedbackSafety, testFilterInLoopSafety, testAbuse, testExtremesStaySane,
            testModeCyclingDoesNotPop, testSampleRateInvariance, testBypass,
            testStateRoundTrip, testLongRunStability)
