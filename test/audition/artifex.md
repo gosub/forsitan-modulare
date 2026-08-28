@@ -520,7 +520,7 @@ fx.set(fxmode="slicer", amt="50%")
       fx["clk"] >> seq["clock"]
       scope("clk")
       ```
-- [ ] 5.2. An irregular or ratcheting external clock at **clk** - the tempo
+- [x] 5.2. An irregular or ratcheting external clock at **clk** - the tempo
       tracking should follow it rather than averaging it into mush.
       ```python
       # Random's trigger, with pulses dropped at random: a clock that keeps
@@ -580,6 +580,13 @@ fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
       ```python
       v = vcv.module("vates")
       fx["clk"] >> v["clk"]
+      # both on one scope each, or there is no way to see them agree
+      pat = vcv.module("Scope")
+      fx["gate"] >> pat["ch 1"]
+      v["gate"] >> pat["ch 2"]
+      lfo = vcv.module("Scope")
+      fx["tri"] >> lfo["ch 1"]
+      v["tri"] >> lfo["ch 2"]
       ```
 
 ---
