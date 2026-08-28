@@ -24,8 +24,9 @@ Four sources, switched constantly — most issues show on only one:
 - **a 220 Hz sine** — tuning, detune, aliasing, clicks
 - **silence** — self-oscillation, runaway, DC, noise floor
 
-**L in** only at first (R is normalled), **out L/R** to the mixer, **level**
-0.8, **gain** 1.0. Scope on **out L**, a second one on **env** later.
+The bench below builds all of that. Nothing in this file asks you to set a
+knob before starting: the runner opens Rack with the item already patched, and
+an item's own line says only what it changes.
 
 Two kinds of item:
 
@@ -35,17 +36,21 @@ Two kinds of item:
   produces. An empty box means the choice is still mine to guess at.
 
 The bench below is the code every item starts from; a section adds to it and
-an item changes it. It is the **Start:** line in a form the runner can build,
-kept beside it so the two cannot drift apart.
+an item changes it.
 
 ```python
 fx = vcv.module("artifex", gain=1.0, level=0.8)
 out = vcv.module("Audio 2")
 fx["left", "right"] >> out["output 1", "output 2"]
 
-def sine(hz=220):
+def sine(hz=220, volts=5.0):
     s = vcv.module("VCO", freq=vcv.hz(hz))
-    s["sine"] >> fx["left"] + fx["right"]
+    out = s["sine"]
+    if volts != 5.0:
+        a = vcv.module("VCA-1", level=volts / 5.0)
+        s["sine"] >> a["channel"]
+        out = a["channel"]
+    out >> fx["left"] + fx["right"]
     return s
 
 def drums():
@@ -159,14 +164,12 @@ fx.set(fxmode="replayer")
 
 ## 3. The nine modes
 
-Each mode opens with a **Start** line: set every knob it names before the
-first test, and from then on the tests say only what to change. Anything a
-Start line does not mention is at the bench setting — **feedback** 0,
-**stereo** 0, **filter** centre, **level** 0.8, **gain** 1.0.
+Each mode opens with the code for its bench, and the items say only what they
+change. Anything the code does not name is at the module's own default —
+**feedback** 0, **stereo** 0, **filter** centre — over the file's **level**
+0.8 and **gain** 1.0.
 
 ### 3.1 delay (green)
-
-**Start:** drum loop · **time** centre · **amount** 0.5 · no clock at **clk**.
 
 ```python
 drums()
@@ -192,8 +195,6 @@ fx.set(fxmode="delay", time=0.5, amt="50%")
 
 ### 3.2 flanger (cyan)
 
-**Start:** 220 Hz sine · **time** centre · **amount** 0.5.
-
 ```python
 sine()
 fx.set(fxmode="flanger", time=0.5, amt="50%")
@@ -210,8 +211,6 @@ fx.set(fxmode="flanger", time=0.5, amt="50%")
       `fx.set(time=1.0)`
 
 ### 3.3 freezer (blue)
-
-**Start:** drum loop · **time** centre · **amount** 0 · clock at **clk**.
 
 ```python
 drums()
@@ -244,9 +243,6 @@ fx.set(fxmode="freezer", time=0.5, amt=0)
 
 ### 3.4 panner (white)
 
-**Start:** 220 Hz sine · **time** far left (slow) · **amount** 0 (a sine
-pan).
-
 ```python
 sine()
 fx.set(fxmode="panner", time=0.0, amt=0)
@@ -275,13 +271,12 @@ fx.set(fxmode="panner", time=0.0, amt=0)
 
 ### 3.5 crusher (yellow)
 
-**Start:** pad · **time** far right (rate does nothing) · **amount** 0 ·
-**level** maximum — amount is crush depth, not a mix, and is at three bits by
-half travel.
-
 ```python
 drone()
-fx.set(fxmode="crusher", time=1.0, amt=0, level=1.0)
+fx.set(fxmode="crusher",
+       time=1.0,     # far right: the rate does nothing here
+       amt=0,        # crush depth, not a mix: three bits by half travel
+       level=1.0)
 ```
 
 - [x] 3.5.1. **amount** to a quarter, sweep **time** the full width:
@@ -310,8 +305,6 @@ fx.set(fxmode="crusher", time=1.0, amt=0, level=1.0)
       `fx.set(amt="40%")`
 
 ### 3.6 slicer (light green)
-
-**Start:** drone · clock at **clk** · **time** far left · **amount** 0.5.
 
 ```python
 drone()
@@ -345,8 +338,6 @@ fx.set(fxmode="slicer", time=0.0, amt="50%")
 
 ### 3.7 pitcher (red)
 
-**Start:** 220 Hz sine · **time** centre · **amount** 0 (no shift, dry).
-
 ```python
 sine()
 fx.set(fxmode="pitcher", time=0.5, amt=0)
@@ -361,13 +352,13 @@ fx.set(fxmode="pitcher", time=0.5, amt=0)
 
 ### 3.8 replayer (orange)
 
-**Start:** 220 Hz sine at 2 V · **time** until the display reads **+1.0x** ·
-**amount** fully right (locked) · scope on **out L**.
-
 ```python
-sine = vcv.module("VCO", freq=vcv.hz(220))
-sine["sine"] >> fx["left"]
-fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
+sine(220, volts=2)
+scope("left")
+fx.set(fxmode="replayer",
+       time=0.8333,      # +1.0x on the display: centre is a quarter speed
+       amt="100%",       # fully right, the tape locked
+       fbk="0%")
 ```
 
 - [x] 3.8.1. Sweep **time** and check the display against what you hear:
@@ -420,8 +411,6 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%", fbk="0%")
       ```
 
 ### 3.9 shifter (pink)
-
-**Start:** 220 Hz sine · **time** centre (unity) · **amount** 0.5.
 
 ```python
 sine()

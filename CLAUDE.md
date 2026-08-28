@@ -74,10 +74,13 @@ it, and the split between them is the whole discipline.
   not a fault" where a surprising behaviour is intended. No bug history, no
   DSP mechanism, no argument for the design. Concrete numbers to check against
   are welcome; explanations are not.
-- **The section carries the setup, not the first item.** Each section opens
-  with a **Start:** line naming source and every knob that matters, and the
-  items say only what they change. Where a setting is not findable by eye,
-  name the readout: "time until the display reads +1.0x", not "time at 5/6".
+- **The section carries the setup, not the first item** — as code, in the
+  section's own ```python block, with the items saying only what they change.
+  Do not also describe it in prose: a **Start:** line beside a bench that
+  builds the same thing is a second copy to keep in step, and the first to go
+  quietly wrong. Where a number needs a human framing, comment the line it is
+  on (`time=0.8333,  # +1.0x on the display`), so the note cannot drift from
+  the value it explains.
 - Two kinds of item: plain ones, which are tests, and **Decide —** ones, open
   questions of taste resting on numbers the harness prints.
 - `- [ ] N.N.N.` with 6-space continuation, wrapped at 80 columns. **Tick
