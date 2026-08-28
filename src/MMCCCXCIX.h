@@ -1,5 +1,5 @@
 #pragma once
-// PT2399.h — VCV Rack 2 plugin
+// PT2399.h - VCV Rack 2 plugin
 // Core DSP ported from schollz/pt2399-sc (onebitdelay) with additions:
 //   - Feedback send/return jack with dry/wet mix
 //   - CV inputs for all main parameters

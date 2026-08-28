@@ -1,4 +1,4 @@
-// smoke_oom — imber and sylla must survive a render they cannot allocate.
+// smoke_oom - imber and sylla must survive a render they cannot allocate.
 //
 // Both start a background render from process(), i.e. from the audio
 // thread. A jack client runs with its memory locked (libjack calls

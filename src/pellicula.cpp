@@ -1,4 +1,4 @@
-// pellicula.cpp — VCV Rack 2 module
+// pellicula.cpp - VCV Rack 2 module
 // "Exploded" 8-voice drum sampler in the spirit of the Erica Synths Pico DRUM
 // (original sample-player engine), rebuilt clean-room from the published manual.
 //
@@ -36,7 +36,7 @@ static const int kNumVoices  = 8;
 static const int kNumSamples = 64;
 
 // Samples, kits, the WAV reader and the shared "kits folder" setting all
-// live in src/sampler/kitloader.hpp — vates browses the same library.
+// live in src/sampler/kitloader.hpp - vates browses the same library.
 using forsitan_sampler::Sample;
 using forsitan_sampler::Kit;
 using forsitan_sampler::loadWav;
@@ -329,7 +329,7 @@ struct Pellicula : Module {
     }
 };
 
-// ── panel geometry (mm) — must match tools/panels/gen_pellicula_panel.py ─────────────
+// ── panel geometry (mm) - must match tools/panels/gen_pellicula_panel.py ─────────────
 static const float PANEL_W = 111.76f;   // 22 HP
 // column x: [0] = poly, [1..8] = voices
 static const float COLX[kNumVoices + 1] =

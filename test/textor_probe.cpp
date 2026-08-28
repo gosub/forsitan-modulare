@@ -1,11 +1,11 @@
-// textor_probe — measures discontinuities ("clicks") in textor's output.
+// textor_probe - measures discontinuities ("clicks") in textor's output.
 //
 // The cloth is a sine, so everything textor can play is that sine at a
 // semitone-quantized rate (at most +36, i.e. under 2 kHz) beneath a slow
 // raised-cosine window, plus its own decaying delay repeats. All of that
 // lives well below 8 kHz. A discontinuity does not: a step in the waveform
 // spreads energy across the whole spectrum. So the probe highpasses the
-// output at 8 kHz (4th-order Butterworth) and reports what comes through —
+// output at 8 kHz (4th-order Butterworth) and reports what comes through -
 // residual level relative to the signal, the loudest single transient, and
 // how many separate transients cross an audibility threshold.
 //

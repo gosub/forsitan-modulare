@@ -1,8 +1,8 @@
-// guttur.cpp — VCV Rack 2 module
-// guttur (Latin: "throat" — the guttural voice) is a port of Gutter
+// guttur.cpp - VCV Rack 2 module
+// guttur (Latin: "throat" - the guttural voice) is a port of Gutter
 // Synthesis, Tom Mudd's chaotic resonator instrument: a forced, damped
 // Duffing oscillator whose forcing loop runs *through* two banks of 24
-// resonant bandpass biquads. The filters are not a post-effect — their
+// resonant bandpass biquads. The filters are not a post-effect - their
 // summed output feeds back into the Duffing derivative, so oscillator
 // and resonators form one coupled chaotic system.
 //
@@ -26,9 +26,9 @@
 //    feedback state, not the output);
 //  - filter tuning uses tan(pi·f/Fs) as in the Java. (The SC port passes
 //    pi·f/Fs to a fasttan() that already multiplies by pi internally,
-//    mistuning every filter a factor of pi up — not replicated.)
+//    mistuning every filter a factor of pi up - not replicated.)
 //
-// The forcing sine runs at omega·dt·44100/(2·pi) Hz — TONE and RATE multiply
+// The forcing sine runs at omega·dt·44100/(2·pi) Hz - TONE and RATE multiply
 // into one frequency. Below ~10 Hz the banks stop being excited, duffX parks
 // on a DC drift the bandpasses reject, and the module goes silent between
 // surges; the defaults (omega 0.02, dt 5, ~700 Hz) match the originals.
@@ -82,12 +82,12 @@ inline double distortion(double v, int type) {
         case 1:   // variable-hardness clip, shape = 3
             // musicdsp normalizes this by fastatan(shape) so that input 1
             // maps to output 1, which leaves a small-signal gain of
-            // 3/fastatan(3) = 3.52 — 11 dB of extra gain injected straight
+            // 3/fastatan(3) = 3.52 - 11 dB of extra gain injected straight
             // into the feedback loop. Normalize by the shape instead, for
             // unity gain at the origin, and use the exact atan so the curve
             // saturates instead of folding back at |v| > 0.63.
             return std::atan(v * 3.0) / 3.0;
-        case 2:   // fast atan — folds back above |v| = 1.89 (see above)
+        case 2:   // fast atan - folds back above |v| = 1.89 (see above)
             return fastatan(v);
         case 3: { // atan approximation (kvraudio)
             if (std::fabs(v) < 1e-12)
@@ -180,7 +180,7 @@ struct Engine {
                 double K = std::tan(M_PI * filterFreqs[bank][f] / Fs);
                 double norm = 1.0 / (1.0 + K / Q[f] + K * K);
                 // quirk: a0/b2 use the BANK-indexed Q (Java Q[i]), norm the
-                // filter-indexed one — kept faithfully
+                // filter-indexed one - kept faithfully
                 a0[bank][f] = K / Q[bank] * norm;
                 a1[bank][f] = 0.0;
                 a2[bank][f] = -a0[bank][f];
@@ -225,7 +225,7 @@ struct Engine {
 
         duffY += dy;
         dx = duffY;
-        // the "lowpass": part differentiator, part attenuator — verbatim
+        // the "lowpass": part differentiator, part attenuator - verbatim
         duffX = (finalY + dx - duffX) / smoothing;
 
         float out;
@@ -372,7 +372,7 @@ struct Guttur : Module {
         configParam(DRIVE_PARAM, 0.f, 10.f, 0.2f, "Drive (gamma forcing)");
         // 0.5752575 puts omega at the original's 0.02; with dt = 5 that is a
         // ~700 Hz forcing sine. Below ~10 Hz the banks lose their excitation
-        // and the whole engine falls silent between surges — see the header.
+        // and the whole engine falls silent between surges - see the header.
         configParam(TONE_PARAM, 0.f, 1.f, 0.5752575f, "Tone (forcing frequency)",
                     "", 1e4f, 1e-4f);
         configParam(DAMP_PARAM, 0.f, 1.f, 0.5f, "Damping (c)", "", 1e4f, 1e-4f);
@@ -394,7 +394,7 @@ struct Guttur : Module {
                     "%", 0.f, 100.f);
         configParam(GAINA_PARAM, 0.f, 2.f, 1.f, "Bank A gain");
         // Both banks on. The SC *class* defaults gains2=0, but its example
-        // patch — the one that actually sounds like the record — runs both
+        // patch - the one that actually sounds like the record - runs both
         // at 1.5, and total loop gain is what decides whether the chaos
         // wanders or locks onto a fixed point: below roughly gainA+gainB =
         // 1.5 the Duffing settles and the module becomes a static drone.
@@ -465,11 +465,11 @@ struct Guttur : Module {
     // The chaos does not self-start from exact zeros: with the forcing sine
     // at ~0.04 Hz the Duffing settles on a quiet fixed point and the
     // bandpass banks see DC. The SC port ignites because its parameter
-    // slopes start from InitGutterState's values (omega 1.25, dt 1.0 —
+    // slopes start from InitGutterState's values (omega 1.25, dt 1.0 -
     // audio-rate forcing) and glide to the user's settings within the first
     // block. Replicate that: start the smoothers at those init constants so
     // the first milliseconds sweep the forcing through the audio range.
-    // Also fired by the RESET button/trigger — the "percussive re-ignition".
+    // Also fired by the RESET button/trigger - the "percussive re-ignition".
     void kickChaos() {
         smGamma.value = 0.1;
         smOmega.value = 1.25;

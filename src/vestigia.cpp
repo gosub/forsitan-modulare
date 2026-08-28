@@ -1,22 +1,22 @@
-// vestigia.cpp — VCV Rack 2 module
+// vestigia.cpp - VCV Rack 2 module
 // vestigia (Latin: "traces, footprints") is a stereo memory effect. It
 // continuously writes the incoming signal into an endless tape loop, keeps
 // a parallel block-based activity map of where meaningful sound actually
-// lives, and recalls those regions — during pauses, on transients, or by
-// probability — degrading each memory a little more every time it returns.
+// lives, and recalls those regions - during pauses, on transients, or by
+// probability - degrading each memory a little more every time it returns.
 //
 // It is not a delay. The write head never stops (except FREEZE); what the
 // present does to the past is set by the MEMORY MODE:
-//   oblivion   — the present replaces the past
-//   remanence  — the present rewrites the past but leaves traces (retention)
-//   sediment   — the present accumulates over the past through saturation
+//   oblivion   - the present replaces the past
+//   remanence  - the present rewrites the past but leaves traces (retention)
+//   sediment   - the present accumulates over the past through saturation
 //
 // The recollection engine consults the activity map, never arbitrary buffer
 // positions, so silence is never recalled. Three recollection modes shape
 // WHEN memories return:
-//   listen   — event-centered, triggered by transients, prefers recent
-//   breathe  — recall follows the input envelope, density and similarity
-//   dream    — recall rises as the input falls quiet; older, reversed, longer
+//   listen   - event-centered, triggered by transients, prefers recent
+//   breathe  - recall follows the input envelope, density and similarity
+//   dream    - recall rises as the input falls quiet; older, reversed, longer
 //
 // This build implements the full Vestigium design document (v0.2), beyond
 // the MVP: a memory-descriptor pool with per-region integrity and
@@ -36,7 +36,7 @@
 
 namespace vestigia_dsp {
 
-// deterministic RNG (xorshift32) — musical randomness seeded from the patch
+// deterministic RNG (xorshift32) - musical randomness seeded from the patch
 struct Rng {
     uint32_t s = 0x1234567u;
     void seed(uint32_t v) { s = v ? v : 0x9e3779b9u; }
@@ -782,7 +782,7 @@ struct Vestigia : Module {
         float inR = inputs[IN_R_INPUT].isConnected() ? inputs[IN_R_INPUT].getVoltage() * 0.2f : inL;
         float inMono = 0.5f * (inL + inR);
 
-        // input analysis — the engine can listen to the dry input, the
+        // input analysis - the engine can listen to the dry input, the
         // wet recollections, or the mix (wet/mix use the previous sample,
         // so "wet" gives a self-triggering feedback in the recall logic)
         float sense = (senseSource == 1) ? senseMixMono : (senseSource == 2) ? senseWetMono : inMono;

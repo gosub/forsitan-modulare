@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate res/pellicula.svg — the static panel art for the pellicula module.
+Generate res/pellicula.svg - the static panel art for the pellicula module.
 
 pellicula's panel is a regular 9-column (poly + 8 voices) x 11-row matrix, so
 its widgets are placed by loops in src/pellicula.cpp rather than the browser
@@ -83,7 +83,7 @@ ok = pe.regen_svg(layout, svg_path)
 
 # Post-process: the output jacks (poly + 8 voices + mix) all render as plain grey
 # Rack ports, so add a full-width bar in the house badge grey behind the output
-# row — the same affordance as the 14x14 output boxes on the other panels.
+# row - the same affordance as the 14x14 output boxes on the other panels.
 if ok:
     bar = (f'  <rect x="2.4" y="{OUT_JACK_Y - 5.0:.2f}" width="{PANEL_W - 5.6:.2f}" '
            f'height="10.0" rx="1.5" fill="#e4e4e4"/>')

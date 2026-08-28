@@ -1,5 +1,5 @@
 #pragma once
-// draen_ugens.hpp — SuperCollider-flavoured UGEN primitives (header-only).
+// draen_ugens.hpp - SuperCollider-flavoured UGEN primitives (header-only).
 //
 // dræn ports the drone SynthDefs from northern-information/dronecaster, whose
 // engines are little SuperCollider graphs of the form { |hz, amp| ... }. This
@@ -33,7 +33,7 @@ enum { kCoefUpdate = 16 };
 struct Rng {
     uint32_t s = 0x2545F491u;
     // avalanche-hash the seed so nearby seeds (e.g. s, s+7, s+14 for per-voice
-    // seeding) decorrelate — xorshift alone gives correlated first outputs
+    // seeding) decorrelate - xorshift alone gives correlated first outputs
     void seed(uint32_t v) {
         v ^= v >> 16; v *= 0x7feb352du; v ^= v >> 15; v *= 0x846ca68bu; v ^= v >> 16;
         s = v ? v : 0x2545F491u;
@@ -45,7 +45,7 @@ struct Rng {
     float bipolar() { return uniform() * 2.f - 1.f; }  // [-1, 1)
 };
 
-// ── SinOsc.ar / .kr — plain sine, phase accumulator ──────────────────────────
+// ── SinOsc.ar / .kr - plain sine, phase accumulator ──────────────────────────
 struct SinOsc {
     float phase = 0.f;
     void reset(float ph = 0.f) { phase = ph; }
@@ -58,7 +58,7 @@ struct SinOsc {
     }
 };
 
-// ── LFTri.ar — naive (non-bandlimited) triangle, faithful to SC's LFTri ───────
+// ── LFTri.ar - naive (non-bandlimited) triangle, faithful to SC's LFTri ───────
 struct LFTri {
     float phase = 0.f;
     void reset(float ph = 0.f) { phase = ph; }
@@ -80,7 +80,7 @@ inline void insertBlep(rack::dsp::MinBlepGenerator<16, 16>& g, float p, float x)
     g.insertDiscontinuity(rack::clamp(p, -0.9999f, 0.f), x);
 }
 
-// ── Saw.ar — band-limited sawtooth via MinBLEP ───────────────────────────────
+// ── Saw.ar - band-limited sawtooth via MinBLEP ───────────────────────────────
 struct BlSaw {
     float phase = 0.f;
     rack::dsp::MinBlepGenerator<16, 16> blep;
@@ -112,7 +112,7 @@ struct BlSaw {
     }
 };
 
-// ── Pulse.ar — band-limited pulse/square with pulse width, via MinBLEP ────────
+// ── Pulse.ar - band-limited pulse/square with pulse width, via MinBLEP ────────
 struct BlPulse {
     float phase = 0.f;
     rack::dsp::MinBlepGenerator<16, 16> blep;
@@ -134,7 +134,7 @@ struct BlPulse {
     }
 };
 
-// ── LFNoise0.kr — stepped random, held between updates at `freq` Hz ───────────
+// ── LFNoise0.kr - stepped random, held between updates at `freq` Hz ───────────
 struct LFNoise0 {
     Rng rng;
     float value = 0.f;
@@ -147,7 +147,7 @@ struct LFNoise0 {
     }
 };
 
-// ── LFNoise1.kr — linearly-interpolated random ramps at `freq` Hz ─────────────
+// ── LFNoise1.kr - linearly-interpolated random ramps at `freq` Hz ─────────────
 struct LFNoise1 {
     Rng rng;
     float cur = 0.f, target = 0.f;
@@ -164,7 +164,7 @@ struct LFNoise1 {
     }
 };
 
-// ── LeakDC.ar — one-pole DC blocker (SC default coef 0.995) ───────────────────
+// ── LeakDC.ar - one-pole DC blocker (SC default coef 0.995) ───────────────────
 struct LeakDC {
     float x1 = 0.f, y1 = 0.f, coef = 0.995f;
     // SC's default coef 0.995 is a ~38 Hz highpass at 48 kHz; engines whose
@@ -174,7 +174,7 @@ struct LeakDC {
     float process(float x) { float y = x - x1 + coef * y1; x1 = x; y1 = y; return y; }
 };
 
-// ── LFNoise2.kr — quadratically-interpolated random at `freq` Hz ──────────────
+// ── LFNoise2.kr - quadratically-interpolated random at `freq` Hz ──────────────
 struct LFNoise2 {
     Rng rng;
     float y0 = 0.f, y1 = 0.f, y2 = 0.f;
@@ -198,7 +198,7 @@ struct WhiteNoise {
     float process() { return rng.bipolar(); }
 };
 
-// ── PinkNoise.ar — Paul Kellet's refined economy filter, ~[-1, 1] ─────────────
+// ── PinkNoise.ar - Paul Kellet's refined economy filter, ~[-1, 1] ─────────────
 struct PinkNoise {
     Rng rng;
     float b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
@@ -217,7 +217,7 @@ struct PinkNoise {
     }
 };
 
-// ── Dust.ar — random positive impulses at an average density (Hz) ─────────────
+// ── Dust.ar - random positive impulses at an average density (Hz) ─────────────
 struct Dust {
     Rng rng;
     void reset(uint32_t seed) { rng.seed(seed); }
@@ -227,7 +227,7 @@ struct Dust {
     }
 };
 
-// ── Latch.ar — sample & hold: capture `in` when `trig` crosses > 0 ────────────
+// ── Latch.ar - sample & hold: capture `in` when `trig` crosses > 0 ────────────
 struct Latch {
     float held = 0.f;
     float prevTrig = 0.f;
@@ -239,7 +239,7 @@ struct Latch {
     }
 };
 
-// ── Lag.kr / VarLag — one-pole smoother toward the input over `time` seconds ──
+// ── Lag.kr / VarLag - one-pole smoother toward the input over `time` seconds ──
 // The exp() is only re-evaluated when `time` changes (checked at block rate).
 struct Lag {
     float y = 0.f, b1 = 0.f, lastTime = -1.f;
@@ -257,7 +257,7 @@ struct Lag {
     }
 };
 
-// ── BPF / RLPF / LPF / HPF — SC's second-order filters over Rack's biquad ─────
+// ── BPF / RLPF / LPF / HPF - SC's second-order filters over Rack's biquad ─────
 // SC parameterises resonance by `rq` (reciprocal Q, i.e. bandwidth); Rack's
 // biquad takes Q. These thin wrappers keep the SC call shape (freq, rq).
 // Coefficients are only recomputed every kCoefUpdate samples (see top).
@@ -346,20 +346,20 @@ inline float linexp(float x, float inMin, float inMax, float outMin, float outMa
 inline float midicps(float note) { return 440.f * std::pow(2.f, (note - 69.f) / 12.f); }
 inline float cpsmidi(float hz)   { return 69.f + 12.f * std::log2(std::max(hz, 1e-6f) / 440.f); }
 
-// ── Pan2.ar — equal-power stereo pan; pos in [-1, 1], scaled by `level` ───────
+// ── Pan2.ar - equal-power stereo pan; pos in [-1, 1], scaled by `level` ───────
 inline void pan2(float in, float pos, float level, float& outL, float& outR) {
     float a = (rack::clamp(pos, -1.f, 1.f) * 0.5f + 0.5f) * (float)M_PI_2;
     outL = in * std::cos(a) * level;
     outR = in * std::sin(a) * level;
 }
 
-// ── SelectX.ar (two-element) — equal-power crossfade, frac in [0, 1] ──────────
+// ── SelectX.ar (two-element) - equal-power crossfade, frac in [0, 1] ──────────
 inline float selectx(float frac, float a, float b) {
     float ang = rack::clamp(frac, 0.f, 1.f) * (float)M_PI_2;
     return a * std::cos(ang) + b * std::sin(ang);
 }
 
-// ── Impulse — single impulse at start (freq 0), else at `freq` Hz ─────────────
+// ── Impulse - single impulse at start (freq 0), else at `freq` Hz ─────────────
 struct Impulse {
     float phase = 0.f;
     bool first = true;
@@ -373,7 +373,7 @@ struct Impulse {
     }
 };
 
-// ── Trig.kr — output 1 for `dur` seconds after `in` crosses > 0 ───────────────
+// ── Trig.kr - output 1 for `dur` seconds after `in` crosses > 0 ───────────────
 struct Trig {
     float timer = 0.f, prev = 0.f;
     void reset() { timer = 0.f; prev = 0.f; }
@@ -385,7 +385,7 @@ struct Trig {
     }
 };
 
-// ── TChoose.kr — pick a random array element on each trigger ──────────────────
+// ── TChoose.kr - pick a random array element on each trigger ──────────────────
 struct TChoose {
     Rng rng; float val = 0.f, prev = 0.f;
     void reset(uint32_t seed) { rng.seed(seed); val = 0.f; prev = 0.f; }
@@ -399,7 +399,7 @@ struct TChoose {
     }
 };
 
-// ── SinOscFB.ar — sine with phase feedback (a one-oscillator FM growl) ────────
+// ── SinOscFB.ar - sine with phase feedback (a one-oscillator FM growl) ────────
 struct SinOscFB {
     float phase = 0.f, last = 0.f;
     void reset(float ph = 0.f) { phase = ph; last = 0.f; }
@@ -412,7 +412,7 @@ struct SinOscFB {
     }
 };
 
-// ── EnvGen — breakpoint envelope, retriggered on gate's rising edge ───────────
+// ── EnvGen - breakpoint envelope, retriggered on gate's rising edge ───────────
 // Levels/times are latched at the trigger, so callers can pass live-modulated
 // values (as SC does with Env.new([...],[...]) built from UGens).
 struct BPEnv {
@@ -441,7 +441,7 @@ struct BPEnv {
     }
 };
 
-// ── Env.asr with gate held high — a one-shot attack ramp to 1, then hold ──────
+// ── Env.asr with gate held high - a one-shot attack ramp to 1, then hold ──────
 struct AttackEnv {
     float v = 0.f, atk = 1.f;
     void reset(float atkSec) { v = 0.f; atk = atkSec; }
@@ -451,7 +451,7 @@ struct AttackEnv {
     }
 };
 
-// ── MoogFF.ar — 4-pole Moog-style ladder (cascaded one-poles + saturated fb) ──
+// ── MoogFF.ar - 4-pole Moog-style ladder (cascaded one-poles + saturated fb) ──
 struct MoogFF {
     float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
     float g = 0.f; int ctr = 0;
@@ -506,7 +506,7 @@ inline float combFeedback(float delaySec, float decaySec) {
     return (decaySec < 0.f) ? -g : g;
 }
 
-// ── CombL / CombC — feedback comb, linear / cubic interpolated tap ────────────
+// ── CombL / CombC - feedback comb, linear / cubic interpolated tap ────────────
 struct CombL {
     DelayLine dl;
     float process(float x, float delaySamp, float g) {
@@ -520,7 +520,7 @@ struct CombC {
     }
 };
 
-// ── AllpassN — Schroeder allpass, non-interpolated tap ────────────────────────
+// ── AllpassN - Schroeder allpass, non-interpolated tap ────────────────────────
 struct AllpassN {
     DelayLine dl;
     float process(float x, int delaySamp, float g) {
@@ -531,7 +531,7 @@ struct AllpassN {
     }
 };
 
-// ── DelayN / DelayC — pure delay, non-interp / cubic (feed-forward) ───────────
+// ── DelayN / DelayC - pure delay, non-interp / cubic (feed-forward) ───────────
 struct DelayNode {
     DelayLine dl;
     float process(float x, int delaySamp) { float o = dl.tapN(delaySamp); dl.write(x); return o; }
@@ -541,7 +541,7 @@ struct DelayC {
     float process(float x, float delaySamp) { float o = dl.tapC(delaySamp); dl.write(x); return o; }
 };
 
-// ── SchroederReverb — the block shared by several dronecaster engines ─────────
+// ── SchroederReverb - the block shared by several dronecaster engines ─────────
 //   DelayN(0.048) pre-delay → 7 slowly-modulated parallel CombL → 4 series
 //   AllpassN. Built per channel with independent random taps for a wide image.
 struct SchroederReverb {
@@ -587,7 +587,7 @@ struct SchroederReverb {
     }
 };
 
-// ── CombN — feedback comb, non-interpolated tap ──────────────────────────────
+// ── CombN - feedback comb, non-interpolated tap ──────────────────────────────
 struct CombN {
     DelayLine dl;
     float process(float x, int delaySamp, float g) {
@@ -595,7 +595,7 @@ struct CombN {
     }
 };
 
-// ── LFPulse.ar — non-bandlimited unipolar (0/1) pulse ────────────────────────
+// ── LFPulse.ar - non-bandlimited unipolar (0/1) pulse ────────────────────────
 struct LFPulse {
     float phase = 0.f;
     void reset(float ph = 0.f) { phase = ph; }
@@ -605,7 +605,7 @@ struct LFPulse {
     }
 };
 
-// ── LFPar.ar — parabolic oscillator (cosine-like, made of parabola arcs) ─────
+// ── LFPar.ar - parabolic oscillator (cosine-like, made of parabola arcs) ─────
 inline float lfparWave(float phase) {
     phase -= std::floor(phase);
     float x = 4.f * phase;
@@ -622,7 +622,7 @@ struct LFPar {
     }
 };
 
-// ── Dust2.ar — random bipolar impulses at an average density (Hz) ────────────
+// ── Dust2.ar - random bipolar impulses at an average density (Hz) ────────────
 struct Dust2 {
     Rng rng;
     void reset(uint32_t seed) { rng.seed(seed); }
@@ -631,7 +631,7 @@ struct Dust2 {
     }
 };
 
-// ── Crackle.ar — chaotic "crackling" generator (2nd-order chaotic map) ───────
+// ── Crackle.ar - chaotic "crackling" generator (2nd-order chaotic map) ───────
 struct Crackle {
     float y1 = 0.3f, y2 = 0.f;
     void reset() { y1 = 0.3f; y2 = 0.f; }
@@ -652,7 +652,7 @@ inline void rotate2(float x, float y, float pos, float& outL, float& outR) {
     outL = x * c - y * s; outR = x * s + y * c;
 }
 
-// ── fold — reflect x back into [lo, hi] (wavefolder) ─────────────────────────
+// ── fold - reflect x back into [lo, hi] (wavefolder) ─────────────────────────
 inline float foldOver(float x, float lo, float hi) {
     if (hi <= lo) return lo;
     float range = hi - lo, twice = 2.f * range;
@@ -662,7 +662,7 @@ inline float foldOver(float x, float lo, float hi) {
     return y + lo;
 }
 
-// ── Changed.kr — 1 when the input changes by more than `thresh`, else 0 ──────
+// ── Changed.kr - 1 when the input changes by more than `thresh`, else 0 ──────
 struct Changed {
     float x1 = 0.f; bool first = true;
     void reset() { x1 = 0.f; first = true; }
@@ -672,7 +672,7 @@ struct Changed {
     }
 };
 
-// ── LFSaw.ar — non-bandlimited bipolar ramp [-1, 1] ──────────────────────────
+// ── LFSaw.ar - non-bandlimited bipolar ramp [-1, 1] ──────────────────────────
 struct LFSaw {
     float phase = 0.f;
     void reset(float ph = 0.f) { phase = ph; }
@@ -682,7 +682,7 @@ struct LFSaw {
     }
 };
 
-// ── HenonC.ar — Hénon-map chaotic oscillator, interpolated at `freq` ─────────
+// ── HenonC.ar - Hénon-map chaotic oscillator, interpolated at `freq` ─────────
 struct HenonC {
     float phase = 0.f, x1 = 0.3f, x2 = 0.3f;
     void reset() { phase = 0.f; x1 = 0.3f; x2 = 0.3f; }
@@ -698,7 +698,7 @@ struct HenonC {
     }
 };
 
-// ── Amplitude.kr — envelope follower (attack/release smoothing of |x|) ───────
+// ── Amplitude.kr - envelope follower (attack/release smoothing of |x|) ───────
 struct Amplitude {
     float env = 0.f;
     float cAtk = 0.f, cRel = 0.f, lastAtk = -1.f, lastRel = -1.f;
@@ -713,7 +713,7 @@ struct Amplitude {
     }
 };
 
-// ── OnePole.ar — one-pole filter, y = (1-|c|)*x + c*y1 (c may be negative) ────
+// ── OnePole.ar - one-pole filter, y = (1-|c|)*x + c*y1 (c may be negative) ────
 struct OnePole {
     float y1 = 0.f;
     void reset() { y1 = 0.f; }
@@ -723,14 +723,14 @@ struct OnePole {
     }
 };
 
-// ── Balance2.ar — equal-power stereo balance of a stereo signal ──────────────
+// ── Balance2.ar - equal-power stereo balance of a stereo signal ──────────────
 inline void balance2(float l, float r, float pos, float level, float& outL, float& outR) {
     float a = (rack::clamp(pos, -1.f, 1.f) * 0.5f + 0.5f) * (float)M_PI_2;
     outL = l * std::cos(a) * level;
     outR = r * std::sin(a) * level;
 }
 
-// ── Ringz — a resonator (ringing 2-pole BPF); the building block of Klank ─────
+// ── Ringz - a resonator (ringing 2-pole BPF); the building block of Klank ─────
 // freq = resonant frequency, decay = -60 dB ring time. Input is scaled by
 // (1 - R^2) so the resonant gain stays ~unity regardless of decay.
 struct Ringz {
@@ -764,7 +764,7 @@ struct Ringz {
     }
 };
 
-// ── FreeVerb — Jezar's public-domain Freeverb (mono in → mono out) ───────────
+// ── FreeVerb - Jezar's public-domain Freeverb (mono in → mono out) ───────────
 // Faithful port of the classic algorithm: 8 parallel damped combs → 4 series
 // allpasses. Comb/allpass lengths are the original 44.1 kHz tunings, scaled to
 // the running sample rate. `mix` is the wet/dry balance (0 dry … 1 wet).
@@ -806,7 +806,7 @@ struct FreeVerbMono {
     }
 };
 
-// ── BrownNoise.ar — Brownian noise (integrated white, reflected at ±1) ───────
+// ── BrownNoise.ar - Brownian noise (integrated white, reflected at ±1) ───────
 struct BrownNoise {
     Rng rng; float y = 0.f;
     void reset(uint32_t s) { rng.seed(s); y = 0.f; }
@@ -817,7 +817,7 @@ struct BrownNoise {
     }
 };
 
-// ── BAllPass.ar — second-order RBJ allpass; rq = 1/Q ─────────────────────────
+// ── BAllPass.ar - second-order RBJ allpass; rq = 1/Q ─────────────────────────
 struct BAllPass {
     float x1 = 0, x2 = 0, y1 = 0, y2 = 0;
     float b0 = 0.f, b1c = 0.f; int ctr = 0;
@@ -837,7 +837,7 @@ struct BAllPass {
     }
 };
 
-// ── SVF.ar — TPT state-variable filter; returns a mix of lp/bp/hp outputs ────
+// ── SVF.ar - TPT state-variable filter; returns a mix of lp/bp/hp outputs ────
 struct SVF {
     float ic1 = 0.f, ic2 = 0.f;
     float a1 = 0.f, a2 = 0.f, a3 = 0.f, k = 1.f; int ctr = 0;
@@ -857,7 +857,7 @@ struct SVF {
     }
 };
 
-// ── SelectX.ar (N-element) — equal-power crossfade across an array ────────────
+// ── SelectX.ar (N-element) - equal-power crossfade across an array ────────────
 inline float selectxN(float sel, const float* arr, int n, bool wrap) {
     if (n <= 1) return (n == 1) ? arr[0] : 0.f;
     int i0 = (int)std::floor(sel), i1;
@@ -868,7 +868,7 @@ inline float selectxN(float sel, const float* arr, int n, bool wrap) {
     return arr[i0] * std::cos(ang) + arr[i1] * std::sin(ang);
 }
 
-// ── Demand-rate generators — polled once per trigger (SC Demand.kr) ──────────
+// ── Demand-rate generators - polled once per trigger (SC Demand.kr) ──────────
 // SC's demand UGens are pull-based: Demand.kr polls its stream on each trigger
 // edge. Here each generator is a tiny stateful object whose next() the caller
 // invokes from a trigger edge. The list variants return an *index* so callers
@@ -903,7 +903,7 @@ struct Dbrown {         // bounded random walk in [lo, hi], step per poll
     }
 };
 
-// ── TExpRand.kr — new exponentially-distributed random on each trigger ───────
+// ── TExpRand.kr - new exponentially-distributed random on each trigger ───────
 struct TExpRand {
     Rng rng; float v = 1.f, prev = 0.f; bool primed = false;
     void reset(uint32_t s) { rng.seed(s); prev = 0.f; primed = false; }
@@ -916,7 +916,7 @@ struct TExpRand {
     }
 };
 
-// ── TDelay.kr — delay each trigger by `dur` seconds (retrigger ignored) ───────
+// ── TDelay.kr - delay each trigger by `dur` seconds (retrigger ignored) ───────
 struct TDelay {
     float timer = -1.f, prev = 0.f;
     void reset() { timer = -1.f; prev = 0.f; }
@@ -931,7 +931,7 @@ struct TDelay {
     }
 };
 
-// ── CoinGate.kr — pass each trigger with probability `prob` ──────────────────
+// ── CoinGate.kr - pass each trigger with probability `prob` ──────────────────
 struct CoinGate {
     Rng rng; float prev = 0.f;
     void reset(uint32_t s) { rng.seed(s); prev = 0.f; }
@@ -942,7 +942,7 @@ struct CoinGate {
     }
 };
 
-// ── AllpassC — Schroeder allpass, cubic-interpolated (modulatable) tap ────────
+// ── AllpassC - Schroeder allpass, cubic-interpolated (modulatable) tap ────────
 struct AllpassC {
     DelayLine dl;
     float process(float x, float delaySamp, float g) {
@@ -953,10 +953,10 @@ struct AllpassC {
     }
 };
 
-// ── midiratio — SC's .midiratio: semitone offset → frequency ratio ────────────
+// ── midiratio - SC's .midiratio: semitone offset → frequency ratio ────────────
 inline float midiratio(float semis) { return std::exp2(semis * (1.f / 12.f)); }
 
-// ── VarSaw.ar — variable-duty triangle/saw (width 0.5 = triangle) ─────────────
+// ── VarSaw.ar - variable-duty triangle/saw (width 0.5 = triangle) ─────────────
 struct VarSaw {
     float phase = 0.f;
     void reset(float ph = 0.f) { phase = ph; }
@@ -968,7 +968,7 @@ struct VarSaw {
     }
 };
 
-// ── SetResetFF — flip-flop: 1 on `trig` edge, 0 on `reset` edge ───────────────
+// ── SetResetFF - flip-flop: 1 on `trig` edge, 0 on `reset` edge ───────────────
 struct SetResetFF {
     float level = 0.f, prevT = 0.f, prevR = 0.f;
     void reset() { level = 0.f; prevT = 0.f; prevR = 0.f; }
@@ -980,7 +980,7 @@ struct SetResetFF {
     }
 };
 
-// ── Trig1 — 1 for `dur` seconds after a trigger; ignores triggers while high ──
+// ── Trig1 - 1 for `dur` seconds after a trigger; ignores triggers while high ──
 struct Trig1 {
     float timer = 0.f, prev = 0.f;
     void reset() { timer = 0.f; prev = 0.f; }
@@ -992,13 +992,13 @@ struct Trig1 {
     }
 };
 
-// ── envCurve — SC's curved envelope segment shape (curve 0 = linear) ──────────
+// ── envCurve - SC's curved envelope segment shape (curve 0 = linear) ──────────
 inline float envCurve(float t, float curve) {
     if (std::fabs(curve) < 0.001f) return t;
     return (1.f - std::exp(curve * t)) / (1.f - std::exp(curve));
 }
 
-// ── PercEnv — Env.perc: curved attack then curved release, one-shot ──────────
+// ── PercEnv - Env.perc: curved attack then curved release, one-shot ──────────
 // The exponential segment shape is advanced incrementally (one multiply per
 // sample) instead of calling exp() per sample.
 struct PercEnv {
@@ -1038,7 +1038,7 @@ struct PercEnv {
     }
 };
 
-// ── Greyhole (approximation) — diffuse modulated feedback-delay cloud ─────────
+// ── Greyhole (approximation) - diffuse modulated feedback-delay cloud ─────────
 // Julian Parker's Greyhole is a coupled DEISF network; this stands in for it
 // with the same control surface: two series modulated allpass diffusers per
 // channel inside a damped, cross-fed stereo delay loop. Wet-only output.
@@ -1079,7 +1079,7 @@ struct Greyhole {
 inline void splay(const float* chans, int n, float spread, float center,
                   float& outL, float& outR, bool levelComp = true);
 
-// ── CombVerb — the "CombN bank → Splay → LPF → AllpassN chain" reverb ─────────
+// ── CombVerb - the "CombN bank → Splay → LPF → AllpassN chain" reverb ─────────
 // Several dronecaster engines build a reverb as: DelayN(0.03) → N parallel
 // CombN (0.01–0.099 s, decay 4) → SplayAz to stereo → LPF 1500 → a few stereo
 // AllpassN passes (0.01–0.099 s, decay 3) → LPF 1500. Built once, sized by
@@ -1126,7 +1126,7 @@ struct CombVerb {
     }
 };
 
-// ── Pluck.ar — Karplus-Strong: excited delay loop with one-pole damping ──────
+// ── Pluck.ar - Karplus-Strong: excited delay loop with one-pole damping ──────
 // `coef` is the loop damping coefficient; a negative `decaySec` flips the loop
 // feedback sign (the octave-down "negative decay" trick). Input is fed into
 // the loop for one delay period after each trigger.
@@ -1148,7 +1148,7 @@ struct Pluck {
     }
 };
 
-// ── LorenzL.ar — Lorenz attractor, iterated at `freq`, linear interpolation ──
+// ── LorenzL.ar - Lorenz attractor, iterated at `freq`, linear interpolation ──
 // Integrated in four Euler substeps per iteration (plain Euler at the SC
 // default h = 0.05 diverges), with a divergence reset as a belt-and-braces.
 struct LorenzL {
@@ -1173,7 +1173,7 @@ struct LorenzL {
     }
 };
 
-// ── FBSineN.ar — feedback sine map, iterated at `freq`, no interpolation ─────
+// ── FBSineN.ar - feedback sine map, iterated at `freq`, no interpolation ─────
 struct FBSineN {
     float x = 0.1f, y = 0.1f, phase = 1.f;
     void reset() { x = 0.1f; y = 0.1f; phase = 1.f; }
@@ -1189,7 +1189,7 @@ struct FBSineN {
     }
 };
 
-// ── CrossoverDistortion.ar — class-B style crossover deadzone ────────────────
+// ── CrossoverDistortion.ar - class-B style crossover deadzone ────────────────
 inline float crossoverDistortion(float x, float amount, float smooth) {
     float a = std::fabs(x) - amount;
     if (a < 0.f) a *= (1.f - smooth);           // smoothing keeps a bleed-through
@@ -1197,12 +1197,12 @@ inline float crossoverDistortion(float x, float amount, float smooth) {
     return std::copysign(std::max(a, 0.f), x);
 }
 
-// ── SineShaper.ar — sine-function waveshaper up to `limit` ───────────────────
+// ── SineShaper.ar - sine-function waveshaper up to `limit` ───────────────────
 inline float sineShaper(float x, float limit) {
     return limit * std::sin(rack::clamp(x, -2.f * limit, 2.f * limit) * (float)M_PI_2 / limit);
 }
 
-// ── LagUD — one-pole smoother with separate up/down times ────────────────────
+// ── LagUD - one-pole smoother with separate up/down times ────────────────────
 struct LagUD {
     float y = 0.f; bool primed = false;
     float bUp = 0.f, bDn = 0.f, lastUp = -1.f, lastDn = -1.f; int ctr = 0;
@@ -1220,14 +1220,14 @@ struct LagUD {
     }
 };
 
-// ── distort / InsideOut / DiodeRingMod — SC waveshaping one-liners ───────────
+// ── distort / InsideOut / DiodeRingMod - SC waveshaping one-liners ───────────
 inline float distortSC(float x) { return x / (1.f + std::fabs(x)); }
 inline float insideOut(float x) { return (x == 0.f) ? 0.f : std::copysign(1.f - std::fabs(x), x); }
 inline float diodeRingMod(float a, float b) {
     return 0.5f * (std::fabs(a + b) - std::fabs(a - b));
 }
 
-// ── PitchShift.ar — granular pitch shifter (two overlapped taps) ─────────────
+// ── PitchShift.ar - granular pitch shifter (two overlapped taps) ─────────────
 // Simplified: the pitch/time dispersion arguments are accepted but only mildly
 // honoured (a per-grain time jitter); the core two-tap crossfade matches SC.
 struct PitchShift {
@@ -1257,7 +1257,7 @@ struct PitchShift {
     }
 };
 
-// ── Phasor.ar — resettable ramp in [0, 1); `rate` in cycles per second ───────
+// ── Phasor.ar - resettable ramp in [0, 1); `rate` in cycles per second ───────
 struct Phasor {
     float phase = 0.f, prevTrig = 0.f;
     void reset() { phase = 0.f; prevTrig = 0.f; }
@@ -1270,7 +1270,7 @@ struct Phasor {
     }
 };
 
-// ── Decimator.ar — sample-rate and bit-depth reducer ─────────────────────────
+// ── Decimator.ar - sample-rate and bit-depth reducer ─────────────────────────
 struct Decimator {
     float held = 0.f, phase = 1.f;
     void reset() { held = 0.f; phase = 1.f; }
@@ -1285,7 +1285,7 @@ struct Decimator {
     }
 };
 
-// ── Decay2.ar — difference of two exponential decays (attack/decay) ──────────
+// ── Decay2.ar - difference of two exponential decays (attack/decay) ──────────
 struct Decay2 {
     float ya = 0.f, yb = 0.f;
     void reset() { ya = yb = 0.f; }
@@ -1297,7 +1297,7 @@ struct Decay2 {
     }
 };
 
-// ── Compander.ar — compressor/expander with a control-signal follower ────────
+// ── Compander.ar - compressor/expander with a control-signal follower ────────
 struct Compander {
     Amplitude follower;
     void reset() { follower.reset(); }
@@ -1309,7 +1309,7 @@ struct Compander {
     }
 };
 
-// ── GVerb (approximation) — a long stereo tail with damping ──────────────────
+// ── GVerb (approximation) - a long stereo tail with damping ──────────────────
 // GVerb proper is a Griesinger FDN; this stands in with 8 damped feedback
 // combs (odd/even split to L/R) into two allpasses per side. `revtime` sets
 // the -60 dB decay, `damp` the high-frequency loss in the loop.
@@ -1362,7 +1362,7 @@ struct GVerbApprox {
     }
 };
 
-// ── Limiter.ar — peak limiter (simplified: no lookahead delay) ────────────────
+// ── Limiter.ar - peak limiter (simplified: no lookahead delay) ────────────────
 struct Limiter {
     float env = 0.f;
     void reset() { env = 0.f; }
@@ -1374,7 +1374,7 @@ struct Limiter {
     }
 };
 
-// ── Splay.ar — spread N channels across the stereo field (equal power) ────────
+// ── Splay.ar - spread N channels across the stereo field (equal power) ────────
 // Matches SC Splay(array, spread, level, center, levelComp): channels are laid
 // out evenly across [-1, 1], panned equal-power, summed, and (by default)
 // amplitude-compensated by 1/sqrt(n).

@@ -1,4 +1,4 @@
-// ululo.cpp — VCV Rack 2 module
+// ululo.cpp - VCV Rack 2 module
 // ululo (Latin: "I howl") simulates holding an electric guitar up to a
 // screaming amplifier. The topology follows Nathaniel Virgo's SuperCollider
 // "Guitar feedback emulation" (https://sccode.org/1-U), reimplemented from

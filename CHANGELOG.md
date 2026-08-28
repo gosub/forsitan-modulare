@@ -15,8 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     **trig** decides when. Modulation wraps, so a slow ramp is a part, while
     the knob itself spans its bank end to end and never fires: a hand on a
     control is browsing. Two buttons step the bank, as on the hardware, and
-    right-clicking either display lists what is there — banks, or the samples
-    of the current bank by name — and jumps to it.
+    right-clicking either display lists what is there - banks, or the samples
+    of the current bank by name - and jumps to it.
 
     **length** is one knob for the envelope and the playback direction:
     centre is the shortest hit, right lengthens the decay, and left lengthens
@@ -29,40 +29,40 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     **note** is quantized to the root and scale and only updates on a trigger.
 
     vates ships no audio files and still boots making sound: six banks of
-    eight samples are synthesized from a seed saved with the patch — drums,
-    struck objects, grains, micro-sounds, tones and air — one sample of each
+    eight samples are synthesized from a seed saved with the patch - drums,
+    struck objects, grains, micro-sounds, tones and air - one sample of each
     kind the generator knows, so a knob position always means the same role.
     The four percussive banks come from the kit engines of the author's
     pages64 plugin, the two tonal ones from imber's generators, all rendered
     at C so the quantizer is honest. Your own kits follow the generated ones,
     read from the kits folder pellicula already uses, cut into banks of eight
-    like the generated ones — which is the hardware's organisation and also
+    like the generated ones - which is the hardware's organisation and also
     what keeps play-mode density from growing with the size of a kit.
 
     Underneath sits the hardware's semi-autonomous half: a 16-step pattern
     generator with **gate** and **cv** outputs, 32 built-in rhythms on a knob
     (with a CV input of its own) in place of the original's web editor, and the two three-position switches
-    that randomize or invert the step the sequence is on — and write it back,
+    that randomize or invert the step the sequence is on - and write it back,
     so a flick changes the pattern for good. Each switch is normalled to a
     jack that does the same job from a voltage: above +1 V randomizes, below
     −1 V inverts, so a gate resting at 0 V leaves the pattern alone (the
     hardware's own 0–5 V window, where 0 V inverts, is a menu option).
 
     Plus an LFO with triangle, saw and pulse outputs and a **pwm** trimpot
-    that skews the triangle — the pulse is high exactly while the triangle
-    rises, so one control sets both the shape and the duty cycle — phase-locked
-    to the clock when synced rather than merely running at a synced rate — so at
+    that skews the triangle - the pulse is high exactly while the triangle
+    rises, so one control sets both the shape and the duty cycle - phase-locked
+    to the clock when synced rather than merely running at a synced rate - so at
     sixteen steps a cycle its saw *is* the position in the bar, and patched
     into **sample** at full attenuverter it sweeps a whole bank once a bar,
     since ten volts is one bank. It is patch-programmable through its own
     rate input as on the hardware, and there is an
     internal clock that hands over to **clk in** and takes the tempo back two
-    seconds after it stops, a DJ filter — four poles, 24 dB per octave, a
+    seconds after it stops, a DJ filter - four poles, 24 dB per octave, a
     lowpass closing to 30 Hz on one side of centre and a highpass opening to
     14 kHz on the other, so either end of the sweep takes the sample away
-    rather than muffling it — and an **fx** knob that crosses a
-    tempo-synced delay — three eighths of a note, with the right channel a
-    plain beat against it for a 3:2 cross rhythm — into a chorus and then a
+    rather than muffling it - and an **fx** knob that crosses a
+    tempo-synced delay - three eighths of a note, with the right channel a
+    plain beat against it for a 3:2 cross rhythm - into a chorus and then a
     flanger, the swept delay shortening from 8 ms to 1.5 ms as the feedback
     and the soft clipping climb. The delay's own feedback reaches a ten-second
     tail at the end of the travel, saturating rather than clipping.
@@ -70,11 +70,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     The hardware's SHIFT and BANK layers, which give every knob two or three
     jobs, are unpacked into real controls: holding one thing while turning
     another is a gesture a mouse does badly. MIDI, the headphone output, the
-    audio input and the sample-loader web app are gone — Rack has all of them
+    audio input and the sample-loader web app are gone - Rack has all of them
     already.
 
   - **artifex**, a 28 HP stereo multi-effect, after Bastl Instruments' Citadel
-    FX Wizard — the other face of the hardware vates comes from, and it shares
+    FX Wizard - the other face of the hardware vates comes from, and it shares
     that module's whole lower half: the same tempo generator, the same 32
     rhythms, the same pattern generator with its two editing switches and the
     same phase-locked LFO with its pwm trimpot, because on the hardware they
@@ -83,8 +83,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     Nine modes sit inside one filtered feedback loop, and the three knobs
     above them keep their meaning across all nine: **time** is always the
     mode's rate, **feedback** is the module's own output coming back through
-    the **filter** — a lowpass on one side of centre, a highpass on the other,
-    inside the loop and nowhere else — and **amount** is how much effect you
+    the **filter** - a lowpass on one side of centre, a highpass on the other,
+    inside the loop and nowhere else - and **amount** is how much effect you
     get, with fully left the dry signal in every mode. **stereo** detunes the
     mode against itself between the channels, which is where the image comes
     from.
@@ -124,7 +124,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     equation: at lock the output is `R*(1 + v_in) - 1` with
     `R = f_carrier/f_demod`. Matched clocks return the signal, a faster
     demodulator scales it down, and a slower one asks the loop for a control
-    voltage past its rails so it never locks and the output collapses — which
+    voltage past its rails so it never locks and the output collapses - which
     is exactly what the hardware's manual describes.
 
     **type** switches the phase comparator between the three classic ones:
@@ -132,7 +132,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     (locks widest, rails into silence when it loses lock) and an RS latch
     (false-locks at simple ratios). **tone** is one pole sitting in the loop
     *and* on the output, so it sets tracking as much as brightness, and
-    **error** is a comparator across input and output — the ring-modulator
+    **error** is a comparator across input and output - the ring-modulator
     output, thresholded into a wet/dry of square waves.
 
     The normalling is the circuit's: nothing in **in** makes that jack a +5 V
@@ -145,7 +145,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     sit in an effect send with nothing beside it. The bottom row is that mix,
     read across: **cv**, trimmer, **out**, **error**, trimmer, **cv**, each
     trimmer sharing one **mix** label with its jack. Neither
-    has an attenuverter — unpatched the trimmer is the amount, and patched it
+    has an attenuverter - unpatched the trimmer is the amount, and patched it
     is the attenuator for the **cv** jack beside it, so 0-10 V sweeps dry to
     wet from wherever the hand left it. Both start fully wet, which is where
     the hardware, having no such control, always is.
@@ -165,13 +165,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     inputs, so patches saved with earlier versions keep their cables.
 
     By default it is as slow as the hand is. The hardware smooths the body
-    delay twice over — a 1 s t60 on the parameter and a 0.2 s time constant on
-    the delay length itself — so modulation under half a hertz arrives nearly
+    delay twice over - a 1 s t60 on the parameter and a 0.2 s time constant on
+    the delay length itself - so modulation under half a hertz arrives nearly
     whole, half of it survives at 1 Hz and none of it at 5 Hz. **Fast body CV**
     in the right-click menu, off by default, drops both to about a millisecond
     and computes the delay length every sample rather than every sixteenth,
     while a cable is in that jack: full depth to 50 Hz and two thirds of it at
-    200 Hz. That is a different sound rather than a faster control — an LFO
+    200 Hz. That is a different sound rather than a faster control - an LFO
     that used to bend the drone like tape wow now frequency-modulates the loop
     and throws sidebands off it. Pull the cable and the glide comes back.
 
@@ -188,8 +188,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **materiae**, a 24 HP percussion voice built from two square waves and
     nothing else. Both oscillators are naive squares; all of the complexity is
     relational. **ratio** sets how the two sit against each other over nineteen
-    steps — the just ratios, a 1% detune, and four irrationals whose pulse
-    pattern never repeats — **xmod** and **tilt** run the pair from independent
+    steps - the just ratios, a 1% detune, and four irrationals whose pulse
+    pattern never repeats - **xmod** and **tilt** run the pair from independent
     through one-way modulation into hard two-way feedback, and **relation**
     picks which operator reads them.
 
@@ -198,15 +198,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     oscillators, and a shift-register **noise**. The list is short on purpose.
     For bipolar squares `A x B` is exactly `-(A xor B)`, `|A - B|` is the same
     again, `A - B` has the same spectrum as `A + B`, and min and max differ only
-    by a DC term the output blocker removes — so ring, XOR, absolute
+    by a DC term the output blocker removes - so ring, XOR, absolute
     difference, subtraction and OR earn no knob positions of their own, and the
     room that was left is in operators that read edges rather than levels.
 
     Because **relation** crossfades it is continuous, and env 2 can sweep it:
     the operator itself changes over the length of a hit.
 
-    **div** divides osc A wherever A is read as a source — into the operator as
-    well as into the modulation cell — so a divided A against an undivided B is
+    **div** divides osc A wherever A is read as a source - into the operator as
+    well as into the modulation cell - so a divided A against an undivided B is
     a different relationship rather than the same one an octave down.
 
     **grid** sets the rate the logic core runs at, from 4x the host rate down
@@ -221,19 +221,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     drives an output saturator from 0 to +24 dB, so the top of the knob stops
     making the voice louder and starts making it dirtier.
 
-    The filter is the body rather than a tone control — wound up it rings for
+    The filter is the body rather than a tone control - wound up it rings for
     seconds and a trigger pings it, so the square is the exciter and the filter
     supplies the weight that squares do not have. Two envelopes: env 1 on
     amplitude, env 2 on pitch, relation and cutoff through bipolar trimpots.
     Twelve factory presets, and the bank is a tour of the module rather than a
     drum kit: **kick** and **click** are sounds, and the other ten each sit on
-    one mechanism with everything else near neutral — precession (an irrational
+    one mechanism with everything else near neutral - precession (an irrational
     ratio never repeating), eclipse (pulse-width overlap into AND), moire (the
     latch reading phase difference), lattice (the coarse grid), undertow (a
     divided operand), ouroboros (full two-way feedback), transit (env 2 moving
     the operator itself), chatter (the shift register), vigil (the drone
     output) and slag (gain up, grid down). Settings for the kit the bank no
-    longer carries — tom, snare, hat, cymbal, bell, digital percussion, sub —
+    longer carries - tom, snare, hat, cymbal, bell, digital percussion, sub -
     are in doc/materiae.md.
 
     The output saturator is antialiased, and Ctrl-R aims the filter at the
@@ -678,7 +678,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     time. The other three are occasional: a voice stolen mid-note when all
     sixteen are busy, a fresh capture replacing (or RESET erasing) the
     cloth under sounding voices, and the delay tap moving to a new time or
-    a new element on a reroll — that last one clicking a whole delay time
+    a new element on a reroll - that last one clicking a whole delay time
     *after* the reroll, because the step went into the delay line and came
     back out. Each now gets a short fade instead of a step, under a
     **Declick** context-menu option that defaults on: the cloth ends fade
@@ -790,7 +790,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     for Modular Synthesizer Use* and the hardware's manual, with the block
     layout of davemollen's GPL-3.0 dm-Reverb. Four delay lines whose times
     are mutually prime and scale together from one **size** control, from
-    1 to 500 ms — a coffin to the heavens without ever changing algorithm,
+    1 to 500 ms - a coffin to the heavens without ever changing algorithm,
     so sweeping it is a mass of coordinated doppler shifts: walls moving
     when slow, percussive when fast, FM at audio rate. Around the loop sit
     a unitary Hadamard matrix, an allpass diffuser and a one-pole
@@ -798,7 +798,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     by the network's own energy, so **decay** can reach 120% and sustain
     forever while the saturation and the absorption filters decide what
     "forever" sounds like. **absorb** folds diffusion and damping into one
-    knob as the hardware does — diffusion over the first third, then the
+    knob as the hardware does - diffusion over the first third, then the
     filters closing. **depth** is bipolar over modulation *type*: cyclic
     multiphase sine vibrato counter-clockwise, ergodic grain clouds
     scattering the room dimensions clockwise, and octave-up shimmer
@@ -925,7 +925,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
   - **vestigia**, a new module: a stereo memory effect built from the
     *Vestigium* design document. An endless tape loop is continuously
-    rewritten under one of three memory modes — **oblivion** (the
+    rewritten under one of three memory modes - **oblivion** (the
     present replaces the past), **remanence** (it rewrites but leaves a
     30% trace) and **sediment** (it accumulates through soft saturation
     and a DC blocker). A parallel block-based activity map, with
@@ -939,7 +939,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     stored audio (up to four in High quality); each memory deteriorates
     a little more every time it returns. Macro controls for memory
     horizon, recall rate, age (band/rate/bit/jitter degradation), smear
-    (all-pass diffusion), forget (memory persistence — integrity decay
+    (all-pass diffusion), forget (memory persistence - integrity decay
     and recall wear) and temper (instability, which also scatters the
     recall timing), plus per-recollection direction and a **harmony**
     control that pitch-quantizes recalled fragments from consonant
@@ -965,7 +965,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     sub-region selection with mode-dependent pre/post-roll padding.
     Every continuous control has CV, and a MEMORY OUT taps the recalled
     signal pre-smear. A **src** switch chooses what the recall engine
-    listens to (dry / mix / wet — wet is self-triggering), and an **fb**
+    listens to (dry / mix / wet - wet is self-triggering), and an **fb**
     trimpot feeds the wet output back into the record path up into
     bounded self-oscillation. The full context menu is present: quality (Eco/Standard/
     High descriptor pool), buffer size (4/8/16/32 s), remanence
@@ -1021,8 +1021,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     label it contains. Both are now where the panel grammar says, which
     also opens the logo-to-badge gap from 1.43 mm to 1.69 mm
   - **scando**: the **out** badge sat 0.04 mm too close to the
-    bottom-right screw. The jack could not move — it is aligned with
-    the four CV inputs on its row — so the badge and its label went up
+    bottom-right screw. The jack could not move - it is aligned with
+    the four CV inputs on its row - so the badge and its label went up
     0.35 mm together, which keeps the 1 mm text padding and leaves
     ~1.1 mm to both the screw and the jack above
   - **perge**: the **mode** label sat 0.3 mm below its switch against
@@ -1033,7 +1033,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.10.0] - 2026-07-23
 ### Added
-  - **vespae**, a new module: the Wasp filter — the state-variable
+  - **vespae**, a new module: the Wasp filter - the state-variable
     filter Chris Huggett designed for the 1978 EDP Wasp, in its
     Doepfer A-124 form. Built from CD4069 CMOS inverters instead of
     op-amps and run from a single unipolar supply, both to save money,
@@ -1045,7 +1045,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     come out simultaneously, and a fifth output **mix** is the
     A-124's own: a passive pot crossfading the lowpass and highpass
     nodes, with a CV input as on the A-124-2. It is not just a fader
-    between two sounds — blending a lowpass and a highpass always
+    between two sounds - blending a lowpass and a highpass always
     leaves a null, and it slides from above the cutoff, through it at
     the centre, to below it, which is the manual's "asymmetrical /
     symmetrical / asymmetrical notch". An LFO on the mix CV is a
@@ -1097,7 +1097,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
   - **vorax**, a new module: feedback drone synthesizer, a port of
     Synthux Academy's Audrey II (MIT firmware by Nick Donadson /
-    Infrasonic Audio) — a Karplus-Strong string fed inaudible white
+    Infrasonic Audio) - a Karplus-Strong string fed inaudible white
     noise self-excites inside a feedback loop of overdrive, LPF/HPF,
     ReverbSc reverb and a 1–100 ms "body" delay (right channel offset
     4 samples for stereo width); a tape-style echo outside the loop
@@ -1106,7 +1106,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     CV over pitch (V/oct), feedback gain, LPF cutoff and echo time
   - **textor**, a new module: one-knob loop weaver, a behavioral clone
     of the Fieldtone Weaver Modular, its engine tuned against signal
-    analysis of published demos — captures two seconds of audio and
+    analysis of published demos - captures two seconds of audio and
     weaves it into a loop of three elements (warp/weft/fleck, level
     knobs and gate outputs each): periodic clock-divider-like strands
     with per-roll random tempo (~45–300 ms steps) and loop span, soft
@@ -1128,7 +1128,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     Sancristoforo's Haiku (architecture, timing model, effect designs
     and voice behavior reconstructed by reverse-engineering; sound
     material tuned by ear, procedurally generated at seed time by a
-    worker thread, never loaded from disk) — 8 looping sample players
+    worker thread, never loaded from disk) - 8 looping sample players
     on a 2D field where position is routing: a player sounds only when
     a clock is within REACH (5 divisions 2n–32n, all drunk-jittered,
     the bound division sets how fast its loop window churns) and picks
@@ -1148,7 +1148,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     progress; bank seed + constellations saved with the patch unless
     the Ephemeral menu option is on
   - **sylla**, a new module: random sample generator and player, the
-    standalone voice of imber's generator library — FAMILY snap knob
+    standalone voice of imber's generator library - FAMILY snap knob
     (drone, pad, fragment, bell, ambient, glitch, karplus, skip,
     micro), GEN button/trigger renders a brand new sample in a worker
     thread (busy LED, the old sample keeps playing), SPEED 0.1–2×
@@ -1158,7 +1158,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - **guttur**, a new module: chaotic resonator drone, a port of Tom
     Mudd's Gutter Synthesis (GPL-3, also drawing on the SuperCollider
     port by Mads Kjeldgaard and Scott Carver, whose oversampling
-    classes are Jatin Chowdhury's from ChowDSP-VCV) — a forced damped
+    classes are Jatin Chowdhury's from ChowDSP-VCV) - a forced damped
     Duffing oscillator whose forcing loop runs *through* two banks of
     24 resonant bandpass biquads, so oscillator and resonators are one
     coupled chaotic system; the historic quirks are kept faithfully
@@ -1181,7 +1181,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.8.0] - 2026-07-16
 ### Added
   - **perge**, a new module: stereo dynamic sampler and multi-effect,
-    a from-scratch homage to the AC noises / BunkerNoise CONTINUA pedal —
+    a from-scratch homage to the AC noises / BunkerNoise CONTINUA pedal -
     threshold-gated capture with sensitivity, attack and release shaping
     the dynamics-driven repeats (plus a capture gate forcing captures by
     hand); tempo knob (CV addable) or external clock
@@ -1223,7 +1223,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.7.4] - 2026-07-15
 ### Added
-  - tabes grows to 12HP and gains four things: a **loop overlap** control —
+  - tabes grows to 12HP and gains four things: a **loop overlap** control -
     two play heads take turns playing the loop straight through, each new one
     starting *overlap* before the last ends and crossfading (equal power) where
     they meet, so at zero they play back to back and at the max the next repeat
@@ -1249,8 +1249,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
   - tabes is now polyphonic: the audio in/out carry a poly cable, so a
     2-channel signal records and plays back as a coherent stereo tape (up to
-    16 tracks). One shared transport drives every track — same wow/flutter,
-    dropouts, seam and rec crossfade — so stereo stays phase-locked in a way
+    16 tracks). One shared transport drives every track - same wow/flutter,
+    dropouts, seam and rec crossfade - so stereo stays phase-locked in a way
     two mono tabes never could. The tape width is fixed when you record it
     (from the input's channel count) and the output follows it; hiss is
     independent per track. AGE and EOC stay monophonic.
@@ -1283,34 +1283,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.7.0] - 2026-07-11
 ### Added
   - **rete**, a new module: feedback integrator network (after Nathan Ho's
-    topology) — eight leaky integrators into a fixed random 8×8 mixing
+    topology) - eight leaky integrators into a fixed random 8×8 mixing
     matrix, DC-blocking highpasses and clippers in a one-sample feedback
     loop; per-node gain knobs + CVs, leak and matrix-drive controls, excite
     input, matrix re-roll button/trigger with the seed saved in the patch,
     stereo spread and 8-channel poly outputs
   - **ululo**, a new module: feedback guitar (after Nathaniel Virgo's
-    "Guitar feedback emulation") — an amp-distance delay feeds six
+    "Guitar feedback emulation") - an amp-distance delay feeds six
     comb-filter strings, tone/highpass filters and a saturating amp stage
     close the howling loop; strings retunable by polyphonic V/oct (chords
     repeat an octave up on spare strings), whammy bend, external audio in
-  - **tabes**, a new module: disintegration looper — the write head
+  - **tabes**, a new module: disintegration looper - the write head
     re-records a slightly worse copy on every pass (HF loss, saturation,
     level sag, hiss, age-dependent dropouts, wow/flutter); splice restores
     the kept pristine recording; AGE CV and EOC trigger outputs; input
     monitoring follows recording by default (menu: While recording /
     Always / Never)
-  - **lustro**, a new module: scanned filter — scando's mass-spring string
+  - **lustro**, a new module: scanned filter - scando's mass-spring string
     drives the band gains of a 16-band resonant filterbank processing
     external audio; pluck or drive the string and the spectrum moves with
     the physics
-  - **bulla**, a new module: Rob Hordijk's Blippoo Box — two
+  - **bulla**, a new module: Rob Hordijk's Blippoo Box - two
     cross-modulating triangle oscillators, two runglers (shift registers
     with 3-bit DACs) and a twin-peak filter on the oscillators' comparator;
     rungler CV output, 1V/oct CVs for oscillators and filter peaks
   - test: `new_modules_smoke`, an offline harness driving all five new
     modules through process() and checking NaNs, levels, self-oscillation,
     loop decay/splice and pluck response
-  - scando, lustro: EXCITE buttons on the panel — a manual hammer hit,
+  - scando, lustro: EXCITE buttons on the panel - a manual hammer hit,
     same as a trigger on the exc jack
   - tools: `panel-editor/panel_audit.py`, a clearance/overlap checker for
     @layout panels (true widget sizes, circle geometry, real OCR-A widths)
@@ -1344,19 +1344,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - dræn: the band-limited saw leaked DC proportional to its frequency (a
     minBLEP residual artifact), audible as offset on saw-heavy engines in
     both banks (wall, anthem, supersaw)
-  - dræn: DC offsets across the hyf bank — feedback loops (mirror, wire,
+  - dræn: DC offsets across the hyf bank - feedback loops (mirror, wire,
     quill, rain, pulsework, hive), tracking lowpasses over noise (turbine,
     ember), waveshaping and near-zero PM sidebands (root, sputter, aster)
     now go through DC blockers; existing blockers relaxed to a 7.6 Hz cutoff
     so 27.5 Hz fundamentals keep their level
-  - dræn: hyf engine levels no longer swing with pitch — engines whose
+  - dræn: hyf engine levels no longer swing with pitch - engines whose
     loudness genuinely depends on hz (choir, breath, bowl, gong, tide, rain,
     mirror, pulsework, frost) get an octave-table makeup gain interpolated
     in log2(hz); quill's gain doubled (its old level was mostly the drift)
 
 ## [2.6.15] - 2026-07-09
 ### Added
-  - limen: `get_module_info` protocol command — the metadata Rack shows in a
+  - limen: `get_module_info` protocol command - the metadata Rack shows in a
     module's right-click Info menu: model description, tags and links, plus
     the owning plugin's brand, version, license, author and URLs
 ### Changed
@@ -1369,7 +1369,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.14] - 2026-07-09
 ### Added
-  - cumuli: super-slow mode in the right-click menu — both rates 100x slower
+  - cumuli: super-slow mode in the right-click menu - both rates 100x slower
     (0.0001 V/s to 1 V/s, center default 0.01 V/s), knob tooltips rescale,
     saved with the patch
 ### Fixed
@@ -1378,7 +1378,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.13] - 2026-07-09
 ### Added
-  - dræn: a second engine bank — **hyf** (Old English for *hive*), 37 original
+  - dræn: a second engine bank - **hyf** (Old English for *hive*), 37 original
     drone instruments built on the same UGEN layer, selectable from the
     right-click "Engine bank" menu and saved with the patch; switching banks
     fades like an engine change
@@ -1395,7 +1395,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [2.6.12] - 2026-07-09
 ### Changed
   - dræn: DSP optimization pass, ~26% less CPU overall and the heaviest engine
-    (hecker) cut from 8.8% to 2.7% of real time — filter and lag coefficients
+    (hecker) cut from 8.8% to 2.7% of real time - filter and lag coefficients
     (biquad, Ringz, MoogFF, SVF, BAllPass, Lag/LagUD, Amplitude) now refresh on
     16-sample blocks instead of every sample (SC itself uses 64-sample control
     blocks, so this is finer-grained than the original), Env.perc advances its
@@ -1406,11 +1406,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.11] - 2026-07-09
 ### Added
-  - dræn: the last four dronecaster engines, all @zebra — **unmemqua** (28-partial
+  - dræn: the last four dronecaster engines, all @zebra - **unmemqua** (28-partial
     Klank torn by breathing filters), **uneablin** (cross-delayed PM sine ring
     with waveshape morphing), **unwealne** (wandering pulses octave-shifted
     through a 13-ratio bank), and **unreanth** (buffer-sequenced sine fades over
-    ring-mod saws and a long pitch-smeared feedback delay) — **completing the
+    ring-mod saws and a long pitch-smeared feedback delay) - **completing the
     full 37-engine dronecaster roster**
   - draen_ugens.hpp gains PitchShift (two-tap granular shifter), LagUD, and the
     distort / InsideOut / DiodeRingMod waveshapers; Ringz gains an SC-exact
@@ -1418,7 +1418,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.10] - 2026-07-09
 ### Added
-  - dræn: two more dronecaster engines — **takita** (@sixolet, a self-clocked
+  - dræn: two more dronecaster engines - **takita** (@sixolet, a self-clocked
     flip-flop drum language of resonant filtered clicks) and **twin pks**
     (oscillator-free tape-noise horror: compressed, band-passed, wow/fluttered,
     saturated and bit-crushed)
@@ -1427,7 +1427,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.9] - 2026-07-09
 ### Added
-  - dræn: three more dronecaster engines — **sunno** (Karplus-Strong doom
+  - dræn: three more dronecaster engines - **sunno** (Karplus-Strong doom
     guitars through crossover distortion and cascaded tanh stages), **nautilus**
     (@taubaland, Lorenz-driven sine-grain clouds), and **drumm**
     (@infinitedigits, crossfading bass/melodic layers in pumping Freeverb)
@@ -1437,7 +1437,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.8] - 2026-07-08
 ### Added
-  - dræn: three more dronecaster engines — **eno** (@infinitedigits, Music for
+  - dræn: three more dronecaster engines - **eno** (@infinitedigits, Music for
     Airports: chorused chord saws, a Klank, and a comb-string "piano" walking
     Eno's note rows), **belong** (@infinitedigits, saws overdubbing a 16-beat
     tape loop, with a kick gated behind amp > 0.7), and **ruins** (@rplktr &
@@ -1447,7 +1447,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.7] - 2026-07-08
 ### Added
-  - dræn: three more dronecaster engines — **gristle** (@infinitedigits, octave
+  - dræn: three more dronecaster engines - **gristle** (@infinitedigits, octave
     triangle-saws through a Greyhole cloud), **grove** (@sixolet, five self-gating
     pulsar-synthesis voices washed through Greyhole), and **shields**
     (@infinitedigits, double-combed saw pairs re-pitched off a slipping tape loop)
@@ -1458,18 +1458,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.6] - 2026-07-08
 ### Added
-  - dræn: four more dronecaster engines — **mt. zion** (@license, five S&H-wandering
+  - dræn: four more dronecaster engines - **mt. zion** (@license, five S&H-wandering
     pulse harmonics), **mika** (@infinitedigits, allpass-retimed sine pings over a
     pulse+noise bass), **fieldsteel** (after Eli Fieldsteel's Tutorial 15, demand-
     picked band-passed saws with a resonant "marimba"), and **malone**
     (@infinitedigits, eight organ voices stepping a demand-sequenced chord table)
-  - draen_ugens.hpp gains the demand-rate layer — Dseq, Drand, Dxrand and Dbrown
-    generators polled on trigger edges — plus TExpRand, TDelay, CoinGate, an
+  - draen_ugens.hpp gains the demand-rate layer - Dseq, Drand, Dxrand and Dbrown
+    generators polled on trigger edges - plus TExpRand, TDelay, CoinGate, an
     interpolated AllpassC and a midiratio helper
 
 ## [2.6.5] - 2026-07-08
 ### Added
-  - dræn: two more dronecaster engines — **toshiya** (@infinitedigits, interval-
+  - dræn: two more dronecaster engines - **toshiya** (@infinitedigits, interval-
     jumping sines with a Klank resonator bank) and **magicicada** (@sixolet, a
     no-input-mixer feedback drone with crossfading delay banks)
   - draen_ugens.hpp gains Ringz (the resonator behind Klank), BrownNoise, a
@@ -1478,7 +1478,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.4] - 2026-07-08
 ### Added
-  - dræn: three more dronecaster engines — **unrelacc** (@zebra, six Hénon-map
+  - dræn: three more dronecaster engines - **unrelacc** (@zebra, six Hénon-map
     chaotic oscillators in intervals), **dreamcrusher** (@infinitedigits, a
     no-input-mixer feedback drone), and **rehberg** (@infinitedigits, folded and
     DFM1-filtered tape-warble pulses drenched in Freeverb)
@@ -1488,30 +1488,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.3] - 2026-07-08
 ### Added
-  - dræn: four more dronecaster engines — **starlids** (@infinitedigits, PWM sub
+  - dræn: four more dronecaster engines - **starlids** (@infinitedigits, PWM sub
     + 12 interval-stepping saws through a Moog ladder), **mt. lion** (@license,
     9 comb-resonated pulse voices driven by sample-and-held noise), **apparatus**
     (Josue Arias, clipped-triangle generators with mains hum and a crackle bed),
-    and **eliane** (@sixolet, 7 sines phase-modulating in a feedback ring — an
+    and **eliane** (@sixolet, 7 sines phase-modulating in a feedback ring - an
     Éliane Radigue homage)
   - draen_ugens.hpp gains CombN, LFPulse, LFPar, Dust2, Crackle, and softclip /
     Rotate2 helpers; SC LocalIn/LocalOut is modelled as a one-sample feedback bus
 ### Fixed
   - draen_ugens.hpp: the per-voice RNG now avalanche-hashes its seed, so nearby
-    seeds (s, s+7, …) decorrelate — xorshift alone gave correlated first outputs,
+    seeds (s, s+7, …) decorrelate - xorshift alone gave correlated first outputs,
     which could e.g. clip all of Eliane's amplitude gates to zero (silence)
   - draen_ugens.hpp: combFeedback now handles negative decay times (negative
     feedback of equal magnitude), matching SC's comb behaviour
 
 ## [2.6.2] - 2026-07-08
 ### Added
-  - dræn: two more dronecaster engines, both @infinitedigits — **coil**
+  - dræn: two more dronecaster engines, both @infinitedigits - **coil**
     (12 Dust-triggered feedback-sine/noise voices through a long reverb) and
     **sachiko** (4 DPW-pulse voices modulated by slow triangle banks, into a
     global Moog ladder and reverb)
   - draen_ugens.hpp gains a reusable delay-line layer: interpolated delay lines,
     CombL/CombC feedback combs, Schroeder AllpassN, and a shared SchroederReverb
-    (DelayN → 7×CombL → 4×AllpassN) — the reverb block copied across many
+    (DelayN → 7×CombL → 4×AllpassN) - the reverb block copied across many
     dronecaster SynthDefs, now built once
   - draen_ugens.hpp also gains Impulse, Trig, TChoose, SinOscFB, a breakpoint
     EnvGen, an ASR attack env, a Moog ladder (MoogFF) and LeakDC
@@ -1520,7 +1520,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.6.1] - 2026-07-07
 ### Added
-  - dræn: three more engines ported from dronecaster — **harm's way**
+  - dræn: three more engines ported from dronecaster - **harm's way**
     (@moonblind, 16 amplitude-modulated harmonics), **thx** (@infinitedigits,
     the THX Deep Note sweep, with amp as the sweep position), and **hecker**
     (@infinitedigits, stereo banks of filtered white/pink noise)
@@ -1541,17 +1541,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     linear 100 Hz/V), amp knob + CV, and an engine knob + CV with a runtime
     display of the selected engine's name
   - dræn: fade time selectable from the context menu (0.25 s .. 8 s)
-  - dræn: initial engine roster — sine, square, triangle, supersaw — ported
+  - dræn: initial engine roster - sine, square, triangle, supersaw - ported
     faithfully from the original SynthDefs, with author credits preserved
   - a reusable SuperCollider-UGEN DSP layer (src/draen_ugens.hpp) underpins the
     engines: SinOsc, LFTri, band-limited Saw/Pulse (via Rack's MinBLEP), the
-    SC second-order filters over Rack's biquad, LFNoise0/1 and Splay — a
+    SC second-order filters over Rack's biquad, LFNoise0/1 and Splay - a
     vocabulary for future SC-to-C++ ports
 
 ## [2.5.1] - 2026-07-07
 ### Added
   - pellicula: "Shift all samples +8 / -8" context-menu actions advance or rewind
-    every voice's sample selection by 8, wrapping at 64 — from the default 1-8 each
+    every voice's sample selection by 8, wrapping at 64 - from the default 1-8 each
     click steps the whole module to the next contiguous bank, to audition a 64-sample
     kit eight sounds at a time
 
@@ -1560,12 +1560,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - pellicula: "exploded" 8-voice one-shot drum sampler in the spirit of the Erica
     Synths Pico DRUM sample-player engine, rebuilt clean-room from the published
     manual (12-bit / 44.1 kHz character, pitch, decay and level per voice)
-  - pellicula: full control matrix — every voice has a knob and a CV input for
+  - pellicula: full control matrix - every voice has a knob and a CV input for
     sample-select, pitch, decay and level, plus a manual trig button and a trig input
-  - pellicula: poly normalling — each input row has a poly jack (channel N drives
+  - pellicula: poly normalling - each input row has a poly jack (channel N drives
     voice N) alongside 8 mono jacks; a patched mono jack overrides its voice
   - pellicula: sample-select is 1V/oct semitone-quantized (0 V = the knob's sample)
-  - pellicula: no samples are bundled — a global "kits folder" is set from the context
+  - pellicula: no samples are bundled - a global "kits folder" is set from the context
     menu, and each immediate subfolder is a selectable kit of up to 64 .wav files
     (mono/stereo, 8/16/24/32-bit int or float, any rate) ordered by filename; kits load
     on a background thread and swap in glitch-free, and the choice is saved with the patch
@@ -1579,7 +1579,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.4.0] - 2026-06-14
 ### Added
-  - scando: scanned-synthesis oscillator (Verplank / Mathews / Shaw technique) — a
+  - scando: scanned-synthesis oscillator (Verplank / Mathews / Shaw technique) - a
     fixed-end mass-spring string (the non-circular topology of Csound's scansyn /
     Qu-Bit Scanned) forms a slowly-evolving wavetable scanned at audio rate for a
     pitched, organically-shifting tone
@@ -1595,8 +1595,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.3.1] - 2026-06-14
 ### Added
-  - limen: `hello` command — protocol version and capability discovery
-  - limen: `get_param` command — read back a single parameter's value and metadata
+  - limen: `hello` command - protocol version and capability discovery
+  - limen: `get_param` command - read back a single parameter's value and metadata
   - limen: window/view commands `set_fullscreen`, `zoom_to_modules`, and `quit`, for scripting patch screenshots
   - cli: Python limen client (`tools/cli/limen.py`) alongside the C client
   - cli: subcommands for the new protocol commands (`hello`, `param`, `fullscreen`, `zoom`, `quit`)
@@ -1616,7 +1616,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - MMCCCXCIX: CV inputs for all parameters (time, feedback, mix, brightness, fb loop mix)
   - MMCCCXCIX: external feedback send/return loop with normalled bypass and blend control
   - MMCCCXCIX: soft compressor on wet output to limit self-oscillation amplitude
-  - tools: panel-editor.py — browser-based drag-and-drop panel layout editor
+  - tools: panel-editor.py - browser-based drag-and-drop panel layout editor
 
 ## [2.2.1] - 2026-03-14
 ### Added

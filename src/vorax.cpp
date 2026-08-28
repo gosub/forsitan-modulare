@@ -1,4 +1,4 @@
-// vorax.cpp — VCV Rack 2 module
+// vorax.cpp - VCV Rack 2 module
 // vorax (Latin: "voracious, all-devouring") is a port of Audrey II, the
 // feedback drone "horrorscape" synthesizer by Synthux Academy (design:
 // Roey Tsemah, firmware: Nick Donadson / Infrasonic Audio), from the
@@ -30,7 +30,7 @@
 //           LPF CV, TIME CV
 //   Out   : L, R
 //   Light : LEVEL (output amplitude)
-//   Menu  : fast body CV — with a cable in BODY CV, drops the two glides
+//   Menu  : fast body CV - with a cable in BODY CV, drops the two glides
 //           on the body delay (t60 1 s on the parameter, tau 0.2 s on the
 //           delay length) to ~1 ms, turning slow drift into warble
 

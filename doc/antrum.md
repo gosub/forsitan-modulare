@@ -41,7 +41,7 @@ A four-line feedback delay network with a unitary matrix is lossless: at
 a feedback gain of exactly 1.0 it sustains forever, below it decays
 exponentially, and above it (the **decay** knob goes to 120%) it pumps
 energy in until the saturation stages catch it. That is why **decay** and
-**absorb** interact so strongly — the saturation adds harmonics and the
+**absorb** interact so strongly - the saturation adds harmonics and the
 absorption filters take them away, and where the two balance is where the
 infinite reverbs live.
 
@@ -71,7 +71,7 @@ Every knob has its own attenuverter and CV input directly below it.
 | jack | function |
 |------|----------|
 | **in l / in r** | stereo audio in; **in r** is normalled to **in l** for mono use |
-| **clk** | clock input. While patched, **pre-delay** and **speed** snap to ratios of the clock (1/12, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 1/1, 3/2, 2, 3, 4, 6, 8, 12 — 1/1 at noon). CCW of noon is longer/slower, CW is shorter/faster |
+| **clk** | clock input. While patched, **pre-delay** and **speed** snap to ratios of the clock (1/12, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 1/1, 3/2, 2, 3, 4, 6, 8, 12 - 1/1 at noon). CCW of noon is longer/slower, CW is shorter/faster |
 | **gate** | momentary reverse: high engages the reverse buffer, releasing it returns to forward |
 | **cv** (out) | the network's own energy as 0–10 V, from an envelope follower on the reverb. Patch it back into **decay** through an inverting attenuverter and the reverb reins itself in like a compressor; patch it to **size** for a space that swells with what you play |
 | **l / r** | stereo output |
@@ -83,7 +83,7 @@ attenuverter.
 
 | item | function |
 |------|----------|
-| **Shimmer** | *Folded into depth* (default) is the hardware behaviour: the octave-up voice rides the top fifth of the **depth** knob, so it always arrives with maximum grain scatter. *Off* keeps it out of the way entirely, and *25% / 50% / 100%* unlink it — a fixed amount of shimmer at any depth setting, including none, which is the only way to get a clean octave-up wash over an unmodulated room |
+| **Shimmer** | *Folded into depth* (default) is the hardware behaviour: the octave-up voice rides the top fifth of the **depth** knob, so it always arrives with maximum grain scatter. *Off* keeps it out of the way entirely, and *25% / 50% / 100%* unlink it - a fixed amount of shimmer at any depth setting, including none, which is the only way to get a clean octave-up wash over an unmodulated room |
 
 At full shimmer the octave-up voice *replaces* the direct injection into
 the network: what you hear reverberating is the transposed signal, and

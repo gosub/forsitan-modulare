@@ -1,10 +1,10 @@
-// imber.cpp — VCV Rack 2 module
+// imber.cpp - VCV Rack 2 module
 // imber (Latin: "rain shower, downpour") is a generative engine inspired
 // by Giorgio Sancristoforo's Haiku, "a generative record" whose sample
 // material is synthesized from nothing at every launch. The architecture
 // follows a reverse-engineering of the original (see doc/imber.md); all
 // sample material is procedurally generated at (re)seed time by a worker
-// thread — nothing is loaded from disk, nothing ships.
+// thread - nothing is loaded from disk, nothing ships.
 //
 // The model: 8 looping sample players live on a 2D field where position
 // is meaning. Five clocks (2n/4n/8n/16n/32n, all drunk-jittered) and
@@ -34,7 +34,7 @@
 // and reseeds the timing; CLR spreads the players back out; RESEED
 // regenerates the whole sample bank in the background (the old bank
 // keeps playing until the new one lands). The bank seed and the
-// constellations are saved with the patch — unless the "Ephemeral"
+// constellations are saved with the patch - unless the "Ephemeral"
 // context-menu option is on, in which case every load rolls fresh
 // ("permanence is an illusion").
 

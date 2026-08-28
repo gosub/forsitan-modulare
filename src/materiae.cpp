@@ -1,5 +1,5 @@
-// materiae.cpp — VCV Rack 2 module
-// materiae (Latin: "of matter", genitive of materia — raw stuff, timber, the
+// materiae.cpp - VCV Rack 2 module
+// materiae (Latin: "of matter", genitive of materia - raw stuff, timber, the
 // material a thing is made from) is a percussive voice built from two square
 // waves and nothing else. All of its complexity comes from the relationship
 // between them: how their frequencies sit, how they modulate each other, and

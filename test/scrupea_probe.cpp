@@ -1,4 +1,4 @@
-// scrupea_probe — measurement harness for the chaotic bank.
+// scrupea_probe - measurement harness for the chaotic bank.
 //
 // Not run by `make check`; this is the bench that the numbers in doc/scrupea.md
 // come from. It measures:

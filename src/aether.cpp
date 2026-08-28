@@ -1,4 +1,4 @@
-// aether.cpp — VCV Rack 2 module
+// aether.cpp - VCV Rack 2 module
 // aether (Latin: the upper air, the medium a signal was once thought to
 // travel through) is a transmission line with something wrong with it, after
 // Schlappi Engineering's Interstellar Radio.
@@ -24,7 +24,7 @@
 //
 // Both signal outputs are a dry/wet against the input jack, so the module can
 // sit in an effect send without a mixer beside it. The bottom row is that
-// mix: cv, trimmer, out, error, trimmer, cv — a knob apiece would have left
+// mix: cv, trimmer, out, error, trimmer, cv - a knob apiece would have left
 // a fifth of a millimetre at the panel edges. One "mix" label names each
 // trimmer and its jack, the way a knob names its own CV cluster.
 //
@@ -109,9 +109,9 @@ struct Aether : Module {
         configParam(OUT_MIX_PARAM, 0.f, 1.f, 1.f, "Out dry/wet", "%", 0.f, 100.f);
         configParam(ERROR_MIX_PARAM, 0.f, 1.f, 1.f, "Error dry/wet", "%", 0.f, 100.f);
         configSwitch(TYPE_PARAM, 0.f, 2.f, 0.f, "Loop type",
-                     {"1 — exclusive-or, locks to harmonics",
-                      "2 — phase-frequency, quiet when unlocked",
-                      "3 — set-reset latch"});
+                     {"1 - exclusive-or, locks to harmonics",
+                      "2 - phase-frequency, quiet when unlocked",
+                      "3 - set-reset latch"});
         configInput(SIGNAL_INPUT, "Signal");
         configInput(CARRIER_CV_INPUT, "Carrier CV");
         configInput(CARRIER_CLK_INPUT, "Carrier clock (replaces the internal one)");

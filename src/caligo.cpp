@@ -1,8 +1,8 @@
-// caligo.cpp — VCV Rack 2 module
+// caligo.cpp - VCV Rack 2 module
 // caligo (Latin: "mist, fog, gloom, murk"; as a verb, "to be dark, to steam")
 // is a port of Julian Parker's Greyhole: a long modulated echo wrapped inside
 // a nested allpass diffusion network, so every repeat comes back smeared
-// further than the last. It is not a reverb — the loop delay is long enough to
+// further than the last. It is not a reverb - the loop delay is long enough to
 // hear as repeats, and the diffuser sits in the forward path of that loop.
 //
 // Sources:
@@ -37,7 +37,7 @@
 #include "forsitan.hpp"
 #include "caligo_dsp.hpp"
 
-// clock sync ratios, 1/1 in the middle — the same table antrum uses, so the
+// clock sync ratios, 1/1 in the middle - the same table antrum uses, so the
 // two modules snap to the same grid
 static const float kSyncRatios[15] = {
     1.f / 12.f, 1.f / 8.f, 1.f / 6.f, 1.f / 4.f, 1.f / 3.f, 1.f / 2.f,
@@ -243,7 +243,7 @@ struct Caligo : Module {
         // The setup() calls above only exist for their coefficients: start
         // every smoother at what the knobs actually say. Otherwise a patch
         // loads with eleven parameters ramping in from the factory defaults,
-        // and — the reason this matters rather than being tidiness — the engine
+        // and - the reason this matters rather than being tidiness - the engine
         // primes its 24 delay lengths from the *first* size it is handed, so a
         // smoother still sitting on 1.0 would have it prime the wrong room and
         // then glide for three seconds.

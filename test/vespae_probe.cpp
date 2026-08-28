@@ -1,4 +1,4 @@
-// vespae_probe — measurement harness for the vespae (Wasp) filter.
+// vespae_probe - measurement harness for the vespae (Wasp) filter.
 //
 // Not part of `make check` (smoke_vespae is). This one prints the numbers you
 // need to judge whether the emulation still behaves like the circuit:
@@ -8,7 +8,7 @@
 //            which should reproduce the Wasp's Q falling as it opens
 //            (paper: Q ~ 94 at 400 Hz, ~ 6 at 10 kHz)
 //   osc    : self-oscillation frequency/level vs. the cutoff knob
-//   mix    : the LP/HP mix output — where its null sits vs. the knob
+//   mix    : the LP/HP mix output - where its null sits vs. the knob
 //   thd    : harmonic distortion vs. DRIVE and vs. GRIT
 //   stress : extreme settings, checked for non-finite output and runaway
 //

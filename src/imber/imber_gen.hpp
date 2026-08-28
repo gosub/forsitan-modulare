@@ -1,4 +1,4 @@
-// imber_gen.hpp — the procedural sample-bank generators. Everything the
+// imber_gen.hpp - the procedural sample-bank generators. Everything the
 // engine plays is rendered from these at (re)seed time, never shipped:
 // loop buffers (drones, pads, fragments, bells, plucks, ambients,
 // glitches), micro one-shots, and CD-skip material. The magic numbers are
@@ -21,7 +21,7 @@ using namespace imber_dsp;
 
 // ---------------------------------------------------------- sub-parts ---
 
-// additive partials with independent slow tremolos — the drone skeleton
+// additive partials with independent slow tremolos - the drone skeleton
 inline void addPartial(std::vector<float>& b, float sr, float freq,
                        float amp, float lfoHz, float lfoDepth, float phase) {
     if (freq > 0.45f * sr) return;
@@ -775,7 +775,7 @@ inline void genSkip(Rng& rng, float sr, std::vector<float>& b) {
         float p = std::fmod(w * i, kTau) / kTau;
         base[i] = (1.f - mix) * std::sin(w * i) + mix * (2.f * p - 1.f);
     }
-    // freeze a tiny segment and repeat it — the stuck CD
+    // freeze a tiny segment and repeat it - the stuck CD
     int segLen = std::max(16, (int)(rng.range(0.008f, 0.06f) * sr));
     int segStart = rng.irange(0, n - segLen - 1);
     for (int i = 0; i < n; i++)

@@ -1,4 +1,4 @@
-// viginti.cpp — VCV Rack 2 module
+// viginti.cpp - VCV Rack 2 module
 // viginti (Latin: "twenty") is the lowpass of the MS-20's later revisions: the
 // OTA-based KORG35 Rev. 2 circuit, modelled as the nonlinear state-space
 // system it is rather than as a filter with a waveshaper bolted to its output.

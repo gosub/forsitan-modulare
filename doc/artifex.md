@@ -3,10 +3,10 @@
 ![artifex](../img/artifex.png)
 
 **Nine stereo effects that share one feedback loop: a delay, a flanger, a
-freezer, a panner, a crusher, a slicer and three ways of moving pitch — with
+freezer, a panner, a crusher, a slicer and three ways of moving pitch - with
 a pattern generator and an LFO wired to every parameter that matters.**
 
-*artifex* is Latin for the maker, the contriver — the craftsman who works a
+*artifex* is Latin for the maker, the contriver - the craftsman who works a
 material rather than choosing from a catalogue. The module is built after the
 Bastl Instruments *Citadel FX Wizard*, the other face of the hardware
 [vates](vates.md) is built after, and it keeps that machine's idea: you do
@@ -18,8 +18,8 @@ Here they are unpacked into real controls, for the same reason as in vates:
 holding one thing while turning another is a gesture a mouse does badly.
 
 artifex and vates are built to sit next to each other. Their bottom halves
-are the same instrument — the same tempo generator, the same 32 rhythms, the
-same pattern generator with its two switches, the same LFO — because on the
+are the same instrument - the same tempo generator, the same 32 rhythms, the
+same pattern generator with its two switches, the same LFO - because on the
 hardware they are one circuit board with two panels.
 
 ## The FX core
@@ -38,7 +38,7 @@ though the mode decides what they act on:
 
 - **time** is always the mode's rate: how fast it repeats, modulates, chops
   or scans. Clockwise is always faster, whatever "faster" means there.
-- **feedback** is the loop above — the module's own output, filtered, folded
+- **feedback** is the loop above - the module's own output, filtered, folded
   back into its input. It is not a repeat count. It interacts with what you
   are feeding in, so the level at the input changes the character of the
   feedback, which is why there is an input gain.
@@ -47,27 +47,27 @@ though the mode decides what they act on:
 Two more knobs shape the loop rather than the mode:
 
 - **filter** is open at the centre, a lowpass to the left and a highpass to
-  the right, and it does not touch the dry signal — it colours the effect,
+  the right, and it does not touch the dry signal - it colours the effect,
   not what you put in. *Where* it sits inside the effect depends on the mode,
   and the context menu can move it; see [the filter](#the-filter) below.
 - **stereo** detunes the mode's own time parameter between left and right.
   At zero the two channels are identical; turned up they drift apart, and in
   most modes that is the whole stereo image.
 
-**trig** aligns the mode to a beat. What it does depends on the mode — reset,
-freeze, fill, dip — and it is listed per mode below. The button beside the
+**trig** aligns the mode to a beat. What it does depends on the mode - reset,
+freeze, fill, dip - and it is listed per mode below. The button beside the
 jack does the same thing by hand.
 
 Four of the modes used to reset a phase that a read position or a gain depends
-on, which landed the output somewhere it was not heading — a click, and not a
+on, which landed the output somewhere it was not heading - a click, and not a
 gesture. None of them jump any more: the panner and the flanger turn round from
 where they are, the shifter squares its right channel up to its left instead of
 moving both, and the pitcher takes its new window at a grain boundary where the
 crossfade already has it silent. What each trig *does* is unchanged.
 
-Behind that, a step left at the output by anything else — the freezer and the
+Behind that, a step left at the output by anything else - the freezer and the
 replayer swap the buffer under the playhead, which is a discontinuity by
-nature — is measured against where the last two samples were heading and
+nature - is measured against where the last two samples were heading and
 subtracted, relaxing over two milliseconds.
 
 ## The nine modes
@@ -99,8 +99,8 @@ it, up as you shorten it, and further the faster you move. It applies to the
 clock snap below as well, so stepping between divisions bends rather than
 cuts.
 
-With a clock at **clk** the time knob snaps to the nearest division of it —
-1/256 through 32 bars, whichever of them fall inside the delay's own range —
+With a clock at **clk** the time knob snaps to the nearest division of it -
+1/256 through 32 bars, whichever of them fall inside the delay's own range -
 and the display says which. That is the module's own clock, the one the
 freezer, the slicer, the LFO and the pattern all follow. A clock at the
 **trig** input snaps the delay too, which is where the hardware takes one, but
@@ -124,7 +124,7 @@ two modulators, which is what opens the image.
 
 Captures a chunk of audio and loops it. Three things freeze a new chunk:
 arriving in the mode, moving **amount** away from zero, and a **trig**. A
-clock at **clk** is deliberately not one of them — that would make the mode a
+clock at **clk** is deliberately not one of them - that would make the mode a
 rhythmic re-sampler rather than a freezer.
 
 **time** sets the loop length, and it moves it *live*, on the audio already
@@ -139,13 +139,13 @@ which is what leaves the knob somewhere to go. The one time that bites is
 arriving in the mode: it freezes as soon as it has the length the knob is
 asking for, so there is nothing older to lengthen into yet. Give it a second
 and hit **trig** and it takes the whole buffer, after which the knob has its
-full range. The longest divisions need a buffer to fit in — 16 steps at 120 BPM
+full range. The longest divisions need a buffer to fit in - 16 steps at 120 BPM
 is two seconds, so at the hardware's 1.15 s they clamp; the context menu's
 larger buffers hold them.
 
 The loop is the *end* of what was caught: shortening keeps the audio nearest
 the freeze point, which is what you had just heard, rather than the oldest of
-it. **feedback** here does not run the global loop — it lets new audio bleed
+it. **feedback** here does not run the global loop - it lets new audio bleed
 into the frozen buffer, thickening it.
 
 ### 4. panner (white)
@@ -156,7 +156,7 @@ modulation. **amount** clips the modulating sine towards a square, so the pan
 goes from a sway to a hard alternation. **trig** throws it to the other side:
 the modulator goes to the peak on that side and *glides* there over about
 25 ms, capped at a quarter of its own period so it stays out of the way up at
-ring-modulation rates. The glide is the throw — a gain crossing the image in a
+ring-modulation rates. The glide is the throw - a gain crossing the image in a
 few tens of milliseconds is a sound moving, where the same distance in one
 sample is only a click.
 
@@ -170,13 +170,13 @@ the sample with itself towards the top, which is where it stops sounding like
 a bitcrusher and starts sounding broken. Feedback adds a distorted tonal bed
 under everything: it thickens through most of the travel and then, near the
 top, tips over into a howl of its own. That howl is pitched, and the pitch
-follows the time knob — about 170 Hz with the rate at the bottom, 1.7 kHz at
+follows the time knob - about 170 Hz with the rate at the bottom, 1.7 kHz at
 the top.
 
 Unlike the other modes, the crusher's loop closes around the sample-and-hold
 rather than through the module's global one-sample path, and it is AC-coupled
 on the way round. Both are needed. A memoryless loop around a saturator has
-no pitch in it — under unity gain it is only a gain, and over unity its fixed
+no pitch in it - under unity gain it is only a gain, and over unity its fixed
 point moves to a rail and stays there, which is silence with an offset on it.
 The hold gives the loop a delay and the AC coupling leaves it nothing to
 latch onto, so it oscillates instead, at a frequency the coupling sets and
@@ -187,7 +187,7 @@ the decimated path is all you hear. That first tenth fades the decimated path
 in; the bit depth then runs twelve bits down to three across the rest of the
 bottom half, and the top half holds it there and folds in the mangling. Only
 the time knob will give the signal back, and only with amount low enough to
-leave the bit depth alone — around a quarter of the way up it is still nearly
+leave the bit depth alone - around a quarter of the way up it is still nearly
 nine bits, which is inaudible next to what the rate is doing.
 
 Sixteen bits down to two, which is where the depth used to run, spent the
@@ -204,29 +204,29 @@ every negative one and put the waveform entirely above zero.
 ### 6. slicer (light green)
 
 The pattern generator, applied to the amplitude of the signal. **time**
-chooses which of the 32 rhythms does the chopping — the same table the
-**rhythm** knob reads — and each hit fires a decay envelope whose length is
+chooses which of the 32 rhythms does the chopping - the same table the
+**rhythm** knob reads - and each hit fires a decay envelope whose length is
 **amount**. The first tenth of its travel fades the chopping in, so a knob at
 zero passes the signal through; from there it is a second-long decay that only
 breathes, down to 60 ms at the far right, which turns a drone into a rhythm
 part. Short slices get some of their loudness back automatically: chopping a
 drone into a rhythm should not also turn the volume down. **feedback** adds a chance of any step
-inverting, so the pattern keeps changing — one coin per step, both channels,
-so **stereo** stays the only thing that tells them apart — and **stereo**
+inverting, so the pattern keeps changing - one coin per step, both channels,
+so **stereo** stays the only thing that tells them apart - and **stereo**
 gives the two channels different rhythms.
 
 That last one is a selector rather than a width control, and the only one on
 the module: everywhere else stereo detunes the two channels by up to ±35% of
 a rate, which is continuous, and a rhythm is not a continuous quantity. Here
 it steps the right channel 0 to 8 places further along the same table, nine
-positions in all, so half travel is +4 and the top is +8 — a different pairing,
+positions in all, so half travel is +4 and the top is +8 - a different pairing,
 not a wider one. Which pairs sound widest depends on the two rhythms, not on
 the knob: against four on the floor the widest is a quarter of the way up, and
 against son clave it is three quarters.
 
 ### 7. pitcher (red)
 
-Pitch shifting up by sweeping a delay tap with a ramp — crude on purpose,
+Pitch shifting up by sweeping a delay tap with a ramp - crude on purpose,
 with the transient duplication that goes with it. **time** is the window
 size: long, and it chops rhythmically; short, and it turns into formant
 shift. **amount** is how far the ramp sweeps, which is the shift interval,
@@ -234,8 +234,8 @@ and also the dry/wet. **trig** briefly stretches the window.
 
 Both knobs scale the tap's position, and so does the trig's stretch, so a grain
 takes its window and its shift when it starts and keeps them until it ends.
-Changing any of them mid-grain would drag the tap under the playhead — a jump
-if it were sudden, a chirp if it were smoothed — and at a grain boundary the
+Changing any of them mid-grain would drag the tap under the playhead - a jump
+if it were sudden, a chirp if it were smoothed - and at a grain boundary the
 crossfade already has that grain at zero. The ramp restarting is the mode's own
 crudeness; a knob or a trig clicking is not.
 
@@ -276,11 +276,11 @@ rather than up where you would stop and hold.
 along from the newest sample is a sample written a whole lap earlier, and a
 circular buffer holds exactly one lap, so there is no second copy to crossfade
 against. Enumerating the places an edge can appear and ducking each one does
-not converge — there is always another. Instead there are only two ways this
+not converge - there is always another. Instead there are only two ways this
 mode can make a discontinuity, and each carries its own fade. The fade is a
 splice length, not a declick length: a diagonal cut across quarter-inch tape
 overlaps for tens of milliseconds at studio speeds, and that overlap is what
-makes a splice inaudible on any material rather than merely click-free — so
+makes a splice inaudible on any material rather than merely click-free - so
 every fade here runs ten milliseconds.
 
 - **A recording pass ramps in and out** over the splice length, so the tape
@@ -289,7 +289,7 @@ every fade here runs ten milliseconds.
   is an edge of *generation*: the slot the head has just written carries one
   more pass of overdub than the slot in front of it. The play head crosses it
   once a lap at every speed but one, and the crossing is spliced by fading
-  between the two generations — at the play head's own position, so at the
+  between the two generations - at the play head's own position, so at the
   play head's own pitch. A shadow of the last splice-length of pre-write
   values is what makes the older generation available to fade to.
 
@@ -298,7 +298,7 @@ every fade here runs ten milliseconds.
   doing, so it carries the input's pitch rather than the tape's, and at 2x it
   spliced an octave-down fragment in once a lap. The window scales with
   |speed − 1| so that one splice of tape is always one splice of wall time,
-  and vanishes at exactly 1x — where the heads keep station, nothing ever
+  and vanishes at exactly 1x - where the heads keep station, nothing ever
   crosses, and the honest reading is simply the one the tape holds.
 - **Any jump in the play head** leaves a ghost reading on from where the head
   was, and the output crossfades to the new position. Nothing has to know why
@@ -306,7 +306,7 @@ every fade here runs ten milliseconds.
   new, all of it is the same event.
 
 Both knobs are slewed as well, because a dry/wet mix that steps is a click
-whatever the tape is doing — moving amount off the lock in one go stepped the
+whatever the tape is doing - moving amount off the lock in one go stepped the
 output from 2 V to 1 V in a single sample, which was the loudest thing the
 mode ever did and had nothing to do with the tape at all.
 
@@ -320,7 +320,7 @@ The gains themselves have to be as smooth as the ramps that drive them. The
 overdub law holds keep at √(1 − rec²), and that square root has a vertical
 tangent at rec = 1: however smoothly the record level leaves the top, keep
 departs zero at unbounded slope, once a lap after every trig. So the record
-level is slewed as an angle — rec = sin θ arrives at one with zero slope and
+level is slewed as an angle - rec = sin θ arrives at one with zero slope and
 keep = cos θ leaves zero with zero slope. The correlation that steers the law
 is rectified through a smooth positive part rather than a hard clamp, since it
 crosses zero at signal rate and every landing on a corner is a tick written
@@ -334,7 +334,7 @@ fixed amount off it. Locked, the tape is one continuous take, and the loop
 plays a little less than all of it so the crossfade has somewhere to fade
 into; but a set millisecond picks a length with no relation to the material. A
 220 Hz tone on a 1.15 s tape is 253.02 cycles, six degrees from joining
-itself, and a millisecond off moves that to seventy-two — the step at the seam
+itself, and a millisecond off moves that to seventy-two - the step at the seam
 traded for a bigger one a millisecond wide. So a pass ending runs one sweep
 over about a thousand candidates for the length whose end already resembles
 its start, which for anything periodic is a whole number of periods.
@@ -342,9 +342,9 @@ its start, which for anything periodic is a whole number of periods.
 The crossfade is then weighted by how alike its two readings actually are,
 measured while it runs. "Equal power" only conserves power for signals that
 are unrelated; two that match add in amplitude instead, and sin against cos
-sums them to +3 dB — a bump once a lap, and exactly what aligning the ends
+sums them to +3 dB - a bump once a lap, and exactly what aligning the ends
 causes. Dividing the pair by the square root of 1 + rho·sin(2θ) is equal
-power at a correlation of zero and sums to one at a correlation of one — and
+power at a correlation of zero and sums to one at a correlation of one - and
 rho is a running measurement of the two taps themselves, not one number for
 the whole fade: across a splice-length crossfade the relationship changes,
 identical at the fold and drifting apart as the splice glides toward the
@@ -353,13 +353,13 @@ the material is.
 
 A fill covers the tape in slots rather than in seconds. The buffer is a few
 samples longer than the time it is named for, and a fill counted in seconds
-stopped short of the end and left that much silence on the tape — recorded
+stopped short of the end and left that much silence on the tape - recorded
 into the loop rather than made on the way out, which no amount of ducking the
 play head could hide.
 
 ### 9. shifter (pink)
 
-The other pitch shifter — a crossfaded pair of taps, which avoids the
+The other pitch shifter - a crossfaded pair of taps, which avoids the
 pitcher's stuttering at the cost of its bite. **time** shifts down below the
 centre and up above it, with unity in the middle. Feedback with a small shift
 is where it earns its keep: the output returns to the input and is shifted
@@ -394,7 +394,7 @@ against unfiltered input.
 
 Three context-menu settings change this.
 
-- **Slope** — **12 dB/oct** is artifex's own: one state-variable section,
+- **Slope** - **12 dB/oct** is artifex's own: one state-variable section,
   gentle, and narrow enough in range that the ends of the travel leave the
   material audible. At the top of the highpass a 4 kHz component is down about
   4 dB and 10 kHz is untouched. **24 dB/oct** is the filter [vates](vates.md)
@@ -403,12 +403,12 @@ Three context-menu settings change this.
   55 dB, so the knob can take the material away at either end rather than
   merely thinning it. The shallow one is the default because it is the gentler
   tone control and that is what the effect path usually wants.
-- **Filter the dry signal too** — moves the filter out of the mode and onto the
+- **Filter the dry signal too** - moves the filter out of the mode and onto the
   module's output, where it catches dry and effect together, and the knob
   becomes a filter on everything you hear. Nothing is filtered twice: the mode's
   own filtering steps aside when this is on. It also puts the filter inside the
   global feedback loop for free, since that loop is taken after the output.
-- **Filter inside the feedback** — the delay and the flanger keep their own
+- **Filter inside the feedback** - the delay and the flanger keep their own
   feedback line and take it from *before* the filter, so each repeat is filtered
   once. Turn this on and the feedback goes through the filter as well, so every
   pass is filtered again and the tail darkens (or thins) as it decays. With a
@@ -458,10 +458,10 @@ centre; stereo runs from mono at zero to as far apart as the mode allows.
 both. The **gain** trimpot beside them runs to +12 dB, and it matters more
 here than on most modules: the feedback loop reacts to how hard you drive it.
 The two lamps go red at 5 V, which is where the effect starts folding the
-signal rather than where the rail is — so they light while you can still do
+signal rather than where the rail is - so they light while you can still do
 something about it.
 
-**level** sets the output, and **env** is an envelope follower on the input —
+**level** sets the output, and **env** is an envelope follower on the input -
 patch it to the feedback or amount modulation input for ducking, which is
 what the hardware suggests and what it is best at. It reads 10 V at that same
 5 V clip point, so a lit lamp and a full-scale envelope mean the same thing,
@@ -487,8 +487,8 @@ the module returns to its own clock two seconds after that signal stops.
 **clk** out passes the running clock on.
 
 The pattern generator runs sixteen steps of gate and CV, always on the clock.
-**rhythm** chooses one of 32 patterns — twenty-two written by hand and ten
-euclidean distributions E(k, 16) — with a CV input that covers the whole list
+**rhythm** chooses one of 32 patterns - twenty-two written by hand and ten
+euclidean distributions E(k, 16) - with a CV input that covers the whole list
 over ten volts and wraps. The euclidean half skips six densities, because at
 sixteen steps those *are* patterns the first half already holds: E(1) is the
 downbeat alone, E(2) half notes, E(4) four on the floor, E(6) tresillo, E(8)
@@ -503,7 +503,7 @@ The two three-position switches edit the pattern as it plays:
 
 Each switch is normalled to the input below it: patch a gate or CV there and
 it takes over, above 3.2 V for up and below 1.6 V for down. **They are
-pencils, not filters** — a switch writes into the pattern one step at a time,
+pencils, not filters** - a switch writes into the pattern one step at a time,
 so returning it to the middle does not restore what was there. To get the
 untouched rhythm back, select it again with the rhythm knob.
 
@@ -512,8 +512,8 @@ untouched rhythm back, select it again with the rhythm knob.
 ### the display
 
 One, centred above everything else. The left half names the mode and its
-number; the right half reads the time parameter in whatever unit the mode uses
-— a delay time in milliseconds, a clock division when it is synced, a frequency
+number; the right half reads the time parameter in whatever unit the mode uses:
+a delay time in milliseconds, a clock division when it is synced, a frequency
 for the panner, a rhythm number for the slicer, an interval for the shifter.
 Right-click anywhere on it to jump straight to a mode.
 
@@ -524,18 +524,18 @@ can see it change across the room.
 
 ## Context menu
 
-- **Buffer** — 1.15 s (the hardware's), 2.5 s or 5 s. It sets the longest
+- **Buffer** - 1.15 s (the hardware's), 2.5 s or 5 s. It sets the longest
   delay, the longest freeze and the length of the replayer's tape.
-- **Mode changes wait for the clock** — on by default, as on the hardware.
-- **Input** — stereo, or sum to mono (the hardware's advanced settings).
-- **Pattern inputs read a Rack voltage window** — 0 V neutral, above +1 V
+- **Mode changes wait for the clock** - on by default, as on the hardware.
+- **Input** - stereo, or sum to mono (the hardware's advanced settings).
+- **Pattern inputs read a Rack voltage window** - 0 V neutral, above +1 V
   randomize, below −1 V invert. Off, it uses the hardware's 1.6 V/3.2 V
   window instead.
-- **Honour the external clock** — off, the module ignores **clk** and stays
+- **Honour the external clock** - off, the module ignores **clk** and stays
   on its own tempo.
-- **Feedback safety** — a soft limiter in the loop, on by default. Off, the
+- **Feedback safety** - a soft limiter in the loop, on by default. Off, the
   loop can run away, which is a legitimate thing to want.
-- **Slope**, **Filter the dry signal too**, **Filter inside the feedback** —
+- **Slope**, **Filter the dry signal too**, **Filter inside the feedback** -
   see [the filter](#the-filter).
 
 ## What was left behind
@@ -546,7 +546,7 @@ modules and its own clock, and none of that would have been the module.
 
 The headphone output, the input jack detection, tap tempo (the tempo is a
 knob you can see), the advanced settings mode, the memory reset and the test
-mode — all of them exist to work around a panel with two buttons.
+mode - all of them exist to work around a panel with two buttons.
 
 Kept, because nothing else in Rack does it quite this way: nine effects that
 share one feedback loop, three knobs that change meaning without changing

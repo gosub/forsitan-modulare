@@ -1,4 +1,4 @@
-// quadrare_dsp.hpp — Walsh–Hadamard transform core for the quadrare module.
+// quadrare_dsp.hpp - Walsh–Hadamard transform core for the quadrare module.
 //
 // Header-only so test/smoke_quadrare can exercise the maths without Rack.
 // Everything here works on a block of `n` coefficients, where n is a power of

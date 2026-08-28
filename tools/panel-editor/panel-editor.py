@@ -7,11 +7,11 @@ Opens a browser editor. Drag elements until happy, then Save.
 The server rewrites the @layout section in the .cpp and regenerates the SVG.
 
 Element kinds:
-  param / input / output / light  — VCV Rack widget → C++ addParam/addInput/etc.
-  screw                           — VCV Rack widget positioned by top-left; editor stores visual center
-  label                           — SVG-only text; position in @elem line as trailing x y
-  box                             — SVG-only grey panel box; position in @elem line as trailing x y
-  logo                            — SVG-only forsitan logo; position in @elem line as trailing x y
+  param / input / output / light  - VCV Rack widget → C++ addParam/addInput/etc.
+  screw                           - VCV Rack widget positioned by top-left; editor stores visual center
+  label                           - SVG-only text; position in @elem line as trailing x y
+  box                             - SVG-only grey panel box; position in @elem line as trailing x y
+  logo                            - SVG-only forsitan logo; position in @elem line as trailing x y
 """
 
 import sys, os, re, json, webbrowser, threading, traceback
@@ -68,7 +68,7 @@ SVG_ONLY = ('label', 'logo', 'box')
 LAYOUT_HEAD_RE = re.compile(
     r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)'
     r'(?:\s+title=([\d.]+))?(?:\s+titley=([\d.]+))?')
-# @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  — X Y optional for SVG-only kinds
+# @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  - X Y optional for SVG-only kinds
 # A box may carry `box=WxH` to override the default 14x14 badge, for panels
 # whose output row is too wide to wrap each jack in its own badge (quadrare).
 ELEM_RE = re.compile(
@@ -400,7 +400,7 @@ def regen_svg(layout, svg_path):
                 fill = '#1a1a1a' if in_any_box(el['x'], el['y']) else '#f9f9f9'
                 lines.append(f'  <path d="{d}" fill="{fill}"/>')
 
-    # forsitan logo — horizontal orientation (12.5mm wide × 5.5mm tall)
+    # forsitan logo - horizontal orientation (12.5mm wide × 5.5mm tall)
     # Shape derived from alea.svg (pre-rotation geometry, 90° CCW from alea's vertical form)
     for el in elems:
         if el['kind'] == 'logo':
@@ -512,7 +512,7 @@ body {
 <div id="sidebar">
   <div class="sb-section">
     <h3>Panel Editor</h3>
-    <div id="cursor-pos">x: <span id="cx">—</span>  y: <span id="cy">—</span> mm</div>
+    <div id="cursor-pos">x: <span id="cx">-</span>  y: <span id="cy">-</span> mm</div>
   </div>
   <div class="sb-section">
     <h3>Selection (<span id="sel-count">0</span>)</h3>
@@ -530,7 +530,7 @@ body {
       <button class="btn" id="al-cx" title="Align centers X"> | X</button>
       <button class="btn" id="al-r"  title="Align right edges">R ⊣</button>
       <button class="btn" id="al-t"  title="Align top edges">⊤ T</button>
-      <button class="btn" id="al-cy" title="Align centers Y">— Y</button>
+      <button class="btn" id="al-cy" title="Align centers Y">- Y</button>
       <button class="btn" id="al-b"  title="Align bottom edges">B ⊥</button>
     </div>
     <div class="align-grid-2">
@@ -561,7 +561,7 @@ async function load() {
   elems  = layout.elements;
   W = layout.panel_w; H = layout.panel_h;
   render(); renderList(); updateAlignBtns();
-  status('Loaded ' + elems.length + ' elements — ' + layout.module);
+  status('Loaded ' + elems.length + ' elements - ' + layout.module);
 }
 
 function vis(el) {

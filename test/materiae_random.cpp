@@ -1,4 +1,4 @@
-// materiae_random — what does Ctrl-R actually give you?
+// materiae_random - what does Ctrl-R actually give you?
 //
 //   ./materiae_random silence [n]   uniform randomizations, how many are
 //                                   inaudible, and which knobs are to blame

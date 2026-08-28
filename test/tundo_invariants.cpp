@@ -1,4 +1,4 @@
-// tundo_invariants — property-based checks for the tundo drum voice.
+// tundo_invariants - property-based checks for the tundo drum voice.
 //
 // smoke_tundo checks fixed points; tundo_probe measures character at fixed
 // points. This harness checks *properties that must hold everywhere*, by

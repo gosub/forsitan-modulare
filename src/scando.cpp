@@ -1,4 +1,4 @@
-// scando.cpp — VCV Rack 2 module
+// scando.cpp - VCV Rack 2 module
 // Scanned-synthesis oscillator (Verplank / Mathews / Shaw technique; the engine
 // matches the classic Csound scansyn / Qu-Bit non-circular mass-spring string).
 //   - a chain of masses-on-springs is a slowly-evolving wavetable

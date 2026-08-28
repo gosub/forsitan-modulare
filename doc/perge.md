@@ -7,7 +7,7 @@ play.**
 
 *perge* is Latin for "carry on!, keep going!" (imperative of *pergere*).
 The module is a from-scratch homage to the AC noises / BunkerNoise
-**CONTINUA** pedal — whose name is the Italian for the same exhortation —
+**CONTINUA** pedal - whose name is the Italian for the same exhortation -
 rebuilt from its public documentation: a
 sampler that doesn't just play your sound back, but reacts to how hard and
 how fast you play while you're still playing, then transforms the repeats
@@ -19,7 +19,7 @@ The module listens to the input with an envelope follower. When the level
 crosses **thrs** (threshold), a capture starts, and it runs until the level
 falls back below ~70% of the threshold (up to 2 seconds). **thrs** spans
 25 mV – 5 V and defaults to playing level: quiet beds, reverb tails and
-noise floors don't fire it — perge reacts to *playing*, not to sound being
+noise floors don't fire it - perge reacts to *playing*, not to sound being
 present. A gate into **capt** forces a capture by hand instead, whatever
 the level. The captured sample becomes the newest of three sample slots,
 and repeats of it are spawned on a tempo grid. Each capture restarts that
@@ -43,13 +43,13 @@ free-run and repeats start at whatever phase it happens to be in:
   indefinitely, capture stops, and every other control keeps working on the
   frozen material. The **freeze** button (latching) and gate do the same.
 - **pitch** is inactive at noon. Clockwise, repeats are *randomly* shifted
-  up — first an octave fades in, then a fifth above that; counterclockwise
+  up - first an octave fades in, then a fifth above that; counterclockwise
   mirrors downward. Each repeat rolls its own dice.
 - **glt/dim** is inactive at noon. Counterclockwise (**glitch**): sudden
   unpredictable tempo accelerations fragment the flow. Clockwise
   (**dimension**): the two previous captures come back as extra layers,
   each locked to the grid but on its own rhythmic pattern (every 2nd and
-  every 3rd tick) — up to three samples coexist. The layers ride the
+  every 3rd tick) - up to three samples coexist. The layers ride the
   current train's decay, so every new capture re-fires the whole ensemble
   and **sustain** fades it as one.
 - The **mode** switch (bottom row, between the freeze and tilt jacks) plays
@@ -93,7 +93,7 @@ suddenly dry, and the next press is another surprise.
 | jack | function |
 |------|----------|
 | **in l / in r** | stereo input; right is normalled to left |
-| **capt** | capture gate: the rising edge forces a capture regardless of level, the gate holds it open, the falling edge commits it (the LED by the jack flashes while capturing) — sequenced, deterministic sampling |
+| **capt** | capture gate: the rising edge forces a capture regardless of level, the gate holds it open, the falling edge commits it (the LED by the jack flashes while capturing) - sequenced, deterministic sampling |
 | **tempo / pitch / sust / glit / filt** | CV for tempo, pitch, sustain, glitch/dimension and filter (added to the knobs) |
 | **clock** | external tempo; measured between rising edges, released ~10 s after the clock stops (the LED by the jack flashes on every grid tick) |
 | **frz** | freeze gate |
@@ -102,7 +102,7 @@ suddenly dry, and the next press is another surprise.
 
 ## Tips
 
-- Calibrate **thrs** to your source before anything else — the same ritual
+- Calibrate **thrs** to your source before anything else - the same ritual
   as setting a noise gate's threshold, and worth treating as part of your
   gain staging: play, watch the LED by the **capt** jack, and adjust until
   it lights on your notes and goes dark between them. Everything dynamic in

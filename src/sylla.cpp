@@ -1,8 +1,8 @@
-// sylla.cpp — VCV Rack 2 module
+// sylla.cpp - VCV Rack 2 module
 // sylla (diminutive of Latin syllaba, "syllable") is the small voice of
 // the imber pair: a random sample generator and player. Pick an engine,
 // press GEN, and a worker thread renders a brand new sample from the
-// shared procedural generator library — nothing is ever loaded from
+// shared procedural generator library - nothing is ever loaded from
 // disk, every sound is spoken fresh. The previous sample keeps playing
 // until the new one is ready.
 //
@@ -34,7 +34,7 @@
 //           end / loop wrap)
 //
 // True to Haiku's "built from nothing" spirit the sample itself is not
-// saved with the patch — only its seed is, so a reload regenerates the
+// saved with the patch - only its seed is, so a reload regenerates the
 // exact same sound.
 
 #include "forsitan.hpp"
@@ -151,8 +151,8 @@ struct Sylla : Module {
     bool running = true;      // loop + trigger mode: the run latch
     bool oneShotDone = false; // one-shot + gate mode: window already spoken
 
-    // Any jump in the playhead — a retrigger, or a fresh sample landing
-    // under it — is a step, and a step is a click. Both go through a
+    // Any jump in the playhead - a retrigger, or a fresh sample landing
+    // under it - is a step, and a step is a click. Both go through a
     // short crossfade instead: the outgoing audio keeps playing from a
     // second read head while the new one comes up under it. tailSrc is
     // the main buffer for a retrigger, or tailBuf (holding the sample

@@ -1,8 +1,8 @@
-// textor.cpp — VCV Rack 2 module
+// textor.cpp - VCV Rack 2 module
 // textor (Latin: "weaver") is a clone of the Fieldtone Weaver Modular, the
 // one-knob "happy accidents" sampler: it captures two seconds of audio and
 // reweaves it into a hypnotic loop. Every movement of the weave knob
-// generates a completely new loop — nothing saves, nothing recalls, there
+// generates a completely new loop - nothing saves, nothing recalls, there
 // is no way back. The original's algorithm is unpublished; this engine is
 // designed from its documented behavior and from signal analysis of demo
 // recordings (2026-07: onset/tempo autocorrelation, envelope, stereo and
@@ -30,21 +30,21 @@
 // The three woven elements, each with a level knob and a gate output (the
 // gates fire even with an empty buffer, so it doubles as a random rhythm
 // generator):
-//   warp  — long, sparse foundation strands
-//   weft  — medium strands crossing it
-//   fleck — shorter, brighter, flightier accents
+//   warp  - long, sparse foundation strands
+//   weft  - medium strands crossing it
+//   fleck - shorter, brighter, flightier accents
 //
 // The weave knob has three zones, like the hardware:
-//   full ccw       RESET — erases the sample and stops the loom
-//   low zone       REC   — entering it starts a 2 s capture
-//   the rest       WEAVE — any movement reweaves a brand new loop
+//   full ccw       RESET - erases the sample and stops the loom
+//   low zone       REC   - entering it starts a 2 s capture
+//   the rest       WEAVE - any movement reweaves a brand new loop
 // When a capture completes with the loom stopped, playback starts by
 // itself with a fresh weave, like the hardware. The WEAVE input rerolls
 // on any voltage *change* (>0.5 V), so stepped random CV rerolls on every
 // new step, and a plain trigger works too.
 //
 // True to the original's impermanence, the sample is not saved with the
-// patch — only the weave (its seed) survives a reload.
+// patch - only the weave (its seed) survives a reload.
 //
 // Controls:
 //   Knobs : WEAVE (big), WARP / WEFT / FLECK levels
@@ -132,8 +132,8 @@ struct Textor : Module {
     static constexpr float kRecZone = 0.12f;
 
     // a periodic voice within the loop: fires when (step % div) == phase,
-    // always replaying the same fragment — that is what makes the loop a
-    // loop — but with per-fire jitter and occasional mutation
+    // always replaying the same fragment - that is what makes the loop a
+    // loop - but with per-fire jitter and occasional mutation
     struct Strand {
         int div = 4, phase = 0;
         float prob = 1.f;       // fire probability per occurrence
@@ -460,7 +460,7 @@ struct Textor : Module {
         seed = (uint32_t)(knob * 65535.f) * 2654435761u + moveCounter * 0x9e3779b9u;
         weaveStrands();
         if (sweepRestart && loomRunning) {
-            // hardware behavior: the fresh weave starts NOW — fade the old
+            // hardware behavior: the fresh weave starts NOW - fade the old
             // voices fast and fire step 0 on the next sample (next clock
             // edge when externally clocked), so a knob sweep sputters a
             // cascade of pattern beginnings

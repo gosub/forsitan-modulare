@@ -1,4 +1,4 @@
-// antrum.cpp — VCV Rack 2 module
+// antrum.cpp - VCV Rack 2 module
 // antrum (Latin: "cave, grotto") is a feedback delay network reverb built
 // after the Make Noise / SoundHack Erbe-Verb: a reverb meant to be played,
 // with every parameter modulatable at control or audio rate and a size
@@ -6,11 +6,11 @@
 //
 // Sources:
 //   - Tom Erbe, "Building the Erbe-Verb: Extending the Feedback Delay
-//     Network Reverb for Modular Synthesizer Use", ICMC 2015 — the topology,
+//     Network Reverb for Modular Synthesizer Use", ICMC 2015 - the topology,
 //     the 0..0.8 allpass diffusion, the Chebyshev saturation before the
 //     matrix, the two modulation types and the energy CV output.
-//   - The Erbe-Verb manual (Make Noise) — control ranges and behaviour.
-//   - davemollen's dm-Reverb (GPL-3.0) — the block layout, the delay time
+//   - The Erbe-Verb manual (Make Noise) - control ranges and behaviour.
+//   - davemollen's dm-Reverb (GPL-3.0) - the block layout, the delay time
 //     ratios, the early reflection taps and the analog tilt filter model.
 //
 //   in ─> pre-delay (forward or reversed) ─> 4-line FDN ─> tilt ─> mix ─> out

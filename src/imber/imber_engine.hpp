@@ -1,4 +1,4 @@
-// imber_engine.hpp — the real-time half of the Haiku model: 8 looping
+// imber_engine.hpp - the real-time half of the Haiku model: 8 looping
 // players driven by 5 drunk-jittered clock divisions, position-as-routing
 // on a unit field (nearest clock within reach drives a player; all FX
 // within reach stack onto it), pair couplings between players (sync pos /
@@ -64,7 +64,7 @@ struct Params {
 struct FieldObj {
     float ax, ay, bx, by;   // constellation A and B
     float ex, ey;           // effective (lerped) position
-    int tag;                // division or FxKind — fixed, never rerolled
+    int tag;                // division or FxKind - fixed, never rerolled
     // ex/ey are written by assignmentPass(), i.e. only once the engine has
     // run a frame, but the panel display reads them every time it draws.
     // Left uninitialized they were read as garbage until the first frame,
@@ -178,7 +178,7 @@ struct Engine {
         rvlCached = -1.f;
     }
 
-    // last-resort recovery: a non-finite sample escaped — flush every
+    // last-resort recovery: a non-finite sample escaped - flush every
     // stateful buffer so the poisoning cannot latch, keep the music state
     void recover() {
         for (int i = 0; i < kPlayers; i++) {
@@ -309,7 +309,7 @@ struct Engine {
 
     // sparse mode, on a clock edge: start a drop if the player is silent,
     // or top up the one already sounding. Topping up rather than
-    // retriggering is what makes the mode degrade gracefully — once edges
+    // retriggering is what makes the mode degrade gracefully - once edges
     // arrive faster than the material lasts the gate never closes, and the
     // player is back to the continuous bed with no seam and no stutter.
     void openDrop(Player& p, const Params& prm, int i) {
@@ -408,7 +408,7 @@ struct Engine {
             fxMask[i] = mask;
         }
 
-        // pair couplings — position is composition
+        // pair couplings - position is composition
         pairCount = 0;
         if (prm.couple <= 0.001f) return;
         const float tol = 0.06f;

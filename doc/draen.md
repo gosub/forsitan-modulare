@@ -3,8 +3,8 @@
 ![dræn](../img/draen.png)
 
 *dræn* is a **drone synthesizer**: a bank of drone engines, each a small
-self-contained voice, played from just two controls — a fundamental (**hz**) and
-a level (**amp**) — with a third control that selects which engine is sounding.
+self-contained voice, played from just two controls - a fundamental (**hz**) and
+a level (**amp**) - with a third control that selects which engine is sounding.
 Change the engine and dræn fades the current one down and the next one up, so the
 drone shifts without a hard cut.
 
@@ -14,7 +14,7 @@ a [norns](https://monome.org/docs/norns/) instrument by
 In dronecaster each drone is a little
 [SuperCollider](https://supercollider.github.io/) graph of the form
 `{ |hz, amp| ... }`; dræn reimplements those graphs in C++ and drives them the
-same way the original's `SynthSocket` does — one engine sounding at a time, with
+same way the original's `SynthSocket` does - one engine sounding at a time, with
 an amplitude fade on every switch.
 
 The name breaks from the collection's Latin: **dræn** is Old English for *bee*,
@@ -26,7 +26,7 @@ One engine sounds at a time. **hz** sets its fundamental frequency and **amp**
 its level; both take CV. The **engine** knob (and its CV) choose the active
 engine from the roster, and the display shows its name. When the selection
 changes, the current engine fades out over the **fade time**, then the newly
-selected engine fades in — a sequential cross-fade rather than two engines
+selected engine fades in - a sequential cross-fade rather than two engines
 overlapping. The fade time is set from the right-click menu (0.25 s to 8 s).
 When a patch loads, dræn starts directly on the saved engine and fades it in
 from silence.
@@ -72,16 +72,16 @@ still offsets on top of it.
 
 ## Context menu
 
-- **Engine** — the bank as a list, current engine ticked (see above).
-- **Engine bank** — *dræn (dronecaster ports)* or *hyf (original instruments)*;
+- **Engine** - the bank as a list, current engine ticked (see above).
+- **Engine bank** - *dræn (dronecaster ports)* or *hyf (original instruments)*;
   see [The hyf bank](#the-hyf-bank) below. Switching banks fades like an
   engine change and is saved with the patch.
-- **Hz CV input** — *1V/oct* (musical, tracks pitch) or *Linear (100 Hz/V)*.
-- **Fade time** — duration of each fade-down / fade-up on an engine change.
+- **Hz CV input** - *1V/oct* (musical, tracks pitch) or *Linear (100 Hz/V)*.
+- **Fade time** - duration of each fade-down / fade-up on an engine change.
 
 ## Engines
 
-The full dronecaster roster — all 37 drones — is ported.
+The full dronecaster roster - all 37 drones - is ported.
 
 | engine | source | description |
 |--------|--------|-------------|
@@ -91,14 +91,14 @@ The full dronecaster roster — all 37 drones — is ported.
 | **supersaw** | @cfdrake | Five detuned, band-passed saws spread across the stereo field. |
 | **harm's way** | @moonblind | Sixteen harmonics, each slowly amplitude-modulated; a shimmering additive drone. |
 | **thx** | @infinitedigits | The THX "Deep Note": twelve saws sweep from a random cluster to a target chord. Here **amp doubles as the sweep position** (as in the original), so it shapes the sound rather than acting purely as a level. |
-| **hecker** | @infinitedigits | Two stereo banks of sixteen filtered-noise voices, morphing between white and pink noise around the fundamental — a dense, evolving noise drone. |
-| **coil** | @infinitedigits | Twelve Dust-triggered voices — a feedback sine crossfading with noise, band-limited, micro-delayed and panned by moving envelopes — poured into a long reverb. Slow and cavernous. |
+| **hecker** | @infinitedigits | Two stereo banks of sixteen filtered-noise voices, morphing between white and pink noise around the fundamental - a dense, evolving noise drone. |
+| **coil** | @infinitedigits | Twelve Dust-triggered voices - a feedback sine crossfading with noise, band-limited, micro-delayed and panned by moving envelopes - poured into a long reverb. Slow and cavernous. |
 | **sachiko** | @infinitedigits | Four DPW-pulse voices modulated by banks of very slow wandering triangles, resonant-lowpassed and comb-delayed, summed into a global Moog ladder and reverb. High, glassy, space-cutting. |
 | **starlids** | @infinitedigits | A PWM sub-oscillator plus twelve sawtooth voices stepping through major-third/fourth/sixth intervals, chorus-delayed and swept by a global Moog ladder. Symphonic, radiant. |
 | **mt. lion** | @license | Nine comb-resonated pulse voices, everything (pitch, width, delay, decay, pan, level) driven by slow sample-and-held noise. Roars through a twisting canyon. |
-| **apparatus** | Josue Arias (after Zé Craum / Ruviaro / Mitchell) | Clipped triangle oscillators with vibrato and mains hum, plus a crackle/dust interference bed — old sinusoidal test-generators drifting. |
+| **apparatus** | Josue Arias (after Zé Craum / Ruviaro / Mitchell) | Clipped triangle oscillators with vibrato and mains hum, plus a crackle/dust interference bed - old sinusoidal test-generators drifting. |
 | **eliane** | @sixolet | Seven sine partials phase-modulating each other in a crosslinked feedback ring, with slow amplitude beatings. An homage to Éliane Radigue. |
-| **unrelacc** | @zebra | Six Hénon-map chaotic oscillators tuned to intervals, panned and slowly faded in — a bristling, metallic drone. |
+| **unrelacc** | @zebra | Six Hénon-map chaotic oscillators tuned to intervals, panned and slowly faded in - a bristling, metallic drone. |
 | **dreamcrusher** | @infinitedigits | A no-input-mixer feedback drone: a gated pulse driving a feedback loop of rotation, a modulated delay and soft-clip. Chaotic and strobey. |
 | **rehberg** | @infinitedigits | A detuned tape-warble pulse pair, wave-folded and DFM1-filtered with an FM sine and resonant band, drenched in Freeverb. Dense, distorted, overwhelming. |
 | **toshiya** | @infinitedigits | Twelve sine voices jumping through intervals, chorus-delayed and Moog-swept into a reverb, with a pink-noise-excited Klank resonator bank ringing underneath. |
@@ -115,7 +115,7 @@ The full dronecaster roster — all 37 drones — is ported.
 | **ruins** | @rplktr & @sixolet | Metallic 2/3-operator FM hits (after McCartney's "100 FM Synths") on a self-clocked trigger, drowned in a very long wash that warbles with tape wow and flutter, over a windy noise floor. |
 | **sunno** | (uncredited) | Five "guitars" of Karplus-Strong string pairs (one negative-decay for the octave-under growl), re-plucked at random, crushed through crossover distortion and cascaded tanh+filter gain stages. Doom. |
 | **nautilus** | @taubaland | A Lorenz attractor iterated at the fundamental drives six voices of overlapping sine grains with looping swells, into chaos-swept lowpasses. Dusty waves, chaotic undercurrent. |
-| **drumm** | @infinitedigits | Two slowly crossfading layers — chaos-width pulse pairs with phase-modulated subs, and ten Moog-swept voices stepping interlocking rows — sine-shaped and drenched in pumping Freeverb. |
+| **drumm** | @infinitedigits | Two slowly crossfading layers - chaos-width pulse pairs with phase-modulated subs, and ten Moog-swept voices stepping interlocking rows - sine-shaped and drenched in pumping Freeverb. |
 | **takita** | @sixolet | A self-clocked drum language: a beat gates a self-suppressing division window whose phasors flip tik/tok/tuk flip-flops, each firing resonant filtered clicks. Everything drifts on immensely slow sines. Rhythmic. |
 | **twin pks** | (uncredited) | No oscillators: tape/vinyl noise (dust, crackle, a pink-driven whistle) compressed hard, band-passed at the fundamental, warbled through wow and flutter, saturated and bit-crushed. Retro stylings, timeless horror. |
 | **unmemqua** | @zebra | Lagged dust and noise excite a 28-partial Klank bank whose ring times scale with 1/hz, torn by six slowly-breathing filters and smeared by ~4 s combs (one with negative feedback). |
@@ -132,7 +132,7 @@ master gain) are brought up to sit with the rest.
 
 ## The hyf bank
 
-*hyf* is Old English for **hive** — where dræn's first bank ports the
+*hyf* is Old English for **hive** - where dræn's first bank ports the
 dronecaster SynthDefs, the hyf bank is 37 original instruments built on the
 same DSP layer, deliberately covering ground the dronecaster set doesn't:
 binaural beating, Shepard tones, phase distortion, wavefolding, formant and
@@ -182,8 +182,8 @@ as before.
 
 The hyf bank is calibrated across the whole pitch range (octaves of 27.5 Hz up
 to 3.5 kHz, measured by `test/draen_sweep`): outputs are DC-free, and engines
-whose loudness naturally depends on the fundamental — formant voices, tracking
-filters, pluck and comb resonators — carry an hz-dependent makeup gain so the
+whose loudness naturally depends on the fundamental - formant voices, tracking
+filters, pluck and comb resonators - carry an hz-dependent makeup gain so the
 perceived level stays put as you sweep. Sparse percussive engines (gong, quill,
 rain, frost) sit deliberately lower than the sustained drones.
 
@@ -212,7 +212,7 @@ against the originals, the known deviations:
   segments are linear or sine where noted in the source.
 - **mika**: the original's PMOsc has `mul: 0` (silent) and its Compander uses
   identity slopes; both are omitted. Its LPF cutoff is driven by
-  `LFNoise0.kr(Dust.kr(1))`, which in practice never advances — kept as an
+  `LFNoise0.kr(Dust.kr(1))`, which in practice never advances - kept as an
   effectively static random cutoff.
 - **malone**: the original's second RLPF channel lands on output buses 3/4
   (inaudible on a stereo out); only the audible channel is ported.
@@ -232,7 +232,7 @@ against the originals, the known deviations:
   long partials ring louder, matching the original's -32 dB output stage;
   toshiya's Klank uses the normalized Ringz with its own level calibration.
 - **mt. zion**: SC's Pulse treats width modulo 1, so voices vanish as their
-  wandering width crosses an integer — reproduced by wrapping the width.
+  wandering width crosses an integer - reproduced by wrapping the width.
 
 ## Credits & license
 

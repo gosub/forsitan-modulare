@@ -1,11 +1,11 @@
-# forsitan modulare — project notes for Claude
+# forsitan modulare - project notes for Claude
 
 A collection of independent VCV Rack modules. Latin names, OCR-A typography,
 yellow-on-dark panels.
 
 ## Versioning
 
-**`RELEASING.md` is the authoritative release procedure** — follow it when
+**`RELEASING.md` is the authoritative release procedure** - follow it when
 cutting a release. The essentials:
 
 - **Minor version** (`2.x.0`): bump when adding a new module
@@ -28,14 +28,14 @@ cutting a release. The essentials:
   Until the tag is pushed all 26 links 404. The tag only matters once a
   version is published; local development needs nothing.
 - After publishing, post the update comment on
-  [VCVRack/library#681](https://github.com/VCVRack/library/issues/681) — the
+  [VCVRack/library#681](https://github.com/VCVRack/library/issues/681) - the
   library builds from source, so a tag alone does not ship anything.
 
 ## Documentation structure
 
 - `readme.md` carries the plugin overview: the module table with one-line
   descriptions, the tools table, the "about the names" Latin glossary, and the
-  license — no full module documentation.
+  license - no full module documentation.
 - Each module's full documentation lives in `doc/<slug>.md` (lowercase, e.g.
   `doc/alea.md`, `doc/mmcccxcix.md`), linked from the readme table.
 - `doc/experiments.md` is the exception: modules that were built, auditioned
@@ -64,30 +64,30 @@ it, and the split between them is the whole discipline.
 - **If it yields a number, it is not an audition item.** It belongs in
   `test/smoke_<slug>` or `test/<slug>_probe measure`. A figure measured by
   hand is measured once, against whatever the build was that afternoon, and is
-  wrong by the next commit — artifex carried a hand-measured "8x" that was
+  wrong by the next commit - artifex carried a hand-measured "8x" that was
   -78 dB by the time anyone re-ran it. Automating section 4-7 of that audition
   cut 39 items to 13 and grew the harness from 96 checks to 115.
 - **Keep it short.** An audition nobody finishes tests nothing. Prefer a
   dozen items per module over fifty; if a behaviour needs more than a few
   lines, it is more than one item, so split it rather than lengthen it.
-- **Two lines per item: what to set, and what to expect** — including "this is
+- **Two lines per item: what to set, and what to expect** - including "this is
   not a fault" where a surprising behaviour is intended. No bug history, no
   DSP mechanism, no argument for the design. Concrete numbers to check against
   are welcome; explanations are not.
-- **The section carries the setup, not the first item** — as code, in the
+- **The section carries the setup, not the first item** - as code, in the
   section's own ```python block, with the items saying only what they change.
   Do not also describe it in prose: a **Start:** line beside a bench that
   builds the same thing is a second copy to keep in step, and the first to go
   quietly wrong. Where a number needs a human framing, comment the line it is
   on (`time=0.8333,  # +1.0x on the display`), so the note cannot drift from
   the value it explains.
-- **Before deleting prose as duplicated, check the code reproduces it** — if it
+- **Before deleting prose as duplicated, check the code reproduces it** - if it
   does not, the prose was the only copy. Deleting artifex's Start lines was
   safe nine times out of nine, but the same pass dropped a line in the bench
   section putting a scope on **out L**, and two items that say "watch the
   scope" then had none. A comment is not a substitute: it explains, it does
   not build.
-- Two kinds of item: plain ones, which are tests, and **Decide —** ones, open
+- Two kinds of item: plain ones, which are tests, and **Decide -** ones, open
   questions of taste resting on numbers the harness prints.
 - `- [ ] N.N.N.` with 6-space continuation, wrapped at 80 columns. **Tick
   marks belong to the user**: anchor edits on the text without the checkbox,
@@ -120,7 +120,7 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%")
 
 `tools/audition/vcv.py` is the whole surface:
 
-- `vcv.module("VCO")` / `vcv.module("artifex")` — a bare name is matched
+- `vcv.module("VCO")` / `vcv.module("artifex")` - a bare name is matched
   against `src/*.cpp` and then against the model slugs in the portmap, so no
   list of other people's modules is kept here. Only a name that is not the
   slug needs saying, and there is one: Rack's browser calls
@@ -137,7 +137,7 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%")
 
   Three into two raises. **Use `+`, not `&` or `|`**: those bind looser than
   `>>`, so `a >> b & c` means `(a >> b) & c` and never what it reads like, and
-  `a >> b, c` is worse — it builds a tuple and drops the second cable
+  `a >> b, c` is worse - it builds a tuple and drops the second cable
   silently. Both are refused with a message.
 - **There is no module-to-module form** (`a >> b`): which jacks carry the audio
   is not something the library can know without a table of other people's
@@ -149,12 +149,12 @@ fx.set(fxmode="replayer", time=0.8333, amt="100%")
 - `m.set(amt="90%", fxmode="replayer")` sets knobs, `m.menu(filterDry=True)`
   sets context-menu state. Values take a number, a `"90%"`, or a
   `configSwitch` label.
-- `vcv.source("drums")` is a module declared in the local config — a sample
+- `vcv.source("drums")` is a module declared in the local config - a sample
   player and its file.
 - `p.unpatch()` pulls whatever is in an input out, for an item that is *about*
   an empty jack. Otherwise a module the audition stops using is dropped by
   itself: patching over a jack marks whatever fed it, and anything left
-  feeding nothing goes. A module with an input and no output stays — that is
+  feeding nothing goes. A module with an input and no output stays - that is
   a scope, or a second module under test, not litter.
 - `vcv.hz(220)` is a frequency knob's value for a pitch, and
   `vcv.modulate(fx["free"], rate=0.05)` is an LFO through a **shut VCA** into
@@ -179,11 +179,11 @@ other than what the item says. The Fundamental VCO's frequency knob is param
 would assume, and both were wrong here before the map was recorded. A name
 that matches nothing, or matches two controls equally, raises.
 
-Prefer **VCV Fundamental** for anything the bench needs around the module —
+Prefer **VCV Fundamental** for anything the bench needs around the module -
 it ships with Rack, so the audition runs on any machine.
 
-`test/audition/config.json` holds everything local to one machine — where Rack
-is, the sound card, sample paths — and is **not tracked**. Copy
+`test/audition/config.json` holds everything local to one machine - where Rack
+is, the sound card, sample paths - and is **not tracked**. Copy
 `config.example.json`. This is what keeps `~/dl/...` paths out of the repo
 while still letting the runner launch anything.
 
@@ -207,7 +207,7 @@ cd ~/dl/audio/rack && HOME=/home/gg/dl/audio/rackhome/ ./Rack   # run Rack
 
 ## Module architecture
 
-These are **independent modules** — there is no shared base class or expander
+These are **independent modules** - there is no shared base class or expander
 chain. Each module is a self-contained `src/<name>.cpp`:
 
 - `src/forsitan.hpp` declares `extern Model*` for each module.
@@ -259,7 +259,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 - Port is configurable from the right-click context menu (7000/7001/7002/7777/8000).
 - Green LED at y=64mm indicates listening state.
 - Commands: `list_modules`, `get_module`, `get_module_info`, `list_params`,
-  `set_param`, `list_cables`, and more — `hello` returns the full list.
+  `set_param`, `list_cables`, and more - `hello` returns the full list.
 - Client tools live in the separate repo
   [gosub/limen-tools](https://github.com/gosub/limen-tools), checked out at
   `~/box/prj/2026/limen-tools` (C `limen-cli.c` + Python `limen-cli.py`,
@@ -268,7 +268,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 ## Panel structure
 
 Panels are authored in Inkscape but must stay **NanoSVG-compatible** (Rack
-renders with NanoSVG, which cannot draw `<text>` — titles and labels are
+renders with NanoSVG, which cannot draw `<text>` - titles and labels are
 pre-baked `<path>` elements). Shared visual grammar:
 
 - **Background** rect filling the panel (`#1a1a1a`).
@@ -306,7 +306,7 @@ pre-baked `<path>` elements). Shared visual grammar:
   `title_metrics` in `panel-editor.py` handles both cases, and
   `panel_audit.py` reads the same function).
 - **forsitan logo** at the bottom, centered horizontally (`width/2`,
-  y=122.5mm — see bulla/vorax/textor): a rounded-rect "domino" with a
+  y=122.5mm - see bulla/vorax/textor): a rounded-rect "domino" with a
   divider line and four dots, stroked/filled in the accent yellow
   `#ffd500`. Never tuck it in a corner. On 2HP panels it is rotated 90°.
 - **Input labels**: plain OCR-A text, light grey (`#e5e5e5`).
@@ -326,12 +326,12 @@ When laying out a panel (by hand or generated), follow these rules:
   (`width/2`); place paired elements (L/R outputs, dual knobs) at equal
   offsets from it. Prefer mirrored left/right columns over ragged placement.
 - **Balance**: distribute visual weight evenly left/right and top/bottom.
-  Big knobs are heavy, jacks and labels light — offset a large control on one
+  Big knobs are heavy, jacks and labels light - offset a large control on one
   side with a group of smaller ones on the other. Don't crowd everything into
   the top half; keep roughly even vertical density, and don't leave dead
   bands taller than ~15mm unless intentional breathing room around the title
   or logo.
-- **No overlap**: no two element bounding boxes may intersect — knobs, jacks,
+- **No overlap**: no two element bounding boxes may intersect - knobs, jacks,
   buttons, LEDs, labels, badges, title, logo, and the 4 screw zones
   (~8×8mm at each corner). Use real widget sizes, measured from the
   ComponentLibrary SVG viewBoxes (Rogan2P ≈ 12.7mm ⌀,
@@ -340,14 +340,14 @@ When laying out a panel (by hand or generated), follow these rules:
   SmallLight 2mm ⌀, CKSS switch ≈ 4×10mm) and keep ≥1.5mm clearance between
   edges, ≥1mm between a label and the element it names.
 - **Label offsets**: place a label's baseline at a fixed offset below its
-  control's center — jack +7.5mm, RoundBlackKnob +8.5mm,
+  control's center - jack +7.5mm, RoundBlackKnob +8.5mm,
   RoundBigBlackKnob +11.5mm, TL1105 button +7mm. A section label naming a
   group of controls sits *below* the group. OCR-A is wide: ~2.1mm advance
   per character at 2.2mm cap height.
 - **Knob / CV / attenuverter triangle**: when a knob has both a CV input
   and a trimpot attenuverter, do not stack the two small elements in two
-  rows under it. Put them side by side on **one** row below the knob —
-  trimpot left of the knob's centre line, CV jack right of it — so knob,
+  rows under it. Put them side by side on **one** row below the knob -
+  trimpot left of the knob's centre line, CV jack right of it - so knob,
   trimpot and jack form a triangle, with the knob's own label between them.
   Canonical offsets from the knob centre `(x, y)`, as first used on caligo:
   trimpot `(x − 5, …)`, jack `(x + 4.5, …)`. The row's `y` **follows the
@@ -355,34 +355,34 @@ When laying out a panel (by hand or generated), follow these rules:
   clears the label baseline by ~4mm, which is `y + 18` under a
   `RoundBigBlackKnob` (label at +11.5) and `y + 15` under a `RoundBlackKnob`
   (label at +8.5). Using one offset for both knob sizes is the mistake to
-  avoid — it makes the big-knob rows visibly tighter than the small-knob
+  avoid - it makes the big-knob rows visibly tighter than the small-knob
   ones on the same panel. Tighten the horizontal spread when the column
   pitch is narrow (tundo runs `± 4.35` on a 17.4mm pitch), but keep ≥1.5mm
   between the trimpot and its own jack *and* between that jack and the next
-  column's trimpot — with real radii those two gaps are what a narrow pitch
+  column's trimpot - with real radii those two gaps are what a narrow pitch
   runs out of first. Stack them vertically only when the panel genuinely has
   no room for the triangle. The row it replaces is free space: redistribute
   it over the whole panel rather than leaving one fat dead band, and check
   that the bands between control rows come out equal.
   Modules following this: caligo, antrum, tundo, guttur, scrupea.
 - **LEDs**: never free-floating. An output-level LED sits 2mm inset from
-  the top-right corner of its output badge (box center +5,−5 — see
-  scando). A stereo output pair always gets one level LED per badge —
+  the top-right corner of its output badge (box center +5,−5 - see
+  scando). A stereo output pair always gets one level LED per badge -
   both L and R, never just one of the two. An LED for a non-jack
   control sits at that control's top-right corner. Whatever it sits on,
   it must clear that element's edge by **≥0.5mm** (`panel_audit.py`
   enforces this; the canonical offsets are +5.00/−3.00 from a jack
   centre, which clears by 0.82, and the control's own corner otherwise).
 - **Stereo output labels**: when the badge labels are just the channel
-  letters, write them uppercase — `L` and `R`, not `l` / `r`.
+  letters, write them uppercase - `L` and `R`, not `l` / `r`.
 - **Readability**: every jack and control gets a label; labels sit
   consistently (below jacks/knobs unless space forces otherwise), at ≥2.0mm
   cap height, never split across an element. Output badges must fully
   contain their text with ~1mm padding. Verify label widths with
   `tools/typography/measure_text.py` before placing.
 - **Verification**: after any layout work run
-  `~/dl/audio/fonttools-venv/bin/python tools/panel-editor/panel_audit.py src/<mod>.cpp`
-  — it checks all of the above with true circle geometry and real OCR-A
+  `~/dl/audio/fonttools-venv/bin/python tools/panel-editor/panel_audit.py src/<mod>.cpp`.
+  It checks all of the above with true circle geometry and real OCR-A
   text widths, and exits nonzero on violations (no args = all @layout
   modules).
 - **Alignment & grouping**: snap centers to a coarse grid (whole or half
@@ -413,7 +413,7 @@ Two helpers live in `tools/typography/` (they need `fonttools` +
 `booleanOperations`; use the venv at `~/dl/audio/fonttools-venv`, never a
 global pip install):
 
-- **`tools/typography/gen_title_paths.py`** — bakes text into NanoSVG-safe `<path>`
+- **`tools/typography/gen_title_paths.py`** - bakes text into NanoSVG-safe `<path>`
   elements. It runs a union boolean op per glyph so inner contours (holes)
   render correctly under NanoSVG's even-odd fill. Pass the OCR-A `.otf` as
   `--bold` and use `:bold` segments (forsitan is single-weight):
@@ -432,7 +432,7 @@ global pip install):
   the badge width and wrap the result in a `<g transform="translate(badge_x,0)">`,
   with `--color "#1a1a1a"`.
 
-- **`tools/typography/measure_text.py`** — reports advance width (mm) of strings at a given
+- **`tools/typography/measure_text.py`** - reports advance width (mm) of strings at a given
   cap height, for laying out labels and sizing badges:
 
   ```
@@ -443,14 +443,14 @@ global pip install):
 
 ## Tools
 
-- `tools/panel-editor/` — browser-based drag-and-drop panel layout editor
+- `tools/panel-editor/` - browser-based drag-and-drop panel layout editor
   (`panel-editor.py`). On save it regenerates the panel SVG, auto-finding the
   OCR-A font and a fonttools venv from the same candidate paths above.
-- `tools/typography/` — `gen_title_paths.py`, `measure_text.py`; see
+- `tools/typography/` - `gen_title_paths.py`, `measure_text.py`; see
   Typography above.
-- `tools/panels/` — `gen_pellicula_panel.py`, generates `res/pellicula.svg`
+- `tools/panels/` - `gen_pellicula_panel.py`, generates `res/pellicula.svg`
   (background art for the matrix panel; widgets are placed in code).
-- `tools/release/` — `sync_version.py`, repoints every `manualUrl` /
+- `tools/release/` - `sync_version.py`, repoints every `manualUrl` /
   `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
   against the newest `CHANGELOG.md` heading. `--check` is the tag-day gate;
   see `RELEASING.md`. Alongside it `check_tags.py` validates every module's
@@ -459,7 +459,7 @@ global pip install):
   is an expensive way to find out. Plus two image generators, so nothing in `img/` is ever
   made by hand:
 
-  - `gen_screenshots.py` — the per-module panel images:
+  - `gen_screenshots.py` - the per-module panel images:
 
     ```
     python3 tools/release/gen_screenshots.py            # every module
@@ -473,7 +473,7 @@ global pip install):
     preview: knobs at their defaults and no engine behind the panel, so
     displays that draw live state come out empty.
 
-  - `gen_collection.py` — `img/forsitan-modulare.png`, the whole lineup:
+  - `gen_collection.py` - `img/forsitan-modulare.png`, the whole lineup:
 
     ```
     python3 tools/release/gen_collection.py --dry-run   # print the layout only
@@ -484,12 +484,12 @@ global pip install):
     the above (with the tips dialog and CPU meter turned off), adds every
     module through **limen**, measures each one's HP from the protocol,
     splits them into rows with a dynamic program that minimises the widest
-    row, and moves them into place — the row count is whichever best matches
+    row, and moves them into place - the row count is whichever best matches
     the screen's aspect ratio (three rows of ~113 HP for the 338 HP of
     modules on a 1920x1200 screen). Then fullscreen, zoom to fit, and
     `grim`. **It needs limen protocol 2** (`move_module`), so the installed
     plugin must be built from a tree that has it.
-- `tools/presets/` — `gen_presets.py` writes `presets/scrupea/*.vcvm`,
+- `tools/presets/` - `gen_presets.py` writes `presets/scrupea/*.vcvm`,
   `gen_gradus_presets.py` writes `presets/gradus/*.vcvm` (stated in volts,
   converted through the square-law knob), and
   `skrewell_to_scrupea.py` converts the snapshots in a Reaktor ensemble **the
@@ -498,7 +498,7 @@ global pip install):
   converter ships and their presets do not. Ours are written from the
   *statistics* of the factory banks, which the generator documents.
   `test/scrupea_probe preset presets/scrupea/*.vcvm` measures them.
-- `tools/patches/` — `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
+- `tools/patches/` - `gen_patches.py`, generates `patches/*.vcv`. A `.vcv` is a
   zstd-compressed tar of `./patch.json` + an empty `./modules/`. Currently
   builds `patches/limen.vcv` (one limen module, `serverEnabled` on) so
   `./Rack patches/limen.vcv` launches straight into a controllable state.

@@ -1,4 +1,4 @@
-# test — offline harnesses
+# test - offline harnesses
 
 These are standalone programs that exercise DSP code outside of Rack.
 They link against `libRack` from the SDK, so `RACK_DIR` must point to it
@@ -35,7 +35,7 @@ pulling in header-only DSP libraries need one extra dependency line (see
 `smoke_lustro` / `smoke_imber` / `smoke_guttur`).
 
 **These are not reproducible runs.** `rack::random::init()` seeds from the
-clock, so checks over randomized material vary run to run — `imber`'s
+clock, so checks over randomized material vary run to run - `imber`'s
 `sparse_drops_full_level` in particular asserts that a loud drop lands inside a
 20 s window of a deliberately sparse field, and can fail by chance.
 
@@ -49,13 +49,13 @@ window, and prints CSV:
 bank,engine,hz,dcL,dcR,rms_ac,peak,nans
 ```
 
-- `dcL`/`dcR` — per-channel mean: any value above ~0.005 is a DC leak.
-- `rms_ac` — RMS after removing the mean, pooled over both channels.
+- `dcL`/`dcR` - per-channel mean: any value above ~0.005 is a DC leak.
+- `rms_ac` - RMS after removing the mean, pooled over both channels.
   The bank targets roughly 0.15–0.3 at amp 1 (sparse percussive engines
   sit lower by design); a large swing across the octaves for one engine
   means its perceived level depends on hz and its makeup gain needs work.
-- `peak` — max absolute sample; watch for values well above 1.
-- `nans` — count of non-finite samples (must be 0).
+- `peak` - max absolute sample; watch for values well above 1.
+- `nans` - count of non-finite samples (must be 0).
 
 ## perge_render
 
@@ -94,38 +94,38 @@ clean and Rack is not, the difference is upstream of the DSP.
 
 **`measure`** exists so that no number lives in the listening tests. A figure
 measured by hand at the bench is measured once, against whatever the build
-was that afternoon, and is silently wrong by the next commit — the replayer's
+was that afternoon, and is silently wrong by the next commit - the replayer's
 record-head whine was written down as a step ratio of 8x and is -78 dB now,
 and only re-running this noticed. It prints four tables:
 
-- **overwrite time** — laps and seconds for the replayer's tape to erase what
+- **overwrite time** - laps and seconds for the replayer's tape to erase what
   is on it, at three amounts and three buffer sizes. At amount 0.75 that is
   125 laps, over two minutes at the shortest buffer.
-- **the record head's whine** — the tone left by a head that writes to one
+- **the record head's whine** - the tone left by a head that writes to one
   slot while the play head reads between two, at `frac(|speed|)` x sample
   rate folded about Nyquist, against the tone the tape carries. Worst near
   1x. This is the number behind listening test 3.8.12's open question.
-- **the loop's envelope steps** — how much the level jumps as the play head
+- **the loop's envelope steps** - how much the level jumps as the play head
   crosses the tape's seam while overdubbing. This is the artifact a residual
   detector cannot see: everything else here measures curvature over three
   samples, which finds sharp transients and is deaf to a slow disturbance.
-  The seam is slow — a lump once a lap, not a tick — and it measured -93 dB
+  The seam is slow - a lump once a lap, not a tick - and it measured -93 dB
   by residual while stepping the envelope by a third. **Known open defect:**
   the seam is crossfaded only when the tape is locked, so coming off the lock
   lets it through once a play lap.
-- **the shared loop, per mode** — what the filter, stereo and feedback knobs
+- **the shared loop, per mode** - what the filter, stereo and feedback knobs
   are each worth in every mode. The suite asserts the filter's reach and its
   placement options and that stereo is mono at zero; this says whether each
   *mode* answers those knobs, which is the part a listening test was still
   being asked for.
-- **self-oscillation** — with feedback wide open, the limiter off and silence
+- **self-oscillation** - with feedback wide open, the limiter off and silence
   in, which modes sustain, which decay and which need input.
-- **CPU** — `process()` as a percentage of real time per mode, at both buffer
+- **CPU** - `process()` as a percentage of real time per mode, at both buffer
   extremes.
 
 ## guttur_probe
 
-Two diagnostic maps for the guttur engine (not checks — `smoke_guttur`
+Two diagnostic maps for the guttur engine (not checks - `smoke_guttur`
 carries the assertions). Run with no argument for both, or `shapers` /
 `forcing` for one.
 
@@ -133,14 +133,14 @@ carries the assertions). Run with no argument for both, or `shapers` /
 guttur_probe [shapers|forcing]
 ```
 
-- **`shapers`** — the distortion transfer curves, plus a per-shaper verdict
+- **`shapers`** - the distortion transfer curves, plus a per-shaper verdict
   (`max|out|`, monotonic, saturates/folds/UNBOUNDED). Every shaper sits
   *inside* the feedback loop, so a non-monotonic one folds instead of
   clipping and an unbounded one diverges the loop. Both failure modes have
   happened: the kvraudio tanh fit railed the output within 100 ms, and
   `fastatan` folds above |v| = 1.89 (kept, as the "Atan (folding)" setting).
   Check this after touching `guttur_dsp::distortion`.
-- **`forcing`** — dead-air fraction (50 ms blocks below −60 dBFS over 20 s)
+- **`forcing`** - dead-air fraction (50 ms blocks below −60 dBFS over 20 s)
   against forcing frequency and against loop drive. Silence needs *two*
   factors: an overdriven feedback loop collapses the Duffing onto a fixed
   point, and only an audio-rate forcing sine restarts it. Sub-audio forcing

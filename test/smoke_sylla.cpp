@@ -1,4 +1,4 @@
-// smoke_sylla — offline sanity checks for the sylla module.
+// smoke_sylla - offline sanity checks for the sylla module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"
@@ -469,7 +469,7 @@ static void testSyllaBusyLight() {
     // Press GEN, let the worker finish while the audio clock stands still,
     // then measure. The render costs almost no audio time that way, which is
     // the worst case for a light that is only on while the job is in flight
-    // — and the honest model of a real Rack, where 11 ms of render passes
+    // - and the honest model of a real Rack, where 11 ms of render passes
     // under a UI that only looks every 16.7 ms.
     auto measure = [&](bool viaInput) {
         if (viaInput) m.inputs[Sylla::GEN_INPUT].setVoltage(10.f);

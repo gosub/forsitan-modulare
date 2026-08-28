@@ -8,10 +8,10 @@ The output is clamped to **0V–10V** when the polarity selector is set to "0-10
 
 The *up* and *down* rate knobs are exponential, ranging from 0.01 V/s to 100 V/s (default 1 V/s). Each gate has a corresponding button for manual triggering.
 
-**Super-slow mode** (right-click menu) makes both rates 100x slower: 0.0001 V/s to 1 V/s, with the center default at 0.01 V/s — useful for glacial, minutes-long ramps. The knob tooltips show the rescaled values, and the setting is saved with the patch.
+**Super-slow mode** (right-click menu) makes both rates 100x slower: 0.0001 V/s to 1 V/s, with the center default at 0.01 V/s - useful for glacial, minutes-long ramps. The knob tooltips show the rescaled values, and the setting is saved with the patch.
 
 ## How to use
 
 Connect two gate signals to the *up* and *down* inputs, then set the rates with the respective knobs and watch the output go up, down, or hold.
 
-This module was imagined as a companion to MIDI controllers like the [Korg nanoPAD2](https://www.korg.com/us/products/computergear/nanopad2/), which has no faders — only buttons.
+This module was imagined as a companion to MIDI controllers like the [Korg nanoPAD2](https://www.korg.com/us/products/computergear/nanopad2/), which has no faders - only buttons.

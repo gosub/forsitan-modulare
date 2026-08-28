@@ -1,4 +1,4 @@
-// smoke_tundo — offline sanity checks for the tundo drum voice.
+// smoke_tundo - offline sanity checks for the tundo drum voice.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 // tundo_probe is the harness that measures character; this one only asks
 // whether the voice is alive, in tune, in bounds and free of NaNs.
@@ -464,7 +464,7 @@ static void testHostile() {
 }
 
 // one voice, quarter notes, everything expensive turned on. Not a hard budget
-// — the number is machine-dependent — but a regression that doubles the cost
+// - the number is machine-dependent - but a regression that doubles the cost
 // of the engine will trip it.
 static void testCpu() {
     Tundo m;

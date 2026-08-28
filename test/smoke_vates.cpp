@@ -1,4 +1,4 @@
-// smoke_vates — offline sanity checks for the vates sample player.
+// smoke_vates - offline sanity checks for the vates sample player.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 //
 // The generated banks themselves are measured by vates_probe, which does not
@@ -7,7 +7,7 @@
 // that the clock, the LFO and the pattern generator behave.
 //
 // The banks are built on a detached worker, so the first thing every test
-// does is wait for it — with wall-clock sleeps, as in smoke_imber.
+// does is wait for it - with wall-clock sleeps, as in smoke_imber.
 
 #include "smoke_harness.hpp"
 #include "../src/vates.cpp"
@@ -73,7 +73,7 @@ static void pressBank(Vates& m, long& frame, bool up) {
 		m.process(makeArgs(frame++));
 }
 
-// The button fires on the rising edge, so four frames is a press — and the
+// The button fires on the rising edge, so four frames is a press - and the
 // measurement must start there: a 2 ms micro sample is over before a longer
 // press ends, and the window would see nothing but silence.
 static void pressTrigger(Vates& m, long& frame) {
@@ -382,8 +382,8 @@ static void testDefaults() {
 	report("vates", "default_length_open", env.rms(), env.rms() > 1.0);
 
 	// The audio only has to be there. Its level over any one window belongs
-	// to the generated sample — a pad can still be swelling a fifth of a
-	// second in — so this is a peak over the whole hit, not an rms late in
+	// to the generated sample - a pad can still be swelling a fifth of a
+	// second in - so this is a peak over the whole hit, not an rms late in
 	// it, and the envelope above is what carries the claim about the knob.
 	Vates m2;
 	long fr2 = 0;
@@ -401,7 +401,7 @@ static void testDefaults() {
 
 // ── the CV input spans a bank once, and its top is the last sample ────────────
 // Ten volts at full attenuverter is one bank. At the very top the index used
-// to have wrapped round to the first sample again — the knob's old fencepost,
+// to have wrapped round to the first sample again - the knob's old fencepost,
 // moved into the CV.
 static void testCvRange() {
 	Vates m;
@@ -474,7 +474,7 @@ static void testLfoDirection() {
 // Writes a throwaway kit of 20 files, points vates at it in memory (never at
 // the user's settings file) and checks the pages: a 20-file kit is three
 // banks of 8, 8 and 4, each page plays its own window of the kit, and the
-// number of samples a bank offers never grows with the kit — which is what
+// number of samples a bank offers never grows with the kit - which is what
 // keeps crossings per LFO cycle from growing with it.
 static void writeTestWav(const std::string& path, int frames, int channels, float amp) {
 	FILE* f = fopen(path.c_str(), "wb");
@@ -627,8 +627,8 @@ static void testPatternSwitches() {
 }
 
 // ── full clockwise on the pitch attenuverter is exactly 1V/oct ────────────────
-// The hardware calibrates that endpoint — "this input tracks V/Oct standard
-// when the PITCH MOD knob is fully clock-wise" — for both pitch inputs, so it
+// The hardware calibrates that endpoint - "this input tracks V/Oct standard
+// when the PITCH MOD knob is fully clock-wise" - for both pitch inputs, so it
 // is a number to hold, not a taste.
 static void testPitchTracking() {
 	Vates m;
@@ -925,7 +925,7 @@ static void testAbuse() {
 // ── crossing the filter knob through the centre does not click ───────────────
 // The lowpass and the highpass are different filters at opposite ends of the
 // frequency range sharing one set of integrators, so the crossing used to put
-// a step of several volts into the output — 83 times the signal's own slew.
+// a step of several volts into the output - 83 times the signal's own slew.
 static void testFilterCrossing() {
 	Vates m;
 	long fr = 0;
@@ -1010,7 +1010,7 @@ static void testPulseWidth() {
 }
 
 // ── the fx delay lands on the beat it claims ─────────────────────────────────
-// Three eighths of a note is a dotted quarter — a beat and a half — and it has
+// Three eighths of a note is a dotted quarter - a beat and a half - and it has
 // to stay there at every tempo. It was a dotted *sixteenth* at first: 3/8 of a
 // beat rather than of a note, four times too short.
 static void testFxDelayTime() {

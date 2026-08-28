@@ -1,4 +1,4 @@
-// scrupea.cpp — VCV Rack 2 module
+// scrupea.cpp - VCV Rack 2 module
 // scrupea (Latin: jagged, made of sharp stones -- Virgil's scrupea saxa; and
 // about as close as a real Latin word gets to the sound of Skrewell) takes
 // after Skrewell, the chaotic sound generator in the REAKTOR factory library,

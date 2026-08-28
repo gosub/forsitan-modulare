@@ -1,4 +1,4 @@
-// tabes.cpp — VCV Rack 2 module
+// tabes.cpp - VCV Rack 2 module
 // tabes (Latin: "wasting away, decay") is a disintegration looper. Record a
 // phrase; on every pass the tape ages: high frequencies dull, mild
 // saturation compresses, hiss creeps in, the level sags, and dropouts appear
@@ -80,7 +80,7 @@ struct Tabes : Module {
 
     // Polyphonic: the tape has a "width" of `channels` tracks, fixed when a
     // recording starts (from the AUDIO input's channel count). One shared
-    // transport drives them all — same wow, dropouts, seam and rec crossfade —
+    // transport drives them all - same wow, dropouts, seam and rec crossfade -
     // so a 2-channel poly cable records and plays back as a coherent stereo
     // tape. Per-channel buffers grow lazily to the widest recording so far and
     // never shrink (a mono patch stays at ~11 MB; 16 tracks would reach ~184).
@@ -235,7 +235,7 @@ struct Tabes : Module {
         // Walk the same trajectory the read side would have (as splice does):
         // headAge advancing under the hop wrap, both heads blended while they
         // cross. Overlap geometry and wow offset are frozen at their last
-        // values — fine over the ~10 ms fade.
+        // values - fine over the ~10 ms fade.
         if (loopLen > 0) {
             int n = std::min(xfBufLen, loopLen);
             float ovl = std::min(lastOvl, 0.5f * loopLen);
@@ -316,7 +316,7 @@ struct Tabes : Module {
             // splice blend in process). Walk the same trajectory the read side
             // will: headAge advancing under the hop wrap, both heads blended
             // while they cross. Overlap geometry and wow offset are frozen at
-            // their last values — fine over a 10 ms window.
+            // their last values - fine over a 10 ms window.
             int n = std::min(xfBufLen, loopLen);
             float ovl = std::min(lastOvl, 0.5f * loopLen);
             float hopLen = loopLen - ovl;
@@ -423,8 +423,8 @@ struct Tabes : Module {
         if (inputs[SEND_MIX_CV_INPUT].isConnected())
             sendMix += inputs[SEND_MIX_CV_INPUT].getVoltage() * 0.2f;
         sendMix = clamp(sendMix, 0.f, 1.f);
-        // the fx loop only folds in the return when it is a complete loop —
-        // both send patched out and return patched back — so a stray return
+        // the fx loop only folds in the return when it is a complete loop -
+        // both send patched out and return patched back - so a stray return
         // signal is never baked into the tape on its own
         bool fxActive = inputs[RETURN_INPUT].isConnected()
                      && outputs[SEND_OUTPUT].isConnected();

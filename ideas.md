@@ -1,4 +1,4 @@
-# forsitan modulare — module ideas
+# forsitan modulare - module ideas
 
 Brainstorm from 2026-07-10/11, sorted best to worst. Novelty was checked
 against the VCV Library at the time of writing; re-check before starting
@@ -6,7 +6,7 @@ anything.
 
 Entries leave this file when they ship, and the numbering closes up behind
 them: it is a rank, not a name. rete, ululo, tabes, lustro and bulla were
-all on this list and are all in v2.7.0 — see `CHANGELOG.md` for what
+all on this list and are all in v2.7.0 - see `CHANGELOG.md` for what
 actually got built.
 
 Entries also leave when they are built and *rejected*, which is not the same
@@ -14,7 +14,7 @@ thing: those are marked in place rather than deleted, and the verdict is in
 [doc/experiments.md](doc/experiments.md). Read it before reviving anything
 that carries one of those markers.
 
-## 1. campanae — change-ringing sequencer
+## 1. campanae - change-ringing sequencer
 
 Permutation sequencer from English change ringing (Plain Hunt, Plain Bob,
 Grandsire, Stedman). Pick bell count and method; rows emit pitch CV + gate
@@ -25,7 +25,7 @@ permutation path.
 - Pure combinatorics, cheap to build on existing sequencer plumbing.
 - Nothing in the library (Grayscale Permutation is unrelated random seq).
 
-## 2. tela — weaving-draft sequencer
+## 2. tela - weaving-draft sequencer
 
 Weaving drafts (threading sequence × treadling sequence through a tie-up
 matrix) as a gate sequencer: shafts are output channels, treadling is the
@@ -37,7 +37,7 @@ lace) become a preset library.
   library. Latin bonus: tela is both loom and web.
 - Would pair with campanae as a "pre-electronic pattern traditions" release.
 
-## 3. clepsydra — water-clock rhythm generator
+## 3. clepsydra - water-clock rhythm generator
 
 Cascade of vessels: each fills at its own CV-controllable rate, tips when
 full, fires a trigger, pours into the vessel below. Organic polyrhythms with
@@ -47,7 +47,7 @@ physical logic; per-vessel leak for patterns that never lock.
 - Ancient-timekeeping counterpart to solarium. Nothing vessel-based in the
   library; existing "organic clocks" are just jitter-on-a-grid.
 
-## 4. officina — Radiophonic Workshop swoosh box
+## 4. officina - Radiophonic Workshop swoosh box
 
 From Nathaniel Virgo's "Radiophoni" (https://sccode.org/1-S): frequency
 shifter inside a feedback loop, seeded by band-passed noise bursts. Endless
@@ -57,7 +57,7 @@ rising/falling BBC sci-fi effects.
 - Freq shifters exist in the library; the packaged feedback instrument
   does not. Tiny module, good companion to ululo/rete in a feedback release.
 
-## 5. necto — random cable patcher / patch mutator
+## 5. necto - random cable patcher / patch mutator
 
 Sibling to alea: adds or mutates cables instead of modules. limen already
 taught this codebase the engine API for modules, ports, and cables.
@@ -68,7 +68,7 @@ taught this codebase the engine API for modules, ports, and cables.
 - WhatTheRack spawns random modules (like alea); nothing in the library
   mutates wiring. alea + necto = generative-patch ecosystem story.
 
-## 6. hydraulis — Roman water organ voice
+## 6. hydraulis - Roman water organ voice
 
 Drone voice modeled on the hydraulis (oldest keyboard instrument): pipe
 ranks on a shared unstable wind supply, valve chuffs, pressure sag when many
@@ -77,7 +77,7 @@ notes sound at once.
 - The shared-wind coupling (more notes starve them all) is the musically
   interesting part. Sits next to draen; nothing similar in the library.
 
-## 7. tempestas — weather-system modulation source
+## 7. tempestas - weather-system modulation source
 
 Coupled simulation of pressure, temperature, wind, cloud cover as slow
 correlated CVs, plus event triggers (gust, rain starts, thunder).
@@ -87,7 +87,7 @@ correlated CVs, plus event triggers (gust, rain starts, thunder).
 - Library "Random" tag is all uncorrelated sources. Barometer-needle panel
   widget would be very forsitan.
 
-## 8. molecula — Molecular Music Box sequencer
+## 8. molecula - Molecular Music Box sequencer
 
 The Molecular Music Box algorithm (grirgz's SC take:
 https://sccode.org/1-4Wx): two note durations + a seed like "4E3"; notes
@@ -96,7 +96,7 @@ accumulate into loops of different lengths that phase Reich-style.
 - Module: two duration knobs, seed, scale, poly CV/gate out.
 - Simple rules, rich output, nothing in the library.
 
-## 9. solarium — sundial / real-time modulation
+## 9. solarium - sundial / real-time modulation
 
 CVs derived from wall clock and date: time of day, day length, sun elevation
 for a configurable latitude, season, moon phase. Patches sound different at
@@ -105,7 +105,7 @@ dawn than at midnight.
 - Very cheap to build; nothing in the library touches real-world time as a
   modulation source (as far as checked).
 
-## 10. brevitas — SC-tweet engine bank
+## 10. brevitas - SC-tweet engine bank
 
 The draen move again: a curated bank of famous 140-character SuperCollider
 pieces (SC Tweets collections: https://sccode.org/1-4RA,
@@ -115,7 +115,7 @@ https://sccode.org/1-5eN) as selectable engines with fading engine select.
 - Ranked down for the licensing burden: many tweets, many authors, sccode
   posts mostly unlicensed. Needs per-author permission or a strict subset.
 
-## 11. murmuratio — starling-flock modulation source
+## 11. murmuratio - starling-flock modulation source
 
 Boids as a polyphonic CV source: each poly channel is one bird (x/y or
 heading/speed), plus flock density and centroid outputs.
@@ -125,7 +125,7 @@ heading/speed), plus flock density and centroid outputs.
 - Sha#Bang! Photron uses boids but only to animate panel colors; the
   CV-source niche is open.
 
-## 12. tessera — Wang-tile pattern sequencer
+## 12. tessera - Wang-tile pattern sequencer
 
 Wang tiles (edge-matching turns random placement into coherent structure)
 mapped to pitch/gate/CV. Generative sequences that are neither looped nor
@@ -136,7 +136,7 @@ random, with audible local logic.
 - Most experimental of the batch; needs good sonification choices to not
   feel academic.
 
-## 13. tali — knucklebone dice
+## 13. tali - knucklebone dice
 
 Small companion to alea: random source with the historically documented
 unequal face probabilities of Roman knucklebones (~4/10 flat sides, ~1/10
@@ -146,7 +146,7 @@ different, Canis: all ones).
 - Weekend module. "Weighted random with 2000-year-old weights" is a good
   forsitan joke; alea iacta est demands it.
 
-## 14. epicyclus — Ptolemaic LFO
+## 14. epicyclus - Ptolemaic LFO
 
 Deferent plus epicycles: stacked rotating circles, each with rate, radius,
 direction; the traced point's x/y are two CV outs. Looping-but-complex
@@ -262,7 +262,7 @@ clickless endless stream, stack five layers per channel. Memory 100ms to 3s.
   hang a module on. Build it only if the layering *is* the design, not as a
   freeze module that also layers.
 
-### S3. cribrum — tonal / noise separation
+### S3. cribrum - tonal / noise separation
 
 Sinusoidal modelling (Serra and Smith, SMS): track stable spectral peaks,
 resynthesise them as the tonal part, subtract, the residual is the noise.
@@ -331,7 +331,7 @@ fixed fundamental is the whole "fundamental-aware" part.
   Slip** (resynthesising sampler) and DanT **Kapow**. Novel transform, crowded
   street. Weigh that against S5 already being the weakest musically of S1-S5.
 
-### S6. spectral blur — a reverb different in kind
+### S6. spectral blur - a reverb different in kind
 
 Give every bin its own decay time and let magnitudes smear forward in time:
 frequency-dependent infinite tails.

@@ -1,4 +1,4 @@
-// cartilago_probe — measurements that characterise the module, not a pass/fail
+// cartilago_probe - measurements that characterise the module, not a pass/fail
 // harness. Built by `make all`, not run by `make check`.
 //
 //   1. alias floor of each LFO shape, band-limited and not, and the sweep of

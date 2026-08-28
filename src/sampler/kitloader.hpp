@@ -255,7 +255,7 @@ inline bool naturalLess(const std::string& A, const std::string& B) {
 	return a.size() < b.size();
 }
 
-// the immediate subfolders of the kits folder — each one is a kit
+// the immediate subfolders of the kits folder - each one is a kit
 inline std::vector<std::string> listKits(const std::string& folder) {
 	std::vector<std::string> kits;
 	if (folder.empty() || !system::isDirectory(folder))

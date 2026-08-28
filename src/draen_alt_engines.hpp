@@ -1,9 +1,9 @@
 #pragma once
-// draen_alt_engines.hpp — the "hyf" bank: 37 original drone engines.
+// draen_alt_engines.hpp - the "hyf" bank: 37 original drone engines.
 //
 // dræn is Old English for "bee"; hyf is Old English for "hive". Where the
 // first bank ports the dronecaster SynthDefs faithfully, this bank is a set
-// of original instruments built directly on the same UGEN layer — deliberately
+// of original instruments built directly on the same UGEN layer - deliberately
 // covering ground the dronecaster set doesn't: binaural beating, Shepard
 // tones, phase distortion, wavefolding, formant/vocal drones, shimmer
 // feedback, and environmental textures. Same DroneEngine contract; selected
@@ -28,7 +28,7 @@ inline float octaveGain(float hz, const float (&g)[8]) {
     return g[i] + (g[i + 1] - g[i]) * t;
 }
 
-// ── beam — binaural beating: two pure sines a few Hz apart, plus a sub ───────
+// ── beam - binaural beating: two pure sines a few Hz apart, plus a sub ───────
 struct BeamEngine : DroneEngine {
     SinOsc oscL, oscR, sub; LFNoise2 deltaN;
     const char* name() const override { return "beam"; }
@@ -43,7 +43,7 @@ struct BeamEngine : DroneEngine {
     }
 };
 
-// ── wall — eleven detuned saws into a ladder filter: a monolithic wall ───────
+// ── wall - eleven detuned saws into a ladder filter: a monolithic wall ───────
 struct WallEngine : DroneEngine {
     static constexpr int N = 11;
     BlSaw saw[N]; float det[N] = {};
@@ -69,7 +69,7 @@ struct WallEngine : DroneEngine {
     }
 };
 
-// ── choir — vowel drone: a saw pair through five morphing formant bands ──────
+// ── choir - vowel drone: a saw pair through five morphing formant bands ──────
 struct ChoirEngine : DroneEngine {
     BlSaw saw1, saw2; SinOsc vib; LFNoise2 vowelN;
     Biquad form[2][3];
@@ -107,7 +107,7 @@ struct ChoirEngine : DroneEngine {
     }
 };
 
-// ── breath — whispered vowels: pink noise through the same formant space ─────
+// ── breath - whispered vowels: pink noise through the same formant space ─────
 struct BreathEngine : DroneEngine {
     PinkNoise pk[2]; LFNoise2 vowelN, swellN; Biquad form[2][3], hp[2];
     SinOsc tone;
@@ -140,7 +140,7 @@ struct BreathEngine : DroneEngine {
     }
 };
 
-// ── glass — stretched-partial additive: nine partials at hz·n^1.13 ───────────
+// ── glass - stretched-partial additive: nine partials at hz·n^1.13 ───────────
 struct GlassEngine : DroneEngine {
     static constexpr int N = 9;
     SinOsc part[N], am[N]; float amRate[N] = {}, pos[N] = {};
@@ -172,7 +172,7 @@ struct GlassEngine : DroneEngine {
     }
 };
 
-// ── gong — inharmonic resonator bank struck softly every few seconds ─────────
+// ── gong - inharmonic resonator bank struck softly every few seconds ─────────
 struct GongEngine : DroneEngine {
     static constexpr int N = 6;
     Ringz res[2][N]; WhiteNoise wn; Dust dHit; PercEnv strike; Dust dTickle;
@@ -203,7 +203,7 @@ struct GongEngine : DroneEngine {
     }
 };
 
-// ── swarm — sixteen band-passed saws gliding between harmonics: bees ─────────
+// ── swarm - sixteen band-passed saws gliding between harmonics: bees ─────────
 struct SwarmEngine : DroneEngine {
     static constexpr int N = 16;
     struct Voice {
@@ -242,7 +242,7 @@ struct SwarmEngine : DroneEngine {
     }
 };
 
-// ── organelle — drawbar organ with tremulant and a small chorus ──────────────
+// ── organelle - drawbar organ with tremulant and a small chorus ──────────────
 struct OrganelleEngine : DroneEngine {
     static constexpr int N = 6;
     SinOsc bar[N]; SinOsc trem; DelayC chorL, chorR; SinOsc chorLfo;
@@ -270,7 +270,7 @@ struct OrganelleEngine : DroneEngine {
     }
 };
 
-// ── fold — West Coast: a sine through a slowly deepening wavefolder ──────────
+// ── fold - West Coast: a sine through a slowly deepening wavefolder ──────────
 struct FoldEngine : DroneEngine {
     SinOsc osc, osc2; LFNoise2 depthN; SinOsc depthLfo; Biquad lp[2]; LeakDC dc[2];
     const char* name() const override { return "fold"; }
@@ -289,7 +289,7 @@ struct FoldEngine : DroneEngine {
     }
 };
 
-// ── phase — CZ-style phase distortion, knee swept slowly ─────────────────────
+// ── phase - CZ-style phase distortion, knee swept slowly ─────────────────────
 struct PhaseEngine : DroneEngine {
     float p1 = 0.f, p2 = 0.f; LFNoise2 kneeN; SinOsc kneeLfo; LeakDC dc[2];
     const char* name() const override { return "phase"; }
@@ -313,7 +313,7 @@ struct PhaseEngine : DroneEngine {
     }
 };
 
-// ── tide — ocean: swelling band-swept brown noise over a deep sub ────────────
+// ── tide - ocean: swelling band-swept brown noise over a deep sub ────────────
 struct TideEngine : DroneEngine {
     BrownNoise bn[2]; SVF band[2]; LFNoise2 gustN[2], swellN; SinOsc sub;
     const char* name() const override { return "tide"; }
@@ -339,7 +339,7 @@ struct TideEngine : DroneEngine {
     }
 };
 
-// ── ember — fire: crackle, flickering roar, sub rumble, occasional pops ──────
+// ── ember - fire: crackle, flickering roar, sub rumble, occasional pops ──────
 struct EmberEngine : DroneEngine {
     Crackle crk; BrownNoise bn; Biquad roarLp; LFNoise1 flick1, flick2;
     SinOsc sub; Dust2 dPop; Ringz pop; LeakDC dc[2];
@@ -363,7 +363,7 @@ struct EmberEngine : DroneEngine {
     }
 };
 
-// ── pipe — a hollow tube: negative-feedback comb sung by breath noise ────────
+// ── pipe - a hollow tube: negative-feedback comb sung by breath noise ────────
 struct PipeEngine : DroneEngine {
     BlPulse sq; WhiteNoise wn; Biquad breathBp; CombL combL_, combR_;
     LFNoise2 breathN;
@@ -385,7 +385,7 @@ struct PipeEngine : DroneEngine {
     }
 };
 
-// ── bowl — singing bowl: pure long resonances continuously stroked ───────────
+// ── bowl - singing bowl: pure long resonances continuously stroked ───────────
 struct BowlEngine : DroneEngine {
     static constexpr int N = 4;
     Ringz res[2][N]; PinkNoise pk[2]; Biquad strokeBp[2]; LFNoise2 strokeN;
@@ -416,7 +416,7 @@ struct BowlEngine : DroneEngine {
     }
 };
 
-// ── drift — a six-voice cluster forever re-tuning itself ─────────────────────
+// ── drift - a six-voice cluster forever re-tuning itself ─────────────────────
 struct DriftEngine : DroneEngine {
     static constexpr int N = 6;
     SinOsc osc[N]; Dust dStep[N]; Dbrown walk[N]; Lag glide[N];
@@ -450,7 +450,7 @@ struct DriftEngine : DroneEngine {
     }
 };
 
-// ── shepard — the ever-rising barberpole drone ────────────────────────────────
+// ── shepard - the ever-rising barberpole drone ────────────────────────────────
 struct ShepardEngine : DroneEngine {
     static constexpr int N = 8;
     SinOsc part[N];
@@ -478,7 +478,7 @@ struct ShepardEngine : DroneEngine {
     }
 };
 
-// ── rain — water: plucked droplets in a wet cave over a soft pad ─────────────
+// ── rain - water: plucked droplets in a wet cave over a soft pad ─────────────
 struct RainEngine : DroneEngine {
     static constexpr int N = 8;
     Pluck pl[N]; Dust2 dDrop; Rng rng; int next = 0;
@@ -523,7 +523,7 @@ struct RainEngine : DroneEngine {
     }
 };
 
-// ── wire — a bowed string: Karplus loop continuously excited by "bow" noise ──
+// ── wire - a bowed string: Karplus loop continuously excited by "bow" noise ──
 struct WireEngine : DroneEngine {
     DelayLine loop[2]; float lp[2] = {}; WhiteNoise wn; Biquad bowLp;
     LFNoise2 pressureN; Dust dFlip; Lag flipLag; float mult = 1.f;
@@ -560,7 +560,7 @@ struct WireEngine : DroneEngine {
     }
 };
 
-// ── pulsework — meshing tick trains through tuned combs ──────────────────────
+// ── pulsework - meshing tick trains through tuned combs ──────────────────────
 struct PulseworkEngine : DroneEngine {
     Impulse tick[3]; PercEnv env[3]; WhiteNoise wn;
     CombC comb[3]; float pos[3] = {-0.7f, 0.f, 0.7f};
@@ -597,7 +597,7 @@ struct PulseworkEngine : DroneEngine {
     }
 };
 
-// ── cavern — sparse harmonic blips lost in a vast reverb over a sub ──────────
+// ── cavern - sparse harmonic blips lost in a vast reverb over a sub ──────────
 struct CavernEngine : DroneEngine {
     SinOsc blip, sub; PercEnv benv; Dust dBlip; Rng rng;
     float blipHz = 220.f; bool first = true;
@@ -625,7 +625,7 @@ struct CavernEngine : DroneEngine {
     }
 };
 
-// ── corona — odd harmonics through a breathing wavefolder, bright halo ───────
+// ── corona - odd harmonics through a breathing wavefolder, bright halo ───────
 struct CoronaEngine : DroneEngine {
     static constexpr int N = 8;
     SinOsc part[N], shim[N]; float shimRate[N] = {};
@@ -657,7 +657,7 @@ struct CoronaEngine : DroneEngine {
     }
 };
 
-// ── loam — dark triangle pad through a slow four-stage phaser ────────────────
+// ── loam - dark triangle pad through a slow four-stage phaser ────────────────
 struct LoamEngine : DroneEngine {
     LFTri tri[3]; BAllPass ap[2][4]; SinOsc phLfo; Biquad lp[2];
     const char* name() const override { return "loam"; }
@@ -687,7 +687,7 @@ struct LoamEngine : DroneEngine {
     }
 };
 
-// ── lattice — golden-ratio sine pairs diode-ring-modulated, slowly rotating ──
+// ── lattice - golden-ratio sine pairs diode-ring-modulated, slowly rotating ──
 struct LatticeEngine : DroneEngine {
     SinOsc a[3], b[3]; SinOsc rot; LeakDC dc[2];
     const char* name() const override { return "lattice"; }
@@ -711,7 +711,7 @@ struct LatticeEngine : DroneEngine {
     }
 };
 
-// ── aster — sustained two-operator FM with a wandering index ─────────────────
+// ── aster - sustained two-operator FM with a wandering index ─────────────────
 struct AsterEngine : DroneEngine {
     SinOsc car1, mod1, car2, mod2; LFNoise2 idxN; Lag idxLag; SinOsc idxLfo; LeakDC dc;
     const char* name() const override { return "aster"; }
@@ -726,7 +726,7 @@ struct AsterEngine : DroneEngine {
         float idx = idxLag.process(2.f * (idxN.process(0.05f, st) * 0.5f + 0.5f), 1.f, st)
                   + 0.6f + 0.4f * idxLfo.process(0.13f, st);
         float m1 = mod1.process(hz * 1.001f, st) * idx;
-        // mod sits at hz·1.001, so PM drops a sideband at 0.001·hz — near-DC
+        // mod sits at hz·1.001, so PM drops a sideband at 0.001·hz - near-DC
         // at drone pitches; block it at the carrier
         float v1 = dc.process(car1.process(hz, st, m1));
         float m2 = mod2.process(hz * 3.f, st) * idx * 0.5f;
@@ -736,7 +736,7 @@ struct AsterEngine : DroneEngine {
     }
 };
 
-// ── veldt — insects at dusk: sparse high chirps over a warm low drone ────────
+// ── veldt - insects at dusk: sparse high chirps over a warm low drone ────────
 struct VeldtEngine : DroneEngine {
     static constexpr int N = 5;
     struct Chirp {
@@ -780,7 +780,7 @@ struct VeldtEngine : DroneEngine {
     }
 };
 
-// ── mirror — tuned comb-space: noise sustained inside two long combs ─────────
+// ── mirror - tuned comb-space: noise sustained inside two long combs ─────────
 struct MirrorEngine : DroneEngine {
     CombC c1, c2; WhiteNoise wn; PinkNoise pk; Biquad exLp; LeakDC dc[2];
     const char* name() const override { return "mirror"; }
@@ -805,7 +805,7 @@ struct MirrorEngine : DroneEngine {
     }
 };
 
-// ── halo — regenerative octave-up shimmer around a quiet sine ────────────────
+// ── halo - regenerative octave-up shimmer around a quiet sine ────────────────
 struct HaloEngine : DroneEngine {
     SinOsc seedOsc; PitchShift shift; SchroederReverb rev;
     float fbL = 0.f, fbR = 0.f;
@@ -829,7 +829,7 @@ struct HaloEngine : DroneEngine {
     }
 };
 
-// ── turbine — machine-room hum: sub square and a sweeping high whine ─────────
+// ── turbine - machine-room hum: sub square and a sweeping high whine ─────────
 struct TurbineEngine : DroneEngine {
     BlPulse sq; SinOsc whine, whineLfo; Biquad peak[2]; BrownNoise bn; Biquad rumbleLp;
     LeakDC dc;
@@ -852,7 +852,7 @@ struct TurbineEngine : DroneEngine {
     }
 };
 
-// ── frost — high crystalline partial strikes over a near-silent root ─────────
+// ── frost - high crystalline partial strikes over a near-silent root ─────────
 struct FrostEngine : DroneEngine {
     static constexpr int N = 6;
     struct Ice { Dust d; SinOsc osc; PercEnv env; Rng rng; float f = 2000.f, pos = 0.f; };
@@ -900,7 +900,7 @@ struct FrostEngine : DroneEngine {
     }
 };
 
-// ── root — sub-octave breathing meditation drone ─────────────────────────────
+// ── root - sub-octave breathing meditation drone ─────────────────────────────
 struct RootEngine : DroneEngine {
     SinOsc s1, s2, fifth; SinOsc breathLfo; LeakDC dc;
     const char* name() const override { return "root"; }
@@ -920,7 +920,7 @@ struct RootEngine : DroneEngine {
     }
 };
 
-// ── sputter — granular haze: dust-triggered filtered saw grains ──────────────
+// ── sputter - granular haze: dust-triggered filtered saw grains ──────────────
 struct SputterEngine : DroneEngine {
     static constexpr int N = 12;
     struct Grain { bool on = false; float t = 0.f, dur = 0.05f, ph = 0.f, f = 220.f, pos = 0.f; };
@@ -962,7 +962,7 @@ struct SputterEngine : DroneEngine {
     }
 };
 
-// ── anthem — swelling brass ensemble: saws into a self-opening ladder ────────
+// ── anthem - swelling brass ensemble: saws into a self-opening ladder ────────
 struct AnthemEngine : DroneEngine {
     BlSaw saw[4]; MoogFF lad[2]; SinOsc swellLfo; DelayC chor[2]; SinOsc chorLfo;
     const char* name() const override { return "anthem"; }
@@ -989,7 +989,7 @@ struct AnthemEngine : DroneEngine {
     }
 };
 
-// ── naiad — water-modulated FM burble ────────────────────────────────────────
+// ── naiad - water-modulated FM burble ────────────────────────────────────────
 struct NaiadEngine : DroneEngine {
     SinOsc car[2], mod[2]; WhiteNoise wn; CombL burble; Lag idxLag; Biquad exLp;
     const char* name() const override { return "naiad"; }
@@ -1014,7 +1014,7 @@ struct NaiadEngine : DroneEngine {
     }
 };
 
-// ── eclipse — dark vowel of brown noise over a deep sub ──────────────────────
+// ── eclipse - dark vowel of brown noise over a deep sub ──────────────────────
 struct EclipseEngine : DroneEngine {
     BrownNoise bn[2]; Biquad form[2][3], lp[2]; LFNoise2 morphN; SinOsc sub;
     const char* name() const override { return "eclipse"; }
@@ -1046,7 +1046,7 @@ struct EclipseEngine : DroneEngine {
     }
 };
 
-// ── quill — slow harp: long-sustain plucks arpeggiating a harmonic set ───────
+// ── quill - slow harp: long-sustain plucks arpeggiating a harmonic set ───────
 struct QuillEngine : DroneEngine {
     static constexpr int N = 4;
     Pluck pl[N]; int next = 0, step = 0;
@@ -1091,7 +1091,7 @@ struct QuillEngine : DroneEngine {
     }
 };
 
-// ── saros — an endless cadence: four gliding sines cycling a chord table ─────
+// ── saros - an endless cadence: four gliding sines cycling a chord table ─────
 struct SarosEngine : DroneEngine {
     static constexpr int NV = 4, NCH = 8;
     SinOsc osc[NV], det[NV]; Lag glide[NV];
@@ -1127,7 +1127,7 @@ struct SarosEngine : DroneEngine {
     }
 };
 
-// ── hive — the queen: feedback-sine swarm combed at the fundamental ──────────
+// ── hive - the queen: feedback-sine swarm combed at the fundamental ──────────
 struct HiveEngine : DroneEngine {
     static constexpr int N = 12;
     SinOscFB osc[N]; LFNoise2 fbN[N]; float harm[N] = {}, det[N] = {}, pos[N] = {};

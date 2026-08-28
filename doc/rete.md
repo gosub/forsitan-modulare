@@ -2,7 +2,7 @@
 
 ![rete](../img/rete.png)
 
-**Feedback integrator network — a self-oscillating chaotic instrument.**
+**Feedback integrator network - a self-oscillating chaotic instrument.**
 
 *rete* is Latin for "net". The module is an implementation of the *feedback
 integrator network* topology described by Nathan Ho in
@@ -31,10 +31,10 @@ equilibrium.
 | **leak** | integrator leak. Left: leaky/thin, fast decay. Right: nearly pure integration, heavy sustained lows |
 | **scale** | matrix drive, 1×–1000× (exponential). The single most powerful knob: it pushes the loop from silence through tones into saturated chaos |
 | **in lvl** | level of the **in** jack into the network |
-| **in** | external audio/CV excitation, injected into all nodes (alternating sign). Try an impulse train or a drum loop — see the tips |
+| **in** | external audio/CV excitation, injected into all nodes (alternating sign). Try an impulse train or a drum loop - see the tips |
 | **rnd** button / **trig** | re-roll the mixing matrix (new random seed). This is "next patch, please": every seed is a different instrument |
 | **L / R** | the eight nodes spread across the stereo field, equal-power |
-| **poly** | all eight node outputs as an 8-channel polyphonic signal (±5V per node) — feed it to pavo, a poly VCA, a poly filter... |
+| **poly** | all eight node outputs as an 8-channel polyphonic signal (±5V per node) - feed it to pavo, a poly VCA, a poly filter... |
 
 The matrix seed is saved with the patch, so a patch always reopens sounding
 the way it was saved.
@@ -50,7 +50,7 @@ the way it was saved.
   into the output while the network's own oscillation keeps running
   underneath, so the two work against each other instead of one replacing
   the other. The clippers bound the loop, so driving harder does not make
-  it louder — it changes what is in there. Modulate the **G** inputs at the
+  it louder - it changes what is in there. Modulate the **G** inputs at the
   same time for the whole patch.
 - A seed that barely speaks is not a dead seed: a driven pulse train wakes
   it up where **scale** alone only makes it harsh. Try that before pressing

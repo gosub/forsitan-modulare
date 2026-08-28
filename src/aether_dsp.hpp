@@ -1,4 +1,4 @@
-// aether_dsp.hpp — the broken transmission line, free of Rack headers so
+// aether_dsp.hpp - the broken transmission line, free of Rack headers so
 // test/aether_probe can measure it directly.
 //
 // The circuit, as its manual describes it: audio goes into a *synchronous*
@@ -6,8 +6,8 @@
 // frequency pulse train, and is recovered by a phase-locked loop whose own
 // oscillator is the same kind of converter, clocked by the DEMODULATOR. Both
 // clocks are voltage controlled and neither tracks 1V/oct. Everything the
-// module does — aliasing, bitcrush-like breakup, FM, dropouts, the standalone
-// oscillator with nothing patched — falls out of those two clocks disagreeing.
+// module does - aliasing, bitcrush-like breakup, FM, dropouts, the standalone
+// oscillator with nothing patched - falls out of those two clocks disagreeing.
 //
 // Two things follow from that architecture and they are the whole model:
 //
@@ -21,7 +21,7 @@
 //
 //   * The receiver locks its own converter to the incoming pulse rate, so at
 //     lock d_rx * f_demod = d_tx * f_carrier, and the loop's control voltage
-//     — which is the audio output — comes out as
+//     - which is the audio output - comes out as
 //
 //         v_out = R * (1 + v_in) - 1,     R = f_carrier / f_demod
 //
@@ -49,7 +49,7 @@
 //
 // Timing is event driven: clock ticks are scheduled in continuous time and
 // the loop filter is integrated between them, so a clock is free to run far
-// above the sample rate — the aliasing the module is made of comes from the
+// above the sample rate - the aliasing the module is made of comes from the
 // modelled carrier, not from the host's sample grid. Everything else runs on
 // the (oversampled) audio grid.
 //

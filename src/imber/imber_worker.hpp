@@ -1,4 +1,4 @@
-// imber_worker.hpp — starting a background render from the audio thread.
+// imber_worker.hpp - starting a background render from the audio thread.
 //
 // imber and sylla both kick a detached worker off inside process(), which
 // on Linux runs on the audio callback thread. That thread is SCHED_FIFO

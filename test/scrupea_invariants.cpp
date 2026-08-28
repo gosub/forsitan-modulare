@@ -1,4 +1,4 @@
-// scrupea_invariants — property-based checks for the chaotic bank.
+// scrupea_invariants - property-based checks for the chaotic bank.
 //
 // smoke_scrupea checks a handful of fixed points; scrupea_probe measures
 // character. This harness checks properties that must hold *everywhere*, by

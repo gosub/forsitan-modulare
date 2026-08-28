@@ -1,4 +1,4 @@
-// viginti_probe — measurement harness for the KORG35 Rev. 2 filter.
+// viginti_probe - measurement harness for the KORG35 Rev. 2 filter.
 //
 // Not a set of checks (viginti_invariants carries those): this is where the
 // numbers come from. It measures the Lambert-W solver, the limits of the

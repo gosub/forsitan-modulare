@@ -1,4 +1,4 @@
-// smoke_vestigia — offline sanity checks for the vestigia module.
+// smoke_vestigia - offline sanity checks for the vestigia module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

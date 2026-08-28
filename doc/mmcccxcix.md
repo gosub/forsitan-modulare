@@ -28,21 +28,21 @@ Each parameter has a dedicated CV input. The signal is added to the knob positio
 
 ## Feedback send / return loop
 
-The **send** output carries the internal feedback signal — the wet delay after the feedback high-pass — at Eurorack level (±10V). Patch it through any processor — filter, distortion, wavefolder — and return the result to the **return** input.
+The **send** output carries the internal feedback signal - the wet delay after the feedback high-pass - at Eurorack level (±10V). Patch it through any processor - filter, distortion, wavefolder - and return the result to the **return** input.
 
 - When the **return** jack is unpatched, the loop is bypassed and internal feedback is used regardless of the **fb mix** knob.
 - When the **return** jack is patched, the green LED lights up and **fb mix** blends between internal feedback (0%) and the return signal (100%).
 
 ## Audio path
 
-- **in** — audio input (±10V)
-- **out** — processed output. A soft compressor on the wet signal limits self-oscillation amplitude.
+- **in** - audio input (±10V)
+- **out** - processed output. A soft compressor on the wet signal limits self-oscillation amplitude.
 
 The dry signal is taken directly from the input and mixed with the processed wet signal according to the **wet** knob.
 
 ## Context menu
 
-- **Delta-sigma oversampling** (1× / 2× / 4× / 8× / 16×, default 8×) — how
+- **Delta-sigma oversampling** (1× / 2× / 4× / 8× / 16×, default 8×) - how
   many bits the emulation simulates per RAM clock. CPU cost scales linearly
   with the factor and inversely with the delay time. 8× and 16× sound
   essentially identical; lower settings are cheaper and progressively closer

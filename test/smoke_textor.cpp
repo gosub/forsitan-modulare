@@ -1,4 +1,4 @@
-// smoke_textor — offline sanity checks for the textor module.
+// smoke_textor - offline sanity checks for the textor module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

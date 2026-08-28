@@ -1,4 +1,4 @@
-// perge.cpp — VCV Rack 2 module
+// perge.cpp - VCV Rack 2 module
 // perge (Latin imperative: "carry on!, keep going!") is a stereo dynamic
 // sampler and multi-effect modeled on the AC noises / BunkerNoise CONTINUA
 // pedal (whose name is the Italian for the same exhortation), reimplemented

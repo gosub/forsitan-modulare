@@ -1,4 +1,4 @@
-// tundo.cpp — VCV Rack 2 module
+// tundo.cpp - VCV Rack 2 module
 // tundo (Latin: "I beat, I pound", from tundere, to strike repeatedly) is a
 // parameterized digital drum voice built after the Noise Engineering
 // Basimilus Iteritas Alter: six tonal oscillators plus noise, stacked into a

@@ -1,4 +1,4 @@
-// smoke_materiae — offline sanity checks for the materiae module.
+// smoke_materiae - offline sanity checks for the materiae module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 //
 // Deeper measurement of the engine lives in materiae_probe, which needs no

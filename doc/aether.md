@@ -25,7 +25,7 @@ The signal is transmitted and then received:
 
 - **Transmit.** A *synchronous charge-balance V/F converter* turns the input
   into a stream of pulses. Its clock is the **carrier**, and its pulse rate
-  is `(1 + v_in)/4 × f_carrier` — a first-order delta-sigma modulator whose
+  is `(1 + v_in)/4 × f_carrier` - a first-order delta-sigma modulator whose
   sample rate is a knob. Turning **carrier** down is turning the sample rate
   down, with everything that implies.
 - **Receive.** A phase-locked loop chases that pulse rate with a converter of
@@ -40,12 +40,12 @@ v_out = R × (1 + v_in) − 1,        R = f_carrier / f_demod
 ```
 
 - **R = 1** (clocks matched): the signal comes back. This is the manual's own
-  claim, and it holds — see [how clean it gets](#how-clean-it-gets).
+  claim, and it holds - see [how clean it gets](#how-clean-it-gets).
 - **R < 1** (demodulator faster): the signal comes back quieter and offset
   downwards. The offset is removed by the output coupling; the loss of level
   is not.
 - **R > 1** (demodulator slower): the loop is asked for a control voltage past
-  its rails. It cannot lock, and the output collapses — the manual's "if this
+  its rails. It cannot lock, and the output collapses - the manual's "if this
   is set too low no output will be produced". At 16:1 apart, what leaks
   through is about a fifth of what a locked loop hands back, and it is not
   the signal any more.
@@ -58,7 +58,7 @@ standalone oscillator when nothing is patched at all.
 
 | control | function |
 |---------|----------|
-| **level** | attenuator on **in**. With nothing patched it attenuates a +5 V DC bias instead, which is what makes the module an oscillator — see [nothing patched](#nothing-patched) |
+| **level** | attenuator on **in**. With nothing patched it attenuates a +5 V DC bias instead, which is what makes the module an oscillator - see [nothing patched](#nothing-patched) |
 | **carrier** | the transmitter's clock, 20 Hz – 328 kHz, fourteen octaves. Noon is 2.5 kHz |
 | **demod** | the receiver's clock, same range |
 | **error** | comparator threshold for the **error** output, ±5 V |
@@ -68,12 +68,12 @@ standalone oscillator when nothing is patched at all.
 |---------|----------|
 | **cv** (left) | attenuator for the carrier's CV input |
 | **cv** (right) | attenuator for the demodulator's CV input |
-| **mix** (left) | dry/wet for **out**, wet by default — see [the two mixes](#the-two-mixes) |
+| **mix** (left) | dry/wet for **out**, wet by default - see [the two mixes](#the-two-mixes) |
 | **mix** (right) | dry/wet for **error**, the same |
 
 | switch | function |
 |--------|----------|
-| **type** | which phase comparator the loop runs on — see [the three loops](#the-three-loops) |
+| **type** | which phase comparator the loop runs on - see [the three loops](#the-three-loops) |
 
 | jack | |
 |------|--|
@@ -93,14 +93,14 @@ the oscillator.
 ## The three loops
 
 **type** selects the phase comparator, and the three behave the way the three
-classic CD4046 comparators do — which is how the review describes the
+classic CD4046 comparators do - which is how the review describes the
 hardware's three positions.
 
 | type | comparator | character |
 |------|-----------|-----------|
 | **1** | exclusive-or | always outputs something, locked or not. Locks to harmonics, so it re-modulates as readily as it demodulates. Needs a loop wide enough to capture: with **tone** low it will not pull in at all, and the output goes quiet |
 | **2** | phase-frequency detector | the reliable one. Locks over the widest range and tracks the input best; when it loses lock it rails, which is silence rather than noise |
-| **3** | set-reset latch | between the two. Locks, slips, and false-locks at simple ratios — 2/3 of the input turns up often enough to be a feature |
+| **3** | set-reset latch | between the two. Locks, slips, and false-locks at simple ratios - 2/3 of the input turns up often enough to be a feature |
 
 Measured with the clocks matched and a DC input, type 2 returns the input to
 four decimal places over most of the range and compresses over the top tenth
@@ -110,8 +110,8 @@ where they do not, which is the point of having them.
 ## Nothing patched
 
 With **in** empty the jack supplies a +5 V bias, so the transmitter emits a
-steady pulse rate — an oscillator whose pitch is set by **carrier** and
-**level** together — and the receiver chases it. If the receiver can lock,
+steady pulse rate - an oscillator whose pitch is set by **carrier** and
+**level** together - and the receiver chases it. If the receiver can lock,
 the output is a DC the coupling removes: silence. If it cannot, the loop
 beats against the transmitter and that beat *is* the output. This is the
 broken-radio mode, and types 1 and 3 are the ones to use for it.
@@ -146,7 +146,7 @@ filter are the same pole:
 | noon | ~700 Hz |
 | 1 | ~3 kHz |
 
-Low **tone** is a narrow loop: dark, slow to track, and — on type 1 — unable
+Low **tone** is a narrow loop: dark, slow to track, and - on type 1 - unable
 to capture at all. High **tone** is a wide loop: brighter, better tracking,
 and it passes more of the loop's own ripple.
 
@@ -162,14 +162,14 @@ sweeps dry to wet at a trimmer left wherever it already was, and the two
 behaviours agree with the trimmer fully clockwise. Negative volts do not push
 past dry.
 
-They are trimmers rather than knobs because the whole mix is one row —
-**cv**, trimmer, **out**, **error**, trimmer, **cv** — and six full-sized
+They are trimmers rather than knobs because the whole mix is one row -
+**cv**, trimmer, **out**, **error**, trimmer, **cv** - and six full-sized
 controls do not fit across 14 HP: a knob apiece leaves a fifth of a
 millimetre at each panel edge. Each trimmer and its jack share one **mix**
 label between them, as the clock **cv** clusters above do.
 
-Both default to fully wet, and with nothing in **in** the dry side is silence
-— the broken radio only speaks at the wet end of the knob.
+Both default to fully wet, and with nothing in **in** the dry side is silence.
+The broken radio only speaks at the wet end of the knob.
 
 ## The error output
 
@@ -186,7 +186,7 @@ wet/dry control made of square waves. It is the output to take for drums.
 - **Modem melodies.** A melodic sequence into **in**, the same pitch CV into
   the carrier's **cv**, something slower into the demodulator's **cv**.
 - **Glitch distortion.** Audio in, listen to **error**, both clocks low, and
-  use the **error** knob as the wet/dry — or the **mix** trimmer beside that
+  use the **error** knob as the wet/dry - or the **mix** trimmer beside that
   output, which is one against the dry signal itself.
 - **Playing the clock.** A 1 V/oct oscillator into the carrier's **clk** with
   nothing in **in**: you are now playing the transmitter's clock rate, and
@@ -207,7 +207,7 @@ is only the filtering of the outputs, which is why 4× is the default and 1×
 is usable.
 
 Cost is around 1.2 % of a core at 4×, rising to 1.4 % with both clocks at the
-top of their range — the engine does work per clock tick, so a 328 kHz
+top of their range - the engine does work per clock tick, so a 328 kHz
 carrier costs more than a 328 Hz one.
 
 ## Fidelity
@@ -241,12 +241,12 @@ What is inference, and should be treated as such:
   sound.
 
 What is added, and is not on the hardware at all: the two **mix** trimmers and
-their CV inputs. The hardware has no dry/wet — a rack patches one — but in
+their CV inputs. The hardware has no dry/wet - a rack patches one - but in
 Rack the module is as likely to sit in an effect send as in a voice, and a
 crossfade there costs a knob rather than a mixer channel. Fully clockwise,
 where they start, they are not in the signal path.
 
-What is not modelled: nothing in the analogue path outside the two blocks —
+What is not modelled: nothing in the analogue path outside the two blocks -
 no converter nonlinearity beyond its saturation, no supply sag, no
 temperature drift, and no component tolerance between the two halves. The
 integrator windup, the pulse-rate ceiling at half the clock and the loop's
@@ -259,16 +259,16 @@ sample rates, and CPU. `test/smoke_aether` covers the module around it.
 
 ## Sources
 
-- Schlappi Engineering, *Interstellar Radio* manual (2018) — the architecture
+- Schlappi Engineering, *Interstellar Radio* manual (2018) - the architecture
   and the control descriptions
   <https://analoguehaven.com/schlappi-engineering/interstellar-radio/manual.pdf>
-- *Sound On Sound*, review of the Interstellar Radio — the three loop types
+- *Sound On Sound*, review of the Interstellar Radio - the three loop types
   and what each sounds like
   <https://www.soundonsound.com/reviews/schlappi-engineering-interstellar-radio>
 - Analog Devices, **AD652** *Monolithic Synchronous Voltage-to-Frequency
-  Converter* data sheet — the charge-balance transfer law
+  Converter* data sheet - the charge-balance transfer law
   (`f_out = V_in/V_fs × f_clock/2`, bipolar zero at `f_clock/4`) and the
   phase-locked-loop F/V application
   <https://www.analog.com/en/products/ad652.html>
-- Texas Instruments, **CD4046B** data sheet — the three phase comparators and
+- Texas Instruments, **CD4046B** data sheet - the three phase comparators and
   their lock behaviour

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-gen_title_paths.py — Generate NanoVG-compatible SVG <path> elements from a TTF font.
+gen_title_paths.py - Generate NanoVG-compatible SVG <path> elements from a TTF font.
 
 NanoVG limitation: compound paths (outer + inner contours) rendered with even-odd
 fail when inner contours extend outside the outer path.
@@ -9,7 +9,7 @@ Fix pipeline per glyph:
   1. Draw with Qu2CuPen  → convert TrueType quadratic curves to cubic
   2. BooleanOperationManager.union  → clips inner contours strictly inside outer
   3. TransformPen(scale, 0, 0, -scale, x, baseline)  → SVG mm coordinates
-  4. Emit <path fill-rule="evenodd"> — clean holes, no artifacts
+  4. Emit <path fill-rule="evenodd"> - clean holes, no artifacts
 
 Usage
 -----

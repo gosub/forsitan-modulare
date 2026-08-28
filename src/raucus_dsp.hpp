@@ -1,4 +1,4 @@
-// raucus_dsp.hpp — the four-stage transistor fuzz, free of Rack headers so
+// raucus_dsp.hpp - the four-stage transistor fuzz, free of Rack headers so
 // test/raucus_probe can measure it directly.
 //
 // Circuit values follow ElectroSmash's analysis of the USA V3 Big Muff Pi
@@ -188,7 +188,7 @@ inline const DiodeTable* diodeTables() {
 
 // ── the passive tone stack ──────────────────────────────────────────────────
 // Two shunt-terminated branches mixed by the pot, solved as one biquad rather
-// than approximated by two independent first-order filters — which is what
+// than approximated by two independent first-order filters - which is what
 // makes the notch land in the right place, move with the knob, and take the
 // right amount of level with it. H(s) comes from nodal analysis of
 //

@@ -2,7 +2,7 @@
 
 ![pellicula](../img/pellicula.png)
 
-*pellicula* is an **8-voice drum sampler** — the two-drum Erica Synths Pico
+*pellicula* is an **8-voice drum sampler** - the two-drum Erica Synths Pico
 DRUM sample-player "exploded" into eight independent voices, with a knob **and**
 a CV input for every parameter of every voice, laid out as one big control
 matrix.
@@ -13,7 +13,7 @@ manual: each voice is a one-shot sample player with **sample-select, pitch,
 decay and level**, played back with the hardware's **12-bit / 44.1 kHz**
 character. No code from the hardware or any port was used.
 
-The Latin *pellicula* is the diminutive of *pellis* (skin, hide) — a "little
+The Latin *pellicula* is the diminutive of *pellis* (skin, hide) - a "little
 skin", the drumhead, and a nod to *pico* (small).
 
 ## The matrix
@@ -38,7 +38,7 @@ Each input row has a **poly jack** and eight **mono jacks**. The rule is simple:
 
 - A **poly cable** drives the voices by channel: channel 1 → voice 1, channel 2
   → voice 2, and so on.
-- A **mono jack** *overrides* its voice — patch voice 3's pitch jack and voice 3
+- A **mono jack** *overrides* its voice - patch voice 3's pitch jack and voice 3
   ignores the poly cable's channel 3 for pitch.
 - With nothing patched, the voice follows its own knob.
 
@@ -49,7 +49,7 @@ sequencer, then override individual voices with dedicated CV where you want it.
 
 | control | description |
 |---------|-------------|
-| **trig button** | Momentary manual trigger — fires the voice from the panel. |
+| **trig button** | Momentary manual trigger - fires the voice from the panel. |
 | **sample** | Selects the sample, 1–64 (snapped). The **sample CV** is 1V/oct, quantized to semitones, added to the knob (0 V = the knob's sample). Latched at trigger. |
 | **pitch** | Playback speed, ±2 octaves. The **pitch CV** is 1V/oct, summed with the knob. Live (changing it bends a playing voice). |
 | **decay** | Amplitude decay envelope, ~5 ms to full sample length. At maximum the whole sample plays untouched; lower it to shorten the tail. Latched at trigger. |
@@ -59,32 +59,32 @@ Triggering a voice restarts it from the beginning as a one-shot.
 
 ## Inputs & outputs
 
-- **trig / sample / pitch / decay / level** — poly jack + 8 mono jacks per row
+- **trig / sample / pitch / decay / level** - poly jack + 8 mono jacks per row
   (see poly normalling above).
-- **voice outs (1–8)** — the individual voice signals (±5 V).
-- **poly out** — all eight voices on one 8-channel polyphonic cable.
-- **mix** (left of the output row) — the summed output of all voices, clamped to
+- **voice outs (1–8)** - the individual voice signals (±5 V).
+- **poly out** - all eight voices on one 8-channel polyphonic cable.
+- **mix** (left of the output row) - the summed output of all voices, clamped to
   ±10 V. Lower the voice levels or take the individual/poly outs if you need more
   headroom.
 
 ## Right-click menu
 
-- **Kits folder** — see *Kits* below. Set / change / clear the global folder your
+- **Kits folder** - see *Kits* below. Set / change / clear the global folder your
   kits live in.
-- **Kit** — pick which kit this module plays (submenu lists the folder's kits).
-- **Shift all samples ±8** — advances (or rewinds) every voice's *sample* selection
+- **Kit** - pick which kit this module plays (submenu lists the folder's kits).
+- **Shift all samples ±8** - advances (or rewinds) every voice's *sample* selection
   by 8, wrapping at 64. Starting from the default 1–8, each click steps the whole
   module to the next contiguous bank of 8 samples, so you can audition a 64-sample
   kit eight sounds at a time without touching each knob.
-- **12-bit playback grit** — requantizes playback to 12 bits for the authentic
+- **12-bit playback grit** - requantizes playback to 12 bits for the authentic
   Pico DRUM character. On by default; turn off for clean full-resolution playback.
-- **Choke groups** — assign each voice to one of 8 groups (or none). Voices in
+- **Choke groups** - assign each voice to one of 8 groups (or none). Voices in
   the same group cut each other off when triggered, the way the hardware's
-  EXCLUSIVE mode chokes its two drums — useful for open/closed hi-hats.
+  EXCLUSIVE mode chokes its two drums - useful for open/closed hi-hats.
 
 ## Kits
 
-**pellicula ships with no samples** — you bring your own. Point it at a **kits
+**pellicula ships with no samples** - you bring your own. Point it at a **kits
 folder** and every immediate subfolder becomes a selectable **kit**:
 
 ```

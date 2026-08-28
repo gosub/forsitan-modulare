@@ -1,4 +1,4 @@
-// raucus_invariants — property-based checks for the Big Muff Pi model.
+// raucus_invariants - property-based checks for the Big Muff Pi model.
 //
 // smoke_raucus checks fixed points; raucus_probe measures the tone stack
 // and the clipper. This harness checks properties that must hold *everywhere*,

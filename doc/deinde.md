@@ -4,12 +4,12 @@
 
 *deinde* is a quad cascading addressable attack-hold envelope.
 
-- **quad** — outputs four envelopes
-- **cascading** — the four envelopes open one after the other
-- **addressable** — the envelopes can be scanned with the *cascade* knob and CV
-- **attack-hold** — each envelope has a linear attack ramp, then stays fully open
+- **quad** - outputs four envelopes
+- **cascading** - the four envelopes open one after the other
+- **addressable** - the envelopes can be scanned with the *cascade* knob and CV
+- **attack-hold** - each envelope has a linear attack ramp, then stays fully open
 
-Inspired by [Doepfer A-144](http://www.doepfer.de/a144.htm), with one key difference: the A-144 uses attack-decay envelopes, while *deinde* uses attack-hold. This makes it well suited to controlling send effects in sequence — for example: volume ramp, then saturation, then distortion, then fuzz.
+Inspired by [Doepfer A-144](http://www.doepfer.de/a144.htm), with one key difference: the A-144 uses attack-decay envelopes, while *deinde* uses attack-hold. This makes it well suited to controlling send effects in sequence - for example: volume ramp, then saturation, then distortion, then fuzz.
 
 ## How to use
 

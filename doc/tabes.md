@@ -50,7 +50,7 @@ has become, splicing back to it doesn't click.
 |---------|----------|
 | **decay** (+ **cv**) | how much is lost per pass. Low: archival, takes hundreds of passes to change. High: audibly worse every pass, crumbles in minutes |
 | **wow** (+ **cv**) | wow/flutter depth on the play head (grows slightly with age) |
-| **overlap** (+ **cv**) | how soon the next play head starts. Two heads take turns playing the loop straight through; each new head starts *overlap* earlier than the previous one finishes, and the two crossfade (equal power) where they meet. At zero they play back to back (a plain loop). Turned up, the next repeat begins before the last has ended — at the max it starts when the current head is halfway, so the loop plays over itself for an ambient wash. The tape still ages underneath, so it keeps rotting while it smears |
+| **overlap** (+ **cv**) | how soon the next play head starts. Two heads take turns playing the loop straight through; each new head starts *overlap* earlier than the previous one finishes, and the two crossfade (equal power) where they meet. At zero they play back to back (a plain loop). Turned up, the next repeat begins before the last has ended - at the max it starts when the current head is halfway, so the loop plays over itself for an ambient wash. The tape still ages underneath, so it keeps rotting while it smears |
 | **send** (+ **cv**) | how much of the **return** signal is re-recorded onto the tape (see FX loop below); default 50% |
 | **rec** / **gate** | record toggle / gate |
 | **dub** / **gate** | overdub toggle / gate (see below) |
@@ -116,7 +116,7 @@ what your pedal makes of it (it defaults to 50%). The feedback carries the
 usual one-sample delay, and the tape is bounded, so a hot effect saturates into
 a drone rather than exploding.
 
-The loop only acts when **both** ends are patched — the **send** jack out and
+The loop only acts when **both** ends are patched - the **send** jack out and
 **return** back. With only **return** connected nothing is folded in (the
 **send** knob does nothing), so a stray cable can't quietly overwrite the tape.
 
@@ -138,8 +138,8 @@ Any channel count up to 16 works, so a multi-track source becomes a
 multi-track tape.
 
 The tape has one **transport** and several **tracks**. Everything about the
-tape's motion is shared across the tracks — the same wow/flutter warble, the
-same dropouts, the same loop seam, the same crossfade when you press rec — so
+tape's motion is shared across the tracks - the same wow/flutter warble, the
+same dropouts, the same loop seam, the same crossfade when you press rec - so
 a stereo image stays phase-locked and moves as one, which two separate mono
 tabes could never do. Only the audio itself and the per-track tape hiss are
 independent.

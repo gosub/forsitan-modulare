@@ -154,7 +154,7 @@ makes it read as tape rather than vibrato).
 
 A 20HP loop around a saturating two-band tone section, after Bastl Instruments
 and Casper Electronics' **Dark Matter**. Below unity an overdrive with a
-resonance in it; above unity a howl whose register the two band faders pick —
+resonance in it; above unity a howl whose register the two band faders pick -
 around 110 Hz with the bass fader up, 3.3 kHz with the treble one, a kilohertz
 or so with both. An input VCA with the hardware's x3 gain and soft clipping in
 front, a crossfader between the clean signal and the fed-back one behind, an
@@ -168,7 +168,7 @@ entry, a probe harness and 30 passing smoke checks.
 
 ### The verdict
 
-Not interesting enough acoustically or musically, and not versatile — in
+Not interesting enough acoustically or musically, and not versatile - in
 neither of the two things it does. As a self-oscillating instrument it makes
 one howl per setting, and the settings do not lead anywhere; as a processor of
 external audio it is an overdrive with a resonance, and the loop does not earn
@@ -177,7 +177,7 @@ loop does what the block diagram says it does, at the pitches and levels the
 manual describes, and the measurements below all held.
 
 Worth knowing before anyone revives it: there is no Dark Matter schematic, so
-every frequency in the build was inference — band corners, loop band limits,
+every frequency in the build was inference - band corners, loop band limits,
 amplifier bandwidth, the envelope's time constants. It is not knowable from
 here whether a different guess at those would have made a more interesting
 instrument, and finding out means tracing a board rather than writing more
@@ -192,7 +192,7 @@ badly.
 instantaneous, and its musical identity is that it oscillates at "the sound of
 the circuit itself, its own resonant frequency". Ported with the one-sample
 delay a digital loop implies, it screams near Nyquist at a pitch that moves
-with the host's sample rate — a different instrument at 44.1 kHz and at
+with the host's sample rate - a different instrument at 44.1 kHz and at
 96 kHz. The fix was to give the loop an explicit **16 us propagation delay**,
 a few op-amp stages' worth of group delay, read out of a fractional delay
 line, so the pitch falls out of modelled time constants instead of out of the
@@ -206,7 +206,7 @@ Two things fall out of that and would fall out again:
   176.4 kHz at a 44.1 kHz host). The menu offered nothing lower and said why.
 - the read happens before the write, so a request of *d* samples comes back
   *d + 1* later. Not compensating for that made the effective delay vary from
-  8.6 to 13.7 us across sample rates, which is a 10% spread in pitch — the bug
+  8.6 to 13.7 us across sample rates, which is a 10% spread in pitch - the bug
   looked exactly like the problem the delay was there to fix.
 
 **And the measurement that catches it.** Any module here whose sound is a

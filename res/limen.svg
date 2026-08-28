@@ -15,7 +15,7 @@
        x="8.0107098"
        y="5.6755219" />
   </g>
-  <!-- forsitan logo at bottom (same transform as alea — identical 2HP width) -->
+  <!-- forsitan logo at bottom (same transform as alea - identical 2HP width) -->
   <g transform="rotate(90,39.342109,121.08693)">
     <rect
        ry="1.2"
@@ -58,7 +58,7 @@
      cy="64"
      r="1.5"
      style="fill:#333333;stroke:#555555;stroke-width:0.3" />
-  <!-- "lmn" label — OCR-A paths extracted from cumuli.svg (l, m) and deinde.svg (n) -->
+  <!-- "lmn" label - OCR-A paths extracted from cumuli.svg (l, m) and deinde.svg (n) -->
   <g fill="#f9f9f9">
     <!-- l: from cumuli path959, translated so left edge is at x=4.1 -->
     <g transform="translate(-12.564,0)">

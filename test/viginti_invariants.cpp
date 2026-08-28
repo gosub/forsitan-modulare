@@ -1,4 +1,4 @@
-// viginti_invariants — property-based checks for the KORG35 Rev. 2 filter.
+// viginti_invariants - property-based checks for the KORG35 Rev. 2 filter.
 //
 // smoke_viginti checks the module at fixed points; viginti_probe measures it
 // and is where the thresholds below came from. This harness asserts the

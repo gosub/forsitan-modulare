@@ -6,7 +6,7 @@
 single unipolar supply, and dirty because of it.**
 
 *vespae* is Latin for "of the wasp". It emulates the filter Chris Huggett
-designed for the 1978 EDP Wasp — specifically the Doepfer A-124 version of
+designed for the 1978 EDP Wasp - specifically the Doepfer A-124 version of
 it, which is the one most people have actually heard.
 
 The Wasp was built to a price. Rather than op-amps, Huggett used the six
@@ -17,7 +17,7 @@ linear amplifier is a sloppy, asymmetric thing whose switching threshold is
 not quite mid-supply; with no negative rail there is nowhere for a signal to
 go but into the rails; and a pair of diodes across the resonance network
 clamps the feedback once things get loud. Push it and it does not politely
-compress — it goes lopsided, buzzes, and shifts under you.
+compress - it goes lopsided, buzzes, and shifts under you.
 
 Structurally it is an ordinary 12 dB/octave state-variable filter, so all
 four responses come out at once: **lp**, **bp**, **hp** and **notch**. A
@@ -63,15 +63,15 @@ null moves as you turn:
 
 | **mix** | null sits at | result |
 |---------|--------------|--------|
-| hard left | — | pure lowpass |
+| hard left | - | pure lowpass |
 | left of centre | above the cutoff | lowpass with a notch above it |
 | centre | the cutoff | symmetrical notch |
 | right of centre | below the cutoff | highpass with a notch below it |
-| hard right | — | pure highpass |
+| hard right | - | pure highpass |
 
 The null is at `fc·√((1−mix)/mix)`, which is the manual's "asymmetrical /
 symmetrical / asymmetrical notch". Sweeping the **mix** CV with an LFO
-sounds like phasing, as Doepfer's manual points out — and unlike a real
+sounds like phasing, as Doepfer's manual points out - and unlike a real
 phaser you can move the cutoff at the same time.
 
 Two things to know. The pot is passive, so at the centre both halves are at
@@ -88,7 +88,7 @@ These two are the module. **drive** sets how hard the signal hits the
 circuit; **grit** sets what it hits.
 
 **drive** is the Wasp's own level pot. At noon the module is unity gain and
-a normal ±5 V signal sits right at the edge of the rails — which is where
+a normal ±5 V signal sits right at the edge of the rails - which is where
 this filter is supposed to live. Back it off and vespae is a clean,
 well-behaved SVF. Push it and the summing inverter and both integrators
 start clipping against their supply, asymmetrically, and the OTAs saturate
@@ -96,7 +96,7 @@ and drag the cutoff down with the signal envelope.
 
 **grit** is the supply rails, and it is the axis between the original +5 V
 EDP machine and the +12 V Doepfer module. It is not a level control and it
-does nothing at all if **drive** is low — there is no clipping to shape.
+does nothing at all if **drive** is low - there is no clipping to shape.
 Turned down, the rails are far away, so the OTA's tanh compression is the
 first thing you meet: the filter squashes, sags in pitch, and rounds off.
 Turned up, the rails close in and the tanh knee ends up above them, so the
@@ -112,13 +112,13 @@ which is why they are two trimpots and not one:
 
 **bias** walks the CD4069's switching threshold further off mid-supply. The
 two halves of the waveform then clip at very different levels, and the rasp
-turns even-harmonic — measured at a hard-driven setting, the even/odd
+turns even-harmonic - measured at a hard-driven setting, the even/odd
 harmonic ratio goes from 0.07 to 2.7, a 37-fold shift, while the output
 level moves less than 2 %. It does **nothing** on a clean patch, because
 there is no clipping to make lopsided. Turn **drive** up first.
 
 **hiss** raises the inverter's own noise inside the feedback loop. On a
-loud signal it is inaudible — the signal swamps it. Its real job is near the
+loud signal it is inaudible - the signal swamps it. Its real job is near the
 top of **res**, where the loop is barely stable: the noise wanders the
 operating point and the filter stops being able to hold a steady note.
 Non-harmonic energy goes from 0.4 % to 7.7 % just short of self-oscillation,
@@ -127,7 +127,7 @@ inaudible (7 µV), which also keeps silence silent.
 
 So: **bias** for gnarl when you are driving it hard, **hiss** for
 instability when you are sitting on the edge of resonance. Both at once,
-with **drive** and **res** up, is the nastiest the module gets — and it
+with **drive** and **res** up, is the nastiest the module gets - and it
 still cannot run away, because the rail clippers bound the loop structurally
 no matter where these are set.
 
@@ -137,13 +137,13 @@ no matter where these are set.
   capacitor across it, which adds damping in proportion to the cutoff
   frequency. The filter is at its most resonant around 300–600 Hz and gets
   progressively tamer as you open it: measured here, Q ≈ 10.3 at 640 Hz but
-  only 3.9 at 10 kHz. This is real Wasp behaviour, not a bug — the knob is
+  only 3.9 at 10 kHz. This is real Wasp behaviour, not a bug - the knob is
   not broken at the top of its range.
 - **The resonance network is frequency-dependent.** The feedback path is not
   a plain gain but a first-order shelf, so raising **res** does not simply
   scale the damping, it tilts it.
 - **Self-oscillation drifts flat as it gets loud.** The OTAs saturate, the
-  effective integrator gain drops, and the pitch falls with it — up to about
+  effective integrator gain drops, and the pitch falls with it - up to about
   a semitone. Driven (below self-oscillation) the tuning is exact.
 - **It is lopsided.** The inverter's switching point sits below mid-supply,
   so the positive and negative halves clip at different levels with
@@ -162,7 +162,7 @@ no matter where these are set.
   passable phaser. Add a second, slower LFO on the cutoff and the two nulls
   drift against each other.
 - The five outputs are simultaneous, so you can take **lp** to the mixer and
-  **hp** to a delay send off the same filter — or **mix** to one and **bp**
+  **hp** to a delay send off the same filter - or **mix** to one and **bp**
   to another.
 - The module self-oscillates with nothing patched: it is a serviceable sine
   (well, sine-ish, and less so as **grit** rises) with 1 V/oct tracking. The
@@ -218,11 +218,11 @@ does not make a good module:
   is blunt about it: "The filter can't go into self oscillation, in contrast
   to most of the other VCFs in the A-100 system." Its damping never quite
   reaches zero. Here the last tenth of the **res** travel cancels that
-  damping anyway, so the filter sings — bounded by the diode clamp, and
+  damping anyway, so the filter sings - bounded by the diode clamp, and
   tracking 1 V/oct. This is an addition for the sake of the module, not a
   correction of the circuit.
 - Read literally, the diode clamp holds the resonance to about a tenth of
-  the rail — while the paper's own state-space plots show the integrator
+  the rail - while the paper's own state-space plots show the integrator
   states reaching those rails at high resonance. The clamp is backed off by
   a fixed trim so that self-oscillation lands where the hardware sits.
 

@@ -1,4 +1,4 @@
-// quadrare.cpp — VCV Rack 2 module
+// quadrare.cpp - VCV Rack 2 module
 // quadrare (Latin: "to square, to make fit") is a patchable Walsh–Hadamard
 // codec. Audio is cut into non-overlapping blocks, transformed into Walsh
 // coefficients, manipulated, and transformed back:

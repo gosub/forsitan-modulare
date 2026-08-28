@@ -1,4 +1,4 @@
-// bulla.cpp — VCV Rack 2 module
+// bulla.cpp - VCV Rack 2 module
 // bulla (Latin: "bubble, blip"; also the Roman amulet) is inspired by Rob
 // Hordijk's Blippoo Box, his other chaotic instrument, a relative of his
 // Benjolin but a different circuit, described in his paper "The Blippoo Box:

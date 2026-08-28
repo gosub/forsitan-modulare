@@ -1,4 +1,4 @@
-// imber_fx.hpp — the per-player effect chain and the master lo-fi chain.
+// imber_fx.hpp - the per-player effect chain and the master lo-fi chain.
 // Per-player FX follow Haiku's fixed apply order (filters/quantise before
 // spatial): LPF → HPF → BPF → BIT → DLY → GRN → RVB; REV is handled in
 // the player's read direction. Exact designs from the reverse-engineering
@@ -318,7 +318,7 @@ struct MasterChain {
     // bit/nse/tap 0..1 faders, vol = linear gain (up to +8 dB), all
     // pre-limit; ceiling −1 dBFS on the ±1 internal scale
     void process(float& l, float& r, float bit, float nse, float tap, float vol) {
-        // TubeWarmth — always on, gentle
+        // TubeWarmth - always on, gentle
         l = 0.65f * l + 0.35f * std::tanh(l * 1.8f);
         r = 0.65f * r + 0.35f * std::tanh(r * 1.8f);
 
@@ -334,7 +334,7 @@ struct MasterChain {
             r += bit * (cr - r);
         }
 
-        // NoiseInject — band-limited, ducked open by the signal itself
+        // NoiseInject - band-limited, ducked open by the signal itself
         if (nse > 0.001f) {
             float e = std::max(std::fabs(l), std::fabs(r));
             noiseEnv += (e - noiseEnv) * (e > noiseEnv ? 0.01f : 0.0005f);
@@ -344,7 +344,7 @@ struct MasterChain {
             r += n * nse * 0.35f * gate;
         }
 
-        // TapeMod — wow + flutter on a modulated delay line, slow age AM.
+        // TapeMod - wow + flutter on a modulated delay line, slow age AM.
         // The delay line keeps being fed even when TAP is off, so turning
         // it up never reads a stale buffer, but the four sines and the two
         // interpolated reads are skipped -- TAP defaults to 0, and this

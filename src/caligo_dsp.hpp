@@ -1,4 +1,4 @@
-// caligo_dsp.hpp — Julian Parker's Greyhole.
+// caligo_dsp.hpp - Julian Parker's Greyhole.
 //
 // Greyhole is not a reverb. It is a long modulated echo wrapped inside a
 // nested allpass diffusion network, and what makes it sound like itself is
@@ -6,7 +6,7 @@
 // is long enough to hear as repeats: every repeat is smeared further than the
 // last.
 //
-// Sources (the algorithm, not the code — nothing here is machine-translated):
+// Sources (the algorithm, not the code - nothing here is machine-translated):
 //   - Julian Parker, Greyhole (2013), DEIND project, bug fixes and interface
 //     changes by Till Bovermann. SuperCollider UGen in sc3-plugins
 //     (source/DEINDUGens/GreyholeRaw.dsp), GPL-2.0-or-later.
@@ -176,7 +176,7 @@ inline float clampf(float x, float lo, float hi) {
     return x < lo ? lo : (x > hi ? hi : x);
 }
 
-// parabolic sine approximation, valid on [-pi, pi] (~0.1% error) — the
+// parabolic sine approximation, valid on [-pi, pi] (~0.1% error) - the
 // quadrature LFO drives a +/-2.5 ms delay, which does not need better
 inline float fastSin(float x) {
     constexpr float B = 1.2732395447f;    // 4/pi
@@ -282,7 +282,7 @@ struct Glide {
 // same thing standing still.
 //
 // So: 4-point Hermite instead, which is a pure function of the delay with no
-// state, continuous and C1 in the length, and — the part that matters —
+// state, continuous and C1 in the length, and - the part that matters -
 // *exact* whenever the delay is an integer. The lengths here rest on integers
 // (a rescaled prime), so at rest this is bit-identical to the allpass version
 // and to the reference. It only differs while the length is moving, and there
@@ -325,7 +325,7 @@ struct FDelayC {
     }
 };
 
-// de.fdelay4 — 4th-order Lagrange fractional delay, used only for the two
+// de.fdelay4 - 4th-order Lagrange fractional delay, used only for the two
 // modulated delays in the feedback path.
 struct FDelay4 {
     std::vector<float> buf;
@@ -366,14 +366,14 @@ struct FDelay4 {
     }
 };
 
-// de.sdelay — the long delay. In dissolve mode (the original) it is an
+// de.sdelay - the long delay. In dissolve mode (the original) it is an
 // integer delay that crossfades between the old and the new length when the
 // length changes, so sweeping the time does not bend pitch, it dissolves from
 // one time into another. In tape mode the read pointer is fractional and
 // slew-limited, so sweeping the time Doppler-shifts the repeats.
 //
-// The buffer is not a power of two — 16 s at 48 kHz would otherwise round up
-// to 21 MB per channel — so the wrap is explicit.
+// The buffer is not a power of two - 16 s at 48 kHz would otherwise round up
+// to 21 MB per channel - so the wrap is explicit.
 struct LongDelay {
     std::vector<float> buf;
     size_t n = 0, wp = 0;
@@ -564,7 +564,7 @@ struct Engine {
     // base scale 10 + 19i, nesting adds 13 per level, and the two channels of
     // a level sit 10 indices apart. Any other seed picks new constants within
     // a band around those, which is a different room reached through the same
-    // controls — and because the lengths glide, a reseed *slides* the whole
+    // controls - and because the lengths glide, a reseed *slides* the whole
     // network into its new shape over ~0.23 s.
     void buildScales(uint32_t s) {
         seed = s;
@@ -639,7 +639,7 @@ struct Engine {
         // primes rescaled to this sample rate and rounded: what matters
         // acoustically is that the 24 lengths stay mutually incommensurate,
         // and a uniform rescale preserves their ratios exactly. Snapping back
-        // to primes would not — prime 31 at 48 kHz would stay 31.
+        // to primes would not - prime 31 at 48 kHz would stay 31.
         for (int i = 0; i < kPrimeCount; i++) {
             uint32_t v = (uint32_t)std::lround((float)kPrimes[i] * sr / 44100.f);
             delayLen[i] = v < 2 ? 2 : v;
@@ -675,7 +675,7 @@ struct Engine {
         clear();
     }
 
-    // the longest delay time this sample rate can hold, in seconds — the
+    // the longest delay time this sample rate can hold, in seconds - the
     // module reports it in the knob tooltip so a user at 768 kHz is never
     // silently clamped
     float maxTimeSec() const {

@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <cstring>
 
-// artifex — nine stereo effects sharing one feedback loop.
+// artifex - nine stereo effects sharing one feedback loop.
 //
 // After a Bastl Instruments hardware effect, named and credited in
 // doc/artifex.md -- the other face of the hardware vates comes from: three
@@ -115,7 +115,7 @@ struct Artifex : Module {
 	// ── settings ─────────────────────────────────────────────────────────────
 	bool honourExternalClock = true;
 	// Which voltage window the pattern inputs read. The hardware's is 0-5 V
-	// logic — below 1.6 V inverts — which in Rack means a gate resting at 0 V
+	// logic - below 1.6 V inverts - which in Rack means a gate resting at 0 V
 	// inverts the pattern continuously until it goes high. The default here
 	// is the Rack reading: zero is neutral, positive randomizes, negative
 	// inverts.
@@ -184,7 +184,7 @@ struct Artifex : Module {
 		configSwitch(CSW_PARAM, 0.f, 2.f, 1.f, "CV pattern", {"invert", "as is", "randomize"});
 
 		// The feedback loop reacts to how hard it is driven, so the input
-		// gain is a control and not a menu item — as on the hardware, where
+		// gain is a control and not a menu item - as on the hardware, where
 		// it is the first thing the manual tells you to set.
 		configParam(GAIN_PARAM, 0.f, 4.f, 1.f, "Input gain", " dB", -10.f, 20.f);
 		configParam(LEVEL_PARAM, 0.f, 1.f, 0.8f, "Level");

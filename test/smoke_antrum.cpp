@@ -1,4 +1,4 @@
-// smoke_antrum — offline sanity checks for the antrum reverb.
+// smoke_antrum - offline sanity checks for the antrum reverb.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

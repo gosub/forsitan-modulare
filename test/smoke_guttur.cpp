@@ -1,4 +1,4 @@
-// smoke_guttur — offline sanity checks for the guttur module.
+// smoke_guttur - offline sanity checks for the guttur module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"
@@ -41,7 +41,7 @@ struct Meter {
 //
 // A Duffing oscillator either explores its attractor or settles into a
 // periodic orbit, and guttur has large parameter regions that lock. A locked
-// state passes every check above — alive, bounded, not dead, not railed —
+// state passes every check above - alive, bounded, not dead, not railed -
 // but it is a static drone, not gutter synthesis. Shipping the default in
 // one of those regions is a real regression (it happened: muting bank B put
 // the default there), so measure movement directly.

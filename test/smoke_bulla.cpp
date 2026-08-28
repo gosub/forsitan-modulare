@@ -1,4 +1,4 @@
-// smoke_bulla — offline sanity checks for the bulla module.
+// smoke_bulla - offline sanity checks for the bulla module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

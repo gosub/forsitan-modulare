@@ -1,4 +1,4 @@
-// smoke_cartilago — offline sanity checks for the cartilago module.
+// smoke_cartilago - offline sanity checks for the cartilago module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 // The spectral measurements (alias floor with and without band-limiting, the
 // FET transfer curve) live in cartilago_probe.cpp, which is not run here.
@@ -37,7 +37,7 @@ static double staticGain(float bias, bool vcf, float toneHz) {
     return feedSine(m, fr, toneHz, 1.f, 0.5, 0.5).rms() / (1.f / M_SQRT2);
 }
 
-// The FET attenuator: fully open passes, fully closed does not — but never
+// The FET attenuator: fully open passes, fully closed does not - but never
 // reaches silence, which is the whole point of a shunt FET.
 static void testVca() {
     const double open = staticGain(1.f, false, 400.f);

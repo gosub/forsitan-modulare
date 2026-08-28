@@ -1,4 +1,4 @@
-// smoke_lustro — offline sanity checks for the lustro module.
+// smoke_lustro - offline sanity checks for the lustro module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

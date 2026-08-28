@@ -1,4 +1,4 @@
-// smoke_scrupea — offline sanity checks for the scrupea module.
+// smoke_scrupea - offline sanity checks for the scrupea module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 //
 // scrupea is a free-running chaotic bank, so the checks are about it staying

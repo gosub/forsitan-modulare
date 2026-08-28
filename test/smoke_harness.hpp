@@ -1,4 +1,4 @@
-// smoke_harness — shared scaffolding for the per-module smoke tests.
+// smoke_harness - shared scaffolding for the per-module smoke tests.
 //
 // Each smoke_<module>.cpp includes this header, then the one src/<module>.cpp
 // it exercises, drives that module's process() directly and checks for

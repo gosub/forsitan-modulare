@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-// vates — stereo sample player with a pattern generator underneath.
+// vates - stereo sample player with a pattern generator underneath.
 //
 // After a Bastl Instruments hardware sampler, named and credited in
 // doc/vates.md: you do not draw a rhythm, you modulate sample selection and
@@ -23,8 +23,8 @@
 // controls, since holding one thing while turning another is a gesture a
 // mouse does badly.
 //
-// Six banks of eight samples are generated from a seed — drums, objects,
-// grains, micro, tones, air (src/vates/bank.hpp) — one sample per kind the
+// Six banks of eight samples are generated from a seed - drums, objects,
+// grains, micro, tones, air (src/vates/bank.hpp) - one sample per kind the
 // generator knows, so a knob position always means the same role. User kits
 // follow, read from the kits folder shared with pellicula. See doc/vates.md.
 
@@ -143,7 +143,7 @@ struct Vates : Module {
 
 	// A user kit is paged into banks the size of a generated one, which is
 	// how the hardware organises its own material: eight samples to a bank,
-	// more banks for more sounds. It is also what keeps play mode usable —
+	// more banks for more sounds. It is also what keeps play mode usable -
 	// crossings per LFO cycle are twice the samples the CV spans, so a bank
 	// that grew to 64 would fire 128 times where the hardware fires 16.
 	//
@@ -168,7 +168,7 @@ struct Vates : Module {
 	int scaleIndex = imber_dsp::kDefaultScale;
 	bool honourExternalClock = true;
 	// Which voltage window the pattern inputs read. The hardware's is 0-5 V
-	// logic — below 1.6 V inverts — which in Rack means a gate resting at 0 V
+	// logic - below 1.6 V inverts - which in Rack means a gate resting at 0 V
 	// inverts the pattern continuously until it goes high. The default here
 	// is the Rack reading: zero is neutral, positive randomizes, negative
 	// inverts.
@@ -176,7 +176,7 @@ struct Vates : Module {
 	// Reversed hits swell by default, as on the hardware: the envelope is the
 	// mirror of the forward one. With this on they keep the forward shape and
 	// only the sample runs backwards, which is what a reversed drum hit wants
-	// — an attack you can put on a beat.
+	// - an attack you can put on a beat.
 	bool reverseDecays = false;
 
 	// ── voice ────────────────────────────────────────────────────────────────
@@ -248,7 +248,7 @@ struct Vates : Module {
 		configParam(SAMPLE_PARAM, 0.f, 1.f, 0.f, "Sample");
 		configParam(SAMPLE_ATT_PARAM, -1.f, 1.f, 0.f, "Sample CV", "%", 0.f, 100.f);
 		// The panel labels this switch "cue" above and "play" below, so its
-		// up position — value 1 on a CKSS — is cue, and down is play. The
+		// up position - value 1 on a CKSS - is cue, and down is play. The
 		// names here are indexed by value and must agree with the panel.
 		configSwitch(MODE_PARAM, 0.f, 1.f, 0.f, "Sample modulation", {"play", "cue"});
 		configButton(TRIG_PARAM, "Trigger");
@@ -775,7 +775,7 @@ struct Vates : Module {
 				else if (!envHold && !voiceSwell)
 					env *= envCoef;
 
-				// a hit stops when it runs out of sample — at the head going
+				// a hit stops when it runs out of sample - at the head going
 				// backwards, at the tail going forwards. Either way the last
 				// few milliseconds fade, or the stop is a step.
 				float togo = voiceReverse
@@ -828,7 +828,7 @@ struct Vates : Module {
 
 		// Crossing the centre swaps a lowpass for a highpass and moves the
 		// cutoff from 20 kHz to 25 Hz. No integrator state survives that, so
-		// both sections are cleared on the way through — which costs nothing,
+		// both sections are cleared on the way through - which costs nothing,
 		// because the wet path is faded out here and nobody hears it.
 		if (lowpass != filtWasLow) {
 			for (int c = 0; c < 2; c++) {
@@ -852,7 +852,7 @@ struct Vates : Module {
 			float g = std::tan((float)M_PI * fc / sr);
 			// Four poles: at two, the bass never quite leaves as the highpass
 			// climbs. The pair is Butterworth-damped, and the resonance goes
-			// into the second section only — raising the Q of both would
+			// into the second section only - raising the Q of both would
 			// square the peak instead of tilting it.
 			float k1 = 1.f / 0.541f;
 			float k2 = 1.f / (1.8f + 1.2f * mag);
@@ -877,7 +877,7 @@ struct Vates : Module {
 		                      + inputs[FX_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
 		if (fxParam < -0.01f) {
 			// Tempo-synced delay at three eighths of a note, as the hardware
-			// states — a dotted quarter, a beat and a half — with the right
+			// states - a dotted quarter, a beat and a half - with the right
 			// channel a plain beat against it, so the two run a 3:2 cross
 			// rhythm and the cross-feedback below throws it side to side.
 			float amt = -fxParam;
@@ -1066,7 +1066,7 @@ struct Vates : Module {
 // ── displays ──────────────────────────────────────────────────────────────────
 // Two of them, bank on the left and sample on the right. Kits are the user's
 // own and generated banks are new with every seed, so the panel cannot label
-// what a selection holds — these can, and a right-click on either one lists
+// what a selection holds - these can, and a right-click on either one lists
 // what is there and jumps straight to it.
 struct VatesDisplay : Widget {
 	Vates* module = nullptr;

@@ -1,4 +1,4 @@
-// cartilago.cpp — VCV Rack 2 module
+// cartilago.cpp - VCV Rack 2 module
 // cartilago (Latin: "gristle, cartilage") is a modulator in the manner of the
 // Gristleizer, the ETI magazine project by Roy Gwinn that Chris Carter built,
 // modified and made a signature of Throbbing Gristle's sound. It is one LFO
@@ -188,7 +188,7 @@ struct Voice {
     // In the triode region a JFET's channel conductance goes as
     // 2(Vgs - Vth) - Vds, so the drain swing itself modulates the gain: the
     // channel pinches on the positive half of the waveform and opens on the
-    // negative one. Estimate Vds from the linear divider and use it once —
+    // negative one. Estimate Vds from the linear divider and use it once -
     // solving the loop properly would be a quadratic, and one explicit pass
     // is accurate where it matters (near the top of the sweep Vds ~ x) and
     // unconditionally stable where iterating is not.

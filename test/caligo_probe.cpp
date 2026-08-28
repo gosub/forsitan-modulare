@@ -1,4 +1,4 @@
-// caligo_probe — measurement harness for the Greyhole port. Not run by
+// caligo_probe - measurement harness for the Greyhole port. Not run by
 // `make check`; this is the tool for hearing-by-numbers when the engine is
 // touched. Prints CSV-ish tables.
 //
@@ -123,7 +123,7 @@ static float diffuserLatencyMs(float size) {
 static void probeEchoes() {
     printf("\n== echo arrivals and per-pass loss (diff 0.2, mod 0, wet)\n");
     float lat = diffuserLatencyMs(1.f);
-    printf("diffuser latency at size 1.0: %.1f ms — the loop period is\n"
+    printf("diffuser latency at size 1.0: %.1f ms - the loop period is\n"
            "time + that, and the first arrival is that alone\n", lat);
     printf("time_ms fb   period_ms  arrivals_ms                        pass_loss_dB\n");
     const float times[] = {12.f, 90.f, 400.f, 1200.f};

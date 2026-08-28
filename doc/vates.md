@@ -6,7 +6,7 @@
 generates itself, a knob that plays them backwards, and a pattern generator
 underneath the whole thing.**
 
-*vates* is Latin for the bard — the poet-seer, the one who sings what he is
+*vates* is Latin for the bard - the poet-seer, the one who sings what he is
 given. The module is built after the Bastl Instruments *Citadel Wave Bard*,
 whose idea is that you do not program a rhythm: you modulate sample
 selection and let the rhythm fall out. Everything here serves that idea,
@@ -27,20 +27,20 @@ eight samples each:
 | bank | what it holds |
 |------|---------------|
 | **drums** | drum voices, hats down to kicks |
-| **objects** | struck objects — woodblock, tine, glass, marimba, vibraphone, harp string, membrane, bell |
+| **objects** | struck objects - woodblock, tine, glass, marimba, vibraphone, harp string, membrane, bell |
 | **grains** | microsound: dust, crackle, glissons, click trains, bubbles |
 | **micro** | clicks, data bursts, test blips, sub thumps |
 | **tones** | sustained harmonic material: drones, pads, chord stabs |
 | **air** | sustained spectral material: filtered noise, washes, vowels, combs |
 
-The first four are struck or granular, the last two sustain — which under
+The first four are struck or granular, the last two sustain - which under
 the **length** knob (below) is the difference between a hit and a swell.
 Every generated sample is rendered at C, so pitch tracking and the quantizer
 are exact without you tuning anything.
 
 Each bank holds one sample of each kind its generator knows: the drums bank
 is a click, a hat, a tom, a snare, a kick and so on, one of each, at eight
-independent pitches — never one drum in eight sizes. A knob position
+independent pitches - never one drum in eight sizes. A knob position
 therefore always means the same *kind* of sound, which is what makes the
 sample knob playable, and pitch variety is left to the pitch knob and the
 note input, where it belongs.
@@ -50,21 +50,21 @@ the context menu draws a new one: the same six flavours and the same eight
 roles per bank, forty-eight different sounds.
 
 **Your kits** follow the generated banks. vates reads the same kits folder
-as pellicula — set it once from either module's context menu — where each
+as pellicula - set it once from either module's context menu - where each
 subfolder is a kit of `.wav` files ordered by filename. Stereo files stay
 stereo. Kits load on a background thread, so browsing them never interrupts
 the audio.
 
 A kit is cut into banks of eight, the size of a generated one: twenty files
 are three banks, `mykit 1/3` to `mykit 3/3`. That is the hardware's own
-organisation — eight samples to a bank, more banks for more sounds — and it
+organisation - eight samples to a bank, more banks for more sounds - and it
 is also what keeps play mode usable. Crossings per LFO cycle are twice the
 number of samples the CV spans, so a bank of 64 would fire 128 times a cycle
 where the hardware fires 16. **samples per bank** in the context menu offers
 16, 32 or the whole kit if you want that sweep on purpose.
 
 Generated banks are always rendered at 44.1 kHz and resampled on playback,
-exactly as your own files are — the alternative is regenerating forty-eight
+exactly as your own files are - the alternative is regenerating forty-eight
 samples every time the engine rate changes. Building a whole set takes about
 a tenth of a second, on a worker thread; the display counts it up if you
 happen to catch it.
@@ -85,7 +85,7 @@ see the whole list and jump straight to an entry.
 Ten volts at full attenuverter is one bank, so a 0–10 V ramp sweeps the bank
 exactly once and rests on its last sample; past that it wraps.
 
-The sample knob spans its bank end to end — its top is the last sample, not
+The sample knob spans its bank end to end - its top is the last sample, not
 the first one again. Wrapping belongs to modulation: a CV that runs past the
 last sample comes back to the first, which is what turns a slow ramp into a
 sequence rather than a fade.
@@ -101,7 +101,7 @@ moving a control or on a bank change shifting the ground under it. To hear
 what is selected, press **trig**.
 
 **play** fires a sample the moment modulation crosses into it, so the
-modulation source *is* the rhythm — a triangle LFO into **sample** in play
+modulation source *is* the rhythm - a triangle LFO into **sample** in play
 mode gives you off-grid triggers whose density follows the attenuverter.
 **cue** does not fire: modulation aims at a sample and it waits for **trig**,
 so the same LFO stays on the grid and only chooses what plays.
@@ -127,7 +127,7 @@ context menu and it only updates on a trigger, so a sequencer's CV lands as
 a note rather than a glide.
 
 Root and scale live in the menu, following [sylla](sylla.md), and they
-affect the quantizer only — generated banks are always rendered at C.
+affect the quantizer only - generated banks are always rendered at C.
 
 ### length
 
@@ -139,7 +139,7 @@ hardware, because sweeping through the middle is the point.
 - **left**: attack grows, and the sample plays **backwards**.
 
 A fresh vates starts at about a third of the way clockwise, where a hit is a
-few hundred milliseconds — centre is the shortest envelope there is, and a
+few hundred milliseconds - centre is the shortest envelope there is, and a
 module that clicked out of the browser would be telling you nothing.
 
 The value is latched at the trigger, so modulation flips the direction
@@ -174,15 +174,15 @@ Two more knobs that do different things on each side of centre:
 | **filter** | resonant lowpass, closing to 30 Hz | open | resonant highpass, opening to 14 kHz |
 | **fx** | tempo-synced delay, wetter | dry | chorus/flanger with soft clipping, deeper |
 
-Both take CV. Sweeping **fx** across centre is a musical move — a beat that
+Both take CV. Sweeping **fx** across centre is a musical move - a beat that
 falls out of the delay and into the flanger.
 
 **fx** is the hardware's pair, and the knob is an amount on each side rather
-than a parameter. The delay is fixed at **three eighths of a note — a dotted
-quarter, a beat and a half**, 750 ms at 120 BPM — with the right channel a
+than a parameter. The delay is fixed at **three eighths of a note - a dotted
+quarter, a beat and a half**, 750 ms at 120 BPM - with the right channel a
 plain beat against it, so the two run a 3:2 cross rhythm and the feedback
 throws it side to side. Turning the knob out raises the wet from nothing and
-the feedback from 0.25 to 0.85 — and since the two lines feed *each other*,
+the feedback from 0.25 to 0.85 - and since the two lines feed *each other*,
 that is a round trip of 0.72, which at the top leaves a tail running some ten
 seconds. The write path saturates, so a long tail thickens instead of clipping
 the output. At a tempo slow enough that a dotted quarter
@@ -190,15 +190,15 @@ would not fit the buffer, the division halves rather than the time being
 clamped: it stays in tempo, just at a shorter one.
 
 To the right, one knob crosses a chorus into a flanger. The swept delay
-shortens from 8 ms to 1.5 ms and its depth from ±2.5 ms to ±0.7 ms — a chorus
+shortens from 8 ms to 1.5 ms and its depth from ±2.5 ms to ±0.7 ms - a chorus
 range becoming a flanger range, with the first notch sweeping 227–625 Hz at
-the top — while the feedback climbs to 0.7 and the output drive to twice, so
+the top - while the feedback climbs to 0.7 and the output drive to twice, so
 the further out you go the more the resonance rings and the more it clips. The
 sweep itself is 0.35 Hz throughout, with the two channels in quadrature.
 
 **filter** is a DJ filter, which is a specific thing: four poles, 24 dB per
 octave, and a range that reaches past the material at both ends. Full left is
-30 Hz, which is under the kick — at that end the sample is gone, not muffled.
+30 Hz, which is under the kick - at that end the sample is gone, not muffled.
 Full right is 14 kHz, above the air, so the sweep takes the track away rather
 than leaving the hats behind. Resonance is not a separate knob: it rises with
 the travel, from flat near the centre to about +4 dB at the ends, enough to
@@ -210,7 +210,7 @@ sing on the way through and not enough to boom when it arrives.
 |---------|--------------|
 | **sync / free** | whether the LFO follows the clock or runs on its own. |
 | **rate** | in sync, the clock divider, from two bars a cycle to four cycles a step; in free, 0.01–20 Hz. Clockwise is faster in both, so the knob does not reverse its meaning when the switch flips. |
-| **lfo mod** | attenuverter and input for the rate — in sync it moves the division, since a phase-locked LFO has nothing to detune. |
+| **lfo mod** | attenuverter and input for the rate - in sync it moves the division, since a phase-locked LFO has nothing to detune. |
 | **reset** | a rising edge restarts the triangle at its peak. |
 | **pwm** | how much of the cycle the triangle spends rising, 2–98%, which is the pulse output's duty cycle. |
 | **tri**, **saw**, **pulse** | triangle, the position in the cycle, and the rising-edge pulse, all 0–10V. |
@@ -218,7 +218,7 @@ sing on the way through and not enough to boom when it arrives.
 **sync means phase-locked**, not merely a synced rate: the LFO takes its
 phase from the step clock, so it cannot drift against the pattern and a
 pattern reset puts it back to the top. That is what makes **saw** useful as
-more than a shape — set the division to sixteen steps and it *is* the
+more than a shape - set the division to sixteen steps and it *is* the
 position in the bar. Patch it to **sample** with the attenuverter fully up
 and the bank sweeps exactly once a bar, since ten volts is one bank.
 
@@ -231,7 +231,7 @@ a time.
 high exactly while the triangle rises, so one control moves both. At 50% it is
 the symmetric triangle with a square beside it; wind it either way and the
 triangle becomes a ramp or a saw while the pulse narrows or widens to match.
-The **saw** output is unaffected — it stays the plain phasor, so it is still
+The **saw** output is unaffected - it stays the plain phasor, so it is still
 the position in the bar.
 
 The LFO is patch-programmable too, which survives intact: **pulse** into **lfo
@@ -253,14 +253,14 @@ a saw outright. **pwm** is the same tilt as a knob.
 
 The two three-position switches are the hardware's best idea and they come
 over unchanged. Middle leaves the sequence alone. Up randomizes the step the
-sequence is on right now. Down inverts it — silent steps sound, sounding
+sequence is on right now. Down inverts it - silent steps sound, sounding
 steps go quiet, and CV flips around its own midpoint.
 
 **They are pencils, not filters.** A switch writes into the pattern as it
 plays, one step at a time, so returning it to the middle does not restore
 what was there: it stops the editing and leaves the edits. That is the point
-of it — flick one for a beat and only those steps change, "alter the sequence
-partially until it fits your needs", as the hardware's manual puts it — and
+of it - flick one for a beat and only those steps change, "alter the sequence
+partially until it fits your needs", as the hardware's manual puts it - and
 it is also why holding invert down does not hold an inverted pattern. Each
 pass inverts what the pass before it inverted, so a 16-step rhythm takes 32
 steps to come round, which is the pseudo-32-step sequence the original
@@ -272,32 +272,32 @@ away and back, and the pattern reloads from the table.
 They are clicked *to* a position rather than stepped through one: click the
 top of the switch for randomize, the middle for as-is, the bottom for invert.
 Rack's own switches increment and wrap, which would mean passing through
-randomize — and hearing it — on the way back from invert.
+randomize - and hearing it - on the way back from invert.
 
 Each switch is normalled to the jack beside it, so a patched voltage does the
 same job: **above +1V randomize, below −1V invert,
 between them leave it alone**. A gate source resting at 0V therefore leaves
 the pattern alone until it fires, and a bipolar LFO reaches both actions.
 
-The hardware reads its own 0–5V logic there — above 3.2V randomize, below
-1.6V invert — which in Rack would mean a gate idling at 0V inverts the
+The hardware reads its own 0–5V logic there - above 3.2V randomize, below
+1.6V invert - which in Rack would mean a gate idling at 0V inverts the
 pattern on every step. **pattern input window** in the context menu switches
 to it for anyone who wants the original's response.
 
 The hardware's rhythms come from a web app that rebuilds the firmware. Here
-they are 32 patterns on a knob — twenty-two written by hand, then the
+they are 32 patterns on a knob - twenty-two written by hand, then the
 euclidean distributions E(k, 16) for the densities the first half does not
-already contain — and the switches make them yours.
+already contain - and the switches make them yours.
 
 ### the displays
 
-Two of them under the title: the bank on the left, the sample on the right —
+Two of them under the title: the bank on the left, the sample on the right -
 "drums" and "3 snare", or the name of your kit and the file that is selected.
 Kits are yours and generated banks are new with every seed, so the panel
 cannot label what a selection holds; the displays can.
 
-**Right-click either one** for the list it selects from — every bank, or every
-sample of the current bank by name — with the current entry checked. It is
+**Right-click either one** for the list it selects from - every bank, or every
+sample of the current bank by name - with the current entry checked. It is
 the fastest way around a kit you do not know by heart.
 
 ### output
@@ -309,19 +309,19 @@ tight.
 
 ## Context menu
 
-- **root**, **scale** — the quantizer for the **note** input.
-- **reroll kit** — a new seed for the six generated banks. The seed is saved
+- **root**, **scale** - the quantizer for the **note** input.
+- **reroll kit** - a new seed for the six generated banks. The seed is saved
   with the patch, so a rerolled kit comes back exactly as you left it.
-- **kits folder**, **rescan kits** — the folder is shared with pellicula; the
+- **kits folder**, **rescan kits** - the folder is shared with pellicula; the
   rescan picks up kits added while Rack was running.
-- **samples per bank** — how a kit of your own is cut into banks: 8 (the
+- **samples per bank** - how a kit of your own is cut into banks: 8 (the
   default, and a generated bank's size), 16, 32, or the whole kit in one.
-- **reversed hits decay instead of swelling** — off by default. On, a negative
+- **reversed hits decay instead of swelling** - off by default. On, a negative
   **length** keeps the forward envelope and only reverses the sample, which is
   what a percussive backwards hit wants.
-- **external clock takes over** — whether **clk in** may take the tempo from
+- **external clock takes over** - whether **clk in** may take the tempo from
   the **tempo** knob.
-- **pattern input window** — the voltage window the two pattern jacks read:
+- **pattern input window** - the voltage window the two pattern jacks read:
   the Rack one (0V neutral) or the hardware's (1.6–3.2V neutral).
 
 ## What was left behind
@@ -329,7 +329,7 @@ tight.
 The hardware is a standalone instrument as much as a module, and the parts
 that make it standalone are the parts Rack already has. Gone: MIDI in every
 form (TRS, USB, the CC map, clock priority, MIDI learn), the headphone
-output, the audio input with its gain and routing — patch a mixer — the tap
+output, the audio input with its gain and routing - patch a mixer - the tap
 tempo, the hidden settings mode, and the sample loader web app, replaced by
 generated banks and a kits folder.
 

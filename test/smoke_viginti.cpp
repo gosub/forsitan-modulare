@@ -1,4 +1,4 @@
-// smoke_viginti — offline sanity checks for the viginti module.
+// smoke_viginti - offline sanity checks for the viginti module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 //
 // The mathematics is checked by viginti_invariants and measured by

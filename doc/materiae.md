@@ -6,7 +6,7 @@
 voice whose complexity is entirely relational: nothing here is a complicated
 oscillator.**
 
-*materiae* is the genitive of *materia* — matter, timber, raw stuff. The two
+*materiae* is the genitive of *materia* - matter, timber, raw stuff. The two
 sources are as primitive as an oscillator gets: naive squares, no wavetables,
 no band limiting, no partials. What makes a sound is how they sit against each
 other, how they modulate each other, which operator reads the pair, and how
@@ -31,7 +31,7 @@ trigger ─> phase reset
 ```
 
 The two oscillators, the cross-modulation and the operator make up the *logic
-core*, and it runs on a clock of its own — see **grid** below. The filter and
+core*, and it runs on a clock of its own - see **grid** below. The filter and
 the VCA run at the host sample rate, downstream and deliberately clean.
 
 ## Sources
@@ -39,7 +39,7 @@ the VCA run at the host sample rate, downstream and deliberately clean.
 | control | what it does |
 |---------|-------------|
 | **pitch** | osc A, −2 to +7 octaves from C1. **v/o** adds to it. |
-| **ratio** | osc B as a ratio of osc A. Nineteen steps: the just ratios (1:2, 2:3, 3:4, 5:4, 4:3, 3:2, 5:3, 7:4, 2:1, 5:2, 3:1, 4:1), a 1:1 and a 1:1 detuned by 1%, and four irrationals — √2, e, π, and the 1:4 at the bottom. The context menu swaps the knob for a free 0.25× to 4× sweep. |
+| **ratio** | osc B as a ratio of osc A. Nineteen steps: the just ratios (1:2, 2:3, 3:4, 5:4, 4:3, 3:2, 5:3, 7:4, 2:1, 5:2, 3:1, 4:1), a 1:1 and a 1:1 detuned by 1%, and four irrationals - √2, e, π, and the 1:4 at the bottom. The context menu swaps the knob for a free 0.25× to 4× sweep. |
 | **shape** | pulse-width skew. At centre both oscillators are square; turning it widens A and narrows B together. One knob, because what matters is the *difference* in duty, not either width on its own. |
 | **grid** | the rate the logic core runs at, from 4× the host rate down to 250 Hz. |
 | **div** | /1 /2 /4 /8 /16 on osc A. A flip-flop chain on A's rising edges: /1 passes it through with its own pulse width, and every other tap is a half-duty square a subharmonic below. |
@@ -50,7 +50,7 @@ The frequency relationship is the single largest control over the sound, which
 is why it gets a table rather than a free sweep. On the just ratios the two
 oscillators share a period and the operator output repeats: a stable, pitched
 timbre. On √2, e or π they never share one, so the pulse pattern keeps
-evolving for as long as the hit lasts — the same reason those four are there.
+evolving for as long as the hit lasts - the same reason those four are there.
 1:1 detuned gives a slow beat between the two, and under the logic operators
 that beat is a rhythm rather than a tremolo.
 
@@ -58,7 +58,7 @@ that beat is a rhythm rather than a tremolo.
 
 The divider reads osc A everywhere A is read as a source: on the way into the
 relationship operator, and inside the A→B modulation cell. The operator half is
-the audible one — a divided A against an undivided B is not the same
+the audible one - a divided A against an undivided B is not the same
 relationship an octave down, it is a different relationship, and the two
 stateful operators feel it hardest because they are then clocked at A/N against
 a B running N times faster.
@@ -74,8 +74,8 @@ merely lower.
 ### About grid
 
 This is the module's digital character, made into a control instead of an
-accident. Square waves and logic operations cannot be band limited — the
-whole point of an operator like the latch is that it reads edges — so the core
+accident. Square waves and logic operations cannot be band limited - the
+whole point of an operator like the latch is that it reads edges - so the core
 is run at its own rate and decimated.
 
 Turned down, the core rate falls below the host rate and the relationship
@@ -88,7 +88,7 @@ Turned up, the core runs at four times the host rate, the decimator does its
 job, and the same patch comes out clean.
 
 The range is 4× down to 250 Hz because that is where the change is. Measured as
-spectral distance, the old top octave — 8× to 4× — was worth 0.063 out of about
+spectral distance, the old top octave - 8× to 4× - was worth 0.063 out of about
 1.9 for the whole sweep, while every octave below 1.5 kHz was still worth close
 to 1.0 from one step to the next. So the top came down, which also halves what
 the module costs at its cleanest, and the travel went to the bottom instead.
@@ -104,7 +104,7 @@ independent.
 | control | what it does |
 |---------|-------------|
 | **xmod** | depth, 0 to 4 octaves of frequency modulation. |
-| **tilt** | which way it goes. Centre is symmetric — both directions at full depth, which is where the feedback lives. Full left is A→B only, full right is B→A only. |
+| **tilt** | which way it goes. Centre is symmetric - both directions at full depth, which is where the feedback lives. Full left is A→B only, full right is B→A only. |
 | **dest** | frequency, amplitude, or both. |
 
 Between them, **xmod** and **tilt** cover the whole continuum the module is
@@ -119,8 +119,8 @@ gates their output without disturbing the pattern underneath.
 
 ### The conditioning cell
 
-Both directions run through the same three stages — attenuvert and bias,
-divide, band-limit — and so does the module's own thinking about signals. Only
+Both directions run through the same three stages - attenuvert and bias,
+divide, band-limit - and so does the module's own thinking about signals. Only
 the depth (**xmod**/**tilt**) and the division (**div**) reach the panel. The
 bias is zero on the modulation paths and the smoothing follows the source's
 own frequency and division, so a divided square keeps its edges and an
@@ -143,7 +143,7 @@ Five operators, in knob order:
 |---|---------|-----------|
 | **and** | `min(A, B)` | high only when both are. Sparse, gated, and it carries a duty-cycle offset that reads as a transient. |
 | **sum** | `(A + B) / 2` | the linear one, and three-valued: −1, 0, +1. The 0 exists only while the two disagree. |
-| **ring** | `A × B` | metallic and inharmonic. For two bipolar squares this *is* exclusive-or — see below. |
+| **ring** | `A × B` | metallic and inharmonic. For two bipolar squares this *is* exclusive-or - see below. |
 | **flip** | set/reset latch | A sets it, B clears it, so it is high for exactly the interval by which A leads B. Its duty cycle is the phase difference between the two oscillators. |
 | **noise** | shift register | an 8-bit register clocked by A and fed from its own top bit exclusive-or'd with B. Pseudo-noise, but deterministic and related to the pitch. |
 
@@ -154,8 +154,8 @@ it is worth building a patch around.
 
 ### Why five and not eight
 
-The obvious operator list for two signals is longer than this — ring, XOR, AND,
-OR, sum, difference, absolute difference — but for two *bipolar square waves*
+The obvious operator list for two signals is longer than this - ring, XOR, AND,
+OR, sum, difference, absolute difference - but for two *bipolar square waves*
 most of it collapses. Writing A, B ∈ {−1, +1}:
 
 - `A × B` is exactly `−(A xor B)`. Ring modulation and exclusive-or are the
@@ -163,7 +163,7 @@ most of it collapses. Writing A, B ∈ {−1, +1}:
 - `|A − B|` is the same again, rescaled.
 - `A − B` has the same magnitude spectrum as `A + B`: inverting a square is
   shifting it half a period.
-- `min` and `max` — AND and OR — are mirror images. Same magnitude spectrum,
+- `min` and `max` - AND and OR - are mirror images. Same magnitude spectrum,
   opposite DC, and the output DC blocker removes the only difference.
 
 What survives is min, mean and product, and after that an instantaneous
@@ -183,7 +183,7 @@ spectral distance the set was chosen on.
 | **gain** | 0 to +24 dB into the output saturator. |
 
 Squares are thin, and this module is supposed to sound heavy, so the filter is
-not a tone control at the end of the chain — it is the body of the sound. Wound
+not a tone control at the end of the chain - it is the body of the sound. Wound
 up, it is a sine that the square strikes, which is where kicks and toms come
 from: the exciter provides the transient, the filter provides the weight. The
 context menu can make cutoff track pitch, which turns the whole voice into
@@ -194,14 +194,14 @@ the saturator asymptotes at full scale, so the first part of the knob makes the
 voice louder and the rest of it makes the voice dirtier, until a hit is closer
 to a square than to whatever the filter produced. Expect the level to stop
 climbing somewhere past the middle of the knob while the character keeps
-changing — that is what a drive control is. It sits *before* the VCA, so how
+changing - that is what a drive control is. It sits *before* the VCA, so how
 hard the voice clips is a property of the patch rather than of where in the
 decay you happen to be; otherwise a hit would change character as it fell
 instead of simply getting quieter.
 
 The saturator is antialiased. A memoryless nonlinearity at the host rate makes
 harmonics above Nyquist and folds every one of them back down inharmonically,
-which driven hard is not warmth but grit and clicks — measured on a sine, 17.9%
+which driven hard is not warmth but grit and clicks - measured on a sine, 17.9%
 of the output energy at the top of the knob. Integrating the transfer curve
 across each sample interval instead of evaluating it at a point brings that to
 6.1%, for the cost of one logarithm a sample.
@@ -218,7 +218,7 @@ with the filter ringing behind it.
 
 **env 2** is the modulation envelope: instant attack, **dec 2**, **crv 2**,
 and three bipolar trimpots routing it to **pit**, **rel** and **cut**. Bipolar
-matters — from one envelope you get a pitch that falls or a pitch that rises, a
+matters - from one envelope you get a pitch that falls or a pitch that rises, a
 filter that opens or one that closes, an operator that walks up the list or
 back down it. It also leaves the module at **env** for use elsewhere.
 
@@ -226,14 +226,14 @@ back down it. It also leaves the module at **env** for use elsewhere.
 
 **out** is the voice: everything, through the VCA.
 
-**drone** is the same signal taken before env 1 — the filter and the saturator,
+**drone** is the same signal taken before env 1 - the filter and the saturator,
 held open. It ignores the amplitude envelope entirely, so the module becomes a
 continuous voice rather than a percussion one and every control on the panel is
 a timbre control on a drone. **relation** swept by hand across the five
 operators is worth trying here; so is **grid** at the bottom of its range.
 
-A trigger still does everything it normally does while the drone is running —
-resets the phases, restarts env 2, pings the filter — so the drone output is
+A trigger still does everything it normally does while the drone is running -
+resets the phases, restarts env 2, pings the filter - so the drone output is
 also the place to hear what a hit does to the *sound* with the envelope out of
 the way.
 
@@ -257,7 +257,7 @@ an attenuated trigger plays quieter. The usable range is 1.5 V to 5 V, because
 sequencer's gate heights are not deliberate.
 
 **env 2 on retrigger** chooses whether a new hit restarts the modulation
-envelope or lets the running one finish — the second keeps the amplitude clean
+envelope or lets the running one finish - the second keeps the amplitude clean
 while modulation histories overlap.
 
 A trigger that arrives while the voice is still sounding restarts the
@@ -272,7 +272,7 @@ the whole thing.
 Two simpler versions of this do not work, in case it looks over-engineered. A
 minimum attack time does nothing, because the attack shares the **crv** knob
 and a concave curve is at a quarter of full scale one sample in. Ramping the
-VCA back up from zero fixes only half of it — arriving at zero instantly is
+VCA back up from zero fixes only half of it - arriving at zero instantly is
 itself a step, and a large one.
 
 ## Context menu
@@ -290,8 +290,8 @@ itself a step, and a large one.
 ## Factory presets
 
 Twelve, written by `tools/presets/gen_materiae_presets.py`. The bank is a tour
-of the module rather than a drum kit. Two of them are sounds — **kick** and
-**click**, the two ends of the envelope — and the other ten each sit on one
+of the module rather than a drum kit. Two of them are sounds - **kick** and
+**click**, the two ends of the envelope - and the other ten each sit on one
 mechanism with everything else left near neutral, so that mechanism is what you
 hear. Load one, then move the knob it is named after.
 
@@ -299,14 +299,14 @@ hear. Load one, then move the knob it is named after.
 |---|--------|-----------------------|
 | 1 | **kick** | the filter as the body: a sine at 62 Hz that the square strikes |
 | 2 | **click** | the other end of the envelope, twelve milliseconds long |
-| 3 | **precession** | **ratio** on an irrational. √2 means the two never share a period, so the pattern never comes back round — given a long enough decay to hear it not repeating |
+| 3 | **precession** | **ratio** on an irrational. √2 means the two never share a period, so the pattern never comes back round - given a long enough decay to hear it not repeating |
 | 4 | **eclipse** | **shape**. One pulse width opens as the other closes, and AND is high only while they overlap: the knob sets how much of one disc covers the other |
 | 5 | **moire** | the **flip** operator, whose duty cycle *is* the phase difference between the oscillators. At a 1% detune that sweeps a full cycle once a second, so the timbre slides with no knob moving. The sweep rate is 1% of the pitch, so tuning it up speeds the slide and tuning it down slows it |
 | 6 | **lattice** | **grid** near the bottom. Every edge lands late by a different amount and the fold-down of that is the whole timbre |
 | 7 | **undertow** | **div** as a subharmonic operand, with no cross-modulation at all: 40 Hz A read against 320 Hz B |
-| 8 | **ouroboros** | **xmod** full with **tilt** centred — each oscillator modulating the other at full depth, both ways at once |
+| 8 | **ouroboros** | **xmod** full with **tilt** centred - each oscillator modulating the other at full depth, both ways at once |
 | 9 | **transit** | **env 2 → rel**. The hit begins on the shift register and crosses back to ring as it falls: what changes is *which operator is reading the pair* |
-| 10 | **chatter** | the shift register — noise, but deterministic and tied to the pitch, so it has a grain rather than a hiss |
+| 10 | **chatter** | the shift register - noise, but deterministic and tied to the pitch, so it has a grain rather than a hiss |
 | 11 | **vigil** | the **drone** output, where env 1 never closes. Free-running, everything slow, nothing settling |
 | 12 | **slag** | **gain** most of the way up against **grid** most of the way down |
 
@@ -319,37 +319,37 @@ module is worst at pretending to be and the slots are better spent showing what
 it is actually for. It will make them, though, and here is where to start. Every
 setting not listed stays at its default.
 
-**Tom** — pitch 120 Hz, ratio 3:2, **relation** on *sum*, **blend** 50%,
+**Tom** - pitch 120 Hz, ratio 3:2, **relation** on *sum*, **blend** 50%,
 cutoff 420 Hz, **reso** 72%, decay 450 ms, **crv** +0.6, dec 2 120 ms,
 **env 2 → pit** −0.8, **→ cut** +0.2. The pitch fall is doing most of the work;
 lengthen dec 2 for a bigger tom and shorten it for a smaller one.
 
-**Snare** — pitch 190 Hz, ratio 7:4, **shape** 62%, **relation** three fifths of
+**Snare** - pitch 190 Hz, ratio 7:4, **shape** 62%, **relation** three fifths of
 the way from *flip* to *noise*, **xmod** 30%, **lp/bp** on bandpass at 1800 Hz,
 **reso** 45%, **gain** 25%, decay 220 ms, **crv** +0.7, dec 2 50 ms,
 **env 2 → cut** +0.4, **→ pit** −0.25. Sitting between flip and noise is the
 point: pure noise is flat hiss, and pulling it back toward the latch leaves a
 pattern inside the rattle.
 
-**Hat** — pitch 3.2 kHz, ratio *e*, **relation** on *noise*, **xmod** 40%,
+**Hat** - pitch 3.2 kHz, ratio *e*, **relation** on *noise*, **xmod** 40%,
 **grid** 28 kHz, bandpass at 9 kHz, **reso** 20%, **gain** 40%, **att** at
 minimum, decay 45 ms, **crv** +0.9, **env 2 → cut** +0.3. Open it by taking the
 decay to 300 ms.
 
-**Cymbal** — pitch 1.5 kHz, ratio *e*, **relation** on *noise*, **xmod** 60%,
+**Cymbal** - pitch 1.5 kHz, ratio *e*, **relation** on *noise*, **xmod** 60%,
 **tilt** +0.3, bandpass at 6.5 kHz, **reso** 25%, decay 900 ms, **crv** +0.85,
 dec 2 300 ms, **env 2 → cut** +0.5.
 
-**Bell / metallic** — pitch 620 Hz, ratio π, **relation** on *ring*,
+**Bell / metallic** - pitch 620 Hz, ratio π, **relation** on *ring*,
 **xmod** 35%, **tilt** −0.4, bandpass at 3.8 kHz, **reso** 55%, decay 1.1 s,
 **crv** +0.8, **env 2 → rel** +0.6. The irrational ratio is what stops it
 sounding like a tuned tom.
 
-**Digital percussion** — pitch 260 Hz, ratio √2, **relation** on *and*,
+**Digital percussion** - pitch 260 Hz, ratio √2, **relation** on *and*,
 **div** /4, **xmod** 50%, **grid** 6.2 kHz, cutoff 5.2 kHz, **reso** 40%,
 decay 180 ms, **crv** +0.4, **env 2 → pit** +0.5.
 
-**Sub / unstable bass** — pitch 55 Hz, ratio 1:1 detuned, **relation** on
+**Sub / unstable bass** - pitch 55 Hz, ratio 1:1 detuned, **relation** on
 *flip*, **blend** 80%, **xmod** 45%, **tilt** −0.5, **div** /2, **grid** 9 kHz,
 cutoff 220 Hz, **reso** 85%, decay 900 ms, **crv** +0.35, dec 2 350 ms,
 **env 2 → pit** −0.35, **→ rel** +0.5, **→ cut** +0.3. The latch drifting
@@ -367,8 +367,8 @@ fundamental* rather than anywhere on its own range, the bandpass gets a
 resonance floor and a tighter aim than the lowpass, and the divider is weighted
 away from its deep end. Decay keeps off its own floor, since a five-millisecond
 decay is a tick rather than a patch. Everything that merely changes the sound
-without being able to silence it — ratio, grid, xmod, tilt, relation, blend, the
-env 2 routing — is left alone and fully uniform.
+without being able to silence it - ratio, grid, xmod, tilt, relation, blend, the
+env 2 routing - is left alone and fully uniform.
 
 That takes the unusable fraction from 11% to 1%, and lifts the quietest
 twentieth of results by 17 dB. `test/materiae_random` is the measurement.

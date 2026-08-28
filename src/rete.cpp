@@ -1,4 +1,4 @@
-// rete.cpp — VCV Rack 2 module
+// rete.cpp - VCV Rack 2 module
 // rete (Latin for "net") is a feedback integrator network, a topology described
 // by Nathan Ho (https://nathan.ho.name/posts/feedback-integrator-networks/),
 // itself inspired by Giorgio Sancristoforo's Bentō. Eight signals run through

@@ -5,7 +5,7 @@
 **Parameterized digital drum voice: six additive oscillators, morphing waves, prime spread and an infinite folder.**
 
 *tundo* is Latin for "I beat, I pound", from *tundere*, to strike
-repeatedly — and the repetition in the verb is a wink at the *iteritas* of
+repeatedly - and the repetition in the verb is a wink at the *iteritas* of
 the module it is built after, Noise Engineering's **Basimilus Iteritas
 Alter**. It is a synthesized drum: six tonal oscillators plus a noise
 oscillator, stacked into a modal spectrum, folded, and re-enveloped. Where
@@ -48,20 +48,20 @@ Every knob has its own attenuverter and CV input directly below it.
 | **morph** | the waveform every oscillator uses: sine → triangle → saw → square, in three equal thirds of the knob |
 | **fold** | the first three quarters lower the folder's reflection threshold, from no folding to eight-odd reflections on a peak. The top quarter crossfades in a train of decaying pulses, one fired at every peak and trough of the tonal sum, so the train is locked to the note and **harm** sets how dense it is: two clicks a cycle with one partial, a dozen with six. It replaces the dense fold rather than piling on top of it, so the end of the knob is peakier and thinner, not louder |
 | **attack** | one knob, two halves. From full CCW to noon it mixes in a burst of noise, loudest at full CCW. The noise tracks the pitch, so it darkens as you play lower, but only down to a floor: in **bass** range it would otherwise sit entirely below 1 kHz and a low snare would have no crack left. Noon is the classic analog pop, a 0.5 ms attack with no noise. From noon to full CW the attack stretches exponentially to 2 s, and the decay waits for it: the hit swells, then falls, so a slow attack still sounds at full level however short **decay** is |
-| **decay** | 5 ms to 4 s, exponential, for all oscillators together — **harm** decides how much of that each partial gets. With *Free-run* armed in the context menu, full CW holds the envelopes open and tundo becomes an oscillator |
+| **decay** | 5 ms to 4 s, exponential, for all oscillators together - **harm** decides how much of that each partial gets. With *Free-run* armed in the context menu, full CW holds the envelopes open and tundo becomes an oscillator |
 
 ## Switches, button, inputs and outputs
 
 | control | function |
 |---------|----------|
-| **mode** | **skin** — plain additive, each oscillator one non-interacting mode of a drum: tonal sounds, snares, stabs. **liquid** — skin plus a pitch envelope on every oscillator, for the extra kick. **metal** — the oscillators modulate each other, as two 3-operator phase-modulation stacks: noisy, alien, cymbals. **harm** sets the modulation index here rather than partial levels, from a light index at full CCW to six radians at full CW, the four modulators staggered across the knob |
+| **mode** | **skin** - plain additive, each oscillator one non-interacting mode of a drum: tonal sounds, snares, stabs. **liquid** - skin plus a pitch envelope on every oscillator, for the extra kick. **metal** - the oscillators modulate each other, as two 3-operator phase-modulation stacks: noisy, alien, cymbals. **harm** sets the modulation index here rather than partial levels, from a light index at full CCW to six radians at full CW, the four modulators staggered across the knob |
 | **range** | octave offset: **bass** +0, **alto** +2, **treble** +4 |
 | **cv** (left) | mode CV. When patched it **overrides the switch**, splitting 0–5 V in three (below 1.67 V skin, below 3.33 V liquid, above metal) |
 | **cv** (right) | range CV, the same three-way split |
 | **trig** | strike, Schmitt-triggered at 1.5 V rising. There is no legato: a retrigger restarts every envelope from zero, as the hardware does |
 | **hit** | button, strikes the voice by hand; it ORs into **trig** and lights its LED |
 | **audio** | the voice. ±5 V by default, see *Output level* |
-| **env** | the voice's own envelope, 0–10 V — the whole of what drives the folder, attack and decay together, so it follows **harm**, **attack** and **decay** and not just the trigger |
+| **env** | the voice's own envelope, 0–10 V - the whole of what drives the folder, attack and decay together, so it follows **harm**, **attack** and **decay** and not just the trigger |
 
 ## Context menu
 
@@ -84,7 +84,7 @@ the square's grit stays *tuned*.
 
 *Clean* trades that for a fixed 4× oversampled engine with PolyBLEP saw
 and square edges, a second-order decimation filter and interpolated
-resampling. It is the same voice with the character sanded off — useful if
+resampling. It is the same voice with the character sanded off - useful if
 tundo is playing a melodic line rather than a drum part.
 
 **Spread law.** The default runs harmonic → prime, which is what the
@@ -115,7 +115,7 @@ rather than decay over four seconds; the drone starts immediately, and
   hardware's behaviour here is ambiguous in the manual; override is the
   useful reading.
 - The engine's internal rate is a power of two times the fundamental. The
-  hardware's actual multiple is undocumented — powers of two keep the
+  hardware's actual multiple is undocumented - powers of two keep the
   images exactly aligned, and if the grit is ever too coarse or too clean
   that is the constant to move.
 - Mono. A polyphonic version would be a different module.
@@ -127,8 +127,8 @@ rather than decay over four seconds; the drone starts immediately, and
 The manuals describe the architecture in detail but not the curves, so
 these are ours and are marked `(soft)` in `src/tundo_dsp.hpp`:
 
-- The **harm** staging constants. The manual gives the order — second tone
-  in the first quarter, then decays, then amplitudes — and nothing else.
+- The **harm** staging constants. The manual gives the order - second tone
+  in the first quarter, then decays, then amplitudes - and nothing else.
   The thresholds, ramp widths and the `i^-0.7` spectral tilt are invented.
 - The **fold** pulse amplitude, time constant, and which signal's minima
   and maxima fire it. "An exponentially decaying pulse at the local minima

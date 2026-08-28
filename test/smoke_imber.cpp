@@ -1,4 +1,4 @@
-// smoke_imber — offline sanity checks for the imber module.
+// smoke_imber - offline sanity checks for the imber module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

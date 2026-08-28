@@ -34,8 +34,8 @@ one by the output jack follows the level.
 
 ## Context menu
 
-- **Clipping diodes** — silicon 1N4148 (stock), germanium, LED, or lifted.
-- **Oversampling** — 1× to 16×, default 4×.
+- **Clipping diodes** - silicon 1N4148 (stock), germanium, LED, or lifted.
+- **Oversampling** - 1× to 16×, default 4×.
 
 ## The one control that isn't on the pedal, and why
 
@@ -53,29 +53,29 @@ Circuit values and stage figures come from
 
 **The tone stack is solved, not approximated.** The usual shortcut is a
 lowpass and a highpass mixed by the knob, which gets the general tilt and
-misses everything interesting. raucus runs the actual passive network — a
+misses everything interesting. raucus runs the actual passive network - a
 39k/10n bass leg to ground, a 3.9n/22k treble leg to ground, the 100k pot
 between them, the driving stage's 15k source impedance and the volume pot's
-100k load — as a single biquad from a nodal analysis of the whole thing.
+100k load - as a single biquad from a nodal analysis of the whole thing.
 
 What that buys, measured on the filter the module actually runs
 (`test/raucus_probe tone`):
 
 | tone | 60 Hz | 1 kHz | 12 kHz | notch |
 |---|---|---|---|---|
-| 0.00 (bass) | −6.0 dB | −12.3 dB | −33.5 dB | — |
+| 0.00 (bass) | −6.0 dB | −12.3 dB | −33.5 dB | - |
 | 0.50 | −10.9 dB | −19.7 dB | −15.1 dB | −19.8 dB at 1111 Hz |
 | 1.00 (treble) | −19.7 dB | −13.6 dB | −7.6 dB | −20.5 dB at 276 Hz |
 
 The notch sits at 1.1 kHz with the pot centred and walks down to 276 Hz as
-you turn toward treble — behaviour a two-branch approximation cannot produce,
+you turn toward treble - behaviour a two-branch approximation cannot produce,
 because there the notch cannot move. Driven from an ideal source into a light
 load, the same expression gives 7.4 dB of insertion loss and a notch of
 −14.2 dB at 1042 Hz, against ElectroSmash's 7 dB and −13.5 dB at 1 kHz.
 
 **The clipper is solved, not limited.** The 1 µF capacitor in series with each
-diode pair blocks the DC bias and nothing else — across 470 kΩ its corner is a
-third of a hertz — so the feedback clipper is *memoryless*, and the stage is
+diode pair blocks the DC bias and nothing else - across 470 kΩ its corner is a
+third of a hertz - so the feedback clipper is *memoryless*, and the stage is
 exactly the static solution of
 
 ```
@@ -92,12 +92,12 @@ lerp.
 The shape that comes out is the point. Feedback clipping is not a limiter: at
 a would-be output of 0.25 V the stage gives 0.18 V, at 1 V it gives 0.29 V, at
 3 V it gives 0.35 V. It keeps compressing rather than flattening, which is the
-Big Muff's sustain — and it is why the level at the output barely moves as the
+Big Muff's sustain - and it is why the level at the output barely moves as the
 input goes from 0.5 V to 10 V.
 
 **The published operating points** are used as measured rather than as the
 resistor ratios suggest: 16.7 dB for the booster, 23 dB and 25 dB for the two
-clipping stages (not the 33 dB that 470k/10k implies — the transistors' open
+clipping stages (not the 33 dB that 470k/10k implies - the transistors' open
 loop gain is only about 66), 13 dB for the recovery stage, and the stages'
 pole pairs at 55 Hz/1.78 kHz and 94 Hz/1.17 kHz.
 
@@ -121,7 +121,7 @@ At 1× the module is usable but a top-octave note brings its aliases with it.
 | **Silicon 1N4148** | stock. The measured RMS the others are compared against |
 | **Germanium** | conducts a decade earlier, so it clamps sooner and softer: about a quarter the output level, and gone soggy |
 | **LED** | needs about 1.7 V before it does anything, so the stages swing much further first: nearly three times the level, cleaner, closer to overdrive |
-| **Lifted** | no diodes at all. The stages clip against their own supply instead — loudest and hardest |
+| **Lifted** | no diodes at all. The stages clip against their own supply instead - loudest and hardest |
 
 The LED and lifted settings are genuinely much louder, as they are on a modded
 pedal. The makeup gain here is calibrated on the stock silicon pair, so turn
@@ -155,7 +155,7 @@ rail rather than squaring off against it, but it will get there.
   that cuts, and is the mod most often done to the hardware.
 - **Starved**: **bias** hard over with sustain low. The stages clip on one
   side long before the other, and notes gate and splutter as they decay.
-- **Poly fuzz**: one pedal per voice is not what a real one does to a chord —
+- **Poly fuzz**: one pedal per voice is not what a real one does to a chord -
   a real one intermodulates the whole chord into mush. Patch a poly synth
   straight in for the clean version, or sum to mono first for the mush.
 - **In front of [vespae](vespae.md)**: fuzz into the Wasp filter is the oldest

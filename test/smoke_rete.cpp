@@ -1,4 +1,4 @@
-// smoke_rete — offline sanity checks for the rete module.
+// smoke_rete - offline sanity checks for the rete module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

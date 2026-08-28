@@ -5,7 +5,7 @@
 **Random sample generator and player: press GEN, get a sound that has
 never existed before.**
 
-*sylla* is a clipped *syllaba*, Latin for "syllable" — haiku are counted
+*sylla* is a clipped *syllaba*, Latin for "syllable" - haiku are counted
 in syllables, and sylla speaks one small sound at a time. It is the
 standalone voice of the [imber](imber.md) pair, inspired by Giorgio
 Sancristoforo's **Haiku**, whose sample material is synthesized from
@@ -31,14 +31,14 @@ transient, so the knob is still a gesture:
 
 | group | engines |
 |-------|---------|
-| **drone** | *pure*, *detuned*, *FM*, *sub*, *stretched* — oscillator-fed stacks, from a near-sine through 2-op FM to a stretched-partial stack that beats against itself |
-| **pad** | *slow*, *cluster*, *tape* — chordal beds, static or wowing |
-| **air** | *filtered*, *wash*, *vowel*, *comb* — noise-fed: resonant noise, sweeping washes, a glottal pulse train through morphing formants, and noise driven into a comb |
-| **bell** | *classic*, *inharmonic*, *chime*, *body* — struck: three additive sets with long tails, plus a noise-excited metal or wood body with a short dry ring |
-| **pluck** | *clean*, *dirty* — Karplus-Strong strings |
-| **phrase** | *melody*, *stab*, *run*, *stutter* — figures in time |
-| **dust** | *grains*, *bursts* — particles |
-| **broken** | *glitch*, *skip* — bubbly sample-and-hold, and CD-skip material |
+| **drone** | *pure*, *detuned*, *FM*, *sub*, *stretched* - oscillator-fed stacks, from a near-sine through 2-op FM to a stretched-partial stack that beats against itself |
+| **pad** | *slow*, *cluster*, *tape* - chordal beds, static or wowing |
+| **air** | *filtered*, *wash*, *vowel*, *comb* - noise-fed: resonant noise, sweeping washes, a glottal pulse train through morphing formants, and noise driven into a comb |
+| **bell** | *classic*, *inharmonic*, *chime*, *body* - struck: three additive sets with long tails, plus a noise-excited metal or wood body with a short dry ring |
+| **pluck** | *clean*, *dirty* - Karplus-Strong strings |
+| **phrase** | *melody*, *stab*, *run*, *stutter* - figures in time |
+| **dust** | *grains*, *bursts* - particles |
+| **broken** | *glitch*, *skip* - bubbly sample-and-hold, and CD-skip material |
 | **micro** | tiny one-shots, milliseconds long |
 | **random** | the last position: a weighted roll across the whole loop pool, the same distribution [imber](imber.md) fills its bank from |
 
@@ -123,27 +123,27 @@ locked to D minor forever.
 
 ## Controls
 
-- **ENGINE** — which generator the next render uses (snap knob, one
+- **ENGINE** - which generator the next render uses (snap knob, one
   position per engine, also in the right-click menu). Every position,
   *random* included, derives its sound from the sample's seed, so a
   reloaded patch always comes back with the same sound.
-- **GEN** (button + trigger input) — render a new sample. The yellow LED
+- **GEN** (button + trigger input) - render a new sample. The yellow LED
   lights while the worker thread is busy; the old sample plays until the
   new one lands. Requests during a render are ignored. GEN only changes
   what is loaded, never whether it plays: a stopped sylla stays quiet.
-- **SPEED** — playback rate 0.1–2×. The CV input adds ±1 V/oct around
+- **SPEED** - playback rate 0.1–2×. The CV input adds ±1 V/oct around
   the knob.
-- **LEN** — play window, as a fraction of the buffer measured from its
+- **LEN** - play window, as a fraction of the buffer measured from its
   start (min 30 ms), with soft window edges.
-- **LEVEL** — output level.
-- **LOOP** switch — *loop* wraps at the window end; *one-shot* stops
+- **LEVEL** - output level.
+- **LOOP** switch - *loop* wraps at the window end; *one-shot* stops
   there. A loop wraps through a 25 ms equal-power seam and skips the
   buffer's own fade-in on later laps, so a drone holds level instead of
   dipping once per lap. One-shot keeps both buffer fades, where they are
   the sample's attack and release.
-- **GATE** switch — *trigger* responds to rising edges; *gate* follows
+- **GATE** switch - *trigger* responds to rising edges; *gate* follows
   the level.
-- **PLAY** button — a trigger and a gate source in its own right, so the
+- **PLAY** button - a trigger and a gate source in its own right, so the
   whole transport works with nothing patched.
 
 ## Transport
@@ -159,7 +159,7 @@ drive it identically:
 A fresh sylla starts in one-shot + trigger, so it sits quiet until you
 ask for a sound: press PLAY to speak the sample once. The loop toggle
 starts *on*, so flipping LOOP up drones straight away with nothing
-patched — an instant generative drone/texture source. PLAY stops it,
+patched - an instant generative drone/texture source. PLAY stops it,
 another press starts it over. The run state is saved with the patch.
 
 Nothing ever cuts mid-signal. Retriggering a sounding window, and a
@@ -174,9 +174,9 @@ way, with 25 ms of equal-power overlap.
 - **TRIG** drives the transport square above; it needs no cable, since
   PLAY does the same job by hand.
 - **OUT** is mono (the generators are mono by design; pan or spread it
-  downstream — [pavo](pavo.md) is a good neighbor). The LED on the badge
+  downstream - [pavo](pavo.md) is a good neighbor). The LED on the badge
   shows level.
-- **EOC** emits a trigger at each window end / loop wrap — patch it back
+- **EOC** emits a trigger at each window end / loop wrap - patch it back
   into GEN with LOOP on for a drone that renews itself at every wrap. In
   one-shot, patch it to both GEN and TRIG, since generating alone no
   longer restarts playback.
@@ -184,5 +184,5 @@ way, with 25 ms of equal-power overlap.
 ## Impermanence
 
 True to Haiku's "built from nothing" spirit, the rendered sample is not
-saved with the patch — only its seed is. Reloading the patch regenerates
+saved with the patch - only its seed is. Reloading the patch regenerates
 the exact same sound; pressing GEN never brings one back.

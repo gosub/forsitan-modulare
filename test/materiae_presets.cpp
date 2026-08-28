@@ -1,4 +1,4 @@
-// materiae_presets — load the factory presets into a real module and measure
+// materiae_presets - load the factory presets into a real module and measure
 // what comes out.
 //
 //     ./materiae_presets [dir]        default ../presets/materiae

@@ -1,5 +1,5 @@
 #pragma once
-// draen_engines.hpp — the drone engines and their registry.
+// draen_engines.hpp - the drone engines and their registry.
 //
 // Each engine is a faithful C++ port of a dronecaster SynthDef
 // (github.com/northern-information/dronecaster, GPL-3.0), keeping the original
@@ -24,7 +24,7 @@ struct DroneEngine {
     virtual void process(float hz, float amp, float st, float& outL, float& outR) = 0;
 };
 
-// ── Sine — @northern-information. { |hz,amp| (SinOsc.ar(hz)*amp).dup } ─────────
+// ── Sine - @northern-information. { |hz,amp| (SinOsc.ar(hz)*amp).dup } ─────────
 struct SineEngine : DroneEngine {
     SinOsc osc;
     const char* name() const override { return "sine"; }
@@ -34,7 +34,7 @@ struct SineEngine : DroneEngine {
     }
 };
 
-// ── Square — @taubaland. { |hz,amp| (Pulse.ar(hz,0.5)*amp).dup } ──────────────
+// ── Square - @taubaland. { |hz,amp| (Pulse.ar(hz,0.5)*amp).dup } ──────────────
 struct SquareEngine : DroneEngine {
     BlPulse osc;
     const char* name() const override { return "square"; }
@@ -44,7 +44,7 @@ struct SquareEngine : DroneEngine {
     }
 };
 
-// ── Triangle — @taubaland. { |hz,amp| (LFTri.ar(hz)*amp).dup } ────────────────
+// ── Triangle - @taubaland. { |hz,amp| (LFTri.ar(hz)*amp).dup } ────────────────
 struct TriangleEngine : DroneEngine {
     LFTri osc;
     const char* name() const override { return "triangle"; }
@@ -54,7 +54,7 @@ struct TriangleEngine : DroneEngine {
     }
 };
 
-// ── Supersaw — @cfdrake. Five band-passed saws, spread with Splay. ────────────
+// ── Supersaw - @cfdrake. Five band-passed saws, spread with Splay. ────────────
 //   Splay.ar(Array.fill(5, { |i|
 //     BPF.ar(Saw.ar(hz*i + SinOsc.kr(0.1*i,0,0.5)),
 //            100 + (i*100) + SinOsc.kr(0.05*i, mul:100), 2) }), 1) * amp
@@ -84,7 +84,7 @@ struct SupersawEngine : DroneEngine {
     }
 };
 
-// ── harm's way — @moonblind. 16 harmonics, each slowly amplitude-modulated. ───
+// ── harm's way - @moonblind. 16 harmonics, each slowly amplitude-modulated. ───
 //   Splay.ar((SinOsc.ar(hz*n)/n) * SinOsc.kr({Rand(0.001,0.02)}!16),
 //            0.5, amp, SinOsc.kr(0.001))
 struct HarmsWayEngine : DroneEngine {
@@ -118,7 +118,7 @@ struct HarmsWayEngine : DroneEngine {
     }
 };
 
-// ── THX — @infinitedigits. The Deep Note: 12 saws sweep from a random cluster ─
+// ── THX - @infinitedigits. The Deep Note: 12 saws sweep from a random cluster ─
 // to a target chord as `amp` rises (amp doubles as the sweep position, exactly
 // as in the original). earslap.com/article/recreating-the-thx-deep-note.html
 struct ThxEngine : DroneEngine {
@@ -162,7 +162,7 @@ struct ThxEngine : DroneEngine {
     }
 };
 
-// ── Hecker — @infinitedigits. Two stereo banks of 16 filtered noise voices ────
+// ── Hecker - @infinitedigits. Two stereo banks of 16 filtered noise voices ────
 // slowly morphing between white and pink, band-passed around the fundamental.
 struct HeckerEngine : DroneEngine {
     struct Voice {
@@ -212,7 +212,7 @@ struct HeckerEngine : DroneEngine {
     }
 };
 
-// ── Coil — @infinitedigits. "Traversing the tunnels of goats." ───────────────
+// ── Coil - @infinitedigits. "Traversing the tunnels of goats." ───────────────
 // 12 voices of Dust-triggered events: each fires an AR envelope with random
 // attack/release, crossfades a feedback-sine against noise, band-limits and
 // micro-delays it, pans it with a moving envelope, all fed into the shared
@@ -306,7 +306,7 @@ struct CoilEngine : DroneEngine {
     }
 };
 
-// ── Sachiko — @infinitedigits. "High-tone space-cutting." ────────────────────
+// ── Sachiko - @infinitedigits. "High-tone space-cutting." ────────────────────
 // 4 voices of DPW pulses, each modulated by a bank of very slow wandering
 // triangle LFOs, resonant-lowpassed, panned, and run through a long per-voice
 // comb; summed, saturated into a global Moog ladder, then the shared reverb.
@@ -394,7 +394,7 @@ struct SachikoEngine : DroneEngine {
     }
 };
 
-// ── Starlids — @infinitedigits. "Symphonic, meek, radiant." ─────────────────
+// ── Starlids - @infinitedigits. "Symphonic, meek, radiant." ─────────────────
 // A PWM sub-oscillator plus 12 sawtooth voices whose pitches step through major
 // third/fourth/sixth intervals, each chorus-delayed and panned, the whole thing
 // swept by a global Moog ladder.
@@ -464,7 +464,7 @@ struct SHRand {
     }
 };
 
-// ── Mt. Lion — @license. "Roars through a twisting canyon." ──────────────────
+// ── Mt. Lion - @license. "Roars through a twisting canyon." ──────────────────
 // 9 comb-resonated pulse voices, everything (pitch, width, delay, decay, pan,
 // level) driven by slow sample-and-held noise.
 struct MtLionEngine : DroneEngine {
@@ -512,7 +512,7 @@ struct MtLionEngine : DroneEngine {
     }
 };
 
-// ── Apparatus — Josue Arias (after Zé Craum / Ruviaro / Mitchell). ───────────
+// ── Apparatus - Josue Arias (after Zé Craum / Ruviaro / Mitchell). ───────────
 // "Drone simulating old sinusoidal generators": clipped triangle oscillators
 // with vibrato + mains hum, plus a crackle/dust interference bed.
 struct ApparatusEngine : DroneEngine {
@@ -558,10 +558,10 @@ struct ApparatusEngine : DroneEngine {
     }
 };
 
-// ── Eliane — @sixolet. "Feedback, slow beatings, highs and lows." ────────────
+// ── Eliane - @sixolet. "Feedback, slow beatings, highs and lows." ────────────
 // Seven sine partials phase-modulating each other in a crosslinked feedback
 // ring (an homage to Éliane Radigue). SC's LocalIn/LocalOut(14) is a one-sample
-// feedback bus — here just the previous frame's per-partial stereo output.
+// feedback bus - here just the previous frame's per-partial stereo output.
 struct ElianeEngine : DroneEngine {
     static constexpr int N = 7;
     float bus[2 * N] = {};
@@ -642,7 +642,7 @@ struct ElianeEngine : DroneEngine {
     }
 };
 
-// ── UNRELACC — @zebra. Six Hénon-map chaotic oscillators in intervals. ───────
+// ── UNRELACC - @zebra. Six Hénon-map chaotic oscillators in intervals. ───────
 struct UnrelaccEngine : DroneEngine {
     static constexpr int V = 6;
     Lag hzLag;
@@ -680,9 +680,9 @@ struct UnrelaccEngine : DroneEngine {
     }
 };
 
-// ── Dreamcrusher — @infinitedigits. No-input-mixer feedback drone. ───────────
+// ── Dreamcrusher - @infinitedigits. No-input-mixer feedback drone. ───────────
 // A gated pulse feeds a feedback loop (one-poles, rotation, a modulated delay,
-// soft-clip and lowpass) whose gain exceeds unity — held in check by the clip.
+// soft-clip and lowpass) whose gain exceeds unity - held in check by the clip.
 struct DreamcrusherEngine : DroneEngine {
     LFNoise0 nFreq, nWidth, nBal, nDelay, nLpf, nFbGain, nBalOut;
     SinOsc sFreq, sWidth, sBal, sBalOut;
@@ -736,7 +736,7 @@ struct DreamcrusherEngine : DroneEngine {
     }
 };
 
-// ── Rehberg — @infinitedigits. "Dense, distorted, overwhelming." ─────────────
+// ── Rehberg - @infinitedigits. "Dense, distorted, overwhelming." ─────────────
 // A detuned tape-warble pulse pair, folded and DFM1-filtered, with an FM sine
 // and resonant band, poured into Freeverb. Random dips/bumps modulate the pitch.
 struct RehbergEngine : DroneEngine {
@@ -806,7 +806,7 @@ struct RehbergEngine : DroneEngine {
     }
 };
 
-// ── Toshiya — @infinitedigits. "Object-bound resonate space." ───────────────
+// ── Toshiya - @infinitedigits. "Object-bound resonate space." ───────────────
 // Twelve sine voices whose pitches jump through intervals, chorus-delayed and
 // swept by a Moog ladder, into the shared reverb, with a pink-noise-excited
 // Klank resonator bank ringing underneath.
@@ -881,7 +881,7 @@ struct ToshiyaEngine : DroneEngine {
     }
 };
 
-// ── Magicicada — @sixolet. "Unsettling, organic, chaotic." ──────────────────
+// ── Magicicada - @sixolet. "Unsettling, organic, chaotic." ──────────────────
 // A no-input-mixing drone: two parallel crossfading delay selectors (3 and 4
 // delays) inside a feedback loop, filtered/warped and fed back with a touch of
 // noise. The audible output is the filtered feedback signal itself.
@@ -965,11 +965,11 @@ struct MagicicadaEngine : DroneEngine {
     }
 };
 
-// ── mt. zion — @license. "Thee rusted satellites gather + sing." ──────────────
-// Five pulse-wave harmonics where everything — pitch wander, pulse width, pan,
-// level — is Latch(WhiteNoise, Dust).lag, i.e. slow lagged sample-and-hold
+// ── mt. zion - @license. "Thee rusted satellites gather + sing." ──────────────
+// Five pulse-wave harmonics where everything - pitch wander, pulse width, pan,
+// level - is Latch(WhiteNoise, Dust).lag, i.e. slow lagged sample-and-hold
 // randomness. The original's pulse width wanders in [1, 2]; SC's Pulse treats
-// width modulo 1, so a voice thins to silence as its width passes an integer —
+// width modulo 1, so a voice thins to silence as its width passes an integer -
 // kept faithfully by wrapping the width here too.
 struct MtZionEngine : DroneEngine {
     static constexpr int N = 5;
@@ -1019,9 +1019,9 @@ struct MtZionEngine : DroneEngine {
     }
 };
 
-// ── Mika — @infinitedigits. "Hum and beeps." ──────────────────────────────────
+// ── Mika - @infinitedigits. "Hum and beeps." ──────────────────────────────────
 // A chord-walking sine ping fed through a randomly re-timed allpass (after
-// Batuhan Bozkurt's sc140 tweet — the delay-time jumps *are* the beeps), over a
+// Batuhan Bozkurt's sc140 tweet - the delay-time jumps *are* the beeps), over a
 // pulse+noise bass. The PMOsc in the original has mul:0 (silent) and the
 // Compander uses identity slopes, so both are omitted.
 struct MikaEngine : DroneEngine {
@@ -1116,7 +1116,7 @@ struct MikaEngine : DroneEngine {
     }
 };
 
-// ── Fieldsteel — after Eli Fieldsteel's Tutorial 15 ("Composing a Piece"). ────
+// ── Fieldsteel - after Eli Fieldsteel's Tutorial 15 ("Composing a Piece"). ────
 // A drone of three band-passed saws whose notes are demand-picked from a
 // four-note set, blended with a "marimba": three high-resonance SVF bandpasses
 // rung by slow LFSaw ramps at demand-picked rhythms and pitches.
@@ -1211,7 +1211,7 @@ struct FieldsteelEngine : DroneEngine {
     }
 };
 
-// ── Malone — @infinitedigits. "Thick, organ, stepped." ────────────────────────
+// ── Malone - @infinitedigits. "Thick, organ, stepped." ────────────────────────
 // Eight organ voices (pulse stack + sub triangle), each picking a random tone
 // of a demand-sequenced chord at its own Dust rate, resonant-lowpassed and
 // tremolo'd by an LFPar burst after each chord change, into a Moog ladder and
@@ -1307,7 +1307,7 @@ struct MaloneEngine : DroneEngine {
     }
 };
 
-// ── Gristle — @infinitedigits. "A primal sawtooth." ───────────────────────────
+// ── Gristle - @infinitedigits. "A primal sawtooth." ───────────────────────────
 // Three octave-stacked VarSaws (default width 0.5), each detuned by a sine
 // whose rate is itself noise, band-passed by a slowly wandering filter, and
 // heard entirely through Greyhole (wet-only).
@@ -1334,7 +1334,7 @@ struct GristleEngine : DroneEngine {
     }
 };
 
-// ── Grove — @sixolet. "The orchestra is preparing to play among the arching
+// ── Grove - @sixolet. "The orchestra is preparing to play among the arching
 // roots. There is no conductor." ──────────────────────────────────────────────
 // Five pulsar-synthesis voices: a slow sine "pulse" fires formant-period grain
 // envelopes at its zero crossings, self-gated by an audio-rate guard window fed
@@ -1475,7 +1475,7 @@ struct GroveEngine : DroneEngine {
     }
 };
 
-// ── Shields — @infinitedigits. "Bendy, Bloody, Loud." ─────────────────────────
+// ── Shields - @infinitedigits. "Bendy, Bloody, Loud." ─────────────────────────
 // Six detuned saw pairs, each double-combed, splayed to stereo; the mix is
 // recorded onto an 8 s tape loop and read back slower (a slipping repitch),
 // combed once more, swept by a Moog ladder, and widened with a big 32-comb
@@ -1618,11 +1618,11 @@ struct ShieldsEngine : DroneEngine {
     }
 };
 
-// ── Eno — @infinitedigits. "Music for airports." ──────────────────────────────
+// ── Eno - @infinitedigits. "Music for airports." ──────────────────────────────
 // Two low sines under a plane of eight chorused saws voicing a slowly changing
 // chord, a Klank bank ringing the chord tones, and a "piano" that walks the
-// actual Music-for-Airports note sequences — a Karplus comb-string crossfaded
-// with a PolyPerc pulse — all through Freeverb.
+// actual Music-for-Airports note sequences - a Karplus comb-string crossfaded
+// with a PolyPerc pulse - all through Freeverb.
 struct EnoEngine : DroneEngine {
     // note sequences from the original (semitone offsets)
     static const float* airportAt(int i, int& len) {
@@ -1791,7 +1791,7 @@ struct EnoEngine : DroneEngine {
     }
 };
 
-// ── Belong — @infinitedigits. "Thick, enveloping, shimmering." ────────────────
+// ── Belong - @infinitedigits. "Thick, enveloping, shimmering." ────────────────
 // Ten chorused saws walking scrambled chord tones, enveloped differently per
 // side, overdubbing themselves onto a 16-beat tape loop; with a pulse+noise
 // bass, a comb-bank reverb, and a spaced-out kick that only appears when the
@@ -1997,7 +1997,7 @@ struct BelongEngine : DroneEngine {
     }
 };
 
-// ── Ruins — @rplktr & @sixolet. "A reality darker than fiction." ──────────────
+// ── Ruins - @rplktr & @sixolet. "A reality darker than fiction." ──────────────
 // Metallic 2- and 3-operator FM hits (after James McCartney's "100 FM Synths")
 // fired by a self-clocked trigger loop, drowned in a very long reverb whose
 // level warbles with tape-style wow and flutter, over a windy noise floor.
@@ -2150,7 +2150,7 @@ struct RuinsEngine : DroneEngine {
 };
 
 
-// ── SUNNO — (uncredited in source; the doom of SUNN O))). ─────────────────────
+// ── SUNNO - (uncredited in source; the doom of SUNN O))). ─────────────────────
 // Five "guitars", each two Karplus-Strong strings (one with negative-decay
 // feedback for the octave-under growl) re-plucked at random, crushed through
 // crossover distortion and two cascaded tanh+RLPF gain stages, with a local
@@ -2285,7 +2285,7 @@ struct SunnoEngine : DroneEngine {
     }
 };
 
-// ── Nautilus — @taubaland. "Dusty waves, chaotic undercurrent." ───────────────
+// ── Nautilus - @taubaland. "Dusty waves, chaotic undercurrent." ───────────────
 // A Lorenz attractor iterated at the fundamental drives everything: six voices
 // of overlapping sine grains (10/s), each with a looping swell envelope, into
 // chaos-swept lowpasses with a whisper of noise. Voicing after Supersaw.
@@ -2367,7 +2367,7 @@ struct NautilusEngine : DroneEngine {
     }
 };
 
-// ── Drumm — @infinitedigits. "Sometimes gentle, the other time intense." ──────
+// ── Drumm - @infinitedigits. "Sometimes gentle, the other time intense." ──────
 // Two layers crossfaded by slow sines: a bass layer of chaos-width pulse pairs
 // and phase-modulated sub sines, and a "kind" layer of ten Moog-swept melodic
 // voices stepping three interlocking rows; both DFM1-swept, sine-shaped, and
@@ -2542,12 +2542,12 @@ struct DrummEngine : DroneEngine {
 };
 
 
-// ── Takita — @sixolet. "Rhythmic." ────────────────────────────────────────────
+// ── Takita - @sixolet. "Rhythmic." ────────────────────────────────────────────
 // A self-clocked drum language: a beat impulse gates a self-suppressing
 // "division" window (LocalIn/Out), whose phasors flip tik/tok/tuk flip-flops;
 // each fires a filtered percussive click (RHPF→RLPF + BPF bands), with ki/ka
-// cross-triggered from tik and tok. Everything — band edges, resonances,
-// drumhead bite, trash noise — drifts on immensely slow sines.
+// cross-triggered from tik and tok. Everything - band edges, resonances,
+// drumhead bite, trash noise - drifts on immensely slow sines.
 struct TakitaEngine : DroneEngine {
     // slow global modulators
     LFTri beatLfo; SinOsc divLfo; float divPhase = 0.f;
@@ -2691,7 +2691,7 @@ struct TakitaEngine : DroneEngine {
     }
 };
 
-// ── Twin Pks — (uncredited). "Retro stylings, timeless horror." ───────────────
+// ── Twin Pks - (uncredited). "Retro stylings, timeless horror." ───────────────
 // No oscillator bank at all: tape/vinyl noise (dust + crackle + a pink-driven
 // sine whistle) is compressed hard, band-passed at the fundamental, warbled
 // through a wow/flutter delay, saturated with a second noise layer, lightly
@@ -2754,7 +2754,7 @@ struct TwinPksEngine : DroneEngine {
 };
 
 
-// ── UNMEMQUA — @zebra. ────────────────────────────────────────────────────────
+// ── UNMEMQUA - @zebra. ────────────────────────────────────────────────────────
 // Lagged dust, brown/pink noise and two slow sines excite a 28-partial
 // DynKlank bank (ring times scaled by 1/hz), which is then torn by a bank of
 // six slowly-breathing SVFs and smeared by a pair of ~3.8 s combs, one with
@@ -2855,7 +2855,7 @@ struct UnmemquaEngine : DroneEngine {
     }
 };
 
-// ── UNEABLIN — @zebra. ────────────────────────────────────────────────────────
+// ── UNEABLIN - @zebra. ────────────────────────────────────────────────────────
 // Six interval-tuned sine pairs phase-modulated by long, saw-swept delays of
 // each other's outputs (a slow cross-feedback ring), each morphing through a
 // ladder of cubic soft-clip and InsideOut waveshapes, panned by feedback
@@ -2947,7 +2947,7 @@ struct UneablinEngine : DroneEngine {
     }
 };
 
-// ── UNWEALNE — @zebra. ────────────────────────────────────────────────────────
+// ── UNWEALNE - @zebra. ────────────────────────────────────────────────────────
 // Six pulse voices with envelope-wandering widths through triple resonant
 // lowpasses, plus the whole mix pitch-shifted an octave up and re-filtered
 // through a 13-ratio bank; a pair of ~3 s allpass delays cross-feed the
@@ -3043,7 +3043,7 @@ struct UnwealneEngine : DroneEngine {
     }
 };
 
-// ── UNREANTH — @zebra. ────────────────────────────────────────────────────────
+// ── UNREANTH - @zebra. ────────────────────────────────────────────────────────
 // A 64-step buffer sequencer written and read at mutually-prime rates selects
 // which of ten just-ratio sine pairs fade in (slow lag-down gates); under it,
 // detuned saws through an SVF, a diode ring-mod of the two, and a 7–8 s

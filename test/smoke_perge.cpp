@@ -1,4 +1,4 @@
-// smoke_perge — offline sanity checks for the perge module.
+// smoke_perge - offline sanity checks for the perge module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

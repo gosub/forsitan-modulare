@@ -1,4 +1,4 @@
-// vates_probe — measure and audition the generated banks.
+// vates_probe - measure and audition the generated banks.
 //
 //   vates_probe kits            every family of every ported pages64 kit
 //   vates_probe tonal           the imber-derived tonal families

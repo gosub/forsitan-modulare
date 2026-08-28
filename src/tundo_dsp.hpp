@@ -1,4 +1,4 @@
-// tundo_dsp.hpp — parameterized digital drum voice.
+// tundo_dsp.hpp - parameterized digital drum voice.
 //
 // Built after the Noise Engineering Basimilus Iteritas Alter, from Noise
 // Engineering's own published manuals (bi / bia / bia_german / bim). No
@@ -41,8 +41,8 @@ constexpr int kNumOsc = 6;
 
 // ---------------------------------------------------------------- constants
 
-// HARM staging. The manuals give the *order* — a second tone over the first
-// quarter, then the other four partials' decays, then their amplitudes — and
+// HARM staging. The manuals give the *order* - a second tone over the first
+// quarter, then the other four partials' decays, then their amplitudes - and
 // nothing else. Every number here is ours, and this block is where voicing by
 // ear should move them.
 constexpr float kHarmSecondSpan = 0.25f;  // second tone fades in over this
@@ -399,7 +399,7 @@ struct Engine {
         updateRate(p);
 
         // Arming free-run opens the envelopes on the spot, so the drone starts
-        // without waiting for a trigger — BIM's free-running mode is an
+        // without waiting for a trigger - BIM's free-running mode is an
         // oscillator, not a very long decay you still have to strike.
         if (p.hold && !holdActive) {
             for (int i = 0; i < kNumOsc; i++) env[i] = 1.f;
@@ -509,7 +509,7 @@ struct Engine {
         if (p.mode == kMetal) {
             // Two 3-operator stacks. Stack A carries ratio 1 and is modulated
             // by ratios 3 and 5; stack B carries ratio 2 and is modulated by
-            // ratios 4 and 6 — so SPREAD still retunes everything, and HARM
+            // ratios 4 and 6 - so SPREAD still retunes everything, and HARM
             // still fades the second voice in. HARM drives the modulation
             // index here (fmIndex, its own staging) the way it drives partial
             // level in Skin.
@@ -598,8 +598,8 @@ struct Engine {
         // envelope so the train dies with the hit.
         //
         // Fired from the tonal sum rather than from the folded output. The
-        // folded output is made of corners by construction — a crest folded
-        // eight times is eight slope reversals — so firing from it retriggered
+        // folded output is made of corners by construction - a crest folded
+        // eight times is eight slope reversals - so firing from it retriggered
         // the pulse some thirty times a cycle against a quarter-cycle decay.
         // It never decayed: the "train" was a solid buzz whose density
         // followed the fold depth. The tonal sum reverses twice a cycle for a
@@ -672,7 +672,7 @@ struct Engine {
 
         // gentle DC blocker: folding and the pulse train are odd-symmetric, so
         // there should be nothing to remove, but a drum voice must never park
-        // an offset on the output — and the strike itself is a step
+        // an offset on the output - and the strike itself is a step
         dcY = out - dcX + dcR * dcY;
         dcX = out;
         if (!std::isfinite(dcY)) { dcY = 0.f; dcX = 0.f; }

@@ -1,4 +1,4 @@
-// smoke_quadrare — checks for the Walsh codec.
+// smoke_quadrare - checks for the Walsh codec.
 //
 // Covers the spec's section 17 list (less freeze, which the module does not
 // have), the COEFF OUT -> COEFF IN loopback that the two-block pipeline exists

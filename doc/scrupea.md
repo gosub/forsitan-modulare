@@ -6,12 +6,12 @@
 whichever of them you point it at. One knob decides whether it drones or
 shatters.**
 
-*scrupea* is Latin for jagged, rough, made of sharp stones — Virgil's
+*scrupea* is Latin for jagged, rough, made of sharp stones - Virgil's
 *scrupea saxa*, and from the same root as *scrupus*, a stone in the shoe and
 so a nagging unease. It is also as near as a real Latin word gets to the
 sound of **Skrewell**, which is the point. The module takes its architecture
 and its interface from Skrewell, the chaotic sound
-generator in the REAKTOR factory library — "an intuitive and
+generator in the REAKTOR factory library - "an intuitive and
 visual sound design workstation whose soundscapes can range from meditative
 atmospheres to crackling harshness", in the manual's words.
 
@@ -31,7 +31,7 @@ interface, both reimplemented from scratch. Same precedent as
 Eight voices, **sixteen loops**: the ensemble was taken apart for this (see
 *Attribution*) and every tone generator in it holds exactly two `LEVER`
 macros with a `crossvoice` between them, where a LEVER is not an oscillator
-but a whole channel — oscillator, filter, normalizer, delay and feedback. A
+but a whole channel - oscillator, filter, normalizer, delay and feedback. A
 voice here is a pair of those, and the pair is fed **identical** values from
 the same eight bars: what separates the two is only that each takes its
 modulation from the other side of the bank. Each lever:
@@ -70,7 +70,7 @@ What makes it more than sixteen parallel drones is the coupling, and its shape
 is read off the ensemble. The `crossvoice` macro beside each lever holds
 **eight From Voice modules wired to the channel inputs of a selector**, and
 the `fm` and `am` bars drive that selector's position. So a bar does not say
-*how hard* a lever is modulated — it says **which voice modulates it**,
+*how hard* a lever is modulated - it says **which voice modulates it**,
 blending between two adjacent voices when it sits between them. The source
 is the partner lever of the chosen voice: crossed within the pair, selected
 across the bank.
@@ -78,7 +78,7 @@ across the bank.
 The two bars therefore draw a **coupling topology**, sixteen values deciding
 who listens to whom, and that is the instrument. Depth is one global amount
 on the **flow** knob. Every loop ends up part of one system, and with the
-filter saturating inside it that system is genuinely chaotic — see *Is it
+filter saturating inside it that system is genuinely chaotic - see *Is it
 actually chaotic* below.
 
 Both levers always run, as they do in the ensemble. The left output is the
@@ -95,8 +95,8 @@ Skrewell's oscillators are the FM variants of Reaktor's primary set, and in
 every LEVER the `P` input is wired to a constant **−300**: a MIDI pitch so low
 the oscillator would sit at a fraction of a hertz. So the pitch input is dead
 and the entire frequency arrives through the linear `F` input. That much was
-already known from AlbertoZ's account on the Cycling '74 thread — *"the width
-W inlet is not used… and the P inlet is fixed to -300"* — and it suggested
+already known from AlbertoZ's account on the Cycling '74 thread - *"the width
+W inlet is not used… and the P inlet is fixed to -300"* - and it suggested
 through-zero linear FM, which is what this module did for a while.
 
 The graph says otherwise, and what it says is better. `F` is multiplied by the
@@ -111,7 +111,7 @@ cancel exactly, so the whole chain is
 a **frequency ratio**, geometric and symmetric about the carrier. `fm` runs
 from **1 to 16**, and those are not chosen numbers: they are the Min and Max
 of the FM knob, sitting in its own record in the ensemble file. At 1 there is
-no modulation at all — one to the power of anything is one — and at 16 it is
+no modulation at all - one to the power of anything is one - and at 16 it is
 four octaves either way. That is why **flow** at its left stop is a bank of
 plain oscillators rather than a bank of quiet ones.
 
@@ -138,7 +138,7 @@ sinusoid (par FM)"*, only one pair live at a time.
 | **bare** | **parabolic** oscillator, **no filter** | the calm one. A parabolic wave is much rounder than a pulse and with no filter in the way the loops behave like plain combs. Measured centroid 401 Hz against 541 Hz for **loop** |
 
 The three generators share one set of eight bars and read two of them
-differently, which is the original's own arrangement — its parameter lists are
+differently, which is the original's own arrangement - its parameter lists are
 `F fm A am cut lbh DEL FB`, `F fm A am hp lp DEL FB` and, for the one with no
 filter, six. In **bare** those two bars do nothing and the edit area says so.
 
@@ -169,11 +169,11 @@ the module, and they are visible over [limen](limen.md) as
 
 The **edit** switch is Skrewell's three mouse behaviours:
 
-- **draw** — drag a bar to set it. Click and sweep across to draw a shape.
-- **wrap** — drag anywhere and all eight bars move together, keeping their
+- **draw** - drag a bar to set it. Click and sweep across to draw a shape.
+- **wrap** - drag anywhere and all eight bars move together, keeping their
   shape. A bar that runs off an end **mirrors** back rather than piling up
   against it, so a long drag folds the whole bank through the range.
-- **rand** — drag and all eight bars set off towards destinations of their
+- **rand** - drag and all eight bars set off towards destinations of their
   own, travelling as far as you move the mouse. When a bar arrives it picks
   somewhere else and carries on. Because the eight start at different
   distances they arrive at different times, so the shape keeps reorganising
@@ -193,11 +193,11 @@ what a knob in a modular usually is. **They do not offset the bars, they map
 them.** Three of them are the position of the ensemble's `shaper` macro, which
 is a Selector over three curves of the bar:
 
-- **hard left** — `v⁴`. A bar at 50% maps to 6%. Only bars already near the top
+- **hard left** - `v⁴`. A bar at 50% maps to 6%. Only bars already near the top
   survive; everything else is crushed to the bottom of the range.
-- **centre** — `v`. The mapping is the identity and the bars mean exactly what
+- **centre** - `v`. The mapping is the identity and the bars mean exactly what
   they show.
-- **hard right** — `⁴√v`. A bar at 50% maps to 84%. The whole bank is lifted
+- **hard right** - `⁴√v`. A bar at 50% maps to 84%. The whole bank is lifted
   and the differences between bars compress.
 
 Between those it blends. So one knob asks "how much of this parameter does the
@@ -227,7 +227,7 @@ opposite".
 
 **flow is not a bar mapping** like the other three. In the ensemble it is the
 `Pos` of exactly five Selectors, each crossfading between **a pair of knobs**,
-and the five pairs are these — ranges straight out of the knob records:
+and the five pairs are these - ranges straight out of the knob records:
 
 | | crossfades | |
 |---|---|---|
@@ -250,7 +250,7 @@ that surprising in a feedback loop: a high-Q lowpass hands the loop gain in
 one narrow band and it rings there, orderly; open the Q out and the loop gets
 broadband gain, the saturator inside it has much more to fold, and the
 trajectory stops closing on itself. In this module it is not a deviation of
-any kind — it is simply which of the two RES knobs is the larger, and since
+any kind - it is simply which of the two RES knobs is the larger, and since
 the ensemble does not record where its knobs sat, that was a choice, made to
 land the bifurcation where it is heard.
 
@@ -258,8 +258,8 @@ land the bifurcation where it is heard.
 
 Yes, and `test/scrupea_probe lyapunov` measures it. Two copies of the engine are
 started from identical state, one displaced along a random direction through
-the **whole** state space — every oscillator phase, every filter and
-normalizer state, and every sample in the sixteen delay lines — and the growth
+the **whole** state space - every oscillator phase, every filter and
+normalizer state, and every sample in the sixteen delay lines - and the growth
 rate of that displacement is a largest-Lyapunov estimate in nepers per second:
 
 | flow | loop | pre | bare |
@@ -297,7 +297,7 @@ that were chaotic and a large number for one that was diverging.
 In the bottom row, sitting together in the gap between **rand** and the
 outputs: a **gate** input, the **morph** button, and a small **time** trimpot. While the gate is
 high or the button held, all sixty-four bars set off towards destinations of
-their own — the same motion a **rand** drag makes, but driven by a gate and at
+their own - the same motion a **rand** drag makes, but driven by a gate and at
 a time you choose rather than by the speed of your hand.
 
 It is a *time to value*, not a rate: each leg takes the same time whatever
@@ -324,7 +324,7 @@ matter, and the second is the one that makes it legible at all.
 Reaktor hands a panel display a *poly* signal, so the XY element draws one
 point per voice. The proof is in the display module's own record, which keeps
 Min and Max at the same payload words a knob does: they are **−1.2 and +1.2**,
-which is one lever's range — each normalizer bounds its lever to 1 — and
+which is one lever's range - each normalizer bounds its lever to 1 - and
 nowhere near the range of an eight-voice sum. Draw the sum instead and you get
 a Gaussian blob, because two sums of eight uncorrelated oscillators always
 are one, at any sampling rate. Draw the voices and you get Skrewell's display:
@@ -332,8 +332,8 @@ at low **flow** each voice traces loops and curls inside the frame, and as
 flow comes up each one fills its square and squares off hard against the
 ±1.2 edges. That is where the squares and the curls both come from.
 
-The points are sampled at Reaktor's own event rate — the audio rate over 64,
-so about 750 a second — because a panel element is fed events and not audio.
+The points are sampled at Reaktor's own event rate - the audio rate over 64,
+so about 750 a second - because a panel element is fed events and not audio.
 Phosphor on top: half a second of dots in twelve age bands, each drawn twice
 for a bloom and a grain, the alpha cubed with age so the current figure
 carries and the rest is a ghost of where it has been.
@@ -347,7 +347,7 @@ On Skrewell's panel the display is a Reaktor **XY** element, which is a
 display and a mouse control in the same object: dragging it emits `MX` and
 `MY`, two one-poles at about 0.8 Hz smooth them, and they arrive at each tone
 generator as `scX` and `scY`. Those are the positions of two Selectors that
-choose **which lever drives which axis** — every tone generator carries `X`
+choose **which lever drives which axis** - every tone generator carries `X`
 and `Y` outputs alongside its `L` and `R` for exactly this. It changes what
 you are looking at and not one thing about what you are hearing.
 
@@ -369,7 +369,7 @@ Six, and they are scrupea's own. Skrewell's snapshots decode (see
 all, so none of them is in this repository. What was taken is the *shape* of a
 Skrewell bank, measured across 44 of them: rows are wide and freehand, with a
 mean within-row spread of 0.22 against 0.29 for a uniform draw; `pitch` sits
-lower than every other row; and `fm` is the one row that is ever flat — 11 of
+lower than every other row; and `fm` is the one row that is ever flat - 11 of
 the 44 point every voice at the same modulator, a star instead of a scatter,
 which sounds quite unlike a drawn row.
 
@@ -382,8 +382,8 @@ which sounds quite unlike a drawn row.
 | **limus** | silt. Low, slow and dark, the sludge at the bottom of the range |
 | **chorda** | a string. Pitches on a ramp so the bank is a chord, amplitudes tapering across it, in the bare topology |
 
-They are generated rather than hand-edited — `tools/presets/gen_presets.py`
-holds the tables and the reasoning — and measured with
+They are generated rather than hand-edited - `tools/presets/gen_presets.py`
+holds the tables and the reasoning - and measured with
 `test/scrupea_probe preset`, which is how they came to sit between 0.86 and
 1.30 V RMS with centroids from 64 Hz to 4.9 kHz.
 
@@ -402,7 +402,7 @@ multi-output mod.
   **flow** right, and modulate **cutoff** from an envelope.
 - The **amp** function is the one to shape by hand. Starving five of the eight
   voices turns a wall into a trio, and the three that are left are still being
-  modulated by the five you cannot hear — the bar is inside the loop, so a
+  modulated by the five you cannot hear - the bar is inside the loop, so a
   voice at zero is silent but still part of the system.
 - **rand** with "Randomize all functions" off, sitting on the **pitch**
   function, is a fast way to re-roll a chord without losing the patch.
@@ -427,7 +427,7 @@ thing:
                               └──> out
 ```
 
-It is a **real normalizer** — divide the signal by its own envelope — and not
+It is a **real normalizer** - divide the signal by its own envelope - and not
 the limiter this module carried for most of its life. What stops it flattening
 everything is the Clipper: it holds the envelope at or above **`nrm`**, so an
 envelope quieter than that is not tracked and the loop is scaled rather than
@@ -436,7 +436,7 @@ flow drives it, as flow drives the rest.
 
 The Peak Detector's own behaviour is quoted in the module reference: rectify,
 **"the attack time of peak detection is zero"**, release given as the time for
-a peak to fall to a tenth — `Rel` 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, a
+a peak to fall to a tenth - `Rel` 0 is 2.3 ms, 20 is 23 ms, 40 is 230 ms, a
 decade per twenty. So the attack is instantaneous, which is audible: a
 transient moves the gain on the sample it arrives on.
 
@@ -446,15 +446,15 @@ milliseconds and the smoother sits at `1000 / (DEL × smt)` hertz, with `smt`
 the flow-crossfaded 1-to-20 multiplier. A long loop therefore gets a slow
 normalizer and a short one a fast one, automatically. The same macro sets the
 glide on the controls, at `F / smt` hertz for pitch and `500 × smt / DEL` for
-delay time, the latter clipped by an Event Clipper to the pitch range −80…0 —
+delay time, the latter clipped by an Event Clipper to the pitch range −80…0 -
 which is 0.081 Hz to 8.18 Hz, and is why sweeping the delay macro never
 crackles. There is no global inertia setting anywhere in the patch and there
 is none in this module.
 
 ## Differences from Skrewell
 
-Beyond the obvious one — this is a different implementation of a described
-architecture, not a translation of a patch — the engine no longer contains
+Beyond the obvious one - this is a different implementation of a described
+architecture, not a translation of a patch - the engine no longer contains
 anything invented.
 
 ### The rule
@@ -485,7 +485,7 @@ first is small:
 
 The second pile is **where inside each range the original's knobs sat**.
 Every Min and Max in this module is the ensemble's, read out of the knob
-records — pitch and cutoff span 127 semitones, FM 1 to 16, AM 0 to 5, RES 0 to
+records - pitch and cutoff span 127 semitones, FM 1 to 16, AM 0 to 5, RES 0 to
 1, SMT 1 to 20, NRM 1 to 0.01, the output fader −36 to +18 dB. The settings
 inside those ranges are collected as `SET_` constants in one place in
 `src/scrupea_dsp.hpp`, and the pitch, cutoff and delay ones were chosen to
@@ -502,7 +502,7 @@ individual knobs are matched by zipping the ensemble's knob list against the
 snapshot's values in order. Wiring in the factory medians under that
 attribution moved the spectral centroid from 540 Hz to **33 Hz**, took the
 largest Lyapunov exponent from 65 to 5, and pinned the chaos CV against its
-rail — a sub-bass rumble, not Skrewell. And shifting the attribution by one
+rail - a sub-bass rumble, not Skrewell. And shifting the attribution by one
 slot either way is worse: it makes `min` come out above `max`, which cannot
 be. So the attribution is wrong rather than the module, and the constants stay
 where measurement put them until the snapshot control ids are resolved to
@@ -510,7 +510,7 @@ modules properly instead of matched by order. That is the next thing to do
 with the format.
 
 The **jacks** are the last exception, and a deliberate one. Skrewell has no
-audio input, no CV inputs and no CV output — it is a generator with four
+audio input, no CV inputs and no CV output - it is a generator with four
 knobs. A Rack module that cannot be patched is not a Rack module, so the audio
 input, the four macro CV inputs with their attenuverters, the rand trigger and
 the **cv** output are all additions. They are the interface, not the
@@ -525,7 +525,7 @@ The **fast** one is the chaos: at flow hard right the largest-Lyapunov
 estimate is 67/s in the loop topology, so the waveform decorrelates in about
 fifteen milliseconds. That is what makes it restless rather than a static
 tone. But fast chaos mixes fast, and a fast-mixing system has *stationary
-statistics* — it can be violent and still not go anywhere.
+statistics* - it can be violent and still not go anywhere.
 
 The **slow** one is the bank moving through its own range, and that is a
 property of where you put the bars, not something the engine does by itself.
@@ -540,8 +540,8 @@ how much they matter:
 | **pitches close together** | eight voices spread over three octaves beat against each other at audio rate, which is timbre. Eight inside a fifth beat *slowly*, and the cross-modulation turns those slow beats into slow movement |
 | **the coupling** | the **fm** and **am** bars decide who modulates whom. A bank where every voice listens to the same one behaves quite differently from a bank wired in a cycle. This is the one the original gives you and this module did not, until it did |
 
-The default bank is set that way — delays 30–310 ms, every loop between 0.88
-and 1.0, pitches within a fifth — which is worth knowing if you wonder why it
+The default bank is set that way - delays 30–310 ms, every loop between 0.88
+and 1.0, pitches within a fifth - which is worth knowing if you wonder why it
 sounds nothing like eight independent oscillators. An earlier default with
 half the feedback and 2–40 ms delays measured 0.04 octaves. As it now stands,
 over a 60 s untouched run:
@@ -556,7 +556,7 @@ against 0.75 for a reference recording of Skrewell standing still. So the gap
 to the reference is still open, and the accounting is worth stating plainly.
 An earlier draft carried a chaotically clocked two-state switch on each filter
 which got the figure to 0.97, and it has been removed because it is not in the
-patch — see *The rule*. **That switch was carrying the self-evolution**, and
+patch - see *The rule*. **That switch was carrying the self-evolution**, and
 nothing read out of the ensemble since has replaced it: not the selector
 coupling, not the ratio FM, not the ensemble's own mapping laws and ranges.
 The bank moves about as much as it did at the start.
@@ -593,7 +593,7 @@ Recorded so nobody spends the afternoon again:
   to it "being digital with aliasing and quantization", and both were wrong on
   two counts: the module reference says REAKTOR's oscillators *are*
   anti-aliased, so they were unfaithful, and measured against the finished
-  engine they did almost nothing — raw moved the centroid 1454 to 1527 Hz and
+  engine they did almost nothing - raw moved the centroid 1454 to 1527 Hz and
   8-bit crush moved it 12 Hz further. Whatever aliasing the original has comes
   from its FM sidebands, which are still here.
 - **Recovering the wander that lever pairs cost**, by reweighting the
@@ -611,9 +611,9 @@ of them would cost more than the module is worth.
 
 It was 2.7% until the inner loop was made to run **four levers at a time**.
 The route there is worth recording because almost everything tried first did
-nothing at all. The engine is throughput-bound rather than latency-bound —
+nothing at all. The engine is throughput-bound rather than latency-bound -
 two engines side by side cost 2.07× one, so the machine is saturated, not
-stalled — and by ablation on a 524 ns sample the budget was: filters 202 ns,
+stalled - and by ablation on a 524 ns sample the budget was: filters 202 ns,
 delay lines 83, the FM `exp2` 80, polyBLEP 59, the voice selector 44, the
 normalizer 29. Given that, swapping the divide in the saturator for a
 polynomial made it *slower*, because a divide is one uop and the polynomial is
@@ -626,7 +626,7 @@ sixteen independent chains, and the two levers of a voice share every control
 value including the delay time. One group is four lanes: two voices, lanes 0
 and 2 the left output and lanes 1 and 3 the right. The delay lines stay
 scalar, since four buffers with two read offsets will not widen. The result
-measures as the same engine — RMS, centroid and the whole Lyapunov ladder all
+measures as the same engine - RMS, centroid and the whole Lyapunov ladder all
 land within a percent of the scalar version.
 
 ## Attribution
@@ -661,7 +661,7 @@ next, none at all in the third) and the `cc`/`min`/`max` shape of the macro
 mappings all come from. The tooling for it is not in this repository; it was
 forty lines of Python and is described here so it can be redone.
 
-Port names, though, *are* in the records — at the end of each one — and a
+Port names, though, *are* in the records - at the end of each one - and a
 `KSModul` is followed by the port records belonging to it. So every macro's
 **interface** comes out even though the wiring does not, and that turns out to
 be most of what a re-implementation needs. The LEVER takes
@@ -670,11 +670,11 @@ are amounts and uppercase `FM`/`AM` are the modulation signals arriving from
 the `crossvoice` next door (`FV AV` + audio in, `FM AM` out). And each tone
 generator's own inputs give its parameter list exactly: `F fm A am cut lbh
 DEL FB` for the multimode one, `F fm A am hp lp DEL FB` for the bandpass one,
-and `F fm A am DEL FB` — six — for the one with no filter. That is where the
+and `F fm A am DEL FB` - six - for the one with no filter. That is where the
 **type** bar and the absence of a resonance bar in this module come from.
 
 The wiring is in there too, and it took the right file to see it. Connections
-are not objects — there is no cable class — they are stored as an *output's
+are not objects - there is no cable class - they are stored as an *output's
 fan-out*: a `KOutPort` payload ends in a count followed by that many
 `(target, port)` pairs, where `target` indexes the enclosing macro's child
 list. In a 4.5 MB patch with 1077 modules that is invisible; in a 33 KB test
@@ -688,7 +688,7 @@ AlbertoZ's fixed P inlet and identifies class 188 as the pulse oscillator.
 
 Both loose ends are now tied off. The hierarchy is in the file after all: the
 gap following a module's record begins `2, N, 1, 2` where **N is its child
-count**, which reconstructs the tree and makes the sibling indices resolve —
+count**, which reconstructs the tree and makes the sibling indices resolve -
 `Pitch Gate` in the test instrument declares 7 and has exactly 7 children,
 `snapvalue x 8` declares 24, being eight values and their sixteen terminals.
 And the flag word's **bit 1 means "a connection list follows"**; without it
@@ -707,7 +707,7 @@ where every range in this module now comes from: `min`/`max`,
 `CUTmin`/`CUTmax`, `HPmin`/`HPmax` and `LPmin`/`LPmax` all spanning the same
 127 semitones, `short`/`long` spanning them inverted, FM 1…16, AM 0…5,
 RES 0…1, SMT 1…20, NRM 1…0.01, and the output fader −36…+18 dB. What the
-records do *not* keep is a current or default value — that lives in the
+records do *not* keep is a current or default value - that lives in the
 snapshots, which are packed and did not decode.
 
 Naming the module classes is the other half, and it is done by matching port
@@ -719,7 +719,7 @@ needed four of the last few: **113 Reciprocal**, **120 Log (F-to-P)**,
 `freq = F × fm^m` and the shaper's `v⁴ … v … ⁴√v`.
 
 **And the snapshots came out.** They live in the tail, one block per snapshot,
-each ending with its own name — the same "name at the end" convention the
+each ending with its own name - the same "name at the end" convention the
 module records use, which is what made them hard to find from the front.
 Inside, one record per snapshot-enabled control:
 

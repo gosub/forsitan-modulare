@@ -3,11 +3,11 @@
 // one that steps through its positions in a ring.
 //
 // Rack's app::Switch increments on every click and wraps at the top, which is
-// exactly right for two positions — a click flips it — and irritating for
+// exactly right for two positions - a click flips it - and irritating for
 // three: going from "as is" to "invert" and back means passing through
 // "randomize" and hearing it. So only the three-way switch is wrapped. Here
-// the click lands where you pointed — top of the widget is the top position,
-// bottom is the bottom one — like the switch it is drawn as.
+// the click lands where you pointed - top of the widget is the top position,
+// bottom is the bottom one - like the switch it is drawn as.
 //
 // Right-click still opens the parameter's own menu, and the move goes on the
 // undo stack exactly as Rack's does.
@@ -23,7 +23,7 @@ struct PositionSwitch : TBase {
 	// Note where the press landed and let the ordinary parameter handling
 	// run: consuming the press here instead would still start a drag on this
 	// widget, and Switch::onDragStart would then increment the value on top
-	// of whatever we had set — every click landing one position too high.
+	// of whatever we had set - every click landing one position too high.
 	void onButton(const rack::event::Button& e) override {
 		if (e.action == GLFW_PRESS && e.button == GLFW_MOUSE_BUTTON_LEFT)
 			pressY = e.pos.y;

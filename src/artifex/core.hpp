@@ -10,7 +10,7 @@
 
 // The FX core of artifex: nine modes around one filtered feedback loop.
 //
-// Every mode reads the same three controls — time, feedback, amount — plus
+// Every mode reads the same three controls - time, feedback, amount - plus
 // the filter that sits inside the loop and the stereo detune that pulls the
 // two channels apart. What they act on is the mode's business; that they mean
 // rate, loop and wetness is the machine's. See doc/artifex.md.
@@ -343,13 +343,13 @@ struct Core {
 		grainStretch = 0.f;
 		// Arriving in the replayer loads the tape, which is what a trigger
 		// does there too. Without it, landing on the mode with amount hard
-		// right — the locked position — plays a buffer nobody has recorded
+		// right - the locked position - plays a buffer nobody has recorded
 		// into yet, and the mode is silent for no reason a player can see.
 		fillLeft = (mode == MODE_REPLAYER) ? tape[0].size() : 0;
 		frozen = false;
 		recorded = 0.0;
 		capturedFrames = 0.f;
-		// Arriving in the freezer captures a chunk, as on the hardware — but
+		// Arriving in the freezer captures a chunk, as on the hardware - but
 		// it has to record one first. Leaving this true would freeze the
 		// empty buffer on the first sample and hold silence for good.
 		wasSilentAmount = false;
@@ -363,7 +363,7 @@ struct Core {
 	// It reads the smoothed knob, never the raw one, and its wet path fades
 	// in over the first twentieth of the travel: crossing the centre swaps a
 	// lowpass for a highpass, and no integrator state survives that. A step
-	// here would be worse than elsewhere — it goes straight back into the
+	// here would be worse than elsewhere - it goes straight back into the
 	// loop and comes round again.
 	// Where the mode itself puts the filter: on its wet path if it has one,
 	// inside the global loop if it does not. With the filter moved to the
@@ -508,7 +508,7 @@ struct Core {
 			enterMode(ct.mode);
 
 		// the filter knob, smoothed, with the states cleared as it crosses
-		// the centre — where the wet path above is faded out, so the clearing
+		// the centre - where the wet path above is faded out, so the clearing
 		// is inaudible
 		filtSm += (clamp(ct.filter, -1.f, 1.f) - filtSm)
 		          * (1.f - std::exp(-ct.dt / 0.010f));
@@ -803,8 +803,8 @@ struct Core {
 	void doCrusher(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		// The top of the knob is the running sample rate, not a fixed number
 		// of kHz: there the decimator holds for exactly one sample and passes
-		// the signal through untouched. Stopping short of that — at sr/2, say
-		// — leaves a sample-and-hold on every other sample, which is a good
+		// the signal through untouched. Stopping short of that - at sr/2, say
+		// - leaves a sample-and-hold on every other sample, which is a good
 		// 30 dB of grain that no knob position can get rid of.
 		float rate = 200.f * std::pow(sr / 200.f, t);
 		uiUnit = UNIT_HZ;
@@ -1011,8 +1011,8 @@ struct Core {
 	//     event and gets the same treatment.
 	void doReplayer(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		// The tape never stops. A knob whose centre is exactly zero puts a
-		// dead spot in the middle of its travel — the head holds one sample
-		// and the mode outputs a DC level — so the centre is the *slowest*
+		// dead spot in the middle of its travel - the head holds one sample
+		// and the mode outputs a DC level - so the centre is the *slowest*
 		// speed instead, a quarter, and which side of it you are on is the
 		// direction. Two octaves down at the centre, two up at the ends.
 		float u = (t - 0.5f) * 2.f;              // -1 .. +1
@@ -1355,7 +1355,7 @@ struct Core {
 	}
 
 	// ── 9. shifter ───────────────────────────────────────────────────────────
-	// Two taps crossfaded, so there is no stutter — and with feedback a small
+	// Two taps crossfaded, so there is no stutter - and with feedback a small
 	// shift walks the tail away in pitch, one interval per pass.
 	void doShifter(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		float semis = (t - 0.5f) * 24.f;         // an octave either way

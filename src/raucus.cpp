@@ -1,4 +1,4 @@
-// raucus.cpp — VCV Rack 2 module
+// raucus.cpp - VCV Rack 2 module
 // raucus (Latin: "the stuffing of a cushion, flock, wool padding") is a
 // block-level model of the four-transistor Electro-Harmonix Big Muff Pi,
 // USA V3, the 1976-77 circuit: an input booster, two common-emitter stages
@@ -210,7 +210,7 @@ struct Raucus : Module {
             // the output jack, as the hardware does; bring that up to Rack's
             // nominal +-5 V at the default volume. The makeup is calibrated on
             // the stock silicon pair, so the LED and lifted settings really are
-            // several times louder, as they are on a modded pedal — soft-limit
+            // several times louder, as they are on a modded pedal - soft-limit
             // rather than square them off against Rack's rails.
             // The soft ceiling asymptotes at 10 V, so however loud the LED
             // and lifted settings get they approach Rack's rail rather than

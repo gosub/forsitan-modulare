@@ -1,4 +1,4 @@
-// smoke_raucus — offline sanity checks for the raucus module.
+// smoke_raucus - offline sanity checks for the raucus module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 // The measurements that characterise the pedal (tone stack response against
 // the published figures, transfer curves, gain structure) live in
@@ -93,7 +93,7 @@ static void testLevel() {
 // Sustain drives the clipping pair harder rather than moving a threshold, so
 // it behaves differently at the two ends of the input range. Quiet in, it is
 // the difference between clean and fuzz; loud in, both stages are clipping
-// whatever it is set to and it barely changes the level at all — which is the
+// whatever it is set to and it barely changes the level at all - which is the
 // pedal's reputation for having no clean setting.
 static void testSustain() {
     // ~2 mV at the pedal's input, a fifth of what a guitar delivers

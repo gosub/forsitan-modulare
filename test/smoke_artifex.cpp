@@ -1,4 +1,4 @@
-// smoke_artifex — offline sanity checks for the nine-mode effect.
+// smoke_artifex - offline sanity checks for the nine-mode effect.
 //
 // See smoke_harness.hpp for the shared scaffolding and CSV format. The claims
 // here are about what each mode does to a signal: that a knob at zero leaves
@@ -1021,7 +1021,7 @@ static void testReplayer() {
 	}
 
 	// The tape never stops. With the centre of the knob mapped to a speed of
-	// zero the head held one sample and the mode put out a DC level — it
+	// zero the head held one sample and the mode put out a DC level - it
 	// played a slice and then sat there.
 	m.params[Artifex::TIME_PARAM].setValue(0.5f);
 	Rec mid;
@@ -1666,7 +1666,7 @@ static void testEnvelope() {
 	report("artifex", "env_falls_on_silence", quiet, quiet < loud * 0.5f);
 
 	// Full scale is the clip point, not the rail: an input driven past
-	// kClipVolts — where the lamps light and the mode buffers fold — must
+	// kClipVolts - where the lamps light and the mode buffers fold - must
 	// read 10 V, so the follower and the panel agree on what "too loud" is.
 	Artifex hot;
 	fr = 0;

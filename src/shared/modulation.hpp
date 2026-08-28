@@ -9,7 +9,7 @@
 // that can phase-lock to the clock.
 //
 // The two modules come from the two sides of one piece of hardware, which is
-// one board running one firmware — so this half of them really is the same
+// one board running one firmware - so this half of them really is the same
 // machine. Everything here is inline, so both translation units can include
 // it.
 
@@ -21,7 +21,7 @@ static const int kSteps = 16;
 
 // ── the rhythm table ──────────────────────────────────────────────────────────
 // 32 sixteen-step gate patterns, step 0 in the high bit. Twenty-two written by
-// hand — the ones a drummer would recognise — then the euclidean distributions
+// hand - the ones a drummer would recognise - then the euclidean distributions
 // E(k, 16), which fill in the densities between them. The hardware loads its
 // rhythms from a web app that rebuilds the firmware; this is the knob that
 // replaces it.
@@ -206,7 +206,7 @@ struct Modulation {
 
 			// the two switches, each normalled to its own input: middle
 			// leaves the sequence alone, up randomizes the step the sequence
-			// is on, down inverts it — and both write into the working copy,
+			// is on, down inverts it - and both write into the working copy,
 			// so a flick changes the pattern for good
 			uint16_t mask = (uint16_t)(0x8000u >> step);
 			if (in.gateMode == 2) {
@@ -235,8 +235,8 @@ struct Modulation {
 		if (in.lfoSynced) {
 			// Steps per cycle, slowest first: clockwise has to speed the LFO up
 			// here exactly as it does in free mode, or the knob reverses its
-			// meaning as the switch flips. Sixteen steps is one pattern — one
-			// bar — so at that division the saw output is the bar position.
+			// meaning as the switch flips. Sixteen steps is one pattern - one
+			// bar - so at that division the saw output is the bar position.
 			//
 			// Synced means phase-locked, not merely a synced rate: the phase is
 			// derived from the step clock, so the LFO cannot drift against the
@@ -260,7 +260,7 @@ struct Modulation {
 			lfoPhase += lfoHz * in.dt;
 			lfoPhase -= std::floor(lfoPhase);
 		}
-		// Peak at phase 0, falling to the trough, rising back after — and
+		// Peak at phase 0, falling to the trough, rising back after - and
 		// pulse is high exactly while the triangle rises, so the width knob
 		// skews the triangle and the pulse follows it. That is the same
 		// relationship the hardware gets by patching its pulse output back

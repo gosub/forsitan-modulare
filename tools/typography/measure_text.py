@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-measure_text.py — Report advance width of text strings in a TTF font at a given cap height.
+measure_text.py - Report advance width of text strings in a TTF font at a given cap height.
 
 Usage
 -----

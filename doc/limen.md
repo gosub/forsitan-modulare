@@ -8,24 +8,24 @@
 
 A green LED at the centre of the panel indicates that the server is listening. Right-click the module for options:
 
-- **Server enabled** — toggle the TCP server on or off without removing the module. The LED goes dark when the server is stopped.
-- **TCP port** — choose a preset port (7000, 7001, 7002, 7777, 8000) or type any value in the text field (1–65535) and press Enter.
+- **Server enabled** - toggle the TCP server on or off without removing the module. The LED goes dark when the server is stopped.
+- **TCP port** - choose a preset port (7000, 7001, 7002, 7777, 8000) or type any value in the text field (1–65535) and press Enter.
 
 The port and enabled state are saved with the patch.
 
 ## Use cases
 
-**CLI control** — the included `limen` CLI lets you inspect and modify a live patch from the terminal. Useful for quick experiments, parameter sweeps, or integrating Rack into shell scripts.
+**CLI control** - the included `limen` CLI lets you inspect and modify a live patch from the terminal. Useful for quick experiments, parameter sweeps, or integrating Rack into shell scripts.
 
-**Alternative interfaces** — any tool that can open a TCP socket can drive Rack. An Emacs minor mode (coming soon) will let you interact with your patch directly from your editor: list modules, tweak parameters, connect cables, all without touching the mouse.
+**Alternative interfaces** - any tool that can open a TCP socket can drive Rack. An Emacs minor mode (coming soon) will let you interact with your patch directly from your editor: list modules, tweak parameters, connect cables, all without touching the mouse.
 
-**LLM interfacing** — a language model can use limen as a tool to explore and build patches. `list_models` gives it the full module catalogue; `list_ports` tells it what each port does; `add_module` and `add_cable` let it act. The JSON protocol is easy for models to generate and parse.
+**LLM interfacing** - a language model can use limen as a tool to explore and build patches. `list_models` gives it the full module catalogue; `list_ports` tells it what each port does; `add_module` and `add_cable` let it act. The JSON protocol is easy for models to generate and parse.
 
-**Automated patch testing** — load a known patch, query its topology with `list_modules` and `list_cables`, assert that parameters are in expected ranges with `list_params`. Useful for regression testing or verifying that a saved patch loads correctly.
+**Automated patch testing** - load a known patch, query its topology with `list_modules` and `list_cables`, assert that parameters are in expected ranges with `list_params`. Useful for regression testing or verifying that a saved patch loads correctly.
 
-**Live coding / generative patching** — drive patch changes from a REPL, a script, or a custom sequencer. Add and remove modules, reconnect cables, and automate parameter changes in real time without touching the Rack UI.
+**Live coding / generative patching** - drive patch changes from a REPL, a script, or a custom sequencer. Add and remove modules, reconnect cables, and automate parameter changes in real time without touching the Rack UI.
 
-**Patch documentation and archiving** — dump the current patch state to JSON for later analysis or archiving. `list_modules`, `list_cables`, and `list_params` together give a complete snapshot of what is patched and how it is configured, and `save_patch_as` writes the patch itself to a `.vcv` file.
+**Patch documentation and archiving** - dump the current patch state to JSON for later analysis or archiving. `list_modules`, `list_cables`, and `list_params` together give a complete snapshot of what is patched and how it is configured, and `save_patch_as` writes the patch itself to a `.vcv` file.
 
 ## Security
 
@@ -56,7 +56,7 @@ The server listens on `localhost:7000` by default. It handles **one client at a 
 
 | cmd | extra fields | result | description |
 |-----|-------------|--------|-------------|
-| `hello` | — | `{protocol, commands}` | protocol version and the list of supported commands; call first to check compatibility |
+| `hello` | - | `{protocol, commands}` | protocol version and the list of supported commands; call first to check compatibility |
 
 The current protocol version is **2**. Version 2 added module positions
 (`pos`/`hp` in the module listings, `x`/`y` on `add_module`, `move_module`),
@@ -69,7 +69,7 @@ reliable feature test for everything else.
 
 | cmd | extra fields | result | description |
 |-----|-------------|--------|-------------|
-| `list_plugins` | — | `[{slug, name, version}]` | all plugins loaded in Rack |
+| `list_plugins` | - | `[{slug, name, version}]` | all plugins loaded in Rack |
 | `list_models` | `"plugin": "<slug>"` (opt.) | `[{plugin, slug, name, description}]` | all available models, optionally filtered by plugin |
 
 #### Modules in the patch
@@ -138,7 +138,7 @@ the reply each would have got on its own, in order:
 well formed; each command's success is its own entry in `results`. `count` is
 how many ran, `failed` how many of those returned an error. With the default
 `stopOnError`, the batch stops at the first failure, `stopped` gives its index,
-and `results` is shorter than `commands` — the commands before it have already
+and `results` is shorter than `commands` - the commands before it have already
 taken effect and are not rolled back. With `"stopOnError": false` every command
 runs and `results` always matches `commands` one for one.
 
@@ -173,8 +173,8 @@ then capture the window with an external tool).
 | cmd | extra fields | result | description |
 |-----|-------------|--------|-------------|
 | `set_fullscreen` | `"on": <bool>` | `{fullscreen}` | enter or leave fullscreen; result reflects the resulting state |
-| `zoom_to_modules` | — | `null` | set offset and zoom to fit all modules to the view (the F4 action) |
-| `quit` | — | `null` | quit VCV Rack (window closes after the current frame) |
+| `zoom_to_modules` | - | `null` | set offset and zoom to fit all modules to the view (the F4 action) |
+| `quit` | - | `null` | quit VCV Rack (window closes after the current frame) |
 
 `zoom_to_modules` fits to the **current** viewport, so call it *after* any
 viewport change such as `set_fullscreen`. It returns immediately but the fit
@@ -230,7 +230,7 @@ A ready-made command-line client, **limen-cli**, lives in the separate
 flavors with the same interface: a compiled C client (prebuilt binaries for
 Linux, Windows and macOS on the
 [releases page](https://github.com/gosub/limen-tools/releases)) and a
-dependency-free Python client. It covers the whole protocol — see the
+dependency-free Python client. It covers the whole protocol - see the
 [limen-tools readme](https://github.com/gosub/limen-tools#readme) for the
 full command reference.
 

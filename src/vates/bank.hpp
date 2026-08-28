@@ -1,9 +1,9 @@
 #pragma once
-// vates factory banks — six banks of eight samples, built from one seed.
+// vates factory banks - six banks of eight samples, built from one seed.
 //
 // Four banks are percussive and come from the ported pages64 kit engines
 // (kits.hpp); two are tonal and come from imber's sustained generators, which
-// have no counterpart there — every pages64 kit is struck, granular or
+// have no counterpart there - every pages64 kit is struck, granular or
 // clicked, and none of them sustains or holds a chord.
 //
 // Two rules shape a bank:
@@ -133,8 +133,8 @@ inline void normalizeStereo(std::vector<float>& L, std::vector<float>& R, float 
 	}
 }
 
-// Drop the silence in front of a render — imber's generators are loops and
-// may start anywhere — and, for material that scatters several events through
+// Drop the silence in front of a render - imber's generators are loops and
+// may start anywhere - and, for material that scatters several events through
 // a buffer, keep only the first one: a sample player wants a hit, not a
 // phrase with rests in it.
 inline void trimToFirstEvent(std::vector<float>& b, float sr, bool cutAtGap) {
@@ -165,8 +165,8 @@ inline void trimToFirstEvent(std::vector<float>& b, float sr, bool cutAtGap) {
 		b = std::vector<float>(b.begin() + start, b.begin() + end);
 }
 
-// Render one tonal one-shot. imber's generators finish loops — they fade both
-// edges — so the tail work is done here instead: the head keeps a 3 ms fade
+// Render one tonal one-shot. imber's generators finish loops - they fade both
+// edges - so the tail work is done here instead: the head keeps a 3 ms fade
 // (a drone starting mid-cycle would click), the sample is trimmed to a usable
 // length, and the tail fades out.
 inline void renderTonal(int fam, Rng& rng, float sr,

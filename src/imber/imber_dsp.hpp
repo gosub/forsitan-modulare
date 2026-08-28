@@ -1,8 +1,8 @@
-// imber_dsp.hpp — shared primitives for the imber/sylla pair: seeded RNG,
+// imber_dsp.hpp - shared primitives for the imber/sylla pair: seeded RNG,
 // urn picker, bounded drunk walker, the scale table everything snaps to,
 // and small DSP helpers used by the generators and the engine.
 //
-// Pure C++11, no Rack dependencies — the offline harness compiles this
+// Pure C++11, no Rack dependencies - the offline harness compiles this
 // standalone. Everything lives in structs / inline functions so the
 // headers can be included from more than one module without ODR trouble.
 #pragma once
@@ -107,7 +107,7 @@ inline Tuning makeTuning(int scaleIdx, int rootNote) {
 
 // ---------------------------------------------------------------- RNG ---
 
-// xorshift64* — one instance per domain (bank, constellation, timing,
+// xorshift64* - one instance per domain (bank, constellation, timing,
 // voices) so reseeding the bank never disturbs the timing feel
 struct Rng {
     uint64_t s;
@@ -145,7 +145,7 @@ struct Urn {
     }
 };
 
-// bounded random walk — the "drunk" at the heart of Haiku's timing
+// bounded random walk - the "drunk" at the heart of Haiku's timing
 struct Drunk {
     float v;
     Drunk() : v(0.f) {}

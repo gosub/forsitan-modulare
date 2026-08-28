@@ -1,4 +1,4 @@
-// antrum_dsp.hpp — feedback delay network reverb in the Erbe-Verb idiom.
+// antrum_dsp.hpp - feedback delay network reverb in the Erbe-Verb idiom.
 //
 // The topology follows Tom Erbe's ICMC 2015 paper "Building the Erbe-Verb:
 // Extending the Feedback Delay Network Reverb for Modular Synthesizer Use",
@@ -27,7 +27,7 @@
 //              tilt filter ─> dry/wet mix
 //
 // Everything is in milliseconds; the caller hands over already-mapped
-// parameters (see Params) and the engine smooths nothing — the module does
+// parameters (see Params) and the engine smooths nothing - the module does
 // that, since it knows the control rate.
 
 #pragma once
@@ -74,7 +74,7 @@ inline float fastSin(float x) {
     return 0.225f * (y * std::fabs(y) - y) + y;
 }
 
-// xorshift32 — the grain scatter wants cheap, self-contained noise
+// xorshift32 - the grain scatter wants cheap, self-contained noise
 struct Rng {
     uint32_t s = 0x9e3779b9u;
     inline float uniform() {
@@ -456,7 +456,7 @@ struct Engine {
         mixLast = -1.f;
     }
 
-    // network energy, 0..1-ish — the module publishes this as the CV output
+    // network energy, 0..1-ish - the module publishes this as the CV output
     inline float energy() const { return std::sqrt(avgZ); }
 
     // 3rd-degree Chebyshev fold. Past +/-2.65 the curve is held at its own

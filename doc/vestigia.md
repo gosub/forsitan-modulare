@@ -5,12 +5,12 @@
 **Stereo memory effect: an endless tape loop, continuously rewritten,
 that remembers meaningful fragments and returns them imperfectly.**
 
-*vestigia* is Latin for "traces, footprints" — what sound leaves behind.
+*vestigia* is Latin for "traces, footprints" - what sound leaves behind.
 The module is not a delay. A write head runs across a circular stereo
 buffer without ever stopping; what the present does to the past is set by
 the **memory mode**. In parallel, vestigia keeps a block-based *activity
 map* of where meaningful sound actually lives, so its recollection engine
-only ever recalls regions that contain audio — never silence. Each time a
+only ever recalls regions that contain audio - never silence. Each time a
 memory returns it deteriorates a little more.
 
 It implements the full *Vestigium* design document (v0.2): the three
@@ -26,14 +26,14 @@ presets.
 The right-hand three-way switch decides how incoming audio interacts with
 whatever is already stored at the write position:
 
-- **oblivion** — the present replaces the past. `buffer = input`. The
+- **oblivion** - the present replaces the past. `buffer = input`. The
   clearest picture of the recent past; silence erases older material as
   the loop passes over it.
-- **remanence** — the present rewrites the past but leaves traces behind.
+- **remanence** - the present rewrites the past but leaves traces behind.
   `buffer = old*retention + new*(1-retention)`, retention 30% by default
   (10/30/50/70% in the context menu), so events fade across passes and
   silence *attenuates* memory rather than erasing it.
-- **sediment** — the present accumulates on top of the past
+- **sediment** - the present accumulates on top of the past
   (`buffer = saturate(old + input*amount)`) through a DC blocker, growing
   denser and more compressed with every cycle. The input amount
   (0.5–2.0x) and the saturation character (soft / tape / fold) are
@@ -44,14 +44,14 @@ whatever is already stored at the write position:
 The left-hand three-way switch decides *when* memories return. These are
 separate from the memory modes:
 
-- **listen** — event-centered. A short window is built around the
+- **listen** - event-centered. A short window is built around the
   strongest block of a region, triggered by transients, preferring recent
   and energetic material. Suited to percussion, sequences and guitar.
-- **breathe** — the recall rate follows the input envelope and density,
+- **breathe** - the recall rate follows the input envelope and density,
   and favors regions whose energy *and zero-crossing character* resemble
   the present (sonic similarity). Suited to pads, drones and expressive
   playing.
-- **dream** — recall probability *rises as the input falls quiet*. Older
+- **dream** - recall probability *rises as the input falls quiet*. Older
   regions get more weight, reverse playback is more common, fades and
   padding are longer. dream never recalls a fully silent region; it
   answers present silence with stored activity.
@@ -60,7 +60,7 @@ At high **recall** or low **memory** the engine may extract a smaller
 sub-region from a longer phrase instead of replaying the whole thing.
 
 All three modes react to a source signal chosen by the **src** switch
-(top right) — **dry** (the input, the default), the **mix**, or the
+(top right) - **dry** (the input, the default), the **mix**, or the
 **wet** recollections themselves. Listening to the wet output makes the
 recall engine self-triggering: recollections beget more recollections, a
 feedback in the *timing* logic distinct from the audio feedback path.
@@ -88,30 +88,30 @@ happens and **event out** does not fire.
 
 Each macro knob is a coordinated bundle rather than a single parameter:
 
-- **memory** — the temporal horizon available to recall, 50 ms up to the
+- **memory** - the temporal horizon available to recall, 50 ms up to the
   buffer size (exponential).
-- **recall** — the rate and probability of automatic recollection events.
+- **recall** - the rate and probability of automatic recollection events.
   Fully down, only manual **event** triggers recall.
-- **age** — how hard recalled memories deteriorate: Hermite interpolation
+- **age** - how hard recalled memories deteriorate: Hermite interpolation
   morphing toward nearest-neighbour, progressive low-pass, sample-rate
-  reduction, bit-depth reduction, timing jitter and, at the top, dropouts
-  — worsening each time a memory is revisited.
-- **smear** — turns distinct fragments into a diffuse, slowly modulated
+  reduction, bit-depth reduction, timing jitter and, at the top, dropouts,
+  worsening each time a memory is revisited.
+- **smear** - turns distinct fragments into a diffuse, slowly modulated
   all-pass cloud with stereo crossfeed; from discrete repeats up to
   reverb-adjacent texture.
-- **forget** — memory persistence. Low forget lets stored regions keep
+- **forget** - memory persistence. Low forget lets stored regions keep
   their integrity and be recalled many times; high forget makes them fade
   (integrity decays faster as the write head passes over them) and be
   avoided after fewer replays. (Audio feedback is now its own **fb**
   control, below.)
-- **temper** — behavioral instability: per-fragment position/pitch jitter,
+- **temper** - behavioral instability: per-fragment position/pitch jitter,
   spatial drift, and (unless switched off in the menu) a scattering of the
-  recall *timing* itself — each interval stretches or squeezes by up to
+  recall *timing* itself - each interval stretches or squeezes by up to
   ±70% of temper while the average rate is preserved, so the recollections
   stop feeling metronomic. Zero is stable and near-deterministic.
-- **direction** — the probability of reverse versus forward playback,
+- **direction** - the probability of reverse versus forward playback,
   chosen fresh per recollection (not a crossfade).
-- **harmony** — how the pitch of each recalled fragment relates to the
+- **harmony** - how the pitch of each recalled fragment relates to the
   source. Playback is pitch-quantized rather than freely detuned: fully
   down, fragments return only at unison and octaves, so they stay in tune
   with the source; turning it up widens the interval pool through fifths
@@ -119,8 +119,8 @@ Each macro knob is a coordinated bundle rather than a single parameter:
   a continuous detune is layered on for a deliberately inharmonic,
   out-of-tune drift. **temper** still adds a small wow on top, but no
   longer throws the pitch off its grid.
-- **mix** — equal-power dry/wet.
-- **out** — final output level, unity at 12 o'clock.
+- **mix** - equal-power dry/wet.
+- **out** - final output level, unity at 12 o'clock.
 
 Every continuous control has a CV input that nudges its knob (±5 V ≈
 ±half travel): the six macros and direction in the CV row, and mix,
@@ -130,29 +130,29 @@ Two more controls sit in the side margins. The **mode** and **mem**
 (memory-mode) switches are stacked on the left. On the right, the **src**
 switch picks what the recall engine listens to (dry / mix / wet), and the
 **fb** trimpot sets how much of the wet output is fed back into the
-record path — from none, through lush regeneration, up past unity into
+record path - from none, through lush regeneration, up past unity into
 self-oscillation (bounded by soft saturation and a limiter). With
 **src** on wet and **fb** high, vestigia becomes a self-sustaining drone
 generator.
 
 ## Buttons, triggers and outputs
 
-- **freeze** — stops writing to the buffer while recollection, feedback
+- **freeze** - stops writing to the buffer while recollection, feedback
   and degradation keep running. The logical transport keeps advancing, so
   timing stays consistent when freeze is released. **frz** gate input; the
   context menu offers gate / toggle / toggle-on-rising-edge.
-- **event** — forces a recall from a valid region (and fires **event
+- **event** - forces a recall from a valid region (and fires **event
   out** only if one actually starts). **evt** trigger input.
-- **clear** — wipes the buffer, activity map, descriptors, playback heads
+- **clear** - wipes the buffer, activity map, descriptors, playback heads
   and feedback. **clr** trigger input.
-- **audio in L / R** — R is normalled from L, so a mono source produces a
+- **audio in L / R** - R is normalled from L, so a mono source produces a
   meaningful stereo result.
-- **audio out L / R** — the stereo memory effect.
-- **mem out** — the recalled material before smear, feedback and mixing,
+- **audio out L / R** - the stereo memory effect.
+- **mem out** - the recalled material before smear, feedback and mixing,
   for parallel processing or alternate feedback paths.
-- **evt out** — a short 10 V pulse when a real recollection begins.
-- **env out** — the envelope of the incoming signal, 0–10 V.
-- **chaos out** — a slow voltage derived from the internal state (mean
+- **evt out** - a short 10 V pulse when a real recollection begins.
+- **env out** - the envelope of the incoming signal, 0–10 V.
+- **chaos out** - a slow voltage derived from the internal state (mean
   active-region age blended with live-head activity); the context menu
   makes it stepped or smooth, bipolar (±5 V) or unipolar (0–10 V).
 
@@ -164,11 +164,11 @@ frozen), and the panel flashes on each recollection.
 
 ## Context menu
 
-- **Temper scatters recall timing** — on by default; off keeps the recall
+- **Temper scatters recall timing** - on by default; off keeps the recall
   clock regular.
-- **Quality** — Eco / Standard / High trades CPU for the descriptor pool
+- **Quality** - Eco / Standard / High trades CPU for the descriptor pool
   and region count (4 / 8 / 16).
-- **Buffer size** — 4 / 8 / 16 / 32 s of memory.
+- **Buffer size** - 4 / 8 / 16 / 32 s of memory.
 - **Remanence retention**, **Sediment input amount**, **Sediment
   saturation** (soft / tape / fold).
 - **Freeze behavior**, **Mono output** (stereo / left / sum / equal-power
@@ -182,7 +182,7 @@ frozen), and the panel flashes on each recollection.
 ## Factory presets
 
 Faint Trace, Broken Repeater, Last Chord, Oxidized Tape, Percussive
-Ghost, Sedimentary Drone and Empty Room — the seven starting points from
+Ghost, Sedimentary Drone and Empty Room - the seven starting points from
 the design document.
 
 ## Notes

@@ -1,6 +1,6 @@
 # artifex audition
 
-Rebuild and install before a session, then restart Rack — it unpacks the new
+Rebuild and install before a session, then restart Rack - it unpacks the new
 `.vcvplugin` at launch, so a running Rack keeps the old one. Then open an item:
 
 ```
@@ -11,18 +11,18 @@ python3 tools/audition/audition.py artifex --list
 
 The runner builds the scene, writes the patch to a scratch directory and
 launches Rack on it, with the item's text in a Notes module beside the rack.
-It needs `test/audition/config.json` — copy `config.example.json` and edit.
+It needs `test/audition/config.json` - copy `config.example.json` and edit.
 
 ---
 
 ## 0. The bench
 
-Four sources, switched constantly — most issues show on only one:
+Four sources, switched constantly - most issues show on only one:
 
-- **a drum loop** — transients, slicing, crushing, splices
-- **a pad or drone** — filters, pitch shifting, freeze seams
-- **a 220 Hz sine** — tuning, detune, aliasing, clicks
-- **silence** — self-oscillation, runaway, DC, noise floor
+- **a drum loop** - transients, slicing, crushing, splices
+- **a pad or drone** - filters, pitch shifting, freeze seams
+- **a 220 Hz sine** - tuning, detune, aliasing, clicks
+- **silence** - self-oscillation, runaway, DC, noise floor
 
 The bench below builds all of that. Nothing in this file asks you to set a
 knob before starting: the runner opens Rack with the item already patched, and
@@ -30,9 +30,9 @@ an item's own line says only what it changes.
 
 Two kinds of item:
 
-- **untagged** — a test. Do it, judge it, tick it. Everything here needs ears
+- **untagged** - a test. Do it, judge it, tick it. Everything here needs ears
   or eyes: a verdict a machine cannot give.
-- **Decide —** an open question of taste, resting on numbers the harness
+- **Decide -** an open question of taste, resting on numbers the harness
   produces. An empty box means the choice is still mine to guess at.
 
 The bench below is the code every item starts from; a section adds to it and
@@ -86,12 +86,12 @@ Anything that yields a number rather than a verdict is not in this list. It
 lives in `test/artifex_probe measure`, which prints overwrite times, the
 record head's whine, what self-oscillates and the CPU per mode. Measured by
 hand a number is measured once, against whatever the build was that
-afternoon, and is wrong by the next commit — the whine below was 8x by hand
+afternoon, and is wrong by the next commit - the whine below was 8x by hand
 and is -78 dB now, and nothing but the harness noticed.
 
 ---
 
-## 1. Sanity — the module as a box
+## 1. Sanity - the module as a box
 
 ```python
 drums()
@@ -103,7 +103,7 @@ fx.set(fxmode="delay", amt="50%")
       `fx.set(amt=0)`
 - [x] 1.2. **level** 0→1: smooth, no zipper, no gain jump.
 - [x] 1.3. **gain** 0→4: quiet to loud. The **in** lamps go red only on real
-      clipping, and per channel — drive L alone, R stays dark.
+      clipping, and per channel - drive L alone, R stays dark.
 - [x] 1.4. L only: both outs identical. Patch R: the normal releases.
       ```python
       sine()
@@ -167,8 +167,8 @@ fx.set(fxmode="replayer")
 ## 3. The nine modes
 
 Each mode opens with the code for its bench, and the items say only what they
-change. Anything the code does not name is at the module's own default —
-**feedback** 0, **stereo** 0, **filter** centre — over the file's **level**
+change. Anything the code does not name is at the module's own default -
+**feedback** 0, **stereo** 0, **filter** centre - over the file's **level**
 0.8 and **gain** 1.0.
 
 ### 3.1 delay (green)
@@ -184,7 +184,7 @@ fx.set(fxmode="delay", time=0.5, amt="50%")
       musically over the top quarter.
       `fx.set(time=0.05, fbk="75%")`
 - [x] 3.1.3. Clock into **clk**: the knob snaps to divisions and the display
-      names them. Change tempo — the delay follows, the name stays.
+      names them. Change tempo - the delay follows, the name stays.
       `clock()`
 - [x] 3.1.4. A clock at **trig** snaps it too, but only while **clk** has none.
       With both patched, clk wins. With neither, the knob is free and the
@@ -225,13 +225,13 @@ fx.set(fxmode="freezer", time=0.5, amt=0)
 - [x] 3.3.2. **trig** takes a new chunk. Repeated trigs on the beat should feel
       like a stutter instrument.
 - [x] 3.3.3. **time** moves the loop live, with no trig and without touching
-      amount. Sweep right: the loop shortens continuously into a pitch — 1130 ms
+      amount. Sweep right: the loop shortens continuously into a pitch - 1130 ms
       → 3.2 ms, 9 Hz → 308 Hz on a full capture. Sweep back and the bar returns.
-- [x] 3.3.4. Left half with a clock: the length lands on exact divisions — 8, 6,
+- [x] 3.3.4. Left half with a clock: the length lands on exact divisions - 8, 6,
       4, 3, 2, 1. The longest clamp at the 1.15 s buffer; switch to 2.5 s and
       they open up.
 - [x] 3.3.5. A freeze catches all the history it has. The exception is arriving
-      in the mode, where it freezes as soon as it has the asked-for length — so
+      in the mode, where it freezes as soon as it has the asked-for length - so
       sweeping left immediately may hit a wall. Trig, and the full range is
       there. Try both.
 - [x] 3.3.6. **clk** does not re-capture, deliberately. With a clock running the
@@ -250,7 +250,7 @@ sine()
 fx.set(fxmode="panner", time=0.0, amt=0)
 ```
 
-- [x] 3.4.1. Autopan, L and R opposite. Sum to mono — a sine autopan should
+- [x] 3.4.1. Autopan, L and R opposite. Sum to mono - a sine autopan should
       partly cancel.
 - [x] 3.4.2. **amount** up: the sway hardens to a square alternation. Listen for
       clicks at the switch points at maximum.
@@ -266,10 +266,10 @@ fx.set(fxmode="panner", time=0.0, amt=0)
       out of the way rather than smearing the modulation.
       `fx.set(time=0.95)`
 - [x] 3.4.6. Trig the other three phase-resetting modes on a sustained tone and
-      on a drum loop — **3.2 flanger** (turns the sweep round), **3.9 shifter**
+      on a drum loop - **3.2 flanger** (turns the sweep round), **3.9 shifter**
       (squares R to L), **3.7 pitcher** (new window at the next grain boundary).
       Gesture yes, click no. The freezer and replayer swap the buffer under the
-      playhead and are smoothed rather than avoided — judge those separately.
+      playhead and are smoothed rather than avoided - judge those separately.
 
 ### 3.5 crusher (yellow)
 
@@ -287,7 +287,7 @@ fx.set(fxmode="crusher",
       `fx.set(amt="25%")`
 - [x] 3.5.2. **time** back to the far right, sweep **amount** slowly 0 to
       half: clean to a tenth, faint grain by a quarter, obvious by a third,
-      hard crunch at half. Steady the whole way — no stretch where turning it
+      hard crunch at half. Steady the whole way - no stretch where turning it
       changes nothing.
 - [x] 3.5.3. Carry the same sweep on from half to full. It should keep getting
       harsher, and brighter rather than just louder. Watch the scope: the
@@ -300,7 +300,7 @@ fx.set(fxmode="crusher",
       ```
 - [x] 3.5.5. Feedback at maximum, input muted, sweep **time**: the howl is
       pitched and tracks the rate, ~170 Hz at the left to ~1.7 kHz at the right.
-      Centred on a scope at every rate — an offset instead of a tone means it
+      Centred on a scope at every rate - an offset instead of a tone means it
       has parked at a rail.
       `fx.set(fbk="100%", gain=0)`
 - [x] 3.5.6. **trig** dips the rate, a momentary drop on sustained material.
@@ -319,17 +319,17 @@ fx.set(fxmode="slicer", time=0.0, amt="50%")
 - [x] 3.6.2. **amount** at 0 passes the drone through untouched; the first
       tenth of the travel fades the chopping in. Just past that it should be
       chopping fully, with a ~1 s decay that only breathes, down to 60 ms at
-      the far right. Sweep the full range — perceived level roughly constant,
+      the far right. Sweep the full range - perceived level roughly constant,
       short slices no quieter than long ones.
 - [x] 3.6.3. **feedback**: chance of a step inverting. At ~0.5 the pattern keeps
       changing; at 1 it is near-fully inverted, not silent. With **stereo** at
-      0 both channels must invert the same steps — sum to mono and nothing
+      0 both channels must invert the same steps - sum to mono and nothing
       should change.
       `fx.set(fbk="50%", stereo=0)`
 - [x] 3.6.4. **stereo** is a selector here, not a width knob: it steps the right
       channel 0 to 8 places further along the rhythm table, nine positions, so
       half travel is +4 and the top is +8. Walk all nine and check each is a
-      different pairing. Do not expect the image to widen as you turn it —
+      different pairing. Do not expect the image to widen as you turn it -
       against four on the floor the widest is at a quarter, against son clave
       at three quarters. Some pairings put a very dense or very sparse rhythm
       on the right, which reads as one side chopping and the other holding.
@@ -345,7 +345,7 @@ sine()
 fx.set(fxmode="pitcher", time=0.5, amt=0)
 ```
 
-- [x] 3.7.1. Sweep **amount**: it is the shift. Crude on purpose — stutter and
+- [x] 3.7.1. Sweep **amount**: it is the shift. Crude on purpose - stutter and
       transient duplication are fine, a dead zone or drop-out is not.
 - [x] 3.7.2. **time** long: rhythmic chopping. Short: formant shift on a voice
       or pad.
@@ -371,7 +371,7 @@ fx.set(fxmode="replayer",
 - [x] 3.8.3. **Clicks.** At several speeds: hit **trig** repeatedly; take
       **amount** to 0.9 and back; to 0.5 and back; jump **time**. No click, dip
       or bump, and a 2 V tone stays a 2 V tone. Speed changes glide over a few
-      tens of ms — that is the tape motor, not a fault.
+      tens of ms - that is the tape motor, not a fault.
       `drums()`
 - [x] 3.8.4. Same, overdubbing: **amount** 0.75. **trig**, retune the sine to
       110 Hz, **trig** again. Nothing once a lap.
@@ -383,7 +383,7 @@ fx.set(fxmode="replayer",
 - [x] 3.8.6. Drop **amount** to 0.9 and leave it: nothing once a lap, from
       then on.
       `fx.set(amt="90%")`
-- [-] 3.8.7. The locked loop sits at the level that went in — whatever amount
+- [-] 3.8.7. The locked loop sits at the level that went in - whatever amount
       you recorded at, and both kinds of material: non-repeating, and a
       sustained drone. Neither should drift over a dozen laps.
 - [-] 3.8.8. Overdubbing a steady tone combs, and that is not a fault. Around
@@ -396,11 +396,11 @@ fx.set(fxmode="replayer",
 - [-] 3.8.10. **trig** fills the tape over one lap, not instantly. Steady tone,
       **amount** fully right, trig repeatedly at several speeds: nothing during
       the fill or at the moment it ends.
-- [-] 3.8.11. **Decide —** every fade in the mode is 10 ms, the overlap of a
+- [-] 3.8.11. **Decide -** every fade in the mode is 10 ms, the overlap of a
       diagonal tape splice. On percussive material, does a **trig** land too
       soft? Gesture speed and splice length are one number and can be split.
       `drums()`
-- [-] 3.8.12. **Decide —** the record head writes to one slot while the play
+- [-] 3.8.12. **Decide -** the record head writes to one slot while the play
       head reads between two, leaving a tone at any speed but 1x. Run
       `artifex_probe measure` for where it sits, then open the **VCA** to sweep
       **time** through 0.85 and listen for it. An interpolated write would
@@ -422,7 +422,7 @@ fx.set(fxmode="shifter", time=0.5, amt="50%")
 - [x] 3.9.2. Below centre down, above up. Sweep slowly: smooth and symmetric.
       Listen for crossfade warble rather than the pitcher's stutter.
 - [x] 3.9.3. **feedback** returns the output to the input, where it is
-      shifted again, and again. The mode is not a delay — it shifts by
+      shifted again, and again. The mode is not a delay - it shifts by
       sweeping an 80 ms window, so each trip round the loop also lands up to
       80 ms later. **time** a few semitones above centre (the display reads
       the interval), **feedback** 0.6, sine held: a stack of intervals
@@ -442,7 +442,7 @@ fx.set(fxmode="shifter", time=0.5, amt="50%")
       `fx.set(stereo="20%")`
 - [ ] 3.9.6. **trig** is a stereo-only control here: it squares the right
       channel back to half a window from the left. At **stereo** 0 both
-      channels run at one rate and never drift, so it does nothing at all —
+      channels run at one rate and never drift, so it does nothing at all -
       correctly. Turn stereo up, let the image wander for a few seconds, then
       trig: the image snaps back, then wanders again.
       `fx.set(stereo="50%")`
@@ -474,7 +474,7 @@ fx.set(fxmode="delay", time=0.8, fbk="60%", amt="80%")
       the reach (the suite says 39 dB); the question is whether the travel is
       usable all the way or bunched at one end.
       `fx.menu(filterInLoop=True)`
-- [ ] 4.2. **Decide —** the default is 12 dB/oct, a tone control that thins
+- [ ] 4.2. **Decide -** the default is 12 dB/oct, a tone control that thins
       without removing. The menu's 24 dB/oct is vates' filter and takes the
       material away at both ends. Which should artifex ship as its default?
       `fx.menu(filterFourPole=True)`
@@ -493,9 +493,9 @@ fx.set(fxmode="delay", time=0.8, fbk="60%", amt="80%")
 ## 5. Clock, pattern, LFO
 
 All of this is now automated. The section is one piece of code shared with
-vates, so `smoke_vates` exercises the section itself — the 32 rhythms and that
+vates, so `smoke_vates` exercises the section itself - the 32 rhythms and that
 none repeat, the CV that selects from them, both pattern switches and both
-gate windows, the LFO free and synced, its reset — and `smoke_artifex` checks
+gate windows, the LFO free and synced, its reset - and `smoke_artifex` checks
 artifex's own wiring of it: the pulse high exactly while the triangle rises at
 every width, pattern reset returning to step one, the external-clock menu
 option, and an LFO attenuverter at zero being genuinely inert.
@@ -516,7 +516,7 @@ fx.set(fxmode="slicer", amt="50%")
 - [ ] 5.1. **clk out** into another module's clock input: it should drive it
       without any fiddling with thresholds.
       `fx["clk"] >> vcv.module("Scope")["ch 1"]`
-- [ ] 5.2. An irregular or ratcheting external clock at **clk** — the tempo
+- [ ] 5.2. An irregular or ratcheting external clock at **clk** - the tempo
       tracking should follow it rather than averaging it into mush.
       `clock(hz=3.0)`
 
@@ -546,7 +546,7 @@ fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
       fx["env"] >> fx["fbk"]
       fx.set(fbk_att=-1.0)
       ```
-- [ ] 6.2. **Decide —** quantized mode changes (menu, default on) with fast
+- [ ] 6.2. **Decide -** quantized mode changes (menu, default on) with fast
       mode CV and a slow clock: changes wait for the next step. Off, they are
       immediate and deliberately uglier. Is the default the right one?
       ```python
@@ -564,8 +564,8 @@ fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
       fx.set(fxmode="slicer", amt="60%")
       ```
 - [ ] 6.4. **artifex + vates** sharing a clock (artifex **clk out** → vates
-      **clk**): the two pattern generators and LFOs should agree — same
-      rhythms, same phase — and stay agreed over a few minutes.
+      **clk**): the two pattern generators and LFOs should agree - same
+      rhythms, same phase - and stay agreed over a few minutes.
       ```python
       v = vcv.module("vates")
       fx["clk"] >> v["clk"]

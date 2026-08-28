@@ -1,4 +1,4 @@
-// aether_probe — measurement harness for the broken transmission line.
+// aether_probe - measurement harness for the broken transmission line.
 //
 // This is where the numbers behind src/aether_dsp.hpp come from. The module
 // is built on two claims about the circuit, and both are checkable:
@@ -6,7 +6,7 @@
 //   * the transmitter is a synchronous charge-balance converter, so its pulse
 //     rate is (1 + u)/4 * f_carrier and it saturates at half the clock;
 //   * the receiver is a PLL, so with the clocks matched the loop's control
-//     voltage — the audio output — comes back as the input, and with them
+//     voltage - the audio output - comes back as the input, and with them
 //     mismatched by R = f_carrier/f_demod it comes back as R*(1+u) - 1.
 //
 // If those hold, everything the manual describes (matched clocks pass the

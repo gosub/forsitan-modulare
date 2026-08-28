@@ -1,4 +1,4 @@
-// draen_sweep — offline octave sweep of the dræn engine banks.
+// draen_sweep - offline octave sweep of the dræn engine banks.
 //
 // For every engine it renders amp=1 audio at 27.5·2^k Hz (k = 0..7) and
 // reports, as CSV on stdout: per-channel DC (mean), AC RMS (DC removed),

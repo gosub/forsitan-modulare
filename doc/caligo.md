@@ -10,7 +10,7 @@ steam*. The module is a port of **Greyhole**, Julian Parker's 2013 algorithm
 from the DEIND project, named after the Eventide effect of a similar name.
 
 Greyhole is usually filed under "reverb" and that is the wrong shelf. It is a
-**delay** — a delay long enough to hear as discrete repeats — with a dense
+**delay** - a delay long enough to hear as discrete repeats - with a dense
 allpass diffusion network sitting in the *forward path of its feedback loop*.
 Because the diffuser is inside the loop rather than after it, each pass is
 scattered by the whole network again: the first repeat is a slightly blurred
@@ -43,7 +43,7 @@ three stages, which is where the reversed-sounding build-up at medium **diff**
 comes from.
 
 The channel rotator between each level's nested block and its delay lines is
-hardcoded to π/2 in the original — a hard channel swap at every one of the
+hardcoded to π/2 in the original - a hard channel swap at every one of the
 twelve levels, which is where Greyhole's violently wide stereo image comes
 from. Here it is the **spin** knob.
 
@@ -66,13 +66,13 @@ for the full range of the parameter, scaled by the attenuverter.
 |------|----------|
 | **time** | the long delay, 10 ms to 16 s, exponential. Under a clock (see **clk**) it becomes a ratio of the clock instead. This is the *loop* delay, not the whole loop: the diffuser adds about 70 ms of its own at **size** 1.0, so the shortest repeat interval you can actually reach is time + that (see *The diffuser has a length of its own*) |
 | **size** | 0.5–4×, scaling all 24 diffuser delays together. Below 1 the network is short and metallic; above 2 the diffuser itself becomes an audible space that rings for a couple of hundred milliseconds. Sweeping it glides rather than steps, which is a large part of the character |
-| **diff** | the allpass rotation angle. Full CCW is a plain delay line — literally: the diffuser collapses to 24 delays in series and there is silence between repeats. Around 9:00–11:00 is the reversed-sounding build-up. Noon and just past it is the classic smooth exponential smear. Past about 2:00 the *direct* path through each allpass takes over again and the diffusion narrows, so the densest setting is nearer 10:30 than full CW |
+| **diff** | the allpass rotation angle. Full CCW is a plain delay line - literally: the diffuser collapses to 24 delays in series and there is silence between repeats. Around 9:00–11:00 is the reversed-sounding build-up. Noon and just past it is the classic smooth exponential smear. Past about 2:00 the *direct* path through each allpass takes over again and the diffusion narrows, so the densest setting is nearer 10:30 than full CW |
 | **feedback** | loop gain, 0–120%. At 100% it sustains indefinitely; past that the loop pumps energy in and the saturator is what holds it, so the top fifth of the knob is a drive control |
 | **damp** | a one-pole high-frequency loss per pass, 0 to 99%. Sample-rate compensated, so the damping *frequency* stays put across 44.1 and 192 kHz (the original's coefficient is raw and does not) |
-| **mod** | depth of the quadrature modulation on the delay inside the feedback path — cosine on the left, sine on the right, ±2.5 ms at full. Small by design: it decorrelates the repeats rather than chorusing them |
+| **mod** | depth of the quadrature modulation on the delay inside the feedback path - cosine on the left, sine on the right, ±2.5 ms at full. Small by design: it decorrelates the repeats rather than chorusing them |
 | **rate** | its frequency, 0.02–10 Hz. The LED above the knob blinks at the rate. Optionally clock-syncable (context menu) |
 | **mix** | equal-power dry/wet blend. The original is wet-only, which is preset 1 |
-| **spin** | the channel rotator angle, 0 to π/2 (§ above). Full CCW: the two channels never meet, so you get two independent mono echoes on different prime lengths — wide and static. Full CW (the default, the original): the channels are hard-swapped at every level, so they continuously trade material — a boiling, moving image. Measured correlation runs 0.03 at full CCW to 0.25 at full CW; both are wide, but only one of them moves |
+| **spin** | the channel rotator angle, 0 to π/2 (§ above). Full CCW: the two channels never meet, so you get two independent mono echoes on different prime lengths - wide and static. Full CW (the default, the original): the channels are hard-swapped at every level, so they continuously trade material - a boiling, moving image. Measured correlation runs 0.03 at full CCW to 0.25 at full CW; both are wide, but only one of them moves |
 | **drift** | a slow bounded random walk on **size**, 0 at full CCW. At full CW size wanders ±45% over 0.5–4 s steps. Because size changes glide anyway, the walk is inherently smooth: it sounds like the room refusing to hold still, which is a completely different thing from vibrato in the delay line |
 | **frz** | button, latches freeze: feedback goes to exactly 1.0, the input is shut out of the loop, damping is bypassed and the delay time is held. Crossfaded in over ~10 ms so it does not click |
 | **sct** | button, reseeds the scattering network: new constants for the prime-index scales, so a different room reached through the same controls. It *slides* into the new configuration over ~0.23 s rather than jumping |
@@ -82,7 +82,7 @@ for the full range of the parameter, scaled by the attenuverter.
 | jack | function |
 |------|----------|
 | **in L / in R** | stereo audio in; **in R** is normalled to **in L** for mono use |
-| **clk** | clock input. While patched, **time** snaps to ratios of the clock (1/12, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 1/1, 3/2, 2, 3, 4, 6, 8, 12 — 1/1 at noon, the same table antrum uses). A ratio change takes effect on the next clock edge, so it lands on the beat rather than mid-bar |
+| **clk** | clock input. While patched, **time** snaps to ratios of the clock (1/12, 1/8, 1/6, 1/4, 1/3, 1/2, 2/3, 1/1, 3/2, 2, 3, 4, 6, 8, 12 - 1/1 at noon, the same table antrum uses). A ratio change takes effect on the next clock edge, so it lands on the beat rather than mid-bar |
 | **frz** | freeze gate: high freezes, releasing it thaws. Overrides the button while high |
 | **sct** | scatter trigger: a rising edge reseeds |
 | **snd L / snd R** | the feedback loop send, tapped after the long delay and before the feedback gain |
@@ -101,18 +101,18 @@ thing in the loop.
 
 Two things to know. The break costs one sample of latency, which is inaudible
 and is the same one sample the algorithm already has. And a gain stage in the
-loop *can* run away — the loop saturator is what catches it, and it will,
+loop *can* run away - the loop saturator is what catches it, and it will,
 but it is a saturator and not a limiter, so expect it to sound like one.
 
 ## Context menu
 
 | item | options | default |
 |------|---------|---------|
-| **Time change** | *Dissolve* is the original: the long delay is an integer delay that crossfades between the old and the new length, so sweeping **time** produces no pitch change at all — it dissolves from one time into another. *Tape* gives it a fractional, slew-limited read pointer, so sweeping **time** Doppler-shifts the repeats the way a tape echo does | Dissolve |
-| **Clock sync target** | *Time*, or *Time + rate* — the modulation LFO snapped to clock ratios as well | Time |
+| **Time change** | *Dissolve* is the original: the long delay is an integer delay that crossfades between the old and the new length, so sweeping **time** produces no pitch change at all - it dissolves from one time into another. *Tape* gives it a fractional, slew-limited read pointer, so sweeping **time** Doppler-shifts the repeats the way a tape echo does | Dissolve |
+| **Clock sync target** | *Time*, or *Time + rate* - the modulation LFO snapped to clock ratios as well | Time |
 | **Freeze bypasses damping** | on: a frozen cloud stops getting darker. Off: it keeps closing down | on |
 | **Input to loop when frozen** | *Muted* is a true freeze. *Open* keeps injecting, so you can play into a cloud that never lets go | Muted |
-| **Reset scattering to the original** | puts the prime-index scales back to Greyhole's own constants (10 + 19i per stage, +13 per nesting level, +10 between channels) | — |
+| **Reset scattering to the original** | puts the prime-index scales back to Greyhole's own constants (10 + 19i per stage, +13 per nesting level, +10 between channels) | - |
 
 The scatter seed, the latched freeze state and all four settings are saved in
 the patch, so a patch reopens sounding identical. The seed also walks
@@ -128,8 +128,8 @@ The 24 delay lines are in series, so at **size** 1.0 the diffuser is about
   with **time** at its minimum. caligo is not a short delay.
 - The loop period is **time + 70 ms**, so the repeats at time = 400 ms land
   470 ms apart.
-- To reach the comb/resonator region — where the loop is short enough to have
-  a pitch — bring **size** down as well as **time**. At size 0.5 the
+- To reach the comb/resonator region - where the loop is short enough to have
+  a pitch - bring **size** down as well as **time**. At size 0.5 the
   diffuser is about 29 ms.
 
 This is faithful: the original behaves identically, and the figure is
@@ -156,7 +156,7 @@ and 192 kHz) because the prime lengths are rescaled with the sample rate.
 - **freeze** with **drift** up is the module's best trick: the cloud holds
   forever while the room it lives in keeps moving.
 - Above about 4–6 seconds of **time** the repeats stop being a texture and
-  become discrete diffused *events* — the diffuser only smears over tens to
+  become discrete diffused *events* - the diffuser only smears over tens to
   a couple of hundred milliseconds, so it blurs *within* a repeat, never
   between them. That stretch of the knob is for clock-sync multiples and slow
   drone work, not for the good sound.
@@ -175,7 +175,7 @@ Right-click → Preset.
 | **cathedral** | size 3, diff high, damping up, 1.2 s at 100% feedback |
 | **tape ghost** | tape mode, 700 ms, deep slow modulation, 95% feedback. Sweep **time** and it bends |
 | **two rooms** | spin at zero, size 0.6: dual-mono, wide, metallic |
-| **frozen** | the setup for freezing: 100% feedback, drift up, fully wet. A preset can carry knob positions but not the sound already circulating, so this one does not arrive with **frz** latched — get something into the loop, then press it |
+| **frozen** | the setup for freezing: 100% feedback, drift up, fully wet. A preset can carry knob positions but not the sound already circulating, so this one does not arrive with **frz** latched - get something into the loop, then press it |
 | **comb** | 12 ms at 110% feedback with diff low: the resonator end of the knob |
 
 ## Differences from the original
@@ -218,7 +218,7 @@ settings, so preset 1 is the reference algorithm.
   length across an integer the tap steps, the coefficient jumps, and the
   filter's state belongs to the tap it just left. The total delay stays
   continuous; the signal does not. With 24 lines gliding at once it is
-  broadband crackle, and it is audible in the reference too — sweeping size
+  broadband crackle, and it is audible in the reference too - sweeping size
   0.8→2.0 at 0.1 Hz with a 200 Hz sine in, a Faust build of `re.greyhole` puts
   25 dB more energy above 5 kHz than the same thing standing still. Hermite
   has no state, is smooth in the length, and is *exact* whenever the delay is
@@ -229,7 +229,7 @@ settings, so preset 1 is the reference algorithm.
 - **The scattering constants can be reseeded**, and the seed is saved in the
   patch.
 - **Parameter smoothing** is proper one-pole, not the original's two-tap box
-  smoother. That smoother is close to a no-op at any real block size — its
+  smoother. That smoother is close to a no-op at any real block size - its
   only measurable effect is on the first sample after a parameter changes,
   which is exactly where an impulse test lands.
 
@@ -244,7 +244,7 @@ and as `jp_gh_rev` / `re.greyhole` in
 (MIT). The name follows the Eventide effect of a similar name.
 
 This module is an independent C++ implementation written from the published
-algorithm — no machine-translated Faust output — and is verified against a
+algorithm - no machine-translated Faust output - and is verified against a
 Faust build of `re.greyhole`: with the test impulse placed after the
 reference's own parameter smoothers settle, the first diffuser pass is
 sample-identical, and over four seconds of tail across four parameter sets the

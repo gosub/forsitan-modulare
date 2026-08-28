@@ -1,4 +1,4 @@
-// MMCCCXCIX.cpp — VCV Rack 2 module
+// MMCCCXCIX.cpp - VCV Rack 2 module
 // Features:
 //   - PT2399 DSP core (schollz/onebitdelay port)
 //   - Knobs: TIME, FEEDBACK, MIX, BRIGHTNESS, FB_LOOP_MIX

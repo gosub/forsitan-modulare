@@ -1,4 +1,4 @@
-// antrum_probe — measurement harness for the antrum reverb.
+// antrum_probe - measurement harness for the antrum reverb.
 // Renders impulse responses and reports the numbers a reverb is judged by:
 // RT60 against the decay knob, echo density, damping and stereo width.
 // Built by `make all`, not run by `make check`.

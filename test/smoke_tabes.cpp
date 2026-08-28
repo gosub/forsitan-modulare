@@ -1,4 +1,4 @@
-// smoke_tabes — offline sanity checks for the tabes module.
+// smoke_tabes - offline sanity checks for the tabes module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

@@ -1,5 +1,5 @@
 #pragma once
-// vates kit generators — the percussive half of the factory banks.
+// vates kit generators - the percussive half of the factory banks.
 //
 // Ported from pages64 (github.com/gosub/pages64, GPL-3.0-or-later, same
 // author): the recipe and voice code of its four kit companions, 64Drums,
@@ -15,7 +15,7 @@
 //     one kind in eight sizes.
 //   - the "variety" extras are all enabled (their per-cell gates still keep
 //     part of a bank clean), except those that only mean something across
-//     repeated hits — pong panning, the drop cycle and the pitch cycle are
+//     repeated hits - pong panning, the drop cycle and the pitch cycle are
 //     hit counters, and a rendered sample is always hit zero.
 //
 // Fixes to the originals have to be ported by hand; this is a copy, not a
@@ -63,8 +63,8 @@ inline const char* familyName(int kit, int fam) {
 }
 
 // One-pole coefficient. The originals use the small-angle form
-// clamp(2*pi*fc*dt, 0, 1), which reaches 1 at fc = fs/(2*pi) — 7018 Hz at
-// 44.1 kHz — and a one-pole highpass whose coefficient is exactly 1 outputs
+// clamp(2*pi*fc*dt, 0, 1), which reaches 1 at fc = fs/(2*pi) - 7018 Hz at
+// 44.1 kHz - and a one-pole highpass whose coefficient is exactly 1 outputs
 // silence, not treble. That is why the hat rows of 64Drums go quiet from
 // column 4 up at 44.1 kHz unless their resonant-noise extra happens to be on.
 // The exact form cannot reach 1, so it cannot do that.

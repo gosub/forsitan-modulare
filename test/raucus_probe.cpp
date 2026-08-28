@@ -1,4 +1,4 @@
-// raucus_probe — measurements that characterise the fuzz, not a pass/fail
+// raucus_probe - measurements that characterise the fuzz, not a pass/fail
 // harness. Built by `make all`, not run by `make check`.
 //
 //   1. the tone stack's response against ElectroSmash's published figures

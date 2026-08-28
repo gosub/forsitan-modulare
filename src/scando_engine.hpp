@@ -1,5 +1,5 @@
 #pragma once
-// scando_engine.hpp — scanned-synthesis DSP core (Rack-free, header-only)
+// scando_engine.hpp - scanned-synthesis DSP core (Rack-free, header-only)
 //
 // Scanned synthesis (Verplank / Mathews / Shaw, Interval Research 1998-2000):
 //   - a string of N masses connected by springs vibrates slowly at "haptic"
@@ -9,7 +9,7 @@
 //
 // Topology matches the classic Csound scansyn / Qu-Bit string: the masses form
 // a NON-circular chain (no wrap-around spring). The two endpoints are fixed at
-// zero — the "two fixed ends" boundary of the original paper (x0=v0=0,
+// zero - the "two fixed ends" boundary of the original paper (x0=v0=0,
 // xN=vN=0). The first/last moving mass therefore couples to one moving neighbour
 // plus a fixed wall, and because the scanned table starts and ends at zero it
 // loops without a discontinuity.

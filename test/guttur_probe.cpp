@@ -1,4 +1,4 @@
-// guttur_probe — diagnostic maps for the guttur engine.
+// guttur_probe - diagnostic maps for the guttur engine.
 //
 // Not a pass/fail check (that is smoke_guttur): this prints two tables that
 // explain *why* the module sounds the way it does at a given setting. Both
@@ -117,7 +117,7 @@ static void forcing() {
                r.rms, r.peak, r.rms > 0 ? r.peak / r.rms : 0.0, 100.0 * r.dead);
     }
 
-    // Sub-audio forcing alone does NOT kill the engine — excess loop drive
+    // Sub-audio forcing alone does NOT kill the engine - excess loop drive
     // does, and sub-audio forcing then fails to restart it. Measured
     // 2026-07-19: the pre-fix 83% dead air needed both the folding shaper
     // and the doubled bank; either one tamed brings it back to 0%.

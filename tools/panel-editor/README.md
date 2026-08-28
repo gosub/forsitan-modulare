@@ -2,7 +2,7 @@
 
 A browser-based drag-and-drop panel layout editor for forsitan VCV Rack modules.
 
-Reads the `@layout` block from a module's `.cpp` file, lets you reposition every element visually, and writes the updated coordinates back to the `.cpp` and regenerates the panel SVG — all in one Save click.
+Reads the `@layout` block from a module's `.cpp` file, lets you reposition every element visually, and writes the updated coordinates back to the `.cpp` and regenerates the panel SVG - all in one Save click.
 
 ## Requirements
 
@@ -49,7 +49,7 @@ The editor reads and writes a machine-editable comment block inside the widget c
 // @elem ID CppType radius kind "label" label_dy [x y]
 // ...
 
-        addParam(...);  // generated C++ — do not edit
+        addParam(...);  // generated C++ - do not edit
         // @layout:end
 ```
 
@@ -86,6 +86,6 @@ Add a `// @elem` line manually inside the `@layout` block, then run the editor o
 
 ## Panel SVG
 
-The SVG is generated entirely from the `@layout` data — never edit `res/*.svg` by hand. The background, title, labels, logo, and boxes are all rendered as OCR-A glyph paths by `regen_svg()`.
+The SVG is generated entirely from the `@layout` data - never edit `res/*.svg` by hand. The background, title, labels, logo, and boxes are all rendered as OCR-A glyph paths by `regen_svg()`.
 
 Panel dimensions and module name come from the `@layout:begin` header line.

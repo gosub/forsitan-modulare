@@ -1,4 +1,4 @@
-// artifex_probe — measure and audition the nine effects.
+// artifex_probe - measure and audition the nine effects.
 //
 //   artifex_probe sweep            every mode against a fixed test signal
 //   artifex_probe mode <n>         one mode across the time and amount knobs

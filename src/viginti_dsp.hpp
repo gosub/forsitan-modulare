@@ -1,4 +1,4 @@
-// viginti_dsp.hpp — the KORG35 Rev. 2 nonlinear lowpass, free of Rack headers
+// viginti_dsp.hpp - the KORG35 Rev. 2 nonlinear lowpass, free of Rack headers
 // so test/viginti_probe and test/viginti_invariants can measure it directly.
 //
 // The circuit is the OTA-based lowpass of the later MS-20 revisions: two RC

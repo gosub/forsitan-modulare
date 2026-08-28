@@ -1,4 +1,4 @@
-// smoke_gradus — offline sanity checks for the gradus module.
+// smoke_gradus - offline sanity checks for the gradus module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 //
 // gradus has no DSP to measure: it is a rule about what happens to one

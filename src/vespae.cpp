@@ -1,8 +1,8 @@
-// vespae.cpp — VCV Rack 2 module
+// vespae.cpp - VCV Rack 2 module
 // vespae (Latin: "of the wasp") is an emulation of the EDP Wasp / Doepfer
 // A-124 filter: a 12 dB/oct state-variable filter built, to save money in
 // 1978, out of CD4069 CMOS inverters instead of op-amps and run from a single
-// unipolar supply. That compromise is the whole point — the inverters are
+// unipolar supply. That compromise is the whole point - the inverters are
 // sloppy, asymmetric amplifiers with a switching threshold that is not quite
 // mid-supply, the OTAs saturate and slam into the rails, and a diode pair
 // across the resonance network clamps the feedback once it gets loud. The
@@ -71,7 +71,7 @@ static constexpr float kRoomLo = 0.10f;
 // carries a standing offset. It is what makes the clipping lopsided.
 static constexpr float kInvBias = 0.06f;
 // The diode pair is biased by the HP node through the rest of the star, and
-// taken literally it holds the resonance down at a tenth of the rail — where
+// taken literally it holds the resonance down at a tenth of the rail - where
 // the paper's own state-space plots (Fig. 11) show it reaching them. This
 // trim backs the clamp off to where the hardware actually sits.
 static constexpr float kDiodeTrim = 0.5f;
@@ -417,7 +417,7 @@ struct Vespae : Module {
         core.roomHi = roomHiC;
         core.roomLo = roomLoC;
         // The diode branch is in series with the rest of the star, so only
-        // part of the HP swing lands across the pair — and less of it the
+        // part of the HP swing lands across the pair - and less of it the
         // higher the resonance, which is why the Wasp gets wilder up there.
         core.diodeBias = supplyC * vespae::kDiodeTrim
                        * vespae::kR4 / (vespae::kR4 + core.Ra + core.Rc);
@@ -469,7 +469,7 @@ struct Vespae : Module {
             osOut[1][k] = dcBlock[1].process(core.hp);
             osOut[2][k] = dcBlock[2].process(core.bp);
             // the notch summer is another inverter on the same supply, so it
-            // clips too — without that, HP and LP hitting a rail together
+            // clips too - without that, HP and LP hitting a rail together
             // would hand back twice the swing of any other output
             osOut[3][k] = dcBlock[3].process(
                 vespae::railClip(core.hp + core.lp, core.roomHi, core.roomLo));

@@ -45,13 +45,13 @@ A collection of VCV Rack modules.
 | [materiae](doc/materiae.md) | Percussion from two square waves and the relationship between them: logic operators, bidirectional feedback, a tuneable digital grid and a ringing filter for a body | [doc/materiae.md](doc/materiae.md) |
 | [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound | [doc/aether.md](doc/aether.md) |
 | [vates](doc/vates.md) | Stereo sample player over banks it generates itself: modulate which sample plays and the rhythm falls out, with a reversing envelope, a filter and FX, an LFO and a 16-step pattern generator | [doc/vates.md](doc/vates.md) |
-| [artifex](doc/artifex.md) | Nine stereo effects — delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter — sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator | [doc/artifex.md](doc/artifex.md) |
+| [artifex](doc/artifex.md) | Nine stereo effects - delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter - sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator | [doc/artifex.md](doc/artifex.md) |
 
 ## Tools
 
 | tool | description |
 |------|-------------|
-| [limen-tools](https://github.com/gosub/limen-tools) | limen clients (separate repo) — Go CLI and MCP server, plus a Python library; prebuilt binaries on releases |
+| [limen-tools](https://github.com/gosub/limen-tools) | limen clients (separate repo) - Go CLI and MCP server, plus a Python library; prebuilt binaries on releases |
 | [tools/panel-editor/](tools/panel-editor/) | Browser-based drag-and-drop panel layout editor |
 
 ## Controlling Rack externally (limen)
@@ -60,7 +60,7 @@ The [limen](doc/limen.md) module runs a small TCP server speaking newline-delimi
 
 Quickstart:
 
-1. Launch Rack straight into a controllable state with the bundled patch — it contains a single limen module with the server already enabled: `./Rack patches/limen.vcv`. (Or add a **limen** module to any patch and enable its server from the right-click menu.)
+1. Launch Rack straight into a controllable state with the bundled patch - it contains a single limen module with the server already enabled: `./Rack patches/limen.vcv`. (Or add a **limen** module to any patch and enable its server from the right-click menu.)
 2. Talk to it with the [limen-cli client](https://github.com/gosub/limen-tools): `limen-cli hello` (or `list_modules`, `set 0 0 0.5`, …).
 3. Or from anything that opens a socket: `echo '{"cmd":"hello"}' | nc localhost 7000`.
 
@@ -82,36 +82,36 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **deinde** | then, next, afterwards |
 | **pavo** | peacock (whose spreading tail mirrors the stereo spread) |
 | **limen** | threshold, doorway |
-| **MMCCCXCIX** | 2399 in Roman numerals — the PT2399 chip this module emulates |
-| **scando** | I climb / I scan — *scandere* is also the Latin for scanning verse, the root of "scan" |
-| **pellicula** | little skin, thin membrane (diminutive of *pellis*, skin/hide) — the drumhead, and an echo of "pico" (small) |
-| **dræn** | *not Latin* — Old English for *bee*, the etymological root of "drone" (a port of the dronecaster norns instrument) |
+| **MMCCCXCIX** | 2399 in Roman numerals - the PT2399 chip this module emulates |
+| **scando** | I climb / I scan - *scandere* is also the Latin for scanning verse, the root of "scan" |
+| **pellicula** | little skin, thin membrane (diminutive of *pellis*, skin/hide) - the drumhead, and an echo of "pico" (small) |
+| **dræn** | *not Latin* - Old English for *bee*, the etymological root of "drone" (a port of the dronecaster norns instrument) |
 | **rete** | net, network (the 8×8 feedback web at the module's heart) |
 | **ululo** | I howl (guitar feedback, the Larsen effect as an instrument) |
 | **tabes** | wasting away, decay, consumption (the tape loop dying pass by pass) |
 | **lustro** | I traverse, I survey (the string surveyed into a filterbank; scando's sibling) |
-| **bulla** | bubble, blip — also the amulet worn by Roman children (Hordijk's Blippoo Box) |
-| **perge** | carry on!, keep going! (imperative of *pergere*) — a nod to the AC noises CONTINUA pedal it pays homage to, whose name is the Italian for the same exhortation |
-| **vorax** | voracious, all-devouring — the ever-hungry feedback plant (Synthux Academy's Audrey II) |
-| **textor** | weaver — reweaves two seconds of sound into ever-new cloth (the Fieldtone Weaver) |
+| **bulla** | bubble, blip - also the amulet worn by Roman children (Hordijk's Blippoo Box) |
+| **perge** | carry on!, keep going! (imperative of *pergere*) - a nod to the AC noises CONTINUA pedal it pays homage to, whose name is the Italian for the same exhortation |
+| **vorax** | voracious, all-devouring - the ever-hungry feedback plant (Synthux Academy's Audrey II) |
+| **textor** | weaver - reweaves two seconds of sound into ever-new cloth (the Fieldtone Weaver) |
 | **imber** | rain shower, downpour (a generative rain of samples, inspired by Giorgio Sancristoforo's Haiku) |
-| **sylla** | *almost Latin* — a clipped *syllaba*, syllable: haiku are counted in syllables, and sylla speaks one small sound at a time |
-| **guttur** | throat — the guttural voice, punning on Tom Mudd's Gutter Synthesis it ports |
-| **vespae** | of the wasp (genitive of *vespa*) — Chris Huggett's EDP Wasp filter |
+| **sylla** | *almost Latin* - a clipped *syllaba*, syllable: haiku are counted in syllables, and sylla speaks one small sound at a time |
+| **guttur** | throat - the guttural voice, punning on Tom Mudd's Gutter Synthesis it ports |
+| **vespae** | of the wasp (genitive of *vespa*) - Chris Huggett's EDP Wasp filter |
 | **quadrare** | *to square, to make fit*: Walsh functions are square waves, and the transform squares the signal into them |
-| **vestigia** | traces, footprints — what sound leaves behind, recalled from an endless tape loop |
-| **antrum** | cave, grotto — the resonant space, real or imagined (Tom Erbe's Erbe-Verb) |
-| **caligo** | mist, gloom, murk — the grey fog an echo dissolves into (Julian Parker's Greyhole) |
-| **raucus** | hoarse, harsh — the root of "raucous" (Electro-Harmonix's Big Muff Pi) |
-| **tundo** | I beat, I pound — *tundere*, to strike repeatedly, whose repetition winks at the *iteritas* of the Basimilus Iteritas Alter it is built after |
-| **cartilago** | gristle, cartilage — Roy Gwinn's Gristleizer, by way of Throbbing Gristle |
+| **vestigia** | traces, footprints - what sound leaves behind, recalled from an endless tape loop |
+| **antrum** | cave, grotto - the resonant space, real or imagined (Tom Erbe's Erbe-Verb) |
+| **caligo** | mist, gloom, murk - the grey fog an echo dissolves into (Julian Parker's Greyhole) |
+| **raucus** | hoarse, harsh - the root of "raucous" (Electro-Harmonix's Big Muff Pi) |
+| **tundo** | I beat, I pound - *tundere*, to strike repeatedly, whose repetition winks at the *iteritas* of the Basimilus Iteritas Alter it is built after |
+| **cartilago** | gristle, cartilage - Roy Gwinn's Gristleizer, by way of Throbbing Gristle |
 | **scrupea** | jagged, made of sharp stones (Virgil's *scrupea saxa*); the root *scrupus* is also the stone in the shoe. Chosen to sound like Skrewell, which it is after |
 | **viginti** | twenty, for the MS-20 whose Rev. 2 lowpass this is (its diodes clip inside the resonance loop) |
 | **gradus** | a step, a stair, a degree (the output climbs and falls in steps you set, and a jump row sends it straight to a given degree) |
-| **materiae** | of matter, of raw material — *materia* is stuff, timber, the substance a thing is made from; here two of the simplest signals there are, and nothing else |
+| **materiae** | of matter, of raw material - *materia* is stuff, timber, the substance a thing is made from; here two of the simplest signals there are, and nothing else |
 | **aether** | the upper air, the medium a signal was once thought to need in order to travel (this one travels badly) |
-| **vates** | the bard, the poet-seer — the one who sings what he is given (after the Bastl Citadel Wave Bard) |
-| **artifex** | the maker, the contriver — the craftsman who works a material rather than choosing from a catalogue (after the Bastl Citadel FX Wizard) |
+| **vates** | the bard, the poet-seer - the one who sings what he is given (after the Bastl Citadel Wave Bard) |
+| **artifex** | the maker, the contriver - the craftsman who works a material rather than choosing from a catalogue (after the Bastl Citadel FX Wizard) |
 
 ## Author
 

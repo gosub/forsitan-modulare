@@ -1,4 +1,4 @@
-// perge_render — offline renderer: feed a mono float32 stream through
+// perge_render - offline renderer: feed a mono float32 stream through
 // Perge::process() and write interleaved stereo float32. Lets us A/B the
 // module against real pedal audio outside of Rack.
 //

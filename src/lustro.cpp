@@ -1,4 +1,4 @@
-// lustro.cpp — VCV Rack 2 module
+// lustro.cpp - VCV Rack 2 module
 // lustro (Latin: "I traverse, I survey") is a scanned filter: the sibling of
 // scando. The same vibrating mass-spring string (scando_engine.hpp), instead
 // of being scanned as a wavetable, becomes the control surface of a resonant

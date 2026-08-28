@@ -1,6 +1,6 @@
 #include "forsitan.hpp"
 
-// gradus — eight steps into one CV output.
+// gradus - eight steps into one CV output.
 //
 // Eight rows. Each row is a value knob, a two-way mode switch, and two
 // triggers: one for the value as it stands and one for its negative, each

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-gen_patches.py — Generate the example patches in patches/*.vcv.
+gen_patches.py - Generate the example patches in patches/*.vcv.
 
 A Rack 2 .vcv file is a zstd-compressed tar archive containing patch.json
 (and an empty modules/ directory). Run from the repo root after changing

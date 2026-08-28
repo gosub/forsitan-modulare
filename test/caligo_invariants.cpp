@@ -1,4 +1,4 @@
-// caligo_invariants — property-based checks for the Greyhole port.
+// caligo_invariants - property-based checks for the Greyhole port.
 //
 // smoke_caligo checks fixed points; caligo_probe measures echo arrivals and
 // per-pass loss. This harness checks properties that must hold *everywhere*,

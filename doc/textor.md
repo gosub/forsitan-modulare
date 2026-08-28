@@ -18,28 +18,28 @@ similarity, envelope, stereo and pitch statistics).
 
 Every weave rolls its own character:
 
-- **its own tempo** — a step period from ~45 to ~300 ms, so consecutive
+- **its own tempo** - a step period from ~45 to ~300 ms, so consecutive
   rolls can be lazy or frantic; the ~16-step loop spans about 0.7–4.8 s.
-- **three elements as woven strands** — each element gets one or more
+- **three elements as woven strands** - each element gets one or more
   periodic strands, firing every N steps like a randomly-dialed clock
   divider, each strand forever replaying its own fragment of the buffer
   with fixed pitch, direction, length and position in the field.
-- **a delayed spacey element** — most rolls hand one element decaying
+- **a delayed spacey element** - most rolls hand one element decaying
   delay repeats (~0.1–0.45 s, moderate feedback); about a third of the
   rolls come out completely dry.
-- **evolution** — the loop repeats recognizably but never exactly:
+- **evolution** - the loop repeats recognizably but never exactly:
   per-fire timing jitter, probabilistic fires, and strands that
   occasionally re-pick their fragment, so the weave drifts. How fast is
   a context-menu choice: **Frozen** (the loop repeats exactly), **Slow**
   (the default: a strand mutates on the order of once a minute) or
   **Fast** (the drift rate measured in the hardware demos).
-- **soft edges** — fragments rise and fall on asymmetric raised-cosine
+- **soft edges** - fragments rise and fall on asymmetric raised-cosine
   windows (attacks mostly in the 50–400 ms range); rhythm mode is
   choppier, texture mode smears.
-- **a nearly mono field** — fragments sit close to center with a slow,
+- **a nearly mono field** - fragments sit close to center with a slow,
   gentle spatial drift per element, like the hardware's subtle
   spatialization (not per-grain ping-pong).
-- **semitone-quantized pitch** — even in random mode, shifts land on
+- **semitone-quantized pitch** - even in random mode, shifts land on
   whole semitones (measured on the hardware); root mode draws from
   sympathetic intervals (octaves, fifths, fourths).
 
@@ -58,15 +58,15 @@ Like the hardware, the big knob has three zones:
 
 | zone | action |
 |------|--------|
-| full ccw | **reset** — erases the sample and stops the loom |
-| low zone | **rec** — entering it starts a 2 s capture |
-| the rest | **weave** — any movement reweaves a brand new loop |
+| full ccw | **reset** - erases the sample and stops the loom |
+| low zone | **rec** - entering it starts a 2 s capture |
+| the rest | **weave** - any movement reweaves a brand new loop |
 
 When a capture completes on a silent loom, playback starts by itself
 with a fresh weave, like the hardware.
 
 True to the original's philosophy of impermanence, the sample is **not
-saved with the patch** — only the weave itself (its seed) survives a
+saved with the patch** - only the weave itself (its seed) survives a
 reload; record something new into it and the old loop structure returns
 with new cloth.
 
@@ -88,25 +88,25 @@ can audition the same loop as pad and as beat.
 | jack | function |
 |------|----------|
 | **in** | audio to capture |
-| **rec** | trigger: start a capture — clock it to keep replacing the sample while the loop plays |
+| **rec** | trigger: start a capture - clock it to keep replacing the sample while the loop plays |
 | **weave** | rerolls on any voltage *change* (>0.5 V): a trigger works, and a stepped random voltage rerolls on every new step, like CV-ing the hardware's knob |
-| **clk** | clock: paces the loom's steps externally (one step per pulse), keeping the random rhythms — and the gate outputs' clock-divider patterns — in time with the system |
+| **clk** | clock: paces the loom's steps externally (one step per pulse), keeping the random rhythms - and the gate outputs' clock-divider patterns - in time with the system |
 | **g1 / g2 / g3** | 2 ms trigger per element fire (delay repeats don't fire gates) |
 | **l / r** | stereo output |
 
 ## Context menu
 
-- **Restart loop on every weave** — the hardware behavior: each reroll
+- **Restart loop on every weave** - the hardware behavior: each reroll
   restarts the fresh loop immediately, so sweeping the knob sputters a
   rapid cascade of pattern beginnings (the characteristic Weaver scrub
   sound). Off by default: weaves then swap seamlessly in place, keeping
   the step position and letting running fragments ring out.
-- **Loop evolution** — how fast the weave drifts between repeats:
+- **Loop evolution** - how fast the weave drifts between repeats:
   **Frozen** disables skips, mutation and jitter (the loop replays
   exactly, only the slow spatial drift remains); **Slow** (default)
   breathes gently and mutates rarely; **Fast** matches the drift rate
   measured in the hardware demos.
-- **Declick** — on by default. The loom has four places where a sample
+- **Declick** - on by default. The loom has four places where a sample
   value can jump: a fragment reading past the end of the two-second
   cloth and wrapping to the other end, where the waveform is unrelated;
   a voice stolen mid-note when all sixteen are busy; the cloth being
@@ -127,11 +127,11 @@ can audition the same loop as pad and as beat.
 - **rhythm / random** with a spoken phrase makes funky beats of
   unexpected content; send **g1** to a kick for reinforcement.
 - Clock **rec** every few bars while feeding it a live source: the weave
-  stays, the cloth keeps renewing — a texture that follows the music.
+  stays, the cloth keeps renewing - a texture that follows the music.
 - A stepped random voltage into **weave** rerolls on every step; a slow
   LFO rerolls every time it drifts half a volt.
 - Solo an element: all levels down except one. The delay lives on a
-  different element each roll (when the roll has one at all) — hunt for
+  different element each roll (when the roll has one at all) - hunt for
   the spacey one.
 
 ## Attribution

@@ -1,4 +1,4 @@
-// smoke_caligo — offline sanity checks for the caligo Greyhole port.
+// smoke_caligo - offline sanity checks for the caligo Greyhole port.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"
@@ -106,7 +106,7 @@ static void testTail() {
 
 // diff at zero collapses the diffuser to one plain delay line: 24 lines in
 // series, ~71 ms at 48 kHz, and nothing else. So the burst comes out once at
-// that delay, then again every 400 ms, with real silence in between — which a
+// that delay, then again every 400 ms, with real silence in between - which a
 // diffused setting does not have.
 static void testPlainDelay() {
     Caligo m;

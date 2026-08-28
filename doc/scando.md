@@ -6,13 +6,13 @@
 wavetable, it reads a *moving* one: a string of masses connected by springs
 vibrates slowly, and the shape of that string is scanned at audio rate to
 produce the tone. Because the string keeps changing, the timbre evolves on
-its own — no LFOs or modulation needed.
+its own - no LFOs or modulation needed.
 
 The technique was devised by Bill Verplank, Max Mathews and Robert Shaw at
 Interval Research (1998–2000). Its key idea is that **pitch and timbre are
 independent**: the string vibrates at slow "haptic" rates (well below hearing),
 while the scan speed alone sets the pitch. The Latin *scandere* means "to climb"
-and, in prosody, "to scan verse" — the root of the word "scan".
+and, in prosody, "to scan verse" - the root of the word "scan".
 
 ## How it works
 
@@ -20,9 +20,9 @@ The string is a chain of 128 masses with its two ends pinned (the classic "fixed
 ends" boundary, the same non-circular topology used by Csound's scanned-synthesis
 opcodes). Each interior mass is pulled by springs toward its neighbours
 (**stiffness**), pulled back toward zero by a centering spring (**centering**),
-slowed by **damping**, and given weight by **mass**. Disturb it — with the
+slowed by **damping**, and given weight by **mass**. Disturb it - with the
 hammer, the continuous **strength** drive, the faint internal bed, or an injected
-audio signal — and it ripples and settles, its shape morphing as energy moves
+audio signal - and it ripples and settles, its shape morphing as energy moves
 along the chain. A phase accumulator scans that shape once per cycle at the pitch
 you ask for. Because the ends are pinned to zero, the scanned wavetable loops
 seamlessly.
@@ -46,14 +46,14 @@ sympathy. Excite, inject and strength are the three ways to wake it.
 | **strength** | Continuously drives the string with the current hammer **shape**. At zero the voice only rings from the hammer/inject; raise it for a self-sustaining, hammer-shaped tone. |
 | **rate** | Update rate of the string physics, ~500 Hz–8 kHz. Strongly affects every other control: higher rates evolve faster and shift the apparent stiffness/damping. |
 | **in lvl** | Attenuator for the **inject** input. |
-| **excite** (button) | Hammers every mass to the current **shape** — a pluck, same as a trigger on **exc**. |
+| **excite** (button) | Hammers every mass to the current **shape** - a pluck, same as a trigger on **exc**. |
 
 ## Inputs and output
 
 | jack | description |
 |------|-------------|
 | **v/oct** | 1V/octave pitch, added to the **freq** and **fine** knobs. |
-| **exc** | Excite trigger. A rising edge hammers every mass to the current **shape** — a pluck (same as the **excite** button). |
+| **exc** | Excite trigger. A rising edge hammers every mass to the current **shape** - a pluck (same as the **excite** button). |
 | **inj** | Audio inject. The signal excites the string through the current hammer shape (scaled by **in lvl**), behaving a little like an envelope follower. |
 | **out** | Audio output (±5V). A self-levelling limiter holds a musical level across the whole range of the controls. |
 
@@ -66,7 +66,7 @@ knobs. The green **level** LED tracks the output amplitude.
   **rate** slowly to hear the spectrum shift.
 - **Plucked / percussive:** set **strength** to zero, lower **damp**, then send a
   clock or gate to **exc**.
-- **Resonator:** keep **strength** low and patch audio into **inj** — the string
+- **Resonator:** keep **strength** low and patch audio into **inj** - the string
   rings in sympathy with the input.
 - **Metallic / bell-like:** high **stiff** with low **mass**.
 - **Soft / pure:** **shape** toward sine, low **stiff**, moderate **damp**.

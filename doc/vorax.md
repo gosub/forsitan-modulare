@@ -25,8 +25,8 @@ noise + fb ─> KS string ─> overdrive ─> LPF ─> HPF ─> reverb ─┬─
 
 Nothing happens until the **feedback** knob rises past the loop's losses;
 then the loop self-excites and a tone builds out of nowhere. The string
-length sets the fundamental, and everything else inside the loop — the
-overdrive, the two filters, the reverb, the short "body" delay — shapes
+length sets the fundamental, and everything else inside the loop - the
+overdrive, the two filters, the reverb, the short "body" delay - shapes
 which overtones survive and how the drone breathes. The right channel's
 body delay is offset by 4 samples, which decorrelates the loop into a
 wide stereo image.
@@ -78,7 +78,7 @@ saturated warbles; the feedback goes up to 1.5 for endlessly growing
 - Narrow the loop filters (**lpf** down, **hpf** up) to choke the drone
   to a whistle, then open them to let it roar back.
 - **echo fb** past 1.0 with a long **time** builds a saturating canon
-  that never quite explodes — ride the **half** switch for octave-ish
+  that never quite explodes - ride the **half** switch for octave-ish
   doppler jumps.
 - Patch a slow LFO into **fb** and the plant breathes on its own.
 

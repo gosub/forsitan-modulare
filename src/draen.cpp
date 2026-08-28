@@ -1,8 +1,8 @@
-// draen.cpp — VCV Rack 2 module
+// draen.cpp - VCV Rack 2 module
 // dræn (Old English for "bee"; the etymological root of "drone") is a port of
 // the dronecaster norns instrument: a bank of drone engines, each a small
-// SuperCollider graph, played from two controls — fundamental (hz) and level
-// (amp) — with a third control selecting the engine. Switching engines fades
+// SuperCollider graph, played from two controls - fundamental (hz) and level
+// (amp) - with a third control selecting the engine. Switching engines fades
 // the current one down and the next one up, mirroring dronecaster's SynthSocket.
 //
 // Controls:

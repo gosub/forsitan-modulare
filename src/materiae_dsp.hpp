@@ -1,4 +1,4 @@
-// materiae_dsp.hpp — percussive voice built from two square waves and the
+// materiae_dsp.hpp - percussive voice built from two square waves and the
 // relationship between them.
 //
 // The premise: complexity comes from how two primitive signals relate, not

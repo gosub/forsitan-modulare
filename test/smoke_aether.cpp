@@ -1,4 +1,4 @@
-// smoke_aether — offline sanity checks for the aether module.
+// smoke_aether - offline sanity checks for the aether module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 //
 // The two laws the engine is built on are measured by aether_probe, which

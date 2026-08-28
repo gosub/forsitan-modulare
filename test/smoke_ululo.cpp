@@ -1,4 +1,4 @@
-// smoke_ululo — offline sanity checks for the ululo module.
+// smoke_ululo - offline sanity checks for the ululo module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

@@ -1,4 +1,4 @@
-// materiae_probe — measurement and audition harness for the square-relation
+// materiae_probe - measurement and audition harness for the square-relation
 // percussion voice. It drives materiae_dsp.hpp directly and needs no Rack.
 //
 //   ./materiae_probe ops      per-operator spectrum, DC and pairwise distance

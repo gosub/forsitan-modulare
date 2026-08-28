@@ -1,4 +1,4 @@
-// tundo_probe — measurement harness for the tundo drum voice.
+// tundo_probe - measurement harness for the tundo drum voice.
 // Renders single hits and reports the numbers a percussive voice is judged
 // by: level, decay time, partial frequencies against the spread law, spectral
 // centroid against HARM, high-order energy against FOLD, and pitch tracking.

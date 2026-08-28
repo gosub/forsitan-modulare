@@ -1,4 +1,4 @@
-// cartilago_invariants — property-based checks for the Gristleizer modulator.
+// cartilago_invariants - property-based checks for the Gristleizer modulator.
 //
 // smoke_cartilago checks fixed points; cartilago_probe measures character.
 // This harness checks properties that must hold *everywhere*, by randomizing

@@ -1,4 +1,4 @@
-// smoke_vespae — offline sanity checks for the vespae module.
+// smoke_vespae - offline sanity checks for the vespae module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 // For the measurements that characterise the filter (response, Q vs cutoff,
 // THD, self-oscillation level) see vespae_probe.cpp, which is not run here.
@@ -139,7 +139,7 @@ static void testMix() {
     // regime: once the signal is big enough to saturate the OTAs they pull
     // the cutoff around at twice the signal frequency, the null moves with
     // it, and the cancellation stops being anywhere near exact. That is the
-    // circuit's behaviour, not an artefact — at 1 V in, the null here is only
+    // circuit's behaviour, not an artefact - at 1 V in, the null here is only
     // about 30 dB deep instead of 89.
     auto run = [](float mixKnob, int out, float f) {
         Vespae m; long fr = 0;

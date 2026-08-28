@@ -1,4 +1,4 @@
-// smoke_vorax — offline sanity checks for the vorax module.
+// smoke_vorax - offline sanity checks for the vorax module.
 // See smoke_harness.hpp for the shared scaffolding and CSV format.
 
 #include "smoke_harness.hpp"

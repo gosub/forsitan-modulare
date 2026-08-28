@@ -3,7 +3,7 @@
 ![cartilago panel](../img/cartilago.png)
 
 *cartilago* (Latin: gristle, cartilage) is a modulator in the manner of the
-**Gristleizer** — the effects unit Roy Gwinn published in *Electronics Today
+**Gristleizer** - the effects unit Roy Gwinn published in *Electronics Today
 International* in the mid-1970s, which Chris Carter built, modified and turned
 into one of the recognisable sounds of Throbbing Gristle.
 
@@ -47,13 +47,13 @@ follow their levels.
 
 ## Context menu
 
-- **Oversampling** — 1× to 16×, default 2×. Only matters once the LFO is in
+- **Oversampling** - 1× to 16×, default 2×. Only matters once the LFO is in
   the audio band; see the measurements below.
-- **Band-limited LFO shapes** — on by default. Turn it off for the raw
+- **Band-limited LFO shapes** - on by default. Turn it off for the raw
   aliasing of a naive digital oscillator, which is one way to be authentically
   unpleasant, but is not what the hardware does.
-- **FET control feedthrough (tick)** — on by default; see below.
-- **VCF mode is lowpass** — off by default, i.e. bandpass.
+- **FET control feedthrough (tick)** - on by default; see below.
+- **VCF mode is lowpass** - off by default, i.e. bandpass.
 
 ## What is modelled
 
@@ -66,8 +66,8 @@ at silence. A tremolo built this way keeps a thin, dirty version of the signal
 alive in its troughs.
 
 **It distorts, most in the middle of the sweep.** In the triode region a
-JFET's channel conductance goes as `2(Vgs − Vth) − Vds`, so the drain swing —
-the signal itself — modulates the gain within each cycle. The second harmonic
+JFET's channel conductance goes as `2(Vgs − Vth) − Vds`, so the drain swing -
+the signal itself - modulates the gain within each cycle. The second harmonic
 measures about −37 dB with the attenuator shut, peaks at −23 dB half way up
 the sweep where the channel is both conducting and seeing a real voltage, and
 vanishes at the top where the gate has pinched the channel off entirely
@@ -143,7 +143,7 @@ topology.
   full. The trough is not silent, so it stutters rather than chops.
 - **Ring modulator**: **v/oct** from a sequencer, rate knob near the top, wave
   on triangle. Raise oversampling to 4× or 8×.
-- **Sample-and-hold filter**: VCF mode, pulse wave, **res** high — each pulse
+- **Sample-and-hold filter**: VCF mode, pulse wave, **res** high - each pulse
   parks the filter at one of two frequencies.
 - **Outside control**: depth at zero, patch an envelope into **mod**, and the
   module is a FET VCA with the grit of one.
