@@ -513,7 +513,7 @@ drone()
 fx.set(fxmode="slicer", amt="50%")
 ```
 
-- [ ] 5.1. **clk out** into another module's clock input: it should drive it
+- [x] 5.1. **clk out** into another module's clock input: it should drive it
       without any fiddling with thresholds.
       ```python
       seq = vcv.module("SEQ3")
@@ -522,7 +522,14 @@ fx.set(fxmode="slicer", amt="50%")
       ```
 - [ ] 5.2. An irregular or ratcheting external clock at **clk** - the tempo
       tracking should follow it rather than averaging it into mush.
-      `clock(hz=3.0)`
+      ```python
+      # Random's trigger, with pulses dropped at random: a clock that keeps
+      # its grid but not its regularity. A steady square tests nothing here.
+      r = vcv.module("Random", internal_trigger_rate=vcv.hz(6, "LFO"),
+                     trigger_probability=0.55)
+      r["trigger"] >> fx["clk"]
+      scope("clk")
+      ```
 
 ---
 
