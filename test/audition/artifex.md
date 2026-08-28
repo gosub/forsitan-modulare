@@ -78,6 +78,8 @@ def scope(port="env"):
     s = vcv.module("Scope")
     fx[port] >> s["ch 1"]
     return s
+
+scope("left")     # every item has one, since half of them say "look at it"
 ```
 
 Anything that yields a number rather than a verdict is not in this list. It
@@ -354,7 +356,6 @@ fx.set(fxmode="pitcher", time=0.5, amt=0)
 
 ```python
 sine(220, volts=2)
-scope("left")
 fx.set(fxmode="replayer",
        time=0.8333,      # +1.0x on the display: centre is a quarter speed
        amt="100%",       # fully right, the tape locked

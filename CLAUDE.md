@@ -81,6 +81,12 @@ it, and the split between them is the whole discipline.
   quietly wrong. Where a number needs a human framing, comment the line it is
   on (`time=0.8333,  # +1.0x on the display`), so the note cannot drift from
   the value it explains.
+- **Before deleting prose as duplicated, check the code reproduces it** — if it
+  does not, the prose was the only copy. Deleting artifex's Start lines was
+  safe nine times out of nine, but the same pass dropped a line in the bench
+  section putting a scope on **out L**, and two items that say "watch the
+  scope" then had none. A comment is not a substitute: it explains, it does
+  not build.
 - Two kinds of item: plain ones, which are tests, and **Decide —** ones, open
   questions of taste resting on numbers the harness prints.
 - `- [ ] N.N.N.` with 6-space continuation, wrapped at 80 columns. **Tick
