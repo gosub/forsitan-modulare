@@ -103,7 +103,10 @@ patching: a trigger and a moving CV on **sample** is already a part.
 Turning the sample knob or stepping the bank is browsing, never playing: play
 mode fires on *modulation* crossing into another sample, not on your hand
 moving a control or on a bank change shifting the ground under it. To hear
-what is selected, press **trig**.
+what is selected, press **trig**. **Sample knob triggers in play mode** in
+the context menu makes the knob a playing control as well, for auditioning a
+kit by turning it; a bank change still never fires, since that is not a
+gesture at the sample knob.
 
 **play** fires a sample the moment modulation crosses into it, so the
 modulation source *is* the rhythm - a triangle LFO into **sample** in play
@@ -360,6 +363,9 @@ tight.
   rather than mirroring the forward hit's window.
 - **reversed hits can retrigger while swelling** - off by default. On, a
   trigger during a reversed hit's attack restarts it instead of being ignored.
+- **sample knob triggers in play mode** - off by default, so the knob browses
+  a kit in silence. On, turning it fires each sample it lands on, in play mode
+  only.
 - **external clock takes over** - whether **clk in** may take the tempo from
   the **tempo** knob.
 - **pattern input window** - the voltage window the two pattern jacks read:

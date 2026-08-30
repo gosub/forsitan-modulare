@@ -184,6 +184,9 @@ struct Vates : Module {
 	// the hardware refuses a trigger while a reversed hit is still swelling;
 	// this lets it through
 	bool retriggerDuringAttack = false;
+	// the sample knob never fires a hit, so a kit can be browsed in silence;
+	// this makes it a playing control in play mode
+	bool knobTriggersInPlay = false;
 
 	// ── voice ────────────────────────────────────────────────────────────────
 	std::shared_ptr<void> voiceHold;      // keeps the bank or kit alive
@@ -733,9 +736,16 @@ struct Vates : Module {
 		// hand on the sample knob, or a bank change moving the ground under
 		// the index, is browsing, not playing: it must not fire, or the
 		// module screams while you are looking for a sound.
-		bool knobMoved = (sampleKnob != prevSampleKnob) || bankChanged
-		                 || bankStepped || prevSampleKnob < 0;
-		bool crossed = (sel != aimedSample) && !knobMoved;
+		//
+		// "Sample knob triggers in play mode" makes the knob a playing control
+		// as well, for auditioning a kit by turning it. A bank change and the
+		// first frame still never fire either way: neither is a gesture at the
+		// sample knob, and the first frame is the module finding out where its
+		// own knob is.
+		bool knobStepped = sampleKnob != prevSampleKnob && prevSampleKnob >= 0;
+		bool browsing = bankChanged || bankStepped || prevSampleKnob < 0
+		                || (knobStepped && !knobTriggersInPlay);
+		bool crossed = (sel != aimedSample) && !browsing;
 		prevSampleKnob = sampleKnob;
 		aimedSample = sel;
 		if (!voiceActive)
@@ -1069,6 +1079,7 @@ struct Vates : Module {
 		reverseDecays = false;
 		reverseFromEnd = false;
 		retriggerDuringAttack = false;
+		knobTriggersInPlay = false;
 		bankSeed = (uint64_t)random::u32() | 1ull;
 		pendingGen = true;
 		bankBase = 0;
@@ -1089,6 +1100,7 @@ struct Vates : Module {
 		json_object_set_new(root, "reverseDecays", json_boolean(reverseDecays));
 		json_object_set_new(root, "reverseFromEnd", json_boolean(reverseFromEnd));
 		json_object_set_new(root, "retriggerDuringAttack", json_boolean(retriggerDuringAttack));
+		json_object_set_new(root, "knobTriggersInPlay", json_boolean(knobTriggersInPlay));
 		return root;
 	}
 
@@ -1115,6 +1127,8 @@ struct Vates : Module {
 			reverseFromEnd = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "retriggerDuringAttack"))
 			retriggerDuringAttack = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "knobTriggersInPlay"))
+			knobTriggersInPlay = json_boolean_value(j);
 	}
 };
 
@@ -1399,6 +1413,8 @@ struct VatesWidget : ModuleWidget {
 		                                     &m->reverseFromEnd));
 		menu->addChild(createBoolPtrMenuItem("Reversed hits can retrigger while swelling", "",
 		                                     &m->retriggerDuringAttack));
+		menu->addChild(createBoolPtrMenuItem("Sample knob triggers in play mode", "",
+		                                     &m->knobTriggersInPlay));
 		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
 			&m->honourExternalClock));
 

@@ -285,22 +285,42 @@ static void testKnobBrowsing() {
 		report("vates", "browse_setup", 0, false);
 		return;
 	}
-	m.params[Vates::MODE_PARAM].setValue(1.f);   // play
+	// The switch reads {play, cue}, so play is 0 and cue is 1. This set it to
+	// 1 and called it play, which meant the check ran in the mode where
+	// nothing fires whatever you touch: it could not have failed.
+	m.params[Vates::MODE_PARAM].setValue(0.f);   // play
 	m.params[Vates::LENGTH_PARAM].setValue(0.5f);
 	selectSample(m, 0, 0);
 	run(m, fr, 0.05);
 
-	int hits = 0;
-	float wasEnv = m.env;
-	long n = (long)(1.5 * SR);
-	for (long i = 0; i < n; i++) {
-		m.params[Vates::SAMPLE_PARAM].setValue((float)i / n);
-		m.process(makeArgs(fr++));
-		if (m.env > wasEnv + 0.5f)
-			hits++;
-		wasEnv = m.env;
-	}
+	struct Local {
+		// hits heard while the sample knob is turned end to end
+		static int sweep(Vates& m, long& fr) {
+			int hits = 0;
+			float wasEnv = m.env;
+			long n = (long)(1.5 * SR);
+			for (long i = 0; i < n; i++) {
+				m.params[Vates::SAMPLE_PARAM].setValue((float)i / n);
+				m.process(makeArgs(fr++));
+				if (m.env > wasEnv + 0.5f)
+					hits++;
+				wasEnv = m.env;
+			}
+			return hits;
+		}
+	};
+	int hits = Local::sweep(m, fr);
 	report("vates", "sample_knob_silent", hits, hits == 0);
+
+	// and the menu option that makes the knob a playing control after all
+	m.knobTriggersInPlay = true;
+	m.params[Vates::SAMPLE_PARAM].setValue(0.f);
+	run(m, fr, 0.05);
+	int played = Local::sweep(m, fr);
+	m.knobTriggersInPlay = false;
+	report("vates", "sample_knob_plays_when_asked", played, played > 3);
+
+	float wasEnv = m.env;
 
 	// the same for the bank buttons, which also shift the sample index
 	hits = 0;

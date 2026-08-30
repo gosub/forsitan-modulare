@@ -183,11 +183,11 @@ v.set(sample=0.2, length=0.7)
 - [x] 5.3. **fx** hard left: a tail of some ten seconds that thickens as it
       saturates rather than clipping the output.
       `v.set(fx=-1.0)`
-- [ ] 5.4. **fx** right: sweep the whole half. A chorus in the first third, a
+- [x] 5.4. **fx** right: sweep the whole half. A chorus in the first third, a
       flanger at the top, and two different effects rather than one getting
       stronger.
       `v.set(fx=0.2)`
-- [ ] 5.5. Sweep **fx** across centre while a beat plays: it should fall out of
+- [x] 5.5. Sweep **fx** across centre while a beat plays: it should fall out of
       the delay and into the flanger as one musical move.
 
 ---
@@ -201,8 +201,8 @@ v.set(sample=0.35, length=0.6)
 - [ ] 6.1. A slow LFO into **sample**. In **play** its crossings fire hits of
       their own, off the grid, so the modulation is the rhythm; in **cue**
       only the pattern's hits sound and the LFO just chooses which sample.
-      The knob fires in neither, so you can browse a kit without the module
-      screaming - that is not a fault.
+      The knob fires in neither, so a kit can be browsed in silence, unless
+      **sample knob triggers in play mode** is on in the menu.
       ```python
       v.set(mode="play", sample_att=1.0)
       vcv.module("LFO", freq=vcv.hz(0.3, "LFO"), offset=0)["triangle"] >> v["sample"]
