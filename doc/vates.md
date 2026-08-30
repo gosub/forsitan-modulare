@@ -157,18 +157,29 @@ swelling** in the context menu keeps the forward envelope on both sides of
 centre and reverses only the sample, so a backwards hit still has its attack
 on the beat. Retriggering works there too, since there is no swell to protect.
 
-**A sample with a long tail, or with silence after the sound, may come out
-inaudible when reversed.** Playback starts at the last frame, so that tail is
-what you hear first, and a short envelope can be over before the sound itself
-arrives. The generated banks are trimmed for this; kits of your own may not
-be. Lengthen the envelope, or trim the file.
+A reversed hit runs back to the head of its sample and stops there, so where
+it starts is what you hear. It starts **one envelope's worth in**: the same
+stretch the forward hit at that setting would play, backwards. So a reversed
+hit is the time mirror of the forward one and ends on the transient at any
+length, and the two sides of the knob are equally usable. At the far left the
+envelope is held and the hit is the whole sample backwards, which is the long
+reverse sweep that end of the knob is for.
+
+**Reversed hits start at the end of the sample** in the context menu goes back
+to starting at the last frame. On a sample with a long tail, or with silence
+after the sound, that tail is what you hear first, and a hit retriggered
+before it has crossed all of it never reaches the sound at all.
 
 A hit that is interrupted does not vanish: it keeps playing for a couple of
 milliseconds with its gain running out, and so does one that reaches the end
 of its sample. A reversed hit holds at full level once it has swelled, and
 stopping that dead is a step, not a silence.
-During the attack of a reversed hit a new trigger is ignored, so reversed
-swells are not cut short by the sequence that is playing them.
+During the attack of a reversed hit a new trigger is ignored, as on the
+hardware, so reversed swells are not cut short by the sequence playing them.
+The swell reaches full level about four tenths of the way into the hit and
+holds there, so most of a hit is still retriggerable. **Reversed hits can
+retrigger while swelling** in the context menu lifts the rule, for a fast
+sequence where a dropped note is worse than a swell cut short.
 
 ### tone
 
@@ -330,6 +341,11 @@ tight.
 - **reversed hits decay instead of swelling** - off by default. On, a negative
   **length** keeps the forward envelope and only reverses the sample, which is
   what a percussive backwards hit wants.
+- **reversed hits start at the end of the sample** - off by default. On, a
+  reversed hit begins at the last frame and sweeps the whole sample backwards
+  rather than mirroring the forward hit's window.
+- **reversed hits can retrigger while swelling** - off by default. On, a
+  trigger during a reversed hit's attack restarts it instead of being ignored.
 - **external clock takes over** - whether **clk in** may take the tempo from
   the **tempo** knob.
 - **pattern input window** - the voltage window the two pattern jacks read:

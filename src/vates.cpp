@@ -178,6 +178,12 @@ struct Vates : Module {
 	// only the sample runs backwards, which is what a reversed drum hit wants
 	// - an attack you can put on a beat.
 	bool reverseDecays = false;
+	// the old reverse: start at the end of the buffer rather than one
+	// envelope's worth in, so a hit sweeps the whole sample backwards
+	bool reverseFromEnd = false;
+	// the hardware refuses a trigger while a reversed hit is still swelling;
+	// this lets it through
+	bool retriggerDuringAttack = false;
 
 	// ── voice ────────────────────────────────────────────────────────────────
 	std::shared_ptr<void> voiceHold;      // keeps the bank or kit alive
@@ -516,8 +522,10 @@ struct Vates : Module {
 
 	void trigger(float sr) {
 		// a reverse hit that is still swelling is not interrupted, as on the
-		// hardware: "during attack, samples don't retrigger"
-		if (voiceActive && voiceAttack)
+		// hardware: "during attack, samples don't retrigger". The menu lets it
+		// through, for a fast sequence where a dropped note is worse than a
+		// swell cut short.
+		if (voiceActive && voiceAttack && !retriggerDuringAttack)
 			return;
 
 		const std::vector<float>* L = nullptr;
@@ -574,6 +582,14 @@ struct Vates : Module {
 		voiceR = R;
 		voiceSrcRate = srcRate;
 
+		// the pitch this hit plays at, which the reversed start position below
+		// is measured in: latched here with everything else
+		if (inputs[NOTE_INPUT].isConnected())
+			notePitch = quantizePitch(inputs[NOTE_INPUT].getVoltage()
+			                          * params[PITCH_ATT_PARAM].getValue());
+		else
+			notePitch = 0.f;
+
 		// length is latched here, direction included: modulation flips the
 		// playback direction between hits and never inside one
 		float len = clamp(params[LENGTH_PARAM].getValue()
@@ -585,7 +601,25 @@ struct Vates : Module {
 		envHold = mag > 0.98f;
 
 		voiceSwell = voiceReverse && !reverseDecays;
-		voicePos = voiceReverse ? (double)(L->size() - 2) : 0.0;
+		// Where a reversed hit starts decides what you hear, because it runs
+		// back to the head and stops there. Starting at the end of the buffer
+		// starts it in the tail: a generated sample can be seconds long, so
+		// the transient is a whole sample away, and a hit retriggered before
+		// then is only ever the quiet part backwards. Worse, it got audible
+		// only once the swell outlasted the gap between triggers, since a hit
+		// still swelling is not interrupted -- so the left half of the knob
+		// did nothing until quite far along it.
+		//
+		// It starts one envelope's worth in instead, so a reversed hit is the
+		// time mirror of the forward one at the same setting and resolves into
+		// the transient whatever the length. Wide open it is still the whole
+		// sample, which is the long reverse sweep the knob end is there for.
+		double srcPerSecond = (double)voiceRateNow() * voiceSrcRate;
+		double lastFrame = (double)L->size() - 2.0;
+		voicePos = !voiceReverse ? 0.0
+		           : (envHold || reverseFromEnd) ? lastFrame
+		                                         : std::min(lastFrame,
+		                                                    (double)T * srcPerSecond);
 		if (!voiceSwell) {
 			env = 1.f;
 			voiceAttack = false;
@@ -594,19 +628,17 @@ struct Vates : Module {
 		else {
 			env = 0.f;
 			voiceAttack = true;
-			// the swell reaches full level as the sample runs out, or in T,
-			// whichever is shorter
-			float playable = (float)L->size() / std::max(voiceRateNow(), 1e-6f) / sr;
-			float A = std::min(T, std::max(playable, 0.002f));
+			// The swell has to finish inside the hit, not with it. A hit that
+			// is still swelling refuses a retrigger, as the hardware does, so
+			// a swell that lasted the whole hit would drop every other note
+			// of a sequence. It reaches full level about four tenths of the
+			// way in and holds there into the transient.
+			float playable = (float)(voicePos / std::max(srcPerSecond, 1e-6));
+			float span = std::max(std::min(T, playable), 0.002f);
+			float A = (envHold || reverseFromEnd) ? span : span * 0.3f;
 			envCoef = std::exp(-1.f / std::max(A * 0.25f * sr, 1.f));
 		}
 		release = 1.f;
-
-		if (inputs[NOTE_INPUT].isConnected())
-			notePitch = quantizePitch(inputs[NOTE_INPUT].getVoltage()
-			                          * params[PITCH_ATT_PARAM].getValue());
-		else
-			notePitch = 0.f;
 
 		voiceActive = true;
 		uiBank = bankIndex;
@@ -1020,6 +1052,8 @@ struct Vates : Module {
 		honourExternalClock = true;
 		hardwareCvWindow = false;
 		reverseDecays = false;
+		reverseFromEnd = false;
+		retriggerDuringAttack = false;
 		bankSeed = (uint64_t)random::u32() | 1ull;
 		pendingGen = true;
 		bankBase = 0;
@@ -1038,6 +1072,8 @@ struct Vates : Module {
 		json_object_set_new(root, "bank", json_integer(bankBase));
 		json_object_set_new(root, "hardwareCvWindow", json_boolean(hardwareCvWindow));
 		json_object_set_new(root, "reverseDecays", json_boolean(reverseDecays));
+		json_object_set_new(root, "reverseFromEnd", json_boolean(reverseFromEnd));
+		json_object_set_new(root, "retriggerDuringAttack", json_boolean(retriggerDuringAttack));
 		return root;
 	}
 
@@ -1060,6 +1096,10 @@ struct Vates : Module {
 			hardwareCvWindow = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "reverseDecays"))
 			reverseDecays = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "reverseFromEnd"))
+			reverseFromEnd = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "retriggerDuringAttack"))
+			retriggerDuringAttack = json_boolean_value(j);
 	}
 };
 
@@ -1340,6 +1380,10 @@ struct VatesWidget : ModuleWidget {
 
 		menu->addChild(createBoolPtrMenuItem("Reversed hits decay instead of swelling", "",
 		                                     &m->reverseDecays));
+		menu->addChild(createBoolPtrMenuItem("Reversed hits start at the end of the sample", "",
+		                                     &m->reverseFromEnd));
+		menu->addChild(createBoolPtrMenuItem("Reversed hits can retrigger while swelling", "",
+		                                     &m->retriggerDuringAttack));
 		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
 			&m->honourExternalClock));
 

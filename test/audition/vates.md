@@ -82,7 +82,7 @@ v.set(sample=0.0, length=0.6)
       one sound in eight sizes.
 - [x] 2.2. Walk the six banks with **bank up**: drums, objects, grains, micro,
       tones, air. Each recognisably the thing its name says.
-- [ ] 2.3. **Decide -** **reroll kit** draws forty-eight new sounds from a new
+- [x] 2.3. **Decide -** **reroll kit** draws forty-eight new sounds from a new
       seed, and re-deals which kind sits at which position, so a part does not
       survive a reroll - that is not a fault. Roll it a dozen times. Is the
       average roll good enough to be what a new user meets, or does it need
@@ -100,17 +100,26 @@ backwards.
 v.set(sample=0.35, length=0.6)
 ```
 
-- [ ] 3.1. Sweep **length** right from centre: the decay grows smoothly from a
+- [x] 3.1. Sweep **length** right from centre: the decay grows smoothly from a
       click to a few hundred ms and beyond.
-- [ ] 3.2. Sweep left from centre: the attack grows and the sample runs
+- [x] 3.2. Sweep left from centre: the attack grows and the sample runs
       backwards, loudest at the end.
-- [ ] 3.3. Cross centre while it is playing: the direction changes between
+- [x] 3.3. Cross centre while it is playing: the direction changes between
       hits and never mid-sample.
-- [ ] 3.4. **Decide -** reversed hits swell by default, the mirror of the
-      forward envelope. **Reversed hits decay instead** in the menu keeps the
-      attack on the beat. On a sequence, which should ship as the default?
-      `v.menu(reverseDecays=True)`
-- [ ] 3.5. On the **tones** and **air** banks, which sustain rather than
+- [ ] 3.4. Reversed hits mirror the forward one: the same stretch of sample,
+      backwards, ending on the transient. Sweep the left half - every setting
+      should sound, not just the far end.
+      `v.set(length=-0.4)`
+- [ ] 3.5. The three reverse options against the default, on a sequence.
+      **decay instead** keeps the attack on the beat; **start at the end**
+      sweeps the whole sample and goes quiet on long tails; **retrigger while
+      swelling** stops the sequence dropping notes. Any of them worth being
+      the default?
+      ```python
+      v.set(length=-0.6)
+      v.menu(reverseDecays=False, reverseFromEnd=False, retriggerDuringAttack=False)
+      ```
+- [ ] 3.6. On the **tones** and **air** banks, which sustain rather than
       strike: the same knob should read as a swell rather than a hit.
       `v.menu(bank=4)`
 

@@ -1115,11 +1115,14 @@ static void testDeclick() {
 	m.params[Vates::LEVEL_PARAM].setValue(1.f);
 	selectSample(m, 4, loudestSample(m, fr, 4));
 
-	// reverse, with an attack short enough that the retrigger is accepted
-	m.params[Vates::LENGTH_PARAM].setValue(-0.2f);
+	// Reverse, far enough left that the hit is still sounding when the
+	// retrigger lands, and waiting past the swell so the retrigger is accepted
+	// rather than refused - a hit still swelling is not interrupted, so a test
+	// that retriggers during one measures nothing.
+	m.params[Vates::LENGTH_PARAM].setValue(-0.7f);
 	run(m, fr, 0.5);
 	pressTrigger(m, fr);
-	run(m, fr, 0.12);
+	run(m, fr, 0.4);
 	double steady = slew(m, fr, 0.05);
 	m.params[Vates::TRIG_PARAM].setValue(1.f);
 	double step = slew(m, fr, 0.002);
@@ -1189,8 +1192,11 @@ static void testReverseDecays() {
 	m2.params[Vates::LENGTH_PARAM].setValue(-0.55f);
 	run(m2, fr2, 0.5);
 	pressTrigger(m2, fr2);
-	Stats a = runStats(m2, fr2, 0.15, Vates::ENV_OUTPUT);
-	Stats b = runStats(m2, fr2, 0.15, Vates::ENV_OUTPUT);
+	// 50 ms windows, not 150: a reversed hit is now one envelope long (about
+	// 250 ms here), so a wide second window straddles the end of it and reads
+	// the silence after rather than the swell.
+	Stats a = runStats(m2, fr2, 0.05, Vates::ENV_OUTPUT);
+	Stats b = runStats(m2, fr2, 0.05, Vates::ENV_OUTPUT);
 	report("vates", "reverse_default_still_swells", b.rms() / std::max(a.rms(), 1e-9),
 	       b.rms() > a.rms());
 }
@@ -1238,7 +1244,79 @@ static void testFamiliesAreDealtEvenly() {
 	       worstEarlyRepeat == 0);
 }
 
+// Where a reversed hit starts, which is what makes the left half of the knob
+// usable. It runs back to the head of the sample and stops there, so starting
+// at the end of the buffer starts it in the tail: a generated sample runs for
+// seconds, and a hit retriggered before it crossed all of that was only ever
+// the quiet part backwards. Audition 3.4 heard the left half of the knob doing
+// nothing until quite far along it.
+//
+// It starts one envelope's worth in instead, so the hit is the time mirror of
+// the forward one at the same setting and ends on the transient whatever the
+// length. Both old behaviours are menu options, so all three are checked here.
+static void testReverseStart() {
+	struct Local {
+		// energy of one hit at this length, over the window the knob asks for
+		static double hit(Vates& m, long& fr, float length, double window) {
+			m.params[Vates::LENGTH_PARAM].setValue(length);
+			run(m, fr, 0.4);
+			pressTrigger(m, fr);
+			return runStats(m, fr, window, Vates::LEFT_OUTPUT).rms();
+		}
+	};
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "reverse_start_setup", 0, false);
+		return;
+	}
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	selectSample(m, 4, loudestSample(m, fr, 4));   // tones: the long tails
+
+	// A short length either way plays the same stretch of the sample, one of
+	// them backwards, so the two carry comparable energy.
+	const float len = 0.45f;                       // about 100 ms of envelope
+	double fwd = Local::hit(m, fr, len, 0.1);
+	double rev = Local::hit(m, fr, -len, 0.1);
+	report("vates", "reverse_mirrors_forward", rev / std::max(fwd, 1e-9),
+	       rev > fwd * 0.2 && rev < fwd * 5.0);
+
+	// and the old behaviour, which is what it is an option for. Compared by
+	// start position rather than by level: the kit is drawn from a clock-seeded
+	// RNG, so how much quieter the tail is than the head is a different number
+	// every run, while where the two start is exact.
+	m.params[Vates::LENGTH_PARAM].setValue(-len);
+	run(m, fr, 0.4);
+	pressTrigger(m, fr);
+	double oneEnvelopeIn = m.voicePos;
+	m.reverseFromEnd = true;
+	run(m, fr, 0.4);
+	pressTrigger(m, fr);
+	double fromEnd = m.voicePos;
+	m.reverseFromEnd = false;
+	report("vates", "reverse_from_end_starts_later", fromEnd - oneEnvelopeIn,
+	       fromEnd > oneEnvelopeIn + 1000.0);
+
+	// the retrigger option: a swelling hit refuses a trigger, unless told not
+	m.params[Vates::LENGTH_PARAM].setValue(-0.8f);
+	run(m, fr, 0.8);
+	pressTrigger(m, fr);
+	run(m, fr, 0.05);
+	bool attacking = m.voiceAttack;
+	double held = m.voicePos;
+	pressTrigger(m, fr);
+	bool refused = m.voicePos < held;              // it kept running, not restarted
+	m.retriggerDuringAttack = true;
+	run(m, fr, 0.05);
+	double before = m.voicePos;
+	pressTrigger(m, fr);
+	bool accepted = m.voicePos > before;           // jumped back to the start
+	m.retriggerDuringAttack = false;
+	report("vates", "reverse_retrigger_option", (accepted ? 1 : 0) + (refused ? 2 : 0),
+	       attacking && refused && accepted);
+}
+
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
-           testAbuse, testFamiliesAreDealtEvenly)
+           testAbuse, testFamiliesAreDealtEvenly, testReverseStart)
