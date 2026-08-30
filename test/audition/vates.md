@@ -61,6 +61,7 @@ v.set(sample=0.0, length=0.6)
       before it.
 - [ ] 1.2. **env out** on a scope alongside: 0-10 V, one shape per hit,
       0 between hits.
+      `scope("env")`
 - [ ] 1.3. Odd state (bank 5, a rerolled kit, samples-per-bank 32), save,
       reload: the same kit and the same sound, not a fresh roll.
 
@@ -121,12 +122,26 @@ v.set(sample=0.35, length=0.6)
 v.set(sample=0.35, length=0.7)
 ```
 
-- [ ] 4.1. **pitch** across its travel: two octaves down to two up, tracking
-      cleanly. Every generated sample is rendered at C, so a scale played into
-      **note** should be in tune against another oscillator.
+- [ ] 4.1. **pitch** across its travel: two octaves down to two up, smooth,
+      and still in tune at both ends against the reference.
       ```python
       # the reference in one ear, vates in the other
-      osc = vcv.module("VCO", freq=vcv.hz(220))
+      osc = vcv.module("VCO", freq=vcv.hz(261.6256))   # C4, where samples render
+      osc["sine"] >> out["output 2"]
+      ```
+- [ ] 4.2. A scale into **note** with the same stepped CV driving the
+      reference: the two stay in unison all the way up, with no interval
+      opening as it climbs.
+      ```python
+      v.menu(bank=4, scale=11)   # tones; chromatic, so the quantizer passes semitones
+      v.set(sample=0.2, length=0.8)
+      seq = vcv.module("SEQ3", run=1, steps=8)
+      clk = vcv.module("LFO", freq=vcv.hz(2.0, "LFO"), offset=1)
+      clk["square"] >> seq["clock"] + v["clk"]
+      for i, semi in enumerate([0, 2, 4, 5, 7, 9, 11, 12]):
+          seq.set(**{"cv_1_step_%d" % (i + 1): semi / 12.0})
+      osc = vcv.module("VCO", freq=vcv.hz(261.6256))   # C4, where samples render
+      seq["cv 1"] >> v["note"] + osc["1v/octave"]
       osc["sine"] >> out["output 2"]
       ```
 
@@ -144,6 +159,7 @@ v.set(sample=0.2, length=0.7)
 
 - [ ] 5.1. Sweep **filter** end to end on a busy pattern: usable across the
       whole travel, resonance that sings without screaming.
+      `v.set(rhythm=3)`
 - [ ] 5.2. **fx** left: a dotted-quarter delay on the left channel against a
       plain beat on the right, thrown side to side. The cross rhythm should be
       the point, not a smear.
