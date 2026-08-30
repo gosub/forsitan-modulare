@@ -1059,6 +1059,40 @@ static void testFxDelayTime() {
 		char name[64];
 		std::snprintf(name, sizeof name, "fx_delay_at_%.0f_bpm", bpm[k]);
 		report("vates", name, beats, best > 0.05 && std::fabs(beats - 1.5) < 0.05);
+
+		// and the right channel a plain beat against it, which is the whole
+		// 3:2. Only the left tap was ever measured, so the two could have been
+		// the same delay and nothing here would have said so.
+		if (k == 0) {
+			Vates m2;
+			long fr2 = 0;
+			if (!waitForBanks(m2, fr2)) {
+				report("vates", "fx_delay_right_setup", 0, false);
+				return;
+			}
+			selectSample(m2, 0, 4);
+			m2.params[Vates::LENGTH_PARAM].setValue(0.05f);
+			m2.params[Vates::LEVEL_PARAM].setValue(1.f);
+			m2.params[Vates::FX_PARAM].setValue(-1.f);
+			m2.params[Vates::TEMPO_PARAM].setValue(bpm[k]);
+			run(m2, fr2, 0.05);
+			pressTrigger(m2, fr2);
+			double dryR = 0.0;
+			long atR = -1;
+			for (long i = 0; i < n; i++) {
+				m2.process(makeArgs(fr2++));
+				double v = std::fabs(m2.outputs[Vates::RIGHT_OUTPUT].getVoltage());
+				if (i < guard) {
+					dryR = std::max(dryR, v);
+					continue;
+				}
+				if (atR < 0 && v > 0.4 * dryR)
+					atR = i;
+			}
+			double beatsR = atR < 0 ? 0.0 : ((double)atR / SR) / beat;
+			report("vates", "fx_delay_right_is_a_plain_beat", beatsR,
+			       std::fabs(beatsR - 1.0) < 0.05);
+		}
 	}
 }
 

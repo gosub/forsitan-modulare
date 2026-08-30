@@ -203,7 +203,10 @@ falls out of the delay and into the flanger.
 than a parameter. The delay is fixed at **three eighths of a note - a dotted
 quarter, a beat and a half**, 750 ms at 120 BPM - with the right channel a
 plain beat against it, so the two run a 3:2 cross rhythm and the feedback
-throws it side to side. Turning the knob out raises the wet from nothing and
+throws it side to side. It wants **room to be heard**: under a hit on every
+beat the left tap lands on the offbeat, the feedback carries that into the
+right a beat later, and both channels come out as plain eighths. A sparse
+pattern is where the 3:2 is audible at all. Turning the knob out raises the wet from nothing and
 the feedback from 0.25 to 0.85 - and since the two lines feed *each other*,
 that is a round trip of 0.72, which at the top leaves a tail running some ten
 seconds. The write path saturates, so a long tail thickens instead of clipping

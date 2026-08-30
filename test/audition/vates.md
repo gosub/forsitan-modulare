@@ -140,7 +140,7 @@ v.set(sample=0.35, length=0.7)
       osc = vcv.module("VCO", freq=vcv.hz(261.6256))   # C4, where samples render
       osc["sine"] >> out["output 2"]
       ```
-- [ ] 4.2. A scale into **note** with the same stepped CV driving the
+- [x] 4.2. A scale into **note** with the same stepped CV driving the
       reference: the two stay in unison all the way up, with no interval
       opening as it climbs.
       ```python
@@ -171,13 +171,15 @@ chorus-into-flanger to the right, dry at centre.
 v.set(sample=0.2, length=0.7)
 ```
 
-- [ ] 5.1. Sweep **filter** end to end on a busy pattern: usable across the
+- [x] 5.1. Sweep **filter** end to end on a busy pattern: usable across the
       whole travel, resonance that sings without screaming.
       `v.set(rhythm=3)`
 - [ ] 5.2. **fx** left: a dotted-quarter delay on the left channel against a
       plain beat on the right, thrown side to side. The cross rhythm should be
-      the point, not a smear.
-      `v.set(fx=-0.6)`
+      the point, not a smear. On one hit a bar, because a hit on every beat
+      fills both channels with the same eighths and there is no 3:2 left to
+      hear.
+      `v.set(fx=-0.6, rhythm=12)`
 - [ ] 5.3. **fx** hard left: a tail of some ten seconds that thickens as it
       saturates rather than clipping the output.
       `v.set(fx=-1.0)`
