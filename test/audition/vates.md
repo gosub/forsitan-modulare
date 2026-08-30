@@ -106,11 +106,11 @@ v.set(sample=0.35, length=0.6)
       backwards, loudest at the end.
 - [x] 3.3. Cross centre while it is playing: the direction changes between
       hits and never mid-sample.
-- [ ] 3.4. Reversed hits mirror the forward one: the same stretch of sample,
+- [x] 3.4. Reversed hits mirror the forward one: the same stretch of sample,
       backwards, ending on the transient. Sweep the left half - every setting
       should sound, not just the far end.
       `v.set(length=-0.4)`
-- [ ] 3.5. The three reverse options against the default, on a sequence.
+- [x] 3.5. The three reverse options against the default, on a sequence.
       **decay instead** keeps the attack on the beat; **start at the end**
       sweeps the whole sample and goes quiet on long tails; **retrigger while
       swelling** stops the sequence dropping notes. Any of them worth being
@@ -119,8 +119,10 @@ v.set(sample=0.35, length=0.6)
       v.set(length=-0.6)
       v.menu(reverseDecays=False, reverseFromEnd=False, retriggerDuringAttack=False)
       ```
-- [ ] 3.6. On the **tones** and **air** banks, which sustain rather than
-      strike: the same knob should read as a swell rather than a hit.
+- [x] 3.6. On the **tones** and **air** banks, which sustain rather than
+      strike: the same knob should read as a swell rather than a hit. At
+      either end the envelope is held, so these banks drone instead of
+      hitting - that is not a fault.
       `v.menu(bank=4)`
 
 ---

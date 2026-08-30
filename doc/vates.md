@@ -143,6 +143,12 @@ hardware, because sweeping through the middle is the point.
 - **right**: decay grows, the sample plays forward.
 - **left**: attack grows, and the sample plays **backwards**.
 
+At either end the envelope is **held**: no decay at all, and the sample plays
+out whole. On the struck banks that is simply the full hit. On **tones** and
+**air**, whose samples run to two and a half seconds, a held envelope under a
+sequence is a drone rather than a hit - the sound never gets out of its own
+way. That is the top of the knob doing what it says, not a fault.
+
 A fresh vates starts at about a third of the way clockwise, where a hit is a
 few hundred milliseconds - centre is the shortest envelope there is, and a
 module that clicked out of the browser would be telling you nothing.
