@@ -2375,6 +2375,110 @@ static void testSharedClockStaysInStep() {
 	report("artifex", "shared_clock_steps_together", worstGap, worstGap <= 4);
 }
 
+// What trig does in the shifter. Squaring the two channels up to half a window
+// apart, which is all it used to do, is inaudible: they are at different
+// pitches, so the width between them is already sweeping, and a crossfaded
+// pair of taps sounds the same half a window apart either way, so the squaring
+// lands on a state the drift passes through anyway. Audition 3.9.6 heard that
+// as a click and no image change.
+//
+// So a trig now collapses the stereo spread to nothing and lets it bloom back
+// over kShifterBloom. The squaring stays: with the spread at zero the two
+// rates are equal and nothing pulls them apart again, so the collapsed image
+// should be the one the knob at zero gives.
+//
+// Stereo width is the wrong ruler for the bloom. The two channels decorrelate
+// at the first hint of detune, so width reads the same at a tenth of the
+// spread as at all of it -- it can see the collapse and not the climb out of
+// it. What tracks the spread is the rate the two read phases drift apart,
+// which is proportional to it.
+static void testShifterTrig() {
+	struct Local {
+		static double phaseGap(Artifex& m) {
+			double d = std::fmod(std::fabs((double)m.core.shiftPhase[0]
+			                               - m.core.shiftPhase[1]), 0.5);
+			return std::min(d, 0.5 - d);          // it is a circle
+		}
+		// laps the phase difference turns in `seconds`, which goes as the spread
+		static double laps(Artifex& m, long& fr, double seconds) {
+			double prev = phaseGap(m);
+			bool rising = true;
+			int n = 0;
+			for (long i = 0; i < (long)(seconds * SR); i++) {
+				runTone(m, fr, 1.0 / SR, 110.f, 5.f);
+				double d = phaseGap(m);
+				if (rising && d < prev)
+					rising = false;
+				else if (!rising && d > prev) {
+					rising = true;
+					n++;                          // bounced off zero
+				}
+				prev = d;
+			}
+			return n / seconds;
+		}
+		// mean stereo width over short windows of a recording
+		static double width(const Rec& rec, size_t a, size_t b) {
+			const size_t w = (size_t)(0.02 * SR);
+			double acc = 0.0;
+			int n = 0;
+			for (size_t p = a; p + w < b && p + w < rec.l.size(); p += w) {
+				double sm = 0.0, sd = 0.0;
+				for (size_t i = p; i < p + w; i++) {
+					double mid = 0.5 * (rec.l[i] + rec.r[i]);
+					double side = 0.5 * (rec.l[i] - rec.r[i]);
+					sm += mid * mid;
+					sd += side * side;
+				}
+				acc += std::sqrt(sd / std::max(sm, 1e-12));
+				n++;
+			}
+			return n ? acc / n : 0.0;
+		}
+	};
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_SHIFTER);
+	m.params[Artifex::TIME_PARAM].setValue(0.5f);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::STEREO_PARAM].setValue(0.5f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	m.inputs[Artifex::TRIG_INPUT].channels = 1;
+	runTone(m, fr, 3.0, 110.f, 5.f);
+
+	// wide open, with no trig anywhere near it
+	double lapsOpen = Local::laps(m, fr, 1.0);
+	Rec before;
+	runTone(m, fr, 0.5, 110.f, 5.f, &before);
+	double widthOpen = Local::width(before, 0, before.l.size());
+
+	Rec rec;
+	m.inputs[Artifex::TRIG_INPUT].setVoltage(5.f);
+	runTone(m, fr, 0.002, 110.f, 5.f, &rec);
+	m.inputs[Artifex::TRIG_INPUT].setVoltage(0.f);
+	double squared = Local::phaseGap(m);
+	runTone(m, fr, 0.15, 110.f, 5.f, &rec);
+	double widthCollapsed = Local::width(rec, (size_t)(0.01 * SR), rec.l.size());
+
+	double lapsBloom = Local::laps(m, fr, 1.0);      // still climbing out
+	runTone(m, fr, 3.0, 110.f, 5.f);                 // past the bloom
+	double lapsBack = Local::laps(m, fr, 1.0);
+
+	report("artifex", "shifter_trig_squares_the_channels", squared, squared < 0.01);
+	report("artifex", "shifter_trig_collapses_the_width",
+	       widthCollapsed / std::max(widthOpen, 1e-9), widthCollapsed < widthOpen * 0.5);
+	// A bloom, not a jump: a second in, the channels are still drifting apart
+	// far more slowly than they will once it is open.
+	report("artifex", "shifter_trig_bloom_is_gradual",
+	       lapsBloom / std::max(lapsOpen, 1e-9), lapsBloom < lapsOpen * 0.5);
+	report("artifex", "shifter_trig_spread_returns",
+	       lapsBack / std::max(lapsOpen, 1e-9), lapsBack > lapsOpen * 0.8);
+	// and the knob wide open really does sweep several times a second, which is
+	// why the squaring alone was never going to be audible
+	report("artifex", "shifter_stereo_wanders_fast_when_wide", lapsOpen,
+	       lapsOpen >= 3.0);
+}
+
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
@@ -2384,4 +2488,5 @@ SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudibl
            testLfoModAttenuverter, testSteppedVersusFreeCv, testPatternGateDrivesTrig,
            testFeedbackSafety, testFilterInLoopSafety, testAbuse, testExtremesStaySane,
            testModeCyclingDoesNotPop, testSampleRateInvariance, testBypass,
-           testStateRoundTrip, testLongRunStability, testSharedClockStaysInStep)
+           testStateRoundTrip, testLongRunStability, testSharedClockStaysInStep,
+           testShifterTrig)

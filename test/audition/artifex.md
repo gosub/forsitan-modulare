@@ -440,12 +440,20 @@ fx.set(fxmode="shifter", time=0.5, amt="50%")
 - [x] 3.9.5. **stereo**: a different shift per channel. Tiny = wide unison.
       Large = deliberately broken.
       `fx.set(stereo="20%")`
-- [ ] 3.9.6. **trig** is a stereo-only control here: it squares the right
-      channel back to half a window from the left. At **stereo** 0 both
-      channels run at one rate and never drift, so it does nothing at all -
-      correctly. Turn stereo up, let the image wander for a few seconds, then
-      trig: the image snaps back, then wanders again.
-      `fx.set(stereo="50%")`
+- [ ] 3.9.6. **trig** collapses the stereo spread and lets it bloom back over 3 s:
+      the image folds to the centre and opens out again. At **stereo** 0 there
+      is nothing to collapse and it does nothing, correctly.
+      ```python
+      drone()
+      fx.set(stereo="50%")
+      ```
+- [ ] 3.9.7. **Decide -** the bloom is 3 s. The image is back within a quarter
+      second; the rest is the pitch spread still opening under it. Too long,
+      too short, or right?
+      ```python
+      drone()
+      fx.set(stereo="100%")
+      ```
 
 ---
 

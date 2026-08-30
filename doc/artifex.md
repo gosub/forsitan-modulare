@@ -369,10 +369,20 @@ the shift is done by sweeping an 80 ms window, so on a transient the layers
 arrive spread over that window and the stack becomes a cascade instead.
 
 **stereo** gives the two channels different shifts, and a small detune is a
-very wide unison. **trig** squares the right channel back up to
-half a window from the left, which is where the two started: different shifts
-run at different rates, so the image wanders, and a trig puts it back. At
-stereo 0 there is one rate, nothing drifts, and the trig has nothing to do.
+very wide unison. **trig** collapses that spread to nothing and lets it bloom
+back over three seconds: the image folds to the centre and opens out again. At
+stereo 0 there is nothing to collapse and the trig does nothing.
+
+The image itself is back within about a quarter of a second - two channels
+decorrelate at the first hint of detune - and the rest of the bloom is the
+pitch spread still opening under it. A trig also squares the right channel's
+read phase back up to half a window from the left, which is where the two
+started, so the collapsed image is the one the knob at zero gives. That
+squaring is all a trig used to do here, and on its own it is inaudible: the
+two channels are at different pitches, so the width between them is already
+sweeping several times a second, and a crossfaded pair of taps sounds the same
+half a window apart either way, so it lands on a state the drift passes
+through anyway.
 
 ## The filter
 

@@ -102,6 +102,12 @@ static const float kKnobGlide = 0.020f;
 // click. Two milliseconds is long enough to carry the step and short enough
 // that a triggered stereo throw still lands on the beat.
 static const float kTrigDeclick = 0.002f;
+// How long the shifter takes to open its stereo spread back up after a
+// trig collapses it. Squaring the two channels up is inaudible on its own -
+// they are at different pitches, so the image is already sweeping - so the
+// trig collapses the spread to nothing and lets it bloom back instead.
+// Three seconds is slow enough to hear as a movement rather than a jump.
+static const float kShifterBloom = 3.0f;
 // Every fade in the replayer: pass edges, the loop join, the ghost
 // crossfade, the window over the record head. It is a splice length, not a
 // declick length: a diagonal cut across quarter-inch tape overlaps for ten
@@ -261,6 +267,7 @@ struct Core {
 	// much silence on the tape, a full-scale drop and return once a lap.
 	int fillLeft = 0;
 	float shiftPhase[2] = {0.f, 0.f};
+	float shiftSpread = 1.f;   // 0 right after a trig, back to 1 as it blooms
 	uint32_t rng = 0x9e3779b9u;
 
 	// what the display reads
@@ -328,6 +335,7 @@ struct Core {
 				recHold[q] = amtSm[q] = 0.f;
 			corrXY[c] = corrXX[c] = corrYY[c] = 0.f;
 		}
+		shiftSpread = 1.f;
 		panDir = 1;
 		panFade = 1.f;
 		for (int c = 0; c < 2; c++) {
@@ -1361,21 +1369,32 @@ struct Core {
 		float semis = (t - 0.5f) * 24.f;         // an octave either way
 		uiUnit = UNIT_SEMI;
 		uiTime = semis;
-		// "Resync" means putting the two channels back into their half-a-window
-		// relationship, not putting both at a fixed phase -- the second jumps
-		// the left channel's read position for no reason, and at phase zero its
-		// near tap is crossfaded out entirely, so the jump is to whatever the
-		// far tap happens to be holding. Squaring the right one up to the left
-		// leaves the left untouched and moves the right only by however far it
-		// had actually drifted.
+		// A trig collapses the stereo spread to nothing and lets it open back
+		// up over kShifterBloom, so the image folds to the centre and blooms
+		// out again. Squaring the two channels up is what this used to do
+		// alone, and it is inaudible: they are at different pitches, so the
+		// width between them is already sweeping, and a crossfaded pair of
+		// taps sounds the same half a window apart either way, so the squaring
+		// lands on a state the drift passes through anyway. It stays, because
+		// with the spread at zero the two rates are equal and nothing pulls
+		// them apart again -- so the collapsed image should be the one the
+		// knob at zero gives, which is the two of them half a window apart.
+		//
+		// Squaring the right one up to the left, rather than putting both at a
+		// fixed phase: the second jumps the left channel's read position for no
+		// reason, and at phase zero its near tap is crossfaded out entirely, so
+		// the jump is to whatever the far tap happens to be holding.
 		if (ct.trig) {
 			shiftPhase[1] = shiftPhase[0] + 0.5f;
 			shiftPhase[1] -= std::floor(shiftPhase[1]);
+			shiftSpread = 0.f;
 		}
+		shiftSpread = std::min(1.f, shiftSpread + ct.dt / kShifterBloom);
+		float spread = ct.stereo * shiftSpread;
 		float window = 0.08f;                    // seconds of crossfade window
 
 		for (int c = 0; c < 2; c++) {
-			float s = semis + (c == 1 ? ct.stereo * 3.f : -ct.stereo * 3.f);
+			float s = semis + (c == 1 ? spread * 3.f : -spread * 3.f);
 			float ratio = std::pow(2.f, s / 12.f);
 			float x = loopIn(c, in[c], ct, fb);
 			shf[c].write(x);
