@@ -198,9 +198,15 @@ v.set(sample=0.2, length=0.7)
 v.set(sample=0.35, length=0.6)
 ```
 
-- [ ] 6.1. **mode** at **cue**: the sample knob auditions without waiting for
-      a trigger. Back at **play**: only triggers sound it.
-      `v.set(mode="cue")`
+- [ ] 6.1. A slow LFO into **sample**. In **play** its crossings fire hits of
+      their own, off the grid, so the modulation is the rhythm; in **cue**
+      only the pattern's hits sound and the LFO just chooses which sample.
+      The knob fires in neither, so you can browse a kit without the module
+      screaming - that is not a fault.
+      ```python
+      v.set(mode="play", sample_att=1.0)
+      vcv.module("LFO", freq=vcv.hz(0.3, "LFO"), offset=0)["triangle"] >> v["sample"]
+      ```
 - [ ] 6.2. An external clock at **clk** with the rhythm knob moving: the
       pattern follows the tempo and the rhythms are worth having.
       `clock(hz=4.0)`
