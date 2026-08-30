@@ -440,7 +440,12 @@ neighbouring modes instead.
 Mode changes from CV **wait for the next step of the clock**, as on the
 hardware, so a modulated mode change lands on the beat instead of chopping a
 sample in half. The knob and the display picker change modes immediately.
-The waiting can be turned off in the context menu.
+
+The waiting can be turned off in the context menu, and it is worth hearing
+once: with a mode CV faster than the clock, changes then land the instant the
+voltage crosses, in the middle of a slice or a repeat, and every one of them
+clicks. That is the point of the option rather than a fault, but on is the
+default because the quantized version is the musical one.
 
 ### time, feedback, amount
 
@@ -534,6 +539,7 @@ can see it change across the room.
 - **Buffer** - 1.15 s (the hardware's), 2.5 s or 5 s. It sets the longest
   delay, the longest freeze and the length of the replayer's tape.
 - **Mode changes wait for the clock** - on by default, as on the hardware.
+  Off, a CV change lands immediately, wherever in the bar it falls.
 - **Input** - stereo, or sum to mono (the hardware's advanced settings).
 - **Pattern inputs read a Rack voltage window** - 0 V neutral, above +1 V
   randomize, below −1 V invert. Off, it uses the hardware's 1.6 V/3.2 V
