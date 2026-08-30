@@ -133,7 +133,7 @@ v.set(sample=0.35, length=0.6)
 v.set(sample=0.35, length=0.7)
 ```
 
-- [ ] 4.1. **pitch** across its travel: two octaves down to two up, smooth,
+- [x] 4.1. **pitch** across its travel: two octaves down to two up, smooth,
       and still in tune at both ends against the reference.
       ```python
       # the reference in one ear, vates in the other
@@ -145,10 +145,13 @@ v.set(sample=0.35, length=0.7)
       opening as it climbs.
       ```python
       v.menu(bank=4, scale=11)   # tones; chromatic, so the quantizer passes semitones
-      v.set(sample=0.2, length=0.8)
+      v.set(sample=0.2, length=0.8, pitch_att=1.0)   # fully clockwise is 1V/oct
       seq = vcv.module("SEQ3", run=1, steps=8)
       clk = vcv.module("LFO", freq=vcv.hz(2.0, "LFO"), offset=1)
-      clk["square"] >> seq["clock"] + v["clk"]
+      # a note on every step, not only on the pattern's: the sequencer advances
+      # on each tick and the voice has to fire with it, so the clock takes over
+      # the trig jack from the pattern gate
+      clk["square"] >> seq["clock"] + v["clk"] + v["trig"]
       for i, semi in enumerate([0, 2, 4, 5, 7, 9, 11, 12]):
           seq.set(**{"cv_1_step_%d" % (i + 1): semi / 12.0})
       osc = vcv.module("VCO", freq=vcv.hz(261.6256))   # C4, where samples render
