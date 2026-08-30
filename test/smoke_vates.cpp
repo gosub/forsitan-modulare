@@ -941,27 +941,32 @@ static void testFilterCrossing() {
 	pressTrigger(m, fr);
 	run(m, fr, 0.3);
 
-	// what the signal's own slew rate is, with the knob standing still
+	// The step a knob jump leaves, against what the signal legitimately does
+	// at the setting it lands on - not at the one it came from. Slew rate goes
+	// with brightness, so measuring a jump into the highpass against a
+	// baseline taken in the lowpass counts the filter opening up as a click;
+	// with a seed-generated sample deciding how much high end there is to
+	// uncover, that comparison passed or failed by luck. A click is a step in
+	// the first couple of milliseconds and nothing after it.
+	struct Local {
+		// max slew in the 2 ms after a jump, over the worst the destination
+		// setting does on its own across the next 200 ms
+		static double jump(Vates& m, long& fr, float to) {
+			m.params[Vates::FILTER_PARAM].setValue(to);
+			double step = slew(m, fr, 0.002);
+			double settled = slew(m, fr, 0.2);
+			return step / std::max(settled, 1e-9);
+		}
+	};
 	double steady = slew(m, fr, 0.2);
-	// and what it is when the knob jumps across the centre in one frame
-	m.params[Vates::FILTER_PARAM].setValue(0.5f);
-	double crossing = slew(m, fr, 0.2);
-	// then in and out of the centre itself
-	m.params[Vates::FILTER_PARAM].setValue(0.f);
-	double toCentre = slew(m, fr, 0.1);
-	m.params[Vates::FILTER_PARAM].setValue(-0.3f);
-	double fromCentre = slew(m, fr, 0.1);
+	double crossing = Local::jump(m, fr, 0.5f);      // across the centre
+	double toCentre = Local::jump(m, fr, 0.f);       // into it
+	double fromCentre = Local::jump(m, fr, -0.3f);   // and out again
 
 	report("vates", "filter_signal_moves", steady, steady > 1e-4);
-	report("vates", "filter_crossing_is_quiet", crossing / std::max(steady, 1e-9),
-	       crossing < 3.0 * steady);
-	// A little looser than the crossing: moving to the centre and back is a
-	// real filter sweep, and how much high end a sweep uncovers depends on
-	// the sample the seed happened to generate. A click is an order of
-	// magnitude, not a factor of two.
-	report("vates", "filter_centre_is_quiet",
-	       std::max(toCentre, fromCentre) / std::max(steady, 1e-9),
-	       std::max(toCentre, fromCentre) < 4.0 * steady);
+	report("vates", "filter_crossing_is_quiet", crossing, crossing < 2.5);
+	report("vates", "filter_centre_is_quiet", std::max(toCentre, fromCentre),
+	       std::max(toCentre, fromCentre) < 2.5);
 }
 
 // ── the pulse width knob skews the triangle and the pulse follows it ─────────
