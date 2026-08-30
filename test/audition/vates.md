@@ -198,7 +198,7 @@ v.set(sample=0.2, length=0.7)
 v.set(sample=0.35, length=0.6)
 ```
 
-- [ ] 6.1. A slow LFO into **sample**. In **play** its crossings fire hits of
+- [x] 6.1. A slow LFO into **sample**. In **play** its crossings fire hits of
       their own, off the grid, so the modulation is the rhythm; in **cue**
       only the pattern's hits sound and the LFO just chooses which sample.
       The knob fires in neither, so a kit can be browsed in silence, unless
@@ -207,9 +207,9 @@ v.set(sample=0.35, length=0.6)
       v.set(mode="play", sample_att=1.0)
       vcv.module("LFO", freq=vcv.hz(0.3, "LFO"), offset=0)["triangle"] >> v["sample"]
       ```
-- [ ] 6.2. An external clock at **clk** with the rhythm knob moving: the
+- [x] 6.2. An external clock at **clk** with the rhythm knob moving: the
       pattern follows the tempo and the rhythms are worth having.
       `clock(hz=4.0)`
-- [ ] 6.3. Your own kit: point the kits folder at a folder of wavs from the
+- [x] 6.3. Your own kit: point the kits folder at a folder of wavs from the
       context menu. It loads without interrupting the audio, cuts into banks
       of eight, and the display names them `mykit 1/3`.
