@@ -40,14 +40,19 @@ are exact without you tuning anything.
 
 Each bank holds one sample of each kind its generator knows: the drums bank
 is a click, a hat, a tom, a snare, a kick and so on, one of each, at eight
-independent pitches - never one drum in eight sizes. A knob position
-therefore always means the same *kind* of sound, which is what makes the
-sample knob playable, and pitch variety is left to the pitch knob and the
-note input, where it belongs.
+independent pitches - never one drum in eight sizes. Every knob position is
+therefore a different *kind* of sound rather than another size of the same
+one, which is what makes the sample knob playable, and pitch variety is left
+to the pitch knob and the note input, where it belongs.
+
+Which kind lands on which position is dealt from the seed, so it is not the
+same across banks, and a reroll re-deals it. Position three is not a tom for
+ever; it is one of the eight kinds, and the eight are always all different.
 
 The whole set derives from one seed, saved with the patch. **reroll kit** in
-the context menu draws a new one: the same six flavours and the same eight
-roles per bank, forty-eight different sounds.
+the context menu draws a new one: the same six flavours, eight kinds a bank
+again, forty-eight different sounds. A part written against one kit will not
+play the same on the next.
 
 **Your kits** follow the generated banks. vates reads the same kits folder
 as pellicula - set it once from either module's context menu - where each

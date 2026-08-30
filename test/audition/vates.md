@@ -56,13 +56,13 @@ scope("left")
 v.set(sample=0.0, length=0.6)
 ```
 
-- [ ] 1.1. Place it fresh: the banks build in about a tenth of a second and
+- [x] 1.1. Place it fresh: the banks build in about a tenth of a second and
       the display counts up. Sound within a second, and no burst of noise
       before it.
-- [ ] 1.2. **env out** on a scope alongside: 0-10 V, one shape per hit,
+- [x] 1.2. **env out** on a scope alongside: 0-10 V, one shape per hit,
       0 between hits.
       `scope("env")`
-- [ ] 1.3. Odd state (bank 5, a rerolled kit, samples-per-bank 32), save,
+- [x] 1.3. Odd state (bank 5, a rerolled kit, samples-per-bank 32), save,
       reload: the same kit and the same sound, not a fresh roll.
 
 ---
@@ -71,22 +71,22 @@ v.set(sample=0.0, length=0.6)
 
 The six generated banks are drums, objects, grains, micro, tones, air. Each
 holds one sample of each *kind* its generator knows, at eight pitches - never
-one drum in eight sizes.
+one drum in eight sizes. Which kind lands on which position comes from the
+seed, so it differs between banks and after a reroll.
 
 ```python
 v.set(sample=0.0, length=0.6)
 ```
 
-- [ ] 2.1. Walk **sample** across a bank: eight distinct kinds of sound, not
+- [x] 2.1. Walk **sample** across a bank: eight distinct kinds of sound, not
       one sound in eight sizes.
-- [ ] 2.2. Walk the six banks with **bank up**: drums, objects, grains, micro,
+- [x] 2.2. Walk the six banks with **bank up**: drums, objects, grains, micro,
       tones, air. Each recognisably the thing its name says.
-- [ ] 2.3. The same **sample** position in two different banks holds the same
-      *role*. Play a rhythm and change bank underneath it: the part should
-      survive the change.
-- [ ] 2.4. **Decide -** **reroll kit** draws forty-eight new sounds from a new
-      seed. Roll it a dozen times. Is the average roll good enough to be what
-      a new user meets, or does it need curating?
+- [ ] 2.3. **Decide -** **reroll kit** draws forty-eight new sounds from a new
+      seed, and re-deals which kind sits at which position, so a part does not
+      survive a reroll - that is not a fault. Roll it a dozen times. Is the
+      average roll good enough to be what a new user meets, or does it need
+      curating?
 
 ---
 

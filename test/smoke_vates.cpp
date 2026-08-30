@@ -1195,7 +1195,50 @@ static void testReverseDecays() {
 	       b.rms() > a.rms());
 }
 
+// What a bank position actually promises, which is less than it looks like.
+// The eight slots of a bank are dealt from a shuffled list of the generator's
+// families, round-robin: within the first pass every family appears exactly
+// once, so a bank is eight different kinds and never one kind in eight sizes.
+//
+// What it does NOT promise is that a given position holds a given kind. The
+// deal is shuffled from the kit seed, so slot 3 is a different family in a
+// different bank and a different one again after a reroll. Audition 2.3 used
+// to ask for a part to survive a change of bank on that basis, and it cannot.
+static void testFamiliesAreDealtEvenly() {
+	imber_dsp::Rng rng;
+	rng.seed(0x9e3779b97f4a7c15ull);
+	int worstEarlyRepeat = 0;
+	int worstMissing = 0;
+	for (int nFam = 2; nFam <= 12; nFam++) {
+		std::vector<int> ids(nFam);
+		for (int i = 0; i < nFam; i++)
+			ids[i] = i;
+		for (int trial = 0; trial < 200; trial++) {
+			int out[vates_bank::kSamplesPerBank];
+			vates_bank::dealFamilies(ids.data(), nFam, rng, out);
+			int seen[16] = {0};
+			int distinct = 0, early = 0;
+			for (int s = 0; s < vates_bank::kSamplesPerBank; s++) {
+				if (out[s] < 0 || out[s] >= nFam) {
+					early = 99;               // dealt something not in the list
+					break;
+				}
+				if (seen[out[s]]++ == 0)
+					distinct++;
+				else if (distinct < std::min(nFam, vates_bank::kSamplesPerBank))
+					early++;                  // a repeat before every kind was used
+			}
+			worstEarlyRepeat = std::max(worstEarlyRepeat, early);
+			worstMissing = std::max(worstMissing,
+			                        std::min(nFam, vates_bank::kSamplesPerBank) - distinct);
+		}
+	}
+	report("vates", "bank_uses_every_family", worstMissing, worstMissing == 0);
+	report("vates", "bank_repeats_no_family_early", worstEarlyRepeat,
+	       worstEarlyRepeat == 0);
+}
+
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
-           testAbuse)
+           testAbuse, testFamiliesAreDealtEvenly)
