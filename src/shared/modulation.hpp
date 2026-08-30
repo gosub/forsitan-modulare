@@ -18,6 +18,9 @@ namespace forsitan_mod {
 using namespace rack;
 
 static const int kSteps = 16;
+// Width of the clock output pulse, and the window inside which a free-run
+// step and an arriving external edge are the same beat rather than two.
+static const float kClockGuard = 1e-3f;
 
 // ── the rhythm table ──────────────────────────────────────────────────────────
 // 32 sixteen-step gate patterns, step 0 in the high bit. Twenty-two written by
@@ -131,6 +134,7 @@ struct Modulation {
 	uint32_t patRng = 0x1234567u;
 	float gateTimer = 0.f;
 	float clkPulse = 0.f;
+	float sinceStep = 10.f;   // seconds since the last step, from either clock
 
 	// ── lfo ──────────────────────────────────────────────────────────────────
 	double lfoOffset = 0.0;
@@ -168,14 +172,25 @@ struct Modulation {
 		// ── clock ────────────────────────────────────────────────────────────
 		stepped = false;
 		sinceExternal += in.dt;
+		sinceStep += in.dt;
 		bool extEdge = clkIn.process(in.clkVoltage, 0.1f, 1.f);
 		if (extEdge && in.honourExternal) {
 			if (externalClock && sinceExternal > 1e-4f && sinceExternal < 4.f)
 				stepSeconds = sinceExternal;
 			externalClock = true;
 			sinceExternal = 0.f;
-			stepped = true;
 			clockPhase = 0.0;
+			// A module still free-running at the same tempo as the one about
+			// to clock it wraps its own phase a sample or two before that
+			// clock arrives down the cable. Stepping again here would advance
+			// it twice for the one beat and leave it a step ahead of the
+			// leader for good, which is the opposite of what sharing a clock
+			// is for. Adopt the external clock, but only step if this is not
+			// the step we just took. The guard is the width of our own clock
+			// pulse: a clock faster than that has no distinguishable output
+			// anyway.
+			if (sinceStep > kClockGuard)
+				stepped = true;
 		}
 		if (externalClock && sinceExternal > 2.f)
 			externalClock = false;   // the external clock stopped; take over again
@@ -224,8 +239,10 @@ struct Modulation {
 
 			if (gateWork & mask)
 				gateTimer = 0.75f * stepSeconds;
-			clkPulse = 1e-3f;
+			clkPulse = kClockGuard;
 		}
+		if (stepped)
+			sinceStep = 0.f;
 		gateTimer = std::max(0.f, gateTimer - in.dt);
 		clkPulse = std::max(0.f, clkPulse - in.dt);
 		barPos = (double)barStep + clockPhase;

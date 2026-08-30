@@ -2301,6 +2301,80 @@ static void testFilterCrossing() {
 	       cross < 3.0 * steady);
 }
 
+// Two modules sharing one clock, wired the way audition 6.4 patches artifex
+// into vates: the leader's clk out into the follower's clk in, with the one
+// sample of cable Rack puts between them.
+//
+// Set to the same tempo, which is what two modules straight out of the browser
+// are, they used to disagree. The follower wrapped its own phase one sample
+// before the leader's edge reached it, stepped for the wrap and again for the
+// edge, and sat one sixteenth ahead of the leader for the rest of the session
+// -- two patterns locked but offset. It survived the other clock tests because
+// those feed a module a clock at some rate other than its own.
+//
+// Two claims, and only the first holds at any tempo: the follower steps when
+// the leader does, and at a matched tempo their patterns and LFOs are the same
+// signal. Started at different tempos the counters cannot agree, since each ran
+// free for a different number of steps before the cable took over; that is what
+// pat reset is for.
+static void testSharedClockStaysInStep() {
+	struct Local {
+		// Runs the pair for 20 s and returns, through the out params, the worst
+		// gap in samples between a follower step and the leader step it belongs
+		// to, and how far the gates and LFOs ever drift apart.
+		static void run(float leadBpm, long& worstGap, long& gateDisagree, double& worstTri) {
+			Artifex lead, follow;
+			long fl = 0, ff = 0;
+			lead.params[Artifex::TEMPO_PARAM].setValue(leadBpm);
+			follow.params[Artifex::TEMPO_PARAM].setValue(120.f);
+			follow.inputs[Artifex::CLK_INPUT].channels = 1;
+			float wire = 0.f;
+			long lastLead = -1;
+			worstGap = 0;
+			gateDisagree = 0;
+			worstTri = 0.0;
+			for (long i = 0; i < (long)(20.0 * SR); i++) {
+				follow.inputs[Artifex::CLK_INPUT].setVoltage(wire);
+				step(follow, ff, 0.f, 0.f);
+				bool fs = follow.modul.stepped;
+				step(lead, fl, 0.f, 0.f);
+				if (lead.modul.stepped)
+					lastLead = i;
+				wire = lead.outputs[Artifex::CLK_OUTPUT].getVoltage();
+				if (i < (long)(2.0 * SR))
+					continue;                       // let the follower lock
+				if (fs && lastLead >= 0)
+					worstGap = std::max(worstGap, i - lastLead);
+				bool gl = lead.outputs[Artifex::GATE_OUTPUT].getVoltage() > 5.f;
+				bool gf = follow.outputs[Artifex::GATE_OUTPUT].getVoltage() > 5.f;
+				if (gl != gf)
+					gateDisagree++;
+				worstTri = std::max(worstTri,
+				                    (double)std::fabs(lead.outputs[Artifex::TRI_OUTPUT].getVoltage()
+				                                      - follow.outputs[Artifex::TRI_OUTPUT].getVoltage()));
+			}
+		}
+	};
+	const float tempos[] = {120.f, 140.f, 90.f};
+	long worstGap = 0;
+	for (int t = 0; t < 3; t++) {
+		long gap = 0, disagree = 0;
+		double tri = 0.0;
+		Local::run(tempos[t], gap, disagree, tri);
+		worstGap = std::max(worstGap, gap);
+		if (t == 0) {
+			// What is left at a matched tempo is the cable: one sample at each
+			// gate edge, a couple of hundred over eighteen seconds. A step out
+			// of line is tens of thousands of them.
+			report("artifex", "shared_clock_gates_agree", disagree, disagree < 500);
+			report("artifex", "shared_clock_lfos_agree", tri, tri < 0.05);
+		}
+	}
+	// A follower that misses an edge, or takes one of its own, lands a whole
+	// step from the leader's; the cable is a single sample.
+	report("artifex", "shared_clock_steps_together", worstGap, worstGap <= 4);
+}
+
 SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
@@ -2310,4 +2384,4 @@ SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudibl
            testLfoModAttenuverter, testSteppedVersusFreeCv, testPatternGateDrivesTrig,
            testFeedbackSafety, testFilterInLoopSafety, testAbuse, testExtremesStaySane,
            testModeCyclingDoesNotPop, testSampleRateInvariance, testBypass,
-           testStateRoundTrip, testLongRunStability)
+           testStateRoundTrip, testLongRunStability, testSharedClockStaysInStep)
