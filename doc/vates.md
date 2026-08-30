@@ -214,7 +214,12 @@ the output. At a tempo slow enough that a dotted quarter
 would not fit the buffer, the division halves rather than the time being
 clamped: it stays in tempo, just at a shorter one.
 
-To the right, one knob crosses a chorus into a flanger. The swept delay
+To the right, one knob crosses a chorus into a flanger. The wet arrives over
+the first third of the travel and then holds, and the character keeps moving
+under it: if the two rose together the chorus end would be inaudible, since
+the mix would still be under a fifth while the delay was already shortening
+into a flanger, and the whole knob would read as one flanger getting stronger.
+The swept delay
 shortens from 8 ms to 1.5 ms and its depth from ±2.5 ms to ±0.7 ms - a chorus
 range becoming a flanger range, with the first notch sweeping 227–625 Hz at
 the top - while the feedback climbs to 0.7 and the output drive to twice, so

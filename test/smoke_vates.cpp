@@ -1355,7 +1355,77 @@ static void testReverseStart() {
 	       attacking && refused && accepted);
 }
 
+// ── the right half of fx is two effects, not one getting louder ─────────────
+// The wet level and the character used to be the same number, so the chorus
+// end was inaudible: where the delay is still chorus-length the mix was under
+// a fifth, and by the time it could be heard the delay had shortened into a
+// flanger. Audition 5.4 heard the whole travel as "no flanger, little flanger,
+// lot of flanger", which is exactly that.
+static void testFxChorusEnd() {
+	struct Local {
+		static std::vector<float> grab(Vates& m, long& fr, float fx) {
+			m.params[Vates::FX_PARAM].setValue(fx);
+			run(m, fr, 1.0);                        // let the lines clear
+			std::vector<float> v;
+			pressTrigger(m, fr);
+			for (long i = 0; i < (long)(0.5 * SR); i++) {
+				m.process(makeArgs(fr++));
+				v.push_back(m.outputs[Vates::LEFT_OUTPUT].getVoltage());
+			}
+			return v;
+		}
+		// how far one setting moves the sound away from dry
+		static double moves(Vates& m, long& fr, float fx, const std::vector<float>& dry) {
+			std::vector<float> wet = grab(m, fr, fx);
+			double sd = 0.0, sy = 0.0;
+			for (size_t i = 0; i < dry.size() && i < wet.size(); i++) {
+				double d = wet[i] - dry[i];
+				sd += d * d;
+				sy += (double)dry[i] * dry[i];
+			}
+			return std::sqrt(sd / std::max(sy, 1e-12));
+		}
+		// the difference between two renders scaled to the same loudness, so
+		// what is left is character and not level
+		static double apart(const std::vector<float>& a, const std::vector<float>& b) {
+			double ra = 0.0, rb = 0.0;
+			for (size_t i = 0; i < a.size(); i++) ra += (double)a[i] * a[i];
+			for (size_t i = 0; i < b.size(); i++) rb += (double)b[i] * b[i];
+			ra = std::sqrt(ra / std::max<size_t>(a.size(), 1));
+			rb = std::sqrt(rb / std::max<size_t>(b.size(), 1));
+			double sd = 0.0;
+			size_t n = std::min(a.size(), b.size());
+			for (size_t i = 0; i < n; i++) {
+				double d = a[i] / std::max(ra, 1e-9) - b[i] / std::max(rb, 1e-9);
+				sd += d * d;
+			}
+			return std::sqrt(sd / std::max<size_t>(n, 1));
+		}
+	};
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "fx_chorus_setup", 0, false);
+		return;
+	}
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	selectSample(m, 0, 4);
+	m.params[Vates::LENGTH_PARAM].setValue(0.7f);
+
+	std::vector<float> dry = Local::grab(m, fr, 0.f);
+	double little = Local::moves(m, fr, 0.15f, dry);
+	report("vates", "fx_chorus_end_is_audible", little, little > 0.25);
+
+	// and the low end is a different effect from the top, not a quieter one:
+	// compared at the same loudness they are still far apart. Unit-RMS renders,
+	// so a difference of 1.0 is as far apart as two unrelated signals.
+	std::vector<float> chorus = Local::grab(m, fr, 0.15f);
+	std::vector<float> flanger = Local::grab(m, fr, 1.f);
+	double apart = Local::apart(chorus, flanger);
+	report("vates", "fx_ends_are_different_effects", apart, apart > 0.5);
+}
+
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
-           testAbuse, testFamiliesAreDealtEvenly, testReverseStart)
+           testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd)

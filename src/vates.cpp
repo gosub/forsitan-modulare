@@ -936,21 +936,36 @@ struct Vates : Module {
 			outR += wetR * amt * 0.8f;
 		}
 		else if (fxParam > 0.01f) {
-			// chorus into flanger: the further up, the shorter the delay and
-			// the more feedback, and the wet path soft-clips
+			// Chorus into flanger: the further up, the shorter the delay and
+			// the more feedback, and the wet path soft-clips.
+			//
+			// The wet level and the character used to be the same number, and
+			// that left the chorus half of the knob inaudible. At a tenth the
+			// delay is a chorus and the mix was 0.09; by the point the mix was
+			// loud enough to hear, the delay had already shortened into a
+			// flanger. Measured against dry, the effect depth ran 0.10 to 1.81
+			// straight up the travel while the character crossed over inside
+			// the quiet part of it, so the whole knob read as one flanger
+			// getting stronger.
+			//
+			// So the wet arrives over the first third and holds, and the
+			// character moves on a square law: the long-delay, low-feedback
+			// end is a chorus you can hear rather than somewhere the knob
+			// passes through on its way in.
 			float amt = fxParam;
+			float shape = amt * amt;
 			modPhase += 0.35f * args.sampleTime;
 			modPhase -= std::floor(modPhase);
 			float m1 = std::sin(2.f * (float)M_PI * modPhase);
 			float m2 = std::sin(2.f * (float)M_PI * (modPhase + 0.25f));
-			float base = (8.f - 6.5f * amt) * 0.001f * sr;
-			float depth = (2.5f - 1.8f * amt) * 0.001f * sr;
+			float base = (8.f - 6.5f * shape) * 0.001f * sr;
+			float depth = (2.5f - 1.8f * shape) * 0.001f * sr;
 			float wetL = mod[0].read(base + depth * m1);
 			float wetR = mod[1].read(base + depth * m2);
-			float fb = 0.7f * amt;
+			float fb = 0.7f * shape;
 			mod[0].write(std::tanh(outL + wetL * fb));
 			mod[1].write(std::tanh(outR + wetR * fb));
-			float mix = 0.9f * amt;
+			float mix = 0.9f * std::min(1.f, amt * 3.f);
 			outL = outL * (1.f - 0.5f * mix) + wetL * mix;
 			outR = outR * (1.f - 0.5f * mix) + wetR * mix;
 			outL = std::tanh(outL * (1.f + amt));
