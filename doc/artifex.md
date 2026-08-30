@@ -496,7 +496,12 @@ hardware's patch-programming tips describe.
 
 **tempo** sets the internal clock in BPM; a signal at **clk** takes over, and
 the module returns to its own clock two seconds after that signal stops.
-**clk** out passes the running clock on.
+**clk** out passes the running clock on, so one module can drive another: patch
+it into a second artifex or into vates and both pattern generators and LFOs run
+as one. They agree from the first beat when both tempo knobs start at the same
+value. If they did not, each ran free for a different number of steps before the
+cable took over and their step counters are offset by that difference - patch
+one gate or trigger into both **pat reset** inputs to line them up.
 
 The pattern generator runs sixteen steps of gate and CV, always on the clock.
 **rhythm** chooses one of 32 patterns - twenty-two written by hand and ten

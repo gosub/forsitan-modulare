@@ -245,11 +245,17 @@ a saw outright. **pwm** is the same tilt as a knob.
 |---------|--------------|
 | **tempo** | internal clock, 30–300 BPM. |
 | **clk in** | external clock. It takes over while it runs; two seconds of silence hands the tempo back to **tempo**. |
-| **clk out** | the clock in use, internal or external. |
+| **clk out** | the clock in use, internal or external. Patch it into a second vates or into artifex and both pattern generators and LFOs run as one. |
 | **rhythm** | selects one of 32 built-in 16-step gate patterns, with a CV input beside it: ten volts is the whole list, and it wraps past the end. Selecting a rhythm reloads it, discarding what the switches have written into it. |
 | **gate**, **cv** | the pattern's gate (75% of a step) and its stepped CV, 0–10V. |
 | **reset** | restarts both sequences. Patch a slow LFO here to shorten the pattern. |
 | **gate ptrn**, **cv ptrn** | a three-position switch and a jack each: live surgery on the gate and CV sequences. |
+
+Two modules on one clock agree from the first beat when both **tempo** knobs
+start at the same value. If they did not, each ran free for a different number
+of steps before the cable took over and their step counters are offset by that
+difference: patch one gate or trigger into both **reset** inputs to line them
+up.
 
 The two three-position switches are the hardware's best idea and they come
 over unchanged. Middle leaves the sequence alone. Up randomizes the step the
