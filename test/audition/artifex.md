@@ -550,14 +550,14 @@ drums()
 fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
 ```
 
-- [ ] 6.1. **env** → **fbk**, attenuverter negative, mode 1, long delay, high
+- [x] 6.1. **env** → **fbk**, attenuverter negative, mode 1, long delay, high
       feedback: repeats duck out of each hit and swell in the gaps. Then the
       same into **amount**. Does it breathe, or does it pump?
       ```python
       fx["env"] >> fx["fbk"]
       fx.set(fbk_att=-1.0)
       ```
-- [ ] 6.2. **Decide -** quantized mode changes (menu, default on) with fast
+- [x] 6.2. **Decide -** quantized mode changes (menu, default on) with fast
       mode CV and a slow clock: changes wait for the next step. Off, they are
       immediate and deliberately uglier. Is the default the right one?
       ```python
@@ -566,7 +566,7 @@ fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
       fx.set(fxmode_att=1.0)
       fx.menu(quantizeModeChanges=True)
       ```
-- [ ] 6.3. Pattern **cv** → **rhythm**, LFO saw → **stereo**, env → **filter**.
+- [x] 6.3. Pattern **cv** → **rhythm**, LFO saw → **stereo**, env → **filter**.
       Three cables, and it should never sound the same twice.
       ```python
       fx["cv"] >> fx["rhythm"]
@@ -574,7 +574,7 @@ fx.set(fxmode="delay", time=0.8, fbk="70%", amt="80%")
       fx["env"] >> fx["filter"]
       fx.set(fxmode="slicer", amt="60%")
       ```
-- [ ] 6.4. **artifex + vates** sharing a clock (artifex **clk out** → vates
+- [x] 6.4. **artifex + vates** sharing a clock (artifex **clk out** → vates
       **clk**): the two pattern generators and LFOs should agree - same
       rhythms, same phase - and stay agreed over a few minutes.
       ```python
@@ -613,9 +613,10 @@ clock()
 fx.set(fxmode="freezer", amt="50%")
 ```
 
-- [ ] 7.1. **Block sizes** 16 / 64 / 256 in Rack's engine settings, on the
-      clock-synced modes. The harness steps one sample at a time and cannot
-      see a block boundary.
+- [ ] 7.1. **Block size** 16 / 64 / 256 on the audio module in the rack - it is a
+      control on the module, not an entry in Rack's engine menu. The slicing
+      should land in the same place at all three, with no stutter or shift
+      added by the bigger blocks.
       `fx.set(fxmode="slicer", amt="60%")`
 - [ ] 7.2. **Bypass** mid-tail, then un-bypass. Rack bypasses by routing the
       input to the output without calling the module, so only the host can do
