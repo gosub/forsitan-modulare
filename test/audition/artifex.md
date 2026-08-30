@@ -613,16 +613,17 @@ clock()
 fx.set(fxmode="freezer", amt="50%")
 ```
 
-- [ ] 7.1. **Block size** 16 / 64 / 256 on the audio module in the rack - it is a
+- [x] 7.1. **Block size** 16 / 64 / 256 on the audio module in the rack - it is a
       control on the module, not an entry in Rack's engine menu. The slicing
       should land in the same place at all three, with no stutter or shift
       added by the bigger blocks.
       `fx.set(fxmode="slicer", amt="60%")`
-- [ ] 7.2. **Bypass** mid-tail, then un-bypass. Rack bypasses by routing the
+- [x] 7.2. **Bypass** mid-tail, then un-bypass. Rack bypasses by routing the
       input to the output without calling the module, so only the host can do
       it. Confirm bypass passes audio and the module comes back alive.
       `fx.set(fxmode="delay", time=0.9, fbk="70%")`
-- [ ] 7.3. **Ctrl+D mid-freeze** in Rack. The state round-trip is checked; what
-      is not is that Rack's own duplicate lands sane rather than sharing a
-      buffer.
+- [x] 7.3. **Ctrl+Shift+D mid-freeze** - duplicate with cables, so the copy is
+      patched in parallel and you hear both. The copy should start from its
+      own silence and freeze its own fragment; if the two play the same
+      frozen audio, or a knob on one moves the other, they share a buffer.
       `fx.set(amt="60%")`
