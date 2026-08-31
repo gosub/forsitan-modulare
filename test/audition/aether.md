@@ -154,7 +154,7 @@ A comparator across the input and the recovered output, thresholded by the
 
 ```python
 drums()
-a.set(carrier=0.4, demod=0.4)
+a.set(carrier=0.4, demod=0.4, type="2 - phase-frequency, quiet when unlocked")
 a["error"] >> out["output 1"] + out["output 2"]
 scope("error")
 ```
