@@ -115,9 +115,8 @@ a.set(type="2 - phase-frequency, quiet when unlocked", carrier=0.75, demod=0.75)
 
 **tone** is one pole sitting in the PLL loop *and* on the output, so it is a
 tracking control as much as a tone control: 60 Hz at zero, ~3 kHz at the top.
-Its **cv** is stacked under its own trimpot to the right of the knob, and is
-the only CV here over whether the receiver can follow rather than over what
-it is following.
+Its **cv** is the only one here over whether the receiver can follow, rather
+than over what it is following.
 
 ```python
 sine(220)

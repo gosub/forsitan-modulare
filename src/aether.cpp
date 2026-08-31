@@ -30,9 +30,8 @@
 //
 // TONE's own CV pair is stacked rather than laid out as the usual knob/trim/
 // jack triangle: the top row has the carrier and demodulator knobs directly
-// under it and no vertical room for a third row, so the trimpot and jack
-// share one column to the right of the knob and the "tone" label names all
-// three.
+// under it and no vertical room for a third row. The jack sits in the row
+// beside the knob and the trimpot hangs under the jack it attenuverts.
 //
 // Controls:
 //   Knobs : LEVEL, CARRIER, DEMOD, ERROR, TONE
@@ -270,8 +269,8 @@ struct AetherWidget : ModuleWidget {
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem TYPE_PARAM CKSSThree 2.3 param "" 0.0
 // @elem TONE_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem TONE_CV_PARAM Trimpot 3.03 param "" 0.0
 // @elem TONE_CV_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem TONE_CV_PARAM Trimpot 3.03 param "" 0.0
 // @elem CARRIER_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem ERROR_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DEMOD_PARAM RoundBigBlackKnob 7.62 param "" 0.0
@@ -294,7 +293,7 @@ struct AetherWidget : ModuleWidget {
 // @elem LABEL_IN label 0.0 label "in" 0.0 9.00 27.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 24.00 28.50
 // @elem LABEL_TYPE label 0.0 label "type" 0.0 38.00 28.50
-// @elem LABEL_TONE label 0.0 label "tone" 0.0 57.00 28.50
+// @elem LABEL_TONE label 0.0 label "tone" 0.0 51.50 28.50
 // @elem LABEL_CARRIER label 0.0 label "carrier" 0.0 18.00 57.50
 // @elem LABEL_ERROR label 0.0 label "error" 0.0 35.56 52.50
 // @elem LABEL_DEMOD label 0.0 label "demod" 0.0 53.00 57.50
@@ -322,8 +321,8 @@ struct AetherWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.00f, 20.00f)), module, Aether::LEVEL_PARAM));
         addParam(createParamCentered<CKSSThree>(mm2px(Vec(38.00f, 20.00f)), module, Aether::TYPE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(51.50f, 20.00f)), module, Aether::TONE_PARAM));
-        addParam(createParamCentered<Trimpot>(mm2px(Vec(63.00f, 11.50f)), module, Aether::TONE_CV_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(63.00f, 20.50f)), module, Aether::TONE_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(63.00f, 20.00f)), module, Aether::TONE_CV_INPUT));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(63.00f, 29.00f)), module, Aether::TONE_CV_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(18.00f, 46.00f)), module, Aether::CARRIER_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.56f, 44.00f)), module, Aether::ERROR_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(53.00f, 46.00f)), module, Aether::DEMOD_PARAM));

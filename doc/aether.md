@@ -68,7 +68,7 @@ standalone oscillator when nothing is patched at all.
 |---------|----------|
 | **cv** (left) | attenuator for the carrier's CV input |
 | **cv** (right) | attenuator for the demodulator's CV input |
-| **cv** (under **tone**) | attenuverter for the **tone** CV input stacked below it |
+| **cv** (under **tone**) | attenuverter for the **tone** CV jack it hangs under |
 | **mix** (left) | dry/wet for **out**, wet by default - see [the two mixes](#the-two-mixes) |
 | **mix** (right) | dry/wet for **error**, the same |
 
@@ -81,7 +81,7 @@ standalone oscillator when nothing is patched at all.
 | **in** | signal in. Unpatched, it is a +5 V bias |
 | **cv** ×2 | exponential CV over each clock, 1 V/oct at a fully open attenuator. **Unpatched, each is fed the signal itself**, so its attenuator becomes audio-rate FM depth |
 | **clk** ×2 | external clock in. Any signal crossing zero replaces that side's internal clock, and that side's CV stops doing anything |
-| **cv** (under **tone**) | CV over **tone**, 1 V/oct at a fully open trimpot, held to the knob's own 60 Hz – 12 kHz span. The trimpot attenuverts, so the same volts can darken instead |
+| **cv** (right of **tone**) | CV over **tone**, 1 V/oct at a fully open trimpot, held to the knob's own 60 Hz – 12 kHz span. The trimpot attenuverts, so the same volts can darken instead |
 | **cv** ×2 (bottom, outermost) | CV over the **mix** trimmer they share a label with. Patched, that trimmer becomes its attenuator: 0–10 V is dry to wet |
 | **out** | the recovered signal, with a level LED |
 | **error** | a comparator across input and output, with a level LED |
@@ -160,10 +160,11 @@ knob's own span and clamped at both ends: the pole *is* the loop, so driving
 it past either end is asking the receiver to stop being one. The trimpot is
 an attenuverter, so the same volts can darken instead.
 
-Its trimpot and jack are stacked in one column to the right of the knob
-rather than laid out as the usual knob / trimpot / jack triangle: the carrier
-and demodulator knobs sit directly under the top row, and there is no
-vertical room for a third row. The **tone** label names all three.
+Its jack and trimpot are stacked in one column rather than laid out as the
+usual knob / trimpot / jack triangle: the carrier and demodulator knobs sit
+directly under the top row, and there is no vertical room for a third row.
+The jack sits in the top row beside the knob, and the trimpot hangs under the
+jack it attenuverts.
 
 ## The two mixes
 
