@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [2.16.0] - 2026-08-31
 ### Added
   - **vates**, a 26 HP stereo sample player, after Bastl Instruments' Citadel
     Wave Bard. Its idea is that you do not draw a rhythm: you modulate which
@@ -134,6 +134,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     *and* on the output, so it sets tracking as much as brightness, and
     **error** is a comparator across input and output - the ring-modulator
     output, thresholded into a wet/dry of square waves.
+
+    **tone** is also the one control here with CV over whether the receiver
+    can follow, rather than over what it is following: the clock **cv** inputs
+    move the two rates, this one moves the bandwidth that decides whether the
+    loop can hold on to them, so a slow sweep walks the module in and out of
+    lock - on the exclusive-or, between a signal and silence. Its jack sits in
+    the top row beside the knob with the trimpot under it, an attenuverter
+    starting shut, and the CV is 1 V/oct held to the knob's own span. The
+    hardware has no such input.
 
     The normalling is the circuit's: nothing in **in** makes that jack a +5 V
     bias and the module a broken-radio oscillator, and nothing in a **cv**
