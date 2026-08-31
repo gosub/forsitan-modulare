@@ -23,7 +23,8 @@ Anything that yields a number is not here. `./test/smoke_aether` checks the
 recovery gain and its bounds, that a lost lock kills the signal rather than
 exploding, both clock outputs against their knobs, the external clock taking
 over, the error comparator's swing and threshold, all three types alive, the
-oversampling, and both mixes against arithmetic.
+oversampling, both mixes against arithmetic, and the tone CV against the
+octaves its knob covers.
 
 `./test/aether_probe` prints what the recovery is worth at each rate.
 
@@ -114,6 +115,9 @@ a.set(type="2 - phase-frequency, quiet when unlocked", carrier=0.75, demod=0.75)
 
 **tone** is one pole sitting in the PLL loop *and* on the output, so it is a
 tracking control as much as a tone control: 60 Hz at zero, ~3 kHz at the top.
+Its **cv** is stacked under its own trimpot to the right of the knob, and is
+the only CV here over whether the receiver can follow rather than over what
+it is following.
 
 ```python
 sine(220)
@@ -127,6 +131,20 @@ a.set(type="1 - exclusive-or, locks to harmonics")
       but it keeps lock. The difference between the two types here is the
       thing to hear.
       `a.set(type="2 - phase-frequency, quiet when unlocked")`
+- [ ] 3.3. Open the VCA: an LFO reaches **tone**'s **cv** with the knob low
+      and the trimpot open. It should breathe in and out of lock, going quiet
+      at the narrow end of each cycle rather than only darker.
+      ```python
+      a.set(tone=0.25, tone_cv=1.0)
+      vcv.modulate(a["tone cv"], rate=0.15)
+      ```
+- [ ] 3.4. **Decide -** the same LFO with the knob at noon: walk the trimpot
+      up from shut. Is 1 V/oct the right depth, or does everything useful
+      happen in the first sliver of its travel?
+      ```python
+      a.set(tone=0.5, tone_cv=0.15)
+      vcv.modulate(a["tone cv"], rate=0.15)
+      ```
 
 ---
 

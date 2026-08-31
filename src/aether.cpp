@@ -28,11 +28,17 @@
 // a fifth of a millimetre at the panel edges. One "mix" label names each
 // trimmer and its jack, the way a knob names its own CV cluster.
 //
+// TONE's own CV pair is stacked rather than laid out as the usual knob/trim/
+// jack triangle: the top row has the carrier and demodulator knobs directly
+// under it and no vertical room for a third row, so the trimpot and jack
+// share one column to the right of the knob and the "tone" label names all
+// three.
+//
 // Controls:
 //   Knobs : LEVEL, CARRIER, DEMOD, ERROR, TONE
-//   Trim  : CARRIER CV, DEMOD CV (attenuators), OUT MIX, ERROR MIX
+//   Trim  : CARRIER CV, DEMOD CV, TONE CV (attenuverter), OUT MIX, ERROR MIX
 //   Switch: TYPE (the three phase comparators)
-//   In    : IN, CARRIER CV, CARRIER CLK, DEMOD CV, DEMOD CLK,
+//   In    : IN, CARRIER CV, CARRIER CLK, DEMOD CV, DEMOD CLK, TONE CV,
 //           OUT MIX CV, ERROR MIX CV (each attenuated by its own knob)
 //   Out   : OUT, ERROR, TX (carrier clock), RX (demodulator clock)
 //   Lights: output level, error level
@@ -51,6 +57,7 @@ struct Aether : Module {
         DEMOD_CV_PARAM,
         ERROR_PARAM,
         TONE_PARAM,
+        TONE_CV_PARAM,
         TYPE_PARAM,
         OUT_MIX_PARAM,
         ERROR_MIX_PARAM,
@@ -62,6 +69,7 @@ struct Aether : Module {
         CARRIER_CLK_INPUT,
         DEMOD_CV_INPUT,
         DEMOD_CLK_INPUT,
+        TONE_CV_INPUT,
         OUT_MIX_INPUT,
         ERROR_MIX_INPUT,
         INPUTS_LEN
@@ -87,7 +95,7 @@ struct Aether : Module {
     int lastOsIndex = -1;
     float lastSampleRate = 0.f;
 
-    float prevCv[2] = {0.f, 0.f};
+    float prevCv[3] = {0.f, 0.f, 0.f};
     float prevClk[2] = {0.f, 0.f};
     float outEnv = 0.f, errEnv = 0.f;
 
@@ -106,6 +114,7 @@ struct Aether : Module {
         configParam(TONE_PARAM, 0.f, 1.f, 0.7f, "Tone", " Hz",
                     (float)(aether::kToneMax / aether::kToneMin),
                     (float)aether::kToneMin);
+        configParam(TONE_CV_PARAM, -1.f, 1.f, 0.f, "Tone CV amount", "%", 0.f, 100.f);
         configParam(OUT_MIX_PARAM, 0.f, 1.f, 1.f, "Out dry/wet", "%", 0.f, 100.f);
         configParam(ERROR_MIX_PARAM, 0.f, 1.f, 1.f, "Error dry/wet", "%", 0.f, 100.f);
         configSwitch(TYPE_PARAM, 0.f, 2.f, 0.f, "Loop type",
@@ -117,6 +126,7 @@ struct Aether : Module {
         configInput(CARRIER_CLK_INPUT, "Carrier clock (replaces the internal one)");
         configInput(DEMOD_CV_INPUT, "Demodulator CV");
         configInput(DEMOD_CLK_INPUT, "Demodulator clock (replaces the internal one)");
+        configInput(TONE_CV_INPUT, "Tone CV (the trimpot attenuverts it)");
         configInput(OUT_MIX_INPUT, "Out dry/wet CV (the knob attenuates it)");
         configInput(ERROR_MIX_INPUT, "Error dry/wet CV (the knob attenuates it)");
         configOutput(SIGNAL_OUTPUT, "Recovered signal");
@@ -130,7 +140,8 @@ struct Aether : Module {
 
     void onReset() override {
         engine.reset();
-        prevCv[0] = prevCv[1] = prevClk[0] = prevClk[1] = 0.f;
+        prevCv[0] = prevCv[1] = prevCv[2] = 0.f;
+        prevClk[0] = prevClk[1] = 0.f;
         outEnv = errEnv = 0.f;
         lastOsIndex = -1;
     }
@@ -181,6 +192,7 @@ struct Aether : Module {
         c.demodKnob = params[DEMOD_PARAM].getValue();
         c.demodCvAmt = params[DEMOD_CV_PARAM].getValue();
         c.tone = params[TONE_PARAM].getValue();
+        c.toneCvAmt = params[TONE_CV_PARAM].getValue();
         c.errThresh = params[ERROR_PARAM].getValue();
         c.type = (int)std::round(params[TYPE_PARAM].getValue());
         c.inputPatched = inputs[SIGNAL_INPUT].isConnected();
@@ -189,8 +201,9 @@ struct Aether : Module {
         c.extCarrier = inputs[CARRIER_CLK_INPUT].isConnected();
         c.extDemod = inputs[DEMOD_CLK_INPUT].isConnected();
 
-        const float cvNow[2] = {inputs[CARRIER_CV_INPUT].getVoltage(),
-                                inputs[DEMOD_CV_INPUT].getVoltage()};
+        const float cvNow[3] = {inputs[CARRIER_CV_INPUT].getVoltage(),
+                                inputs[DEMOD_CV_INPUT].getVoltage(),
+                                inputs[TONE_CV_INPUT].getVoltage()};
         const float clkNow[2] = {inputs[CARRIER_CLK_INPUT].getVoltage(),
                                  inputs[DEMOD_CLK_INPUT].getVoltage()};
 
@@ -205,15 +218,16 @@ struct Aether : Module {
             const double cvD = prevCv[1] + (cvNow[1] - prevCv[1]) * f;
             const double clkC = prevClk[0] + (clkNow[0] - prevClk[0]) * f;
             const double clkD = prevClk[1] + (clkNow[1] - prevClk[1]) * f;
+            const double cvT = prevCv[2] + (cvNow[2] - prevCv[2]) * f;
 
             const aether::Engine::Frame fr =
-                engine.process(c, inBuf[k], cvC, cvD, clkC, clkD);
+                engine.process(c, inBuf[k], cvC, cvD, clkC, clkD, cvT);
             outBuf[SIGNAL_OUTPUT][k] = (float)fr.out;
             outBuf[ERROR_OUTPUT][k] = (float)fr.error;
             outBuf[CARRIER_OUTPUT][k] = (float)fr.carrierClk;
             outBuf[DEMOD_OUTPUT][k] = (float)fr.demodClk;
         }
-        prevCv[0] = cvNow[0]; prevCv[1] = cvNow[1];
+        prevCv[0] = cvNow[0]; prevCv[1] = cvNow[1]; prevCv[2] = cvNow[2];
         prevClk[0] = clkNow[0]; prevClk[1] = clkNow[1];
 
         float v[OUTPUTS_LEN];
@@ -256,6 +270,8 @@ struct AetherWidget : ModuleWidget {
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem TYPE_PARAM CKSSThree 2.3 param "" 0.0
 // @elem TONE_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem TONE_CV_PARAM Trimpot 3.03 param "" 0.0
+// @elem TONE_CV_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem CARRIER_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem ERROR_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DEMOD_PARAM RoundBigBlackKnob 7.62 param "" 0.0
@@ -275,10 +291,10 @@ struct AetherWidget : ModuleWidget {
 // @elem OUT_MIX_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem ERROR_MIX_PARAM Trimpot 3.03 param "" 0.0
 // @elem ERROR_MIX_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem LABEL_IN label 0.0 label "in" 0.0 11.00 27.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 26.50 28.50
-// @elem LABEL_TYPE label 0.0 label "type" 0.0 45.00 28.50
-// @elem LABEL_TONE label 0.0 label "tone" 0.0 60.00 28.50
+// @elem LABEL_IN label 0.0 label "in" 0.0 9.00 27.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 24.00 28.50
+// @elem LABEL_TYPE label 0.0 label "type" 0.0 38.00 28.50
+// @elem LABEL_TONE label 0.0 label "tone" 0.0 57.00 28.50
 // @elem LABEL_CARRIER label 0.0 label "carrier" 0.0 18.00 57.50
 // @elem LABEL_ERROR label 0.0 label "error" 0.0 35.56 52.50
 // @elem LABEL_DEMOD label 0.0 label "demod" 0.0 53.00 57.50
@@ -302,10 +318,12 @@ struct AetherWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(63.50f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(63.50f, 123.42f)))); // SCREW_BR
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(11.00f, 20.00f)), module, Aether::SIGNAL_INPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(26.50f, 20.00f)), module, Aether::LEVEL_PARAM));
-        addParam(createParamCentered<CKSSThree>(mm2px(Vec(45.00f, 20.00f)), module, Aether::TYPE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(60.00f, 20.00f)), module, Aether::TONE_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.00f, 20.00f)), module, Aether::SIGNAL_INPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(24.00f, 20.00f)), module, Aether::LEVEL_PARAM));
+        addParam(createParamCentered<CKSSThree>(mm2px(Vec(38.00f, 20.00f)), module, Aether::TYPE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(51.50f, 20.00f)), module, Aether::TONE_PARAM));
+        addParam(createParamCentered<Trimpot>(mm2px(Vec(63.00f, 11.50f)), module, Aether::TONE_CV_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(63.00f, 20.50f)), module, Aether::TONE_CV_INPUT));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(18.00f, 46.00f)), module, Aether::CARRIER_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.56f, 44.00f)), module, Aether::ERROR_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(53.00f, 46.00f)), module, Aether::DEMOD_PARAM));

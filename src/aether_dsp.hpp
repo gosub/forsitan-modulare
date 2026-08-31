@@ -75,9 +75,14 @@ static const double kClkMax = 400000.0;
 // Octaves per volt at a fully open CV attenuator: +-5 V covers +-5 octaves.
 static const double kClkOctPerVolt = 1.0;
 
-// TONE is one passive pole, sitting in the loop and on the output both.
+// TONE is one passive pole, sitting in the loop and on the output both. Its
+// CV is in octaves per volt like the clocks', and is held to the same span
+// the knob covers: the pole is the loop's own bandwidth, so pushing it past
+// either end is asking the receiver to stop being one.
 static const double kToneMin = 60.0;
 static const double kToneMax = 12000.0;
+static const double kToneOctaves = 7.6438561897747253;  // log2(kToneMax/kToneMin)
+static const double kToneOctPerVolt = 1.0;
 // Fixed poles: the output buffer's bandwidth and its coupling capacitor.
 static const double kOutPoleHz = 40000.0;
 static const double kDcBlockHz = 5.0;
@@ -90,8 +95,8 @@ static const double kOutVolts = 5.0;
 static const double kClkVolts = 5.0;
 static const double kErrVolts = 5.0;
 
-// 2^x to about six digits, so the two clocks can be exponential without a
-// pow() per oversampled frame.
+// 2^x to about six digits, so the two clocks and the tone pole can be
+// exponential without a pow() per oversampled frame.
 inline double fastExp2(double x) {
     x = clampd(x, -60.0, 60.0);
     const double xi = std::floor(x);
@@ -185,6 +190,7 @@ struct Engine {
         double demodKnob = 0.7;
         double demodCvAmt = 0.0;
         double tone = 0.5;           // 0..1
+        double toneCvAmt = 0.0;      // -1..1
         double errThresh = 0.0;      // -1..1
         int type = PD_XOR;
         bool inputPatched = false;
@@ -220,7 +226,7 @@ struct Engine {
     // cached control-rate derivations
     double tau = 1.0 / (2.0 * M_PI * 1000.0);
     double carrierOct = 0.0, demodOct = 0.0;
-    double lastTone = -1.0, lastCarrierKnob = -1.0, lastDemodKnob = -1.0;
+    double lastToneOct = -1.0, lastCarrierKnob = -1.0, lastDemodKnob = -1.0;
 
     void setSampleRate(double sr) {
         sampleRate = sr;
@@ -230,7 +236,7 @@ struct Engine {
     void reset() {
         tx.reset(); rx.reset(); pd.reset();
         loop = toneOut = outPole = dcState = 0.0;
-        lastTone = lastCarrierKnob = lastDemodKnob = -1.0;
+        lastToneOct = lastCarrierKnob = lastDemodKnob = -1.0;
         carrierTimer = demodTimer = 0.0;
         extPrev[0] = extPrev[1] = 0.0;
         errState = false;
@@ -260,7 +266,8 @@ struct Engine {
     // One oversampled frame. All voltages are Rack volts.
     Frame process(const Controls& c, double inVolts,
                   double carrierCv, double demodCv,
-                  double extCarrierV, double extDemodV) {
+                  double extCarrierV, double extDemodV,
+                  double toneCv = 0.0) {
         Frame f;
 
         // ── input stage ─────────────────────────────────────────────────────
@@ -277,11 +284,16 @@ struct Engine {
                          : (c.carrierCvPatched ? carrierCv : sig);
         const double cvD = c.extDemod ? 0.0
                          : (c.demodCvPatched ? demodCv : sig);
-        if (c.tone != lastTone) {
-            lastTone = c.tone;
-            const double toneHz = kToneMin * std::pow(kToneMax / kToneMin,
-                                                      clampd(c.tone, 0.0, 1.0));
-            tau = 1.0 / (2.0 * M_PI * toneHz);
+        // TONE is the loop's bandwidth as much as the output filter, so its
+        // CV is the one control here that sweeps the receiver in and out of
+        // lock. Modulated it moves every frame; the cache keeps a still knob
+        // free.
+        const double toneOct = clampd(kToneOctaves * clampd(c.tone, 0.0, 1.0)
+                                      + kToneOctPerVolt * c.toneCvAmt * toneCv,
+                                      0.0, kToneOctaves);
+        if (toneOct != lastToneOct) {
+            lastToneOct = toneOct;
+            tau = 1.0 / (2.0 * M_PI * (kToneMin * fastExp2(toneOct)));
         }
         if (c.carrierKnob != lastCarrierKnob) {
             lastCarrierKnob = c.carrierKnob;

@@ -368,6 +368,79 @@ static void testMix() {
            maxDiff(cvNeg.out, cvNeg.in) < 1e-4);
 }
 
+// ── TONE CV ─────────────────────────────────────────────────────────────────
+// The trimpot is an attenuverter and the CV is in octaves per volt, on the
+// same span the knob covers. So the arithmetic is checkable: a knob at t with
+// v volts through a fully open trimpot has to be the knob alone at
+// (kToneOctaves*t + v)/kToneOctaves, sample for sample.
+static std::vector<float> runTone(float knob, float amt, float cv,
+                                  bool cvPatched) {
+    Aether m; long fr = 0;
+    setKnobs(m, 96000.0, 96000.0, 1.f, knob, aether::PD_PFD);
+    m.params[Aether::TONE_CV_PARAM].setValue(amt);
+    m.inputs[Aether::SIGNAL_INPUT].channels = 1;
+    if (cvPatched) {
+        m.inputs[Aether::TONE_CV_INPUT].channels = 1;
+        m.inputs[Aether::TONE_CV_INPUT].setVoltage(cv);
+    }
+    std::vector<float> out;
+    double ph = 0.0;
+    const double w = 2.0 * M_PI * 2000.0 / SR;
+    const long settle = (long)(0.3 * SR), meas = (long)(0.2 * SR);
+    for (long i = 0; i < settle + meas; i++) {
+        m.inputs[Aether::SIGNAL_INPUT].setVoltage(4.f * (float)std::sin(ph));
+        ph += w;
+        m.process(makeArgs(fr++));
+        if (i >= settle) out.push_back(m.outputs[Aether::SIGNAL_OUTPUT].getVoltage());
+    }
+    return out;
+}
+
+static double peakOf(const std::vector<float>& v) {
+    double p = 0.0;
+    for (float x : v) p = std::max(p, (double)std::fabs(x));
+    return p;
+}
+
+static void testToneCv() {
+    const float t0 = 0.3f;
+    const float cv = 3.f;
+    const float equiv = (float)(((double)aether::kToneOctaves * t0 + cv)
+                                / aether::kToneOctaves);
+
+    const std::vector<float> plain = runTone(t0, 0.f, 0.f, false);
+    const std::vector<float> up = runTone(t0, 1.f, cv, true);
+    const std::vector<float> knobUp = runTone(equiv, 0.f, 0.f, false);
+
+    // +3 V through an open trimpot is the knob three octaves higher
+    report("aether", "tonecv_is_octaves", maxDiff(up, knobUp),
+           maxDiff(up, knobUp) < 1e-4);
+    // and it did something: 2 kHz gets through the wider pole
+    report("aether", "tonecv_opens", peakOf(up) / std::max(peakOf(plain), 1e-9),
+           peakOf(up) > peakOf(plain) * 1.5);
+
+    // a shut trimpot is no CV at all, whatever is patched
+    const std::vector<float> shut = runTone(t0, 0.f, 5.f, true);
+    report("aether", "tonecv_amt_zero_is_knob", maxDiff(shut, plain),
+           maxDiff(shut, plain) < 1e-4);
+
+    // the trimpot inverts: the same volts darken instead
+    const std::vector<float> down = runTone(0.7f, -1.f, cv, true);
+    const std::vector<float> plainHi = runTone(0.7f, 0.f, 0.f, false);
+    report("aether", "tonecv_inverts", peakOf(down) / std::max(peakOf(plainHi), 1e-9),
+           peakOf(down) < peakOf(plainHi));
+
+    // and it cannot be driven past either end of the knob's own span
+    const std::vector<float> top = runTone(1.f, 1.f, 10.f, true);
+    const std::vector<float> knobTop = runTone(1.f, 0.f, 0.f, false);
+    report("aether", "tonecv_clamps_high", maxDiff(top, knobTop),
+           maxDiff(top, knobTop) < 1e-4);
+    const std::vector<float> bot = runTone(0.f, -1.f, 10.f, true);
+    const std::vector<float> knobBot = runTone(0.f, 0.f, 0.f, false);
+    report("aether", "tonecv_clamps_low", maxDiff(bot, knobBot),
+           maxDiff(bot, knobBot) < 1e-4);
+}
+
 SMOKE_MAIN(testRecovery, testNoLock, testCarrierCrush, testStandalone,
            testClockOuts, testExternalClock, testError, testTypes,
-           testAbuse, testOversampling, testMix)
+           testAbuse, testOversampling, testMix, testToneCv)

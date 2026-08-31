@@ -68,6 +68,7 @@ standalone oscillator when nothing is patched at all.
 |---------|----------|
 | **cv** (left) | attenuator for the carrier's CV input |
 | **cv** (right) | attenuator for the demodulator's CV input |
+| **cv** (under **tone**) | attenuverter for the **tone** CV input stacked below it |
 | **mix** (left) | dry/wet for **out**, wet by default - see [the two mixes](#the-two-mixes) |
 | **mix** (right) | dry/wet for **error**, the same |
 
@@ -80,6 +81,7 @@ standalone oscillator when nothing is patched at all.
 | **in** | signal in. Unpatched, it is a +5 V bias |
 | **cv** ×2 | exponential CV over each clock, 1 V/oct at a fully open attenuator. **Unpatched, each is fed the signal itself**, so its attenuator becomes audio-rate FM depth |
 | **clk** ×2 | external clock in. Any signal crossing zero replaces that side's internal clock, and that side's CV stops doing anything |
+| **cv** (under **tone**) | CV over **tone**, 1 V/oct at a fully open trimpot, held to the knob's own 60 Hz – 12 kHz span. The trimpot attenuverts, so the same volts can darken instead |
 | **cv** ×2 (bottom, outermost) | CV over the **mix** trimmer they share a label with. Patched, that trimmer becomes its attenuator: 0–10 V is dry to wet |
 | **out** | the recovered signal, with a level LED |
 | **error** | a comparator across input and output, with a level LED |
@@ -149,6 +151,19 @@ filter are the same pole:
 Low **tone** is a narrow loop: dark, slow to track, and - on type 1 - unable
 to capture at all. High **tone** is a wide loop: brighter, better tracking,
 and it passes more of the loop's own ripple.
+
+That is why it has CV. The clock **cv** inputs move the two rates; this one
+moves the bandwidth that decides whether the receiver can hold on to them, so
+sweeping it walks the module in and out of lock - on type 1, the difference
+between a signal and silence. It is 1 V/oct at a fully open trimpot, on the
+knob's own span and clamped at both ends: the pole *is* the loop, so driving
+it past either end is asking the receiver to stop being one. The trimpot is
+an attenuverter, so the same volts can darken instead.
+
+Its trimpot and jack are stacked in one column to the right of the knob
+rather than laid out as the usual knob / trimpot / jack triangle: the carrier
+and demodulator knobs sit directly under the top row, and there is no
+vertical room for a third row. The **tone** label names all three.
 
 ## The two mixes
 
@@ -240,11 +255,15 @@ What is inference, and should be treated as such:
   move the sweet spots around the knobs; they do not change the class of
   sound.
 
-What is added, and is not on the hardware at all: the two **mix** trimmers and
-their CV inputs. The hardware has no dry/wet - a rack patches one - but in
-Rack the module is as likely to sit in an effect send as in a voice, and a
-crossfade there costs a knob rather than a mixer channel. Fully clockwise,
-where they start, they are not in the signal path.
+What is added, and is not on the hardware at all: the two **mix** trimmers
+with their CV inputs, and CV over **tone**. The hardware has no dry/wet - a
+rack patches one - but in Rack the module is as likely to sit in an effect
+send as in a voice, and a crossfade there costs a knob rather than a mixer
+channel. Fully clockwise, where they start, they are not in the signal path.
+The **tone** CV is there because the loop bandwidth is the one thing on the
+panel that decides whether the receiver works at all, and a control that
+interesting should not be hands-only in a rack. At a shut trimpot, where it
+starts, it does nothing.
 
 What is not modelled: nothing in the analogue path outside the two blocks -
 no converter nonlinearity beyond its saturation, no supply sag, no
