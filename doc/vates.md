@@ -261,7 +261,7 @@ sing on the way through and not enough to boom when it arrives.
 | control | what it does |
 |---------|--------------|
 | **sync / free** | whether the LFO follows the clock or runs on its own. |
-| **rate** | in sync, the clock divider, from two bars a cycle to four cycles a step; in free, 0.01–20 Hz. Clockwise is faster in both, so the knob does not reverse its meaning when the switch flips. |
+| **rate** | in sync, the clock divider: fifteen of them, from sixteen bars a cycle to four cycles a step, thirds included; in free, 0.01–20 Hz. Clockwise is faster in both, so the knob does not reverse its meaning when the switch flips. |
 | **lfo mod** | attenuverter and input for the rate - in sync it moves the division, since a phase-locked LFO has nothing to detune. |
 | **reset** | a rising edge restarts the triangle at its peak. |
 | **pwm** | how much of the cycle the triangle spends rising, 2–98%, which is the pulse output's duty cycle. |

@@ -821,7 +821,8 @@ static void testLfo() {
 
 	// synced: the LFO period follows the step clock
 	m.params[Vates::SYNC_PARAM].setValue(1.f);
-	m.params[Vates::RATE_PARAM].setValue(0.69f);    // one step per cycle
+	m.params[Vates::RATE_PARAM].setValue(
+		forsitan_mod::lfoDivisionKnob(11));           // one step per cycle
 	m.params[Vates::TEMPO_PARAM].setValue(120.f);
 	run(m, fr, 0.5);
 	int syncCycles = 0;
@@ -845,7 +846,8 @@ static void testSaw() {
 	long fr = 0;
 	m.params[Vates::TEMPO_PARAM].setValue(240.f);   // a step is 62.5 ms
 	m.params[Vates::SYNC_PARAM].setValue(1.f);
-	m.params[Vates::RATE_PARAM].setValue(0.19f);    // sixteen steps a cycle
+	m.params[Vates::RATE_PARAM].setValue(
+		forsitan_mod::lfoDivisionKnob(4));            // sixteen steps a cycle
 	m.inputs[Vates::PAT_RESET_INPUT].channels = 1;
 
 	run(m, fr, 0.7);
@@ -1609,6 +1611,34 @@ static void testMinTriggerGap() {
 	       byHand >= presses - 1);
 }
 
+// ── every synced division divides the counter the phase comes from ──────────
+// The synced LFO takes its phase from a running step counter, so a division
+// that does not divide that counter's period makes the LFO jump when it wraps
+// - and two modules sharing a clock, having wrapped at different moments, then
+// disagree for good. The thirds broke this when they were added: the counter
+// ran two bars, 32 steps, and 12 does not divide 32.
+static void testLfoDivisionsDivideTheCounter() {
+	double worst = 0.0;
+	int bad = -1;
+	for (int i = 0; i < forsitan_mod::kLfoDivCount; i++) {
+		double cycles = (double)forsitan_mod::kBarCycle
+		                * forsitan_mod::kLfoDivDen[i]
+		                / forsitan_mod::kLfoDivNum[i];
+		double err = std::fabs(cycles - std::floor(cycles + 0.5));
+		if (err > worst) { worst = err; bad = i; }
+	}
+	if (worst > 1e-9)
+		std::printf("# division %d (%.4f steps a cycle) does not divide %d\n",
+		            bad, forsitan_mod::lfoDivision(bad), forsitan_mod::kBarCycle);
+	report("vates", "lfo_divisions_divide_the_bar_cycle", worst, worst < 1e-9);
+	// slowest and fastest, so the range itself is pinned
+	report("vates", "lfo_slowest_division", forsitan_mod::lfoDivision(0),
+	       forsitan_mod::lfoDivision(0) >= 256.f);
+	report("vates", "lfo_fastest_division",
+	       forsitan_mod::lfoDivision(forsitan_mod::kLfoDivCount - 1),
+	       forsitan_mod::lfoDivision(forsitan_mod::kLfoDivCount - 1) <= 0.25f);
+}
+
 // ── the chorus LFO slows as the knob rises ──────────────────────────────────
 // kMapChorusFreq runs 2 Hz, 0.4, 0.2, 0.1 across the zone, so the effect
 // deepens by slowing rather than by widening - fast and shallow at the bottom
@@ -1706,7 +1736,7 @@ static void testFxChorusEnd() {
 	report("vates", "fx_ends_are_different_effects", apart, apart > 0.5);
 }
 
-SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testMinTriggerGap, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testLfoDivisionsDivideTheCounter, testMinTriggerGap, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks)

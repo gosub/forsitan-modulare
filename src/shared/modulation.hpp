@@ -93,6 +93,43 @@ inline int rhythmSelect(int base, float cv, float att) {
 	return i;
 }
 
+// The synced LFO's divisions, in steps per cycle, slowest first. This is
+// kBaseLfoRatios read the other way up: fifteen divisions from 256 steps a
+// cycle out to four cycles a step, thirds included. Eight of them reaching only
+// 32 steps was two bars at the slow end where the hardware gives sixteen, and a
+// modulation source that takes sixteen bars to come round is a different
+// instrument from one that takes two.
+// How many steps the running counter the synced LFO derives its phase from
+// takes to come round. Every division has to divide it exactly, or the LFO
+// jumps when the counter wraps - and two modules on one cable, having wrapped
+// at different moments, then disagree for good. That is 48 bars: the LCM of
+// 256, the slowest division, and 12, the coarsest of the thirds. It was two
+// bars, which was enough while every division was a power of two.
+static const int kBarCycle = 48 * kSteps;
+
+// Steps per cycle, as exact rationals. A float cannot hold a third, and the
+// phase is a division by this: stored as 0.33333334 the counter's 768 steps
+// come to 2303.9998 cycles rather than 2304, so the LFO steps a fraction of a
+// cycle every time the counter wraps. Kept as a pair it divides exactly, and
+// every entry lands on a whole number of cycles at kBarCycle.
+static const int kLfoDivCount = 15;
+static const int kLfoDivNum[kLfoDivCount] = {
+	256, 128, 64, 32, 16, 12, 8, 6, 4, 3, 2, 1, 1, 1, 1};
+static const int kLfoDivDen[kLfoDivCount] = {
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 4};
+
+// The same as a number, for a display or a test.
+inline float lfoDivision(int i) {
+	i = clamp(i, 0, kLfoDivCount - 1);
+	return (float)kLfoDivNum[i] / (float)kLfoDivDen[i];
+}
+
+// The rate knob position that selects one of them, for tests and presets: the
+// middle of that division's band, so it does not sit on a boundary.
+inline float lfoDivisionKnob(int i) {
+	return ((float)clamp(i, 0, kLfoDivCount - 1) + 0.5f) / (float)kLfoDivCount;
+}
+
 // ── the section ───────────────────────────────────────────────────────────────
 
 // Everything the host module has already read from its own panel. The
@@ -134,7 +171,7 @@ struct Modulation {
 	// Position in steps, running and fractional: the synced LFO derives its
 	// phase from this rather than free-running at a synced rate, so its saw
 	// output really is the place in the bar and stays there.
-	int barStep = 0;          // 0..31: two bars, so every division divides it
+	int barStep = 0;          // 0..kBarCycle-1, see the note on kBarCycle
 	double barPos = 0.0;
 
 	// ── pattern ──────────────────────────────────────────────────────────────
@@ -241,7 +278,7 @@ struct Modulation {
 		}
 		if (stepped) {
 			step = (step + 1) % kSteps;
-			barStep = (barStep + 1) % (2 * kSteps);
+			barStep = (barStep + 1) % kBarCycle;
 
 			// the two switches, each normalled to its own input: middle
 			// leaves the sequence alone, up randomizes the step the sequence
@@ -282,13 +319,15 @@ struct Modulation {
 			// Synced means phase-locked, not merely a synced rate: the phase is
 			// derived from the step clock, so the LFO cannot drift against the
 			// pattern and its saw stays a usable phasor.
-			static const float div[8] = {32.f, 16.f, 8.f, 4.f, 2.f, 1.f, 0.5f, 0.25f};
-			int d = clamp((int)(in.lfoRateKnob * 7.999f + in.lfoRateMod * 4.f), 0, 7);
+			int d = clamp((int)(in.lfoRateKnob * (kLfoDivCount - 0.001f)
+			                    + in.lfoRateMod * (kLfoDivCount / 2)),
+			              0, kLfoDivCount - 1);
 			// modulation moves the division rather than detuning the rate: a
 			// phase derived from the clock has nothing to detune
 			if (lfoReset)
 				lfoOffset = barPos;
-			double phase = (barPos - lfoOffset) / div[d];
+			double phase = (barPos - lfoOffset) * (double)kLfoDivDen[d]
+			               / (double)kLfoDivNum[d];
 			phase -= std::floor(phase);
 			lfoPhase = (float)phase;
 		}
