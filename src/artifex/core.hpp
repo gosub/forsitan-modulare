@@ -864,12 +864,19 @@ struct Core {
 			frozen = true;
 		}
 
-		// Until something is caught there is nothing to play: the buffer
-		// holds the last visit's chunk, or nothing. Then the first capture
-		// fades in rather than arriving at full level in one sample.
+		// Nothing caught yet: there is no loop to play, and the buffer
+		// still holds whatever the last visit to the mode froze. Reading it
+		// anyway was a stale four-sample loop -- capturedFrames is nought on
+		// arrival, so freezeFrames clamps to its floor of four and base lands
+		// at minus four, wrapping onto the end of the old capture -- which
+		// came out as an 11 kHz buzz at whatever level that capture had
+		// reached, until the record head had enough to freeze. Pass the input
+		// through instead, which is also what the hardware does while it
+		// fills: it reads the position it writes. The first capture then
+		// fades in from the input rather than replacing it in one sample.
 		if (!frozen) {
 			for (int c = 0; c < 2; c++)
-				out[c] = in[c] * (1.f - amt);
+				out[c] = in[c];
 			return;
 		}
 		freezeOpen = std::min(1.f, freezeOpen + ct.dt / kEdgeFade);
@@ -916,7 +923,7 @@ struct Core {
 				wet = ghost + (wet - ghost) * xf;
 				freezeGhostPos[c] += rate;
 			}
-			wet *= freezeOpen;
+			wet = in[c] + (wet - in[c]) * freezeOpen;
 			// Feedback here bleeds new audio into the frozen buffer rather
 			// than running the global loop, thickening what is held -- and
 			// what is already there is scaled down as it does, which is the

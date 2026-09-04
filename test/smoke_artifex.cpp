@@ -1587,6 +1587,44 @@ static void testFreezerFeedbackSettles() {
 	       peak > dry * 1.5f);
 }
 
+// ── coming back to the freezer does not replay the last visit ────────────────
+// On arrival nothing is captured yet, so capturedFrames is nought, freezeFrames
+// clamps to its floor of four and base lands at minus four - which wrapped onto
+// the tail of whatever the previous visit had frozen and played it as a
+// four-sample loop. With the feedback up that buffer is at the limiter, so
+// re-entering the mode was an 11 kHz buzz at full scale until the record head
+// had enough to freeze again.
+static void testFreezerReentry() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_FREEZER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(1.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.45f);
+	// long enough to catch a chunk and drive it up to the limiter
+	runTone(m, fr, 4.0, 220.f, 3.f);
+	// away and back
+	setMode(m, artifex_fx::MODE_PANNER);
+	runTone(m, fr, 0.2, 220.f, 3.f);
+	setMode(m, artifex_fx::MODE_FREEZER);
+	Rec rec;
+	runTone(m, fr, 0.06, 220.f, 3.f, &rec);
+
+	// past the mode-change splice, which relaxes over ten milliseconds and is
+	// entitled to carry the level the panner was leaving at
+	size_t from = (size_t)(0.02 * SR);
+	float peak = 0.f;
+	for (size_t i = from; i < rec.l.size(); i++)
+		peak = std::max(peak, std::fabs(rec.l[i]));
+	// the input is 3 V; the stale loop was at the limiter
+	report("artifex", "freezer_reentry_is_not_the_last_capture", peak, peak < 4.5f);
+	// and it is the input coming through, not a buzz: a 220 Hz tone crosses
+	// zero 440 times a second, four samples of anything cross it thousands
+	report("artifex", "freezer_reentry_passes_the_input",
+	       zcr(rec.l, from, rec.l.size()),
+	       zcr(rec.l, from, rec.l.size()) < 1000.0);
+}
+
 // ── the delay syncs to clk, and to trig only when clk is quiet ────────────────
 // Everything else clock-driven in the module follows clk; the delay used to
 // follow the trig input alone, which is where the hardware takes a clock but
@@ -2732,7 +2770,7 @@ static void testClockDoesNotClick() {
 
 SMOKE_MAIN(testKnobStepsDoNotClick, testModeChangesDoNotClick, testClockDoesNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
-           testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testFreezerFeedbackSettles, testDelayClockSync, testWrapClick,
+           testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testFreezerFeedbackSettles, testFreezerReentry, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
            testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock,
