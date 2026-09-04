@@ -45,6 +45,10 @@ static const int kSteps = forsitan_mod::kSteps;
 // short enough not to smear a drum hit.
 static const float kDeclick = 0.003f;
 
+// The shortest gap between two hits. The hardware's kTimeBetweenTriggers, kept
+// at the 20 ms its own comment asks for.
+static const float kMinTrigGap = 0.020f;
+
 using forsitan_dsp::Svf;
 using forsitan_dsp::Delay;
 using forsitan_mod::rhythmPattern;
@@ -249,6 +253,16 @@ struct Vates : Module {
 	float dlyT = -1.f, dlyPrevT = 0.f, dlyXf = 1.f;
 
 	dsp::SchmittTrigger trigIn;
+	// Seconds since the last hit started. The hardware refuses a trigger
+	// inside kTimeBetweenTriggers, with a note in the source asking for it to
+	// be left at 20 ms "to prevent glitches when modulating eg. both Sample
+	// Mod and TRIG" - which is a patch anyone makes here, since play mode
+	// fires on every crossing of the sample CV. Without a floor a trig at
+	// audio rate restarts the voice faster than the 3 ms declick can run, and
+	// the fade slot holds one outgoing hit: the second one to arrive inside a
+	// declick cuts the first one off mid-fade, which is the click the slot is
+	// there to prevent.
+	float sinceTrig = 1.f;
 	dsp::BooleanTrigger trigButton, bankUpButton, bankDownButton;
 
 	Vates() : bankTotal(vates_bank::kNumBanks) {
@@ -780,6 +794,7 @@ struct Vates : Module {
 		float tri = modul.tri;
 
 		// ── triggers ─────────────────────────────────────────────────────────
+		sinceTrig += args.sampleTime;
 		bool fire = false;
 		if (trigIn.process(inputs[TRIG_INPUT].getVoltage(), 0.1f, 1.f))
 			fire = true;
@@ -787,7 +802,13 @@ struct Vates : Module {
 			fire = true;
 		if (play && crossed && nSamples > 0)
 			fire = true;
+		// The button is the hand and is never refused, as the hardware's own
+		// forced trigger is not.
+		if (fire && sinceTrig < kMinTrigGap
+		    && !(params[TRIG_PARAM].getValue() > 0.5f))
+			fire = false;
 		if (fire) {
+			sinceTrig = 0.f;
 			sampleIndex = aimedSample;
 			trigger(sr);
 		}

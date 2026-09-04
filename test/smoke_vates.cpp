@@ -1556,6 +1556,59 @@ static void testFxClicks() {
 // a fifth, and by the time it could be heard the delay had shortened into a
 // flanger. Audition 5.4 heard the whole travel as "no flanger, little flanger,
 // lot of flanger", which is exactly that.
+// ── two hits cannot land inside one declick ─────────────────────────────────
+// The fade slot holds exactly one outgoing voice, so a hit arriving before the
+// last one has faded cuts it off mid-fade - which is the click the slot exists
+// to prevent. The hardware refuses a trigger inside kTimeBetweenTriggers and
+// its source asks for that to stay at 20 ms, "to prevent glitches when
+// modulating eg. both Sample Mod and TRIG". Play mode fires on every crossing
+// of the sample CV, so that patch is one gesture away here.
+static void testMinTriggerGap() {
+	Vates m;
+	long fr = 0;
+	if (!waitForBanks(m, fr)) {
+		report("vates", "min_trig_gap_setup", 0, false);
+		return;
+	}
+	selectSample(m, 0, 4);
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	m.params[Vates::LENGTH_PARAM].setValue(0.7f);
+	m.inputs[Vates::TRIG_INPUT].channels = 1;
+
+	// a trigger every 5 ms for a second: four out of every five are refused
+	// counted at the playhead: a forward hit starts at frame zero, so a hit
+	// taken is the one place voicePos goes backwards
+	int fired = 0;
+	double prevPos = 1e18;
+	long n = (long)(1.0 * SR);
+	long every = (long)(0.005 * SR);
+	for (long i = 0; i < n; i++) {
+		m.inputs[Vates::TRIG_INPUT].setVoltage(i % every < 20 ? 5.f : 0.f);
+		m.process(makeArgs(fr++));
+		if (m.voicePos < prevPos)
+			fired++;
+		prevPos = m.voicePos;
+	}
+	// 200 edges arrive in the second; a 20 ms floor lets 50 of them through
+	report("vates", "min_trig_gap_refuses_fast_edges", fired,
+	       fired > 40 && fired < 60);
+
+	// and the button is never refused: it is the hand, and the hardware's own
+	// forced trigger is not gated either
+	int byHand = 0;
+	prevPos = 1e18;
+	long presses = (long)(0.1 * SR) / 200;
+	for (long i = 0; i < (long)(0.1 * SR); i++) {
+		m.params[Vates::TRIG_PARAM].setValue(i % 200 < 20 ? 1.f : 0.f);
+		m.process(makeArgs(fr++));
+		if (m.voicePos < prevPos)
+			byHand++;
+		prevPos = m.voicePos;
+	}
+	report("vates", "min_trig_gap_lets_the_button_through", byHand,
+	       byHand >= presses - 1);
+}
+
 // ── the chorus LFO slows as the knob rises ──────────────────────────────────
 // kMapChorusFreq runs 2 Hz, 0.4, 0.2, 0.1 across the zone, so the effect
 // deepens by slowing rather than by widening - fast and shallow at the bottom
@@ -1653,7 +1706,7 @@ static void testFxChorusEnd() {
 	report("vates", "fx_ends_are_different_effects", apart, apart > 0.5);
 }
 
-SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testMinTriggerGap, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks)

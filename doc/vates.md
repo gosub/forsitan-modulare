@@ -183,8 +183,17 @@ A hit that is interrupted does not vanish: it keeps playing for a couple of
 milliseconds with its gain running out, and so does one that reaches the end
 of its sample. A reversed hit holds at full level once it has swelled, and
 stopping that dead is a step, not a silence.
-During the attack of a reversed hit a new trigger is ignored, as on the
-hardware, so reversed swells are not cut short by the sequence playing them.
+Two hits cannot land closer than **20 ms** apart, which is the hardware's own
+floor and carries its reasoning: the sample CV and the trigger are both things
+you modulate, and in play mode a crossing of the sample CV *is* a trigger, so a
+fast enough modulation restarts the voice faster than it can get out of its own
+way. The button is never refused - that is the hand.
+
+During the attack of a reversed hit a new trigger is ignored, so reversed
+swells are not cut short by the sequence playing them. The hardware is
+stricter, refusing a trigger for the whole of a reversed hit rather than only
+its attack; that drops notes from any sequence faster than the tail, so it
+stays as it is.
 The swell reaches full level about four tenths of the way into the hit and
 holds there, so most of a hit is still retriggerable. **Reversed hits can
 retrigger while swelling** in the context menu lifts the rule, for a fast
