@@ -72,14 +72,33 @@ inline uint16_t rhythmPattern(int i) {
 	return p;
 }
 
-// The CV sequence that goes with a rhythm: sixteen stepped levels, hashed
-// from the pattern index so a rhythm always brings the same contour.
-inline float rhythmCv(int pat, int step) {
-	uint32_t h = (uint32_t)(pat + 1) * 2654435761u ^ (uint32_t)(step + 1) * 2246822519u;
+// ── the CV sequence ───────────────────────────────────────────────────────────
+// A rungler, as the hardware's is. One *bit* per step, and the output is a
+// three-bit word gathered from the bits at the current step, three on and five
+// on - Sequencer::UpdateCvOutput - indexed into eight unevenly spaced levels.
+//
+// The shape of it is the point. Sixteen independent levels, which is what this
+// was, make the CV switch a per-step edit: invert one step and one step of the
+// output changes. Here a single bit is read by three different steps, so
+// flipping it moves the output at three places in the bar, and the sequence
+// folds back on itself as it evolves instead of wandering. That is the whole
+// character of the circuit, and it is why the switch is worth having.
+static const uint32_t kRunglerLevels[8] = {0, 320, 480, 600, 720, 800, 880, 1020};
+
+inline float runglerVolts(int i) {
+	return (float)kRunglerLevels[i & 7] / 1023.f * 10.f;
+}
+
+// The bits a rhythm starts from. The hardware seeds them at random once and
+// they evolve from there; seeding from the rhythm index instead keeps the one
+// thing our own version bought - that a rhythm brings its own contour back
+// with it - without giving up the rungler's dynamics.
+inline uint16_t rhythmCvBits(int pat) {
+	uint32_t h = (uint32_t)(pat + 1) * 2654435761u;
 	h ^= h >> 13;
-	h *= 2654435761u;
+	h *= 2246822519u;
 	h ^= h >> 16;
-	return (h % 16u) / 15.f * 10.f;
+	return (uint16_t)(h & 0xFFFFu);
 }
 
 // Which of the 32 rhythms a knob and a CV input select together: ten volts
@@ -176,7 +195,7 @@ struct Modulation {
 
 	// ── pattern ──────────────────────────────────────────────────────────────
 	uint16_t gateWork = 0;
-	float cvWork[kSteps] = {0.f};
+	uint16_t cvBits = 0;      // one bit a step, read three at a time
 	int loadedRhythm = -1;
 	uint32_t patRng = 0x1234567u;
 	float gateTimer = 0.f;
@@ -196,7 +215,15 @@ struct Modulation {
 
 	bool gate() const { return gateTimer > 0.f; }
 	bool clock() const { return clkPulse > 0.f; }
-	float cv() const { return cvWork[clamp(step, 0, kSteps - 1)]; }
+	bool cvBitAt(int s) const {
+		return (cvBits & (uint16_t)(0x8000u >> (s & 15))) != 0;
+	}
+	float cv() const {
+		int s = clamp(step, 0, kSteps - 1);
+		int i = (cvBitAt(s) ? 1 : 0) | (cvBitAt(s + 3) ? 2 : 0)
+		        | (cvBitAt(s + 5) ? 4 : 0);
+		return runglerVolts(i);
+	}
 	// the whole rhythm as it stands, for a display or for a slicer reading it
 	uint16_t pattern() const { return gateWork; }
 	bool gateAt(int s) const { return (gateWork & (uint16_t)(0x8000u >> (s & 15))) != 0; }
@@ -273,8 +300,7 @@ struct Modulation {
 		if (in.rhythm != loadedRhythm) {
 			loadedRhythm = in.rhythm;
 			gateWork = rhythmPattern(in.rhythm);
-			for (int s = 0; s < kSteps; s++)
-				cvWork[s] = rhythmCv(in.rhythm, s);
+			cvBits = rhythmCvBits(in.rhythm);
 		}
 		if (stepped) {
 			step = (step + 1) % kSteps;
@@ -293,10 +319,16 @@ struct Modulation {
 			}
 			else if (in.gateMode == 0)
 				gateWork ^= mask;
-			if (in.cvMode == 2)
-				cvWork[step] = (nextRandom() % 16u) / 15.f * 10.f;
+			// One bit, at the step the sequence is on - and three steps of
+			// the output move with it, which is the rungler working.
+			if (in.cvMode == 2) {
+				if (nextRandom() & 1)
+					cvBits |= mask;
+				else
+					cvBits &= (uint16_t)~mask;
+			}
 			else if (in.cvMode == 0)
-				cvWork[step] = 10.f - cvWork[step];
+				cvBits ^= mask;
 
 			if (gateWork & mask)
 				gateTimer = 0.75f * stepSeconds;

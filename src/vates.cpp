@@ -52,7 +52,6 @@ static const float kMinTrigGap = 0.020f;
 using forsitan_dsp::Svf;
 using forsitan_dsp::Delay;
 using forsitan_mod::rhythmPattern;
-using forsitan_mod::rhythmCv;
 
 }   // namespace
 

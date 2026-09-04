@@ -573,7 +573,15 @@ The two three-position switches edit the pattern as it plays:
 | switch | up | middle | down |
 |--------|----|--------|------|
 | **gate ptrn** | randomize this step | leave it alone | invert this step |
-| **cv ptrn** | randomize this level | leave it alone | invert this level around 5 V |
+| **cv ptrn** | randomize this step's bit | leave it alone | flip this step's bit |
+
+The CV side is a **rungler**, as the hardware's is: one bit a step, and the
+voltage is a three-bit word gathered from the bits at the current step, three
+steps on and five steps on, read out through eight unevenly spaced levels. One
+flick of the switch therefore moves the output at three places in the bar
+rather than one, and the sequence folds back on itself as it evolves. Which
+bits a rhythm starts from is dealt from its index, so reselecting a rhythm
+brings its contour back.
 
 Each switch is normalled to the input below it: patch a gate or CV there and
 it takes over, above 3.2 V for up and below 1.6 V for down. **They are

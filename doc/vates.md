@@ -299,7 +299,7 @@ a saw outright. **pwm** is the same tilt as a knob.
 | **clk in** | external clock. It takes over while it runs; two seconds of silence hands the tempo back to **tempo**. |
 | **clk out** | the clock in use, internal or external. Patch it into a second vates or into artifex and both pattern generators and LFOs run as one. |
 | **rhythm** | selects one of 32 built-in 16-step gate patterns, with a CV input beside it: ten volts is the whole list, and it wraps past the end. Selecting a rhythm reloads it, discarding what the switches have written into it. |
-| **gate**, **cv** | the pattern's gate (75% of a step) and its stepped CV, 0–10V. |
+| **gate**, **cv** | the pattern's gate (75% of a step) and its stepped CV, eight levels over 0–10V. |
 | **reset** | restarts both sequences. Patch a slow LFO here to shorten the pattern. |
 | **gate ptrn**, **cv ptrn** | a three-position switch and a jack each: live surgery on the gate and CV sequences. |
 
@@ -312,7 +312,17 @@ up.
 The two three-position switches are the hardware's best idea and they come
 over unchanged. Middle leaves the sequence alone. Up randomizes the step the
 sequence is on right now. Down inverts it - silent steps sound, sounding
-steps go quiet, and CV flips around its own midpoint.
+steps go quiet, and the CV's bit at that step flips.
+
+**The CV side is a rungler**, as the hardware's is: it holds one *bit* a step,
+not a level, and the voltage is a three-bit word gathered from the bits at the
+current step, three steps on and five steps on, read out through eight unevenly
+spaced levels. So a single flick of the CV switch moves the output at three
+places in the bar rather than one, and the sequence folds back on itself as it
+evolves instead of wandering off. That coupling is what makes the switch worth
+having; sixteen free levels would make it a per-step edit. Which bits a rhythm
+starts from is dealt from its index, so selecting a rhythm brings its own
+contour back with it.
 
 **They are pencils, not filters.** A switch writes into the pattern as it
 plays, one step at a time, so returning it to the middle does not restore

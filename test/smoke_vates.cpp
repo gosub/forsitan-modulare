@@ -646,6 +646,44 @@ static void testPatternSwitches() {
 	report("vates", "cv_range", cv.peak, cv.peak <= 10.001f && cv.nans == 0);
 }
 
+// ── the CV sequence is a rungler, not sixteen independent levels ─────────────
+// One bit a step, and the output word is gathered from the bits at the step,
+// three on and five on. So inverting a single step moves the output at three
+// places in the bar rather than one, and the sequence folds back on itself as
+// it evolves. That coupling is the whole character of the circuit and the
+// reason the CV switch is worth having; sixteen free levels, which is what
+// this was, make the switch a per-step edit.
+static void testRunglerCoupling() {
+	forsitan_mod::Modulation a, b;
+	forsitan_mod::ModIn in;
+	in.dt = 1.f / SR;
+	in.bpm = 240.f;
+	in.rhythm = 0;
+	in.cvMode = 1;
+	// settle both on the same bits, then flip exactly one in b
+	for (int i = 0; i < 64; i++) { a.process(in); b.process(in); }
+	report("vates", "rungler_seeded_alike", (double)(a.cvBits ^ b.cvBits),
+	       a.cvBits == b.cvBits);
+	b.cvBits ^= (uint16_t)0x8000u;            // step 0's bit
+
+	// walk a whole pattern and count the steps whose output differs
+	int differ = 0;
+	for (int s = 0; s < forsitan_mod::kSteps; s++) {
+		a.step = b.step = s;
+		if (std::fabs(a.cv() - b.cv()) > 1e-6f)
+			differ++;
+	}
+	// steps 0, 13 and 11 read that bit: at +0, +3 and +5 counted backwards
+	report("vates", "rungler_one_bit_moves_three_steps", differ, differ == 3);
+
+	// and the levels are the hardware's uneven ladder, not a linear ramp: the
+	// gap from the bottom is far wider than the gaps higher up
+	float v0 = forsitan_mod::runglerVolts(0), v1 = forsitan_mod::runglerVolts(1);
+	float v6 = forsitan_mod::runglerVolts(6), v7 = forsitan_mod::runglerVolts(7);
+	report("vates", "rungler_levels_are_uneven", (v1 - v0) / (v7 - v6),
+	       (v1 - v0) > (v7 - v6) * 2.f);
+}
+
 // ── full clockwise on the pitch attenuverter is exactly 1V/oct ────────────────
 // The hardware calibrates that endpoint - "this input tracks V/Oct standard
 // when the PITCH MOD knob is fully clock-wise" - for both pitch inputs, so it
@@ -1738,5 +1776,5 @@ static void testFxChorusEnd() {
 
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testLfoDivisionsDivideTheCounter, testMinTriggerGap, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
-           testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
+           testPatternSwitches, testRunglerCoupling, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks)
