@@ -918,12 +918,22 @@ struct Core {
 			}
 			wet *= freezeOpen;
 			// Feedback here bleeds new audio into the frozen buffer rather
-			// than running the global loop, thickening what is held. It is
-			// written back onto the loop's own reading, not the blended one
-			// - the interpolation is a gentle leak, and a 2 ms loop at full
-			// feedback piles up DC without it - and through the wrap's fade
-			// onto the lead-in as well: that is what
-			// the end of the loop turns into, so the two have to thicken
+			// than running the global loop, thickening what is held -- and
+			// what is already there is scaled down as it does, which is the
+			// hardware's freezer_feedback_dry. Without that term the write
+			// keeps the old value at unity and adds to it once a lap, so a
+			// sustained input grows the buffer without bound: it climbs into
+			// the output limiter and stays there, and the shorter the loop
+			// the faster it gets there.
+			// The write saturates, as the hardware's does and as every other
+			// buffer write in the module does. It has to: even with the decay
+			// the loop settles at eight times what went in, which is where
+			// both machines put it, and eight times a normal signal is off
+			// the top of the scale.
+			//
+			// It is written onto the loop's own reading, not the blended one,
+			// and through the wrap's fade onto the lead-in as well: that is
+			// what the end of the loop turns into, so the two have to thicken
 			// together or the wrap is a seam again a few laps later. The
 			// lead-in takes its share at the end of each lap and the loop's
 			// start at the beginning of the next, so the loop itself starts
@@ -931,16 +941,20 @@ struct Core {
 			// first slot was one lap ahead of the slot before it, and the
 			// difference sat there as a step.
 			if (fb > 0.001f) {
-				float add = in[c] * fb * 0.5f;
+				float keep = 1.f - 0.1f * fb;
+				float add = in[c] * fb * 0.8f;
+				auto thicken = [&](float old) {
+					return softClip((old * keep + add) / kClipVolts) * kClipVolts;
+				};
 				int slot = (int)(base + (float)freezePos[c]);
 				float p = (float)freezePos[c];
 				if (freezeLapped[c])
-					frz[c].poke(slot, frz[c].at(base + p) + add);
+					frz[c].poke(slot, thicken(frz[c].at(base + p)));
 				float fade = std::min(std::min(splice, 0.25f * freezeFrames), base);
 				if (fade >= 1.f && p > freezeFrames - fade) {
 					int lead = slot - (int)freezeFrames;
 					if (lead >= 0)
-						frz[c].poke(lead, frz[c].at(base + p - freezeFrames) + add);
+						frz[c].poke(lead, thicken(frz[c].at(base + p - freezeFrames)));
 				}
 			}
 			freezePos[c] += rate;

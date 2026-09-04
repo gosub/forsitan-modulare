@@ -1531,6 +1531,62 @@ static void testFreezerLength() {
 	       SR / lengths[3] > 100.f);
 }
 
+// ── the freezer's feedback thickens the loop, it does not fill it ─────────────
+// Feedback here writes new audio into the frozen buffer instead of running the
+// global loop. The write used to keep whatever was already in the slot at
+// unity and add to it, so every lap put more in and nothing took anything out.
+// The hardware scales the held audio down as it mixes new audio in, and
+// saturates the write.
+//
+// Driven with DC, because that is where the arithmetic is visible: a tone
+// arrives at a different phase on every lap and the additions partly cancel,
+// so a broken write random-walks upward slowly instead of climbing, and a
+// short run cannot tell the two apart. A constant adds the same amount every
+// lap and the difference is a straight line against a fixed point.
+static void runDc(Artifex& m, long& frame, double seconds, float v,
+                  Rec* rec = NULL) {
+	long n = (long)(seconds * SR);
+	for (long i = 0; i < n; i++) {
+		step(m, frame, v, v);
+		if (rec) {
+			rec->l.push_back(m.outputs[Artifex::LEFT_OUTPUT].getVoltage());
+			rec->sl.add(rec->l.back());
+		}
+	}
+}
+
+static void testFreezerFeedbackSettles() {
+	Artifex m;
+	long fr = 0;
+	setMode(m, artifex_fx::MODE_FREEZER);
+	m.params[Artifex::AMT_PARAM].setValue(1.f);
+	m.params[Artifex::FBK_PARAM].setValue(1.f);
+	m.params[Artifex::TIME_PARAM].setValue(0.30f);
+	runDc(m, fr, 12.0, 3.f);
+	float peak = 0.f;
+	for (size_t i = 0; i < m.core.frz[0].buf.size(); i++)
+		peak = std::max(peak, std::fabs(m.core.frz[0].buf[i]));
+	// The loop settles at eight times what went in on both machines, which the
+	// saturating write then holds on the scale. Unbounded, twelve seconds of
+	// this reaches several times the limit.
+	report("artifex", "freezer_buffer_bounded", peak, peak < 12.f);
+
+	// and the mode still does what feedback is there for: the same run with
+	// the knob down leaves the buffer holding only what was captured
+	Artifex q;
+	long qf = 0;
+	setMode(q, artifex_fx::MODE_FREEZER);
+	q.params[Artifex::AMT_PARAM].setValue(1.f);
+	q.params[Artifex::FBK_PARAM].setValue(0.f);
+	q.params[Artifex::TIME_PARAM].setValue(0.30f);
+	runDc(q, qf, 12.0, 3.f);
+	float dry = 0.f;
+	for (size_t i = 0; i < q.core.frz[0].buf.size(); i++)
+		dry = std::max(dry, std::fabs(q.core.frz[0].buf[i]));
+	report("artifex", "freezer_feedback_thickens", peak / std::max(dry, 1e-6f),
+	       peak > dry * 1.5f);
+}
+
 // ── the delay syncs to clk, and to trig only when clk is quiet ────────────────
 // Everything else clock-driven in the module follows clk; the delay used to
 // follow the trig input alone, which is where the hardware takes a clock but
@@ -2676,7 +2732,7 @@ static void testClockDoesNotClick() {
 
 SMOKE_MAIN(testKnobStepsDoNotClick, testModeChangesDoNotClick, testClockDoesNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
-           testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
+           testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testFreezerFeedbackSettles, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
            testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock,
