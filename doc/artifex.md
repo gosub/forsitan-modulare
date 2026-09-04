@@ -166,9 +166,10 @@ and until the first chunk is caught the mode plays nothing but dry.
 
 ### 4. panner (white)
 
-Amplitude modulation in opposite phase on the two channels. Slow, it is an
-autopanner. Fast, it crosses into audio rate and becomes stereo ring
-modulation. **amount** clips the modulating sine towards a square, so the pan
+Amplitude modulation in opposite phase on the two channels. **time** runs
+0.1 Hz to 10 kHz: slow, it is an autopanner; fast, it crosses into audio rate
+and becomes stereo ring modulation, and the top of the knob is far enough above
+the material for the sidebands to separate. **amount** clips the modulating sine towards a square, so the pan
 goes from a sway to a hard alternation. **trig** throws it to the other side:
 the modulator goes to the peak on that side and *glides* there over about
 25 ms, capped at a quarter of its own period so it stays out of the way up at

@@ -999,7 +999,11 @@ struct Core {
 	// Amplitude modulation in opposite phase, from a sway to a hard
 	// alternation, and up into ring modulation as the rate leaves the LFO band.
 	void doPanner(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
-		float hz = 0.05f * std::pow(40000.f, t);
+		// 0.1 Hz to 10 kHz, the hardware's kMapPannerFrequency. It stopped at
+		// 2 kHz, which is inside the audio band but not far enough into it:
+		// the mode's whole top end is ring modulation, and the sidebands only
+		// separate properly once the carrier is well clear of the material.
+		float hz = 0.1f * std::pow(100000.f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = hz;
 		float depth = clamp(amt * 2.f, 0.f, 1.f);
