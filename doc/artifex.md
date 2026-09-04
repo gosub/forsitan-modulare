@@ -385,7 +385,10 @@ play head could hide.
 
 The other pitch shifter - a crossfaded pair of taps, which avoids the
 pitcher's stuttering at the cost of its bite. **time** shifts down below the
-centre and up above it, with unity in the middle. Feedback with a small shift
+centre and up above it, with unity in the middle: an octave down at the far
+left, two octaves up at the far right. It is asymmetric because the hardware's
+is, and for the same reason - down is where the artefacts live, since a tap
+that lengthens spends longer in the window. Feedback with a small shift
 is where it earns its keep: the output returns to the input and is shifted
 again, so a held note becomes a stack of intervals sounding at once, each
 layer another interval away and quieter than the last. It is not a delay, but

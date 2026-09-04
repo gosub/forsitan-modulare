@@ -1629,7 +1629,14 @@ struct Core {
 	// Two taps crossfaded, so there is no stutter - and with feedback a small
 	// shift walks the tail away in pitch, one interval per pass.
 	void doShifter(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
-		float semis = (t - 0.5f) * 24.f;         // an octave either way
+		// Down an octave, up two. The hardware's shifter is a single tap on a
+		// 511-sample ramp whose rate runs to 260 Hz, which reaches about four
+		// times speed going up and through reverse going down; a crossfaded
+		// pair of taps cannot do reverse, but there is no reason for it to
+		// stop at an octave up when the hardware goes to two. Asymmetric for
+		// the same reason the hardware is: down is where the artefacts live,
+		// because a tap that lengthens spends longer in the window.
+		float semis = t < 0.5f ? (t - 0.5f) * 24.f : (t - 0.5f) * 48.f;
 		uiUnit = UNIT_SEMI;
 		uiTime = semis;
 		// A trig collapses the stereo spread to nothing and lets it open back
