@@ -74,7 +74,7 @@ subtracted, relaxing over two milliseconds.
 
 | # | mode | time | amount | feedback | stereo | trig |
 |---|------|------|--------|----------|--------|------|
-| 1 | **delay** | delay time, 1.15 s → 2 ms | dry/wet | repeats | L/R delay detune | a clock here snaps the time, if clk has none |
+| 1 | **delay** | delay time, 1.15 s → 2 ms | wet, then dry/wet | repeats | L/R delay detune | a clock here snaps the time, if clk has none |
 | 2 | **flanger** | modulator frequency | sweep depth + wet | resonance | L/R modulator detune | turn the sweep round |
 | 3 | **freezer** | repeat length | wet, and refreezes | feeds new audio in | L/R repeat detune | freeze a new chunk |
 | 4 | **panner** | pan frequency, up to audio rate | sine → square | global | L/R pan detune | throw the pan to the other side |
@@ -87,6 +87,10 @@ subtracted, relaxing over two milliseconds.
 ### 1. delay (green)
 
 A clean stereo delay, 1.15 s at the far left down to 2 ms at the far right.
+**amount** adds repeats over the first half of its travel without touching the
+dry signal, and only past the middle does it start fading the dry out - so the
+useful settings are all in the second quarter rather than at one point of a
+crossfade.
 Feedback is taken *before* the filter, as on the hardware, so a repeat is
 filtered once on its way out and the tail does not darken pass by pass. The
 context menu's **filter inside the feedback** changes that, and turns the mode

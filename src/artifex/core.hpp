@@ -727,7 +727,15 @@ struct Core {
 			tape[c].write(softClip((in[c] + feedbackFilter(c, wet) * fb * 0.98f)
 			                       / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
-			out[c] = in[c] * (1.f - amt) + heard * amt;
+			// Dry is held flat across the first half and only then falls
+			// away, which is the hardware's kMapDelayDry against kMapDelayWet:
+			// the knob adds repeats before it starts taking the signal out
+			// from under them. A plain crossfade traded one for the other all
+			// the way up, so a delay loud enough to hear had already thinned
+			// what it was echoing - and half travel, where the mode is most
+			// useful, was the exact middle of that trade.
+			float dry = amt <= 0.5f ? 1.f : 2.f * (1.f - amt);
+			out[c] = in[c] * dry + heard * amt;
 		}
 	}
 
