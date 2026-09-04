@@ -1556,6 +1556,39 @@ static void testFxClicks() {
 // a fifth, and by the time it could be heard the delay had shortened into a
 // flanger. Audition 5.4 heard the whole travel as "no flanger, little flanger,
 // lot of flanger", which is exactly that.
+// ── the chorus LFO slows as the knob rises ──────────────────────────────────
+// kMapChorusFreq runs 2 Hz, 0.4, 0.2, 0.1 across the zone, so the effect
+// deepens by slowing rather than by widening - fast and shallow at the bottom
+// is the chorus, slow and wide at the top with the feedback in is the flanger.
+// It reads backwards, which is exactly why it is worth pinning: a fixed rate
+// looks like the tidier code right up until the two ends sound the same.
+static void testFxChorusRate() {
+	struct Local {
+		// cycles of the modulator per second at one knob position
+		static double rate(float fx) {
+			Vates m;
+			long fr = 0;
+			m.params[Vates::FX_PARAM].setValue(fx);
+			float prev = m.modPhase;
+			int wraps = 0;
+			long n = (long)(20.0 * SR);
+			for (long i = 0; i < n; i++) {
+				m.process(makeArgs(fr++));
+				if (m.modPhase < prev)
+					wraps++;
+				prev = m.modPhase;
+			}
+			return wraps / 20.0;
+		}
+	};
+	double fast = Local::rate(0.02f);
+	double slow = Local::rate(1.f);
+	report("vates", "fx_chorus_rate_bottom_hz", fast,
+	       fast > 1.5 && fast < 2.2);
+	report("vates", "fx_chorus_rate_top_hz", slow, slow > 0.07 && slow < 0.15);
+	report("vates", "fx_chorus_slows_as_it_deepens", fast / slow, fast > slow * 10.0);
+}
+
 static void testFxChorusEnd() {
 	struct Local {
 		static std::vector<float> grab(Vates& m, long& fr, float fx) {
@@ -1620,7 +1653,7 @@ static void testFxChorusEnd() {
 	report("vates", "fx_ends_are_different_effects", apart, apart > 0.5);
 }
 
-SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
+SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks)

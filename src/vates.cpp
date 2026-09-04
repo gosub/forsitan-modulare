@@ -1040,21 +1040,43 @@ struct Vates : Module {
 			// character moves on a square law: the long-delay, low-feedback
 			// end is a chorus you can hear rather than somewhere the knob
 			// passes through on its way in.
+			// The sweep is the hardware's, which is far deeper and slower than
+			// a chorus usually is: kMapChorusBaseLength sits at 20 to 60
+			// samples and kMapChorusLfoDepth adds up to 818 more, so the tap
+			// runs between about half a millisecond and nineteen. Centred and
+			// made bipolar that is 10 ms either side of 10 ms. The old ±2.5 ms
+			// around 8 was a tenth as deep and read as a very polite doubler.
+			//
+			// The rate falls as the knob rises - kMapChorusFreq goes 2 Hz,
+			// 0.4, 0.2, 0.1 - so the effect deepens in feel by slowing rather
+			// than by widening. Fast and shallow at the bottom is the chorus,
+			// slow and wide at the top with the feedback in is the flanger.
 			float amt = std::max(fxSmooth, 0.f);
 			float shape = amt * amt;
-			modPhase += 0.35f * args.sampleTime;
-			modPhase -= std::floor(modPhase);
-			// as in the delay: at zero only the write matters
+			// as in the delay: at zero only the write matters, and the sweep
+			// can wait where it is - it resumes from the same phase
 			float wetL = 0.f, wetR = 0.f;
 			if (amt > 0.f) {
+				modPhase += 2.f * std::pow(0.05f, amt) * args.sampleTime;
+				modPhase -= std::floor(modPhase);
 				float m1 = std::sin(2.f * (float)M_PI * modPhase);
-				float m2 = std::sin(2.f * (float)M_PI * (modPhase + 0.25f));
-				float base = (8.f - 6.5f * shape) * 0.001f * sr;
-				float depth = (2.5f - 1.8f * shape) * 0.001f * sr;
+				// antiphase, as the hardware's right tap is: it reads the
+				// complement of the same LFO
+				float m2 = -m1;
+				float base = (9.7f + 0.9f * shape) * 0.001f * sr;
+				float depth = 9.3f * 0.001f * sr;
 				wetL = mod[0].read(base + depth * m1);
 				wetR = mod[1].read(base + depth * m2);
 			}
-			float fb = 0.7f * shape;
+			// kMapDelayFeedback across the chorus zone: nothing, then 0.6 at a
+			// little under half travel, then 0.9. It rises fast and flattens,
+			// where a square law rises slowly and left the flanger to the last
+			// quarter of the knob. A square root leaves zero infinitely fast,
+			// though, and the smoothed knob crossing the centre took the
+			// feedback from nothing to 0.3 in a few milliseconds, which writes
+			// an edge into the line: it comes in over the first tenth instead,
+			// where the hardware's map starts from nothing too.
+			float fb = 0.9f * std::sqrt(amt) * std::min(1.f, amt * 10.f);
 			mod[0].write(std::tanh(outL + wetL * fb));
 			mod[1].write(std::tanh(outR + wetR * fb));
 			float mix = 0.9f * std::min(1.f, amt * 3.f);

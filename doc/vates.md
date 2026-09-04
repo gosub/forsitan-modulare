@@ -229,12 +229,15 @@ the first third of the travel and then holds, and the character keeps moving
 under it: if the two rose together the chorus end would be inaudible, since
 the mix would still be under a fifth while the delay was already shortening
 into a flanger, and the whole knob would read as one flanger getting stronger.
-The swept delay
-shortens from 8 ms to 1.5 ms and its depth from ±2.5 ms to ±0.7 ms - a chorus
-range becoming a flanger range, with the first notch sweeping 227–625 Hz at
-the top - while the feedback climbs to 0.7 and the output drive to twice, so
-the further out you go the more the resonance rings and the more it clips. The
-sweep itself is 0.35 Hz throughout, with the two channels in quadrature.
+The sweep is the hardware's, and it is far deeper than a chorus usually is: the
+tap runs between about half a millisecond and nineteen, which is ten
+milliseconds either side of ten, with the two channels in antiphase. What moves
+across the knob is the *rate*, and it moves downwards - 2 Hz at the bottom to
+0.1 Hz at the top. Fast and shallow-feeling at the bottom is the chorus; the
+same depth crawling at a tenth of a hertz, with the feedback in, is the
+flanger. The feedback climbs to 0.9, rising quickly and then flattening, and
+the output drive to twice, so the further out you go the more the resonance
+rings and the more it clips.
 
 **filter** is a DJ filter, which is a specific thing: four poles, 24 dB per
 octave, and a range that reaches past the material at both ends. Full left is
