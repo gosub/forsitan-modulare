@@ -946,16 +946,22 @@ struct Vates : Module {
 		fxSmooth1 += (fxTarget - fxSmooth1) * fxK;
 		fxSmooth += (fxSmooth1 - fxSmooth) * fxK;
 		{
-			// Tempo-synced delay at three eighths of a note, as the hardware
-			// states - a dotted quarter, a beat and a half - with the right
-			// channel a plain beat against it, so the two run a 3:2 cross
-			// rhythm and the cross-feedback below throws it side to side.
+			// Tempo-synced delay at three halves of a clock step - the
+			// hardware's kDelayRatio, taken against one tick of its own clock,
+			// which runs at sixteenths. That is a dotted eighth, not the
+			// dotted quarter this used to take: the step is already a
+			// sixteenth here, so multiplying by four before applying the ratio
+			// made the delay four times the hardware's, 750 ms at 120 BPM
+			// against 187, which is a wash on a percussive voice rather than a
+			// rhythm. The right channel runs two thirds of it, a plain
+			// sixteenth, so the two cross at 3:2 and the cross-feedback below
+			// throws that side to side.
 			float amt = std::max(-fxSmooth, 0.f);
 			// timed from the tempo, not the last step: see tempoSeconds
-			float beat = modul.tempoSeconds * 4.f;
+			float step = modul.tempoSeconds;
 			float maxT = (float)(dly[0].size() - 4) / sr;
-			float t = beat * 1.5f;
-			// A dotted quarter does not fit the buffer at every tempo. Halving
+			float t = step * 1.5f;
+			// A dotted eighth does not fit the buffer at every tempo. Halving
 			// the division keeps the delay in tempo, where clamping it to
 			// whatever fits would leave it in no tempo at all.
 			while (t > maxT && t > 0.02f)
@@ -1004,7 +1010,14 @@ struct Vates : Module {
 			// feedback fades out over the first twentieth of the travel, so
 			// a tail left behind at the centre drains instead of waiting in
 			// the line for the knob to come back.
-			float fb = (0.25f + 0.6f * amt) * std::min(1.f, amt * 20.f);
+			//
+			// The ceiling went up with the delay's shortening. A round trip is
+			// now 313 ms rather than 1.25 s, so the same loop gain decays four
+			// times as fast in wall time and 0.85 left the top of the knob
+			// ringing for about a second. 0.97 puts the tail back where it
+			// was, and it is still short of the hardware's own ceiling, which
+			// is a loop gain of exactly 1.
+			float fb = (0.25f + 0.72f * amt) * std::min(1.f, amt * 20.f);
 			dly[0].write(std::tanh(outL + wetR * fb));
 			dly[1].write(std::tanh(outR + wetL * fb));
 			outL += wetL * amt * 0.8f;

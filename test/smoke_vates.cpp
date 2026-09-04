@@ -1034,10 +1034,17 @@ static void testPulseWidth() {
 	}
 }
 
-// ── the fx delay lands on the beat it claims ─────────────────────────────────
-// Three eighths of a note is a dotted quarter - a beat and a half - and it has
-// to stay there at every tempo. It was a dotted *sixteenth* at first: 3/8 of a
-// beat rather than of a note, four times too short.
+// ── the fx delay lands on the division it claims ─────────────────────────────
+// The hardware's kDelayRatio is 3/2 of one tick of its own clock, and that
+// clock runs at sixteenths - kMidiTempoDividerDefault is 6, six pulses of MIDI
+// clock. So the delay is a dotted eighth: one and a half clock steps, a
+// quarter of a note. Measured in steps rather than beats here, because that is
+// the unit both machines actually work in, and reading it as beats is what
+// made this four times too long once already.
+//
+// The right channel runs two thirds of the left, which is one plain step, so
+// the two cross at 3:2. Only the left tap was ever measured, so the two could
+// have been the same delay and nothing here would have said so.
 static void testFxDelayTime() {
 	const float bpm[2] = {120.f, 60.f};
 	for (int k = 0; k < 2; k++) {
@@ -1058,8 +1065,8 @@ static void testFxDelayTime() {
 		run(m, fr, 0.05);
 		pressTrigger(m, fr);
 
-		double beat = 60.0 / bpm[k];
-		long n = (long)(3.0 * beat * SR);
+		double step = 60.0 / bpm[k] / 4.0;      // the clock runs at sixteenths
+		long n = (long)(6.0 * step * SR);
 		long guard = (long)(0.05 * SR);
 		double dry = 0.0, best = 0.0;
 		long at = -1;
@@ -1080,14 +1087,12 @@ static void testFxDelayTime() {
 		}
 		if (at < 0)
 			at = 0;
-		double beats = ((double)at / SR) / beat;
+		double steps = ((double)at / SR) / step;
 		char name[64];
 		std::snprintf(name, sizeof name, "fx_delay_at_%.0f_bpm", bpm[k]);
-		report("vates", name, beats, best > 0.05 && std::fabs(beats - 1.5) < 0.05);
+		report("vates", name, steps, best > 0.05 && std::fabs(steps - 1.5) < 0.05);
 
-		// and the right channel a plain beat against it, which is the whole
-		// 3:2. Only the left tap was ever measured, so the two could have been
-		// the same delay and nothing here would have said so.
+		// and the right channel one plain step against it, which is the 3:2
 		if (k == 0) {
 			Vates m2;
 			long fr2 = 0;
@@ -1114,9 +1119,9 @@ static void testFxDelayTime() {
 				if (atR < 0 && v > 0.4 * dryR)
 					atR = i;
 			}
-			double beatsR = atR < 0 ? 0.0 : ((double)atR / SR) / beat;
-			report("vates", "fx_delay_right_is_a_plain_beat", beatsR,
-			       std::fabs(beatsR - 1.0) < 0.05);
+			double stepsR = atR < 0 ? 0.0 : ((double)atR / SR) / step;
+			report("vates", "fx_delay_right_is_a_plain_step", stepsR,
+			       std::fabs(stepsR - 1.0) < 0.05);
 		}
 	}
 }
