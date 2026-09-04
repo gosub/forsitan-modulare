@@ -291,8 +291,8 @@ struct Artifex : Module {
 				              num[best], den[best]);
 			break;
 		}
-		case artifex_fx::UNIT_STEPS:
-			std::snprintf(uiTimeText, sizeof(uiTimeText), "%.0f steps", v);
+		case artifex_fx::UNIT_BEATDIV:
+			std::snprintf(uiTimeText, sizeof(uiTimeText), "beat/%.0f", v);
 			break;
 		case artifex_fx::UNIT_RHYTHM:
 			std::snprintf(uiTimeText, sizeof(uiTimeText), "rhythm %.0f", v);

@@ -1511,24 +1511,41 @@ static void testFreezerLength() {
 	report("artifex", "freezer_catches_the_whole_tape", captured / SR,
 	       captured > 1.0f * SR);
 
-	// now the knob alone, with nothing re-capturing
+	// now the knob alone, with nothing re-capturing: sweep the whole travel
+	// and watch the loop shorten. The two halves are different laws - the left
+	// is divisions of a beat, the right a continuous pitched range - so the
+	// thing to check is that they meet, and that clockwise is faster the whole
+	// way across. They used to overlap: the left half bottomed out at one
+	// clock step and the right half started at 250 ms, so crossing the centre
+	// made the loop suddenly four times *longer*.
 	float held = m.core.capturedFrames;
-	float lengths[4] = {0.f, 0.f, 0.f, 0.f};
-	float knobs[4] = {0.55f, 0.70f, 0.85f, 0.95f};
-	for (int i = 0; i < 4; i++) {
-		m.params[Artifex::TIME_PARAM].setValue(knobs[i]);
-		runTone(m, fr, 0.2, 220.f, 5.f);
-		lengths[i] = m.core.freezeFrames;
+	const int kN = 65;
+	float len[kN];
+	float worstRise = 1.f;
+	for (int i = 0; i < kN; i++) {
+		m.params[Artifex::TIME_PARAM].setValue((float)i / (kN - 1));
+		runTone(m, fr, 0.05, 220.f, 5.f);
+		len[i] = m.core.freezeFrames;
+		if (i > 0 && len[i] > len[i - 1] * worstRise)
+			worstRise = len[i] / std::max(len[i - 1], 1e-6f);
 	}
-	bool shrinks = lengths[0] > lengths[1] && lengths[1] > lengths[2]
-	               && lengths[2] > lengths[3];
-	report("artifex", "freezer_length_follows_the_knob", lengths[0] / lengths[3],
-	       shrinks && lengths[0] > lengths[3] * 10.f);
+	report("artifex", "freezer_length_never_grows_clockwise", worstRise,
+	       worstRise <= 1.001f);
+	report("artifex", "freezer_length_spans_the_travel", len[0] / len[kN - 1],
+	       len[0] > len[kN - 1] * 100.f);
 	report("artifex", "freezer_keeps_its_capture", m.core.capturedFrames - held,
 	       m.core.capturedFrames == held);
+	// Lengths are in frames at the core's own rate, which is not the harness
+	// SR unless a test has sent onSampleRateChange.
+	float csr = m.core.sr;
 	// short enough at the top to be a pitch rather than a rhythm
-	report("artifex", "freezer_shortest_is_a_pitch", SR / lengths[3],
-	       SR / lengths[3] > 100.f);
+	report("artifex", "freezer_shortest_is_a_pitch", csr / len[kN - 1],
+	       csr / len[kN - 1] > 100.f);
+	// and the longest division really is a beat, not a bar: at the default
+	// 120 BPM that is half a second, which fits the hardware's 1.15 s buffer
+	// with room to spare, where a bar did not and clamped
+	report("artifex", "freezer_longest_is_a_beat", len[0] / csr,
+	       len[0] / csr > 0.45f && len[0] / csr < 0.55f);
 }
 
 // ── the freezer's feedback thickens the loop, it does not fill it ─────────────

@@ -41,7 +41,7 @@ enum TimeUnit {
 	UNIT_MS = 0,
 	UNIT_HZ,
 	UNIT_DIV,        // a ratio of the clock period
-	UNIT_STEPS,      // a length in clock steps
+	UNIT_BEATDIV,    // a division of one beat, as the freezer counts
 	UNIT_RHYTHM,     // which of the 32 patterns
 	UNIT_SEMI,       // a pitch interval
 	UNIT_SPEED,      // tape speed, signed
@@ -793,19 +793,37 @@ struct Core {
 			pos -= std::floor(pos / frames) * frames;
 	}
 
+	// The rhythmic half counts against one *beat* -- four clock steps -- and
+	// not against a bar. A bar is four times too long to be a freeze on this
+	// buffer: at 120 BPM the two longest divisions both came out past 1.13 s
+	// and clamped to the same length, so the first eighth of the knob did
+	// nothing. It also left the two halves overlapping, and crossing the
+	// centre made the loop suddenly *longer* -- 125 ms jumping to 250 ms -- in
+	// a mode whose whole promise is that clockwise is faster. Against a beat
+	// the divisions run 500 ms down to 31 ms at 120 BPM and the pitched half
+	// picks up at 20 ms, so the knob is one continuous sweep from a bar-length
+	// freeze to a tone.
 	void doFreezer(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		float len;
 		if (t < 0.5f) {
-			static const float steps[8] = {16.f, 12.f, 8.f, 6.f, 4.f, 3.f, 2.f, 1.f};
+			static const float divisor[8] = {1.f, 2.f, 3.f, 4.f, 6.f, 8.f, 12.f, 16.f};
 			int i = clamp((int)(t * 2.f * 8.f), 0, 7);
-			// the tempo, not the last step, or a swung clock would change
-			// the loop's length on every step
-			len = ct.tempoSeconds * steps[i];
-			uiUnit = UNIT_STEPS;
-			uiTime = steps[i];
+			// A beat does not fit the buffer at every tempo. Halving it keeps
+			// the freeze in tempo, where clamping would leave it in none. The
+			// tempo, not the last step, or a swung clock would change the
+			// loop's length on every step; and room left for the lead-in the
+			// wrap fades into.
+			float beat = ct.tempoSeconds * 4.f;
+			while (beat > bufSeconds - 0.02f - kEdgeFade && beat > 0.004f)
+				beat *= 0.5f;
+			len = beat / divisor[i];
+			uiUnit = UNIT_BEATDIV;
+			uiTime = divisor[i];
 		}
 		else {
-			len = 0.25f * std::pow(0.008f, (t - 0.5f) * 2.f);
+			// 880 samples down to 150, the hardware's own pitched range,
+			// written in seconds so it does not move with the engine rate
+			len = 0.020f * std::pow(0.170f, (t - 0.5f) * 2.f);
 			uiUnit = UNIT_MS;
 			uiTime = len * 1000.f;
 		}
@@ -891,8 +909,12 @@ struct Core {
 		// crossfades to the new one over a splice. Changes that arrive during
 		// a crossfade wait for it: a knob swept through the short end becomes
 		// a run of splices rather than a run of steps.
-		// never so long that the lead-in the wrap fades into is used up
-		float want = clamp(len * sr, 4.f, std::max(capturedFrames - splice, 4.f));
+		// never so long that the lead-in the wrap fades into is used up, and
+		// a whole number of samples: the feedback thickens the lead-in slot
+		// that stands a loop length before the one it thickens at the end,
+		// and with half a sample in the length there is no such slot - the
+		// two drift apart and the wrap grows a seam
+		float want = std::round(clamp(len * sr, 4.f, std::max(capturedFrames - splice, 4.f)));
 		if (freezeFrames <= 0.f)
 			freezeFrames = want;
 		else if (freezeXf >= 1.f && std::fabs(want - freezeFrames) >= 1.f) {

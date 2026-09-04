@@ -129,20 +129,26 @@ clock at **clk** is deliberately not one of them - that would make the mode a
 rhythmic re-sampler rather than a freezer.
 
 **time** sets the loop length, and it moves it *live*, on the audio already
-held: to the left it is a division of the tempo, so the freeze is rhythmic; to
+held: to the left it is a division of the beat, so the freeze is rhythmic; to
 the right it shrinks until the loop is short enough to be a pitch, and you are
-freezing the timbre rather than the bar. Turning it from one end to the other
-takes a frozen bar down to a few milliseconds without ever re-capturing, which
+freezing the timbre rather than the beat. Turning it from one end to the other
+takes a frozen beat down to a few milliseconds without ever re-capturing, which
 is the mode's best gesture.
+
+The left half divides one beat by 1, 2, 3, 4, 6, 8, 12 and 16, which at
+120 BPM is 500 ms down to 31 ms, and the right half picks up at 20 ms and runs
+to 3.4 ms - so the two halves meet and the knob is one continuous sweep.
+Clockwise is faster the whole way across, and nothing clamps: a beat fits the
+hardware's 1.15 s buffer at any tempo above 30 BPM, and below that the division
+halves rather than sticking, so the freeze stays in tempo.
 
 A freeze catches as much history as it has, not only the length you asked for,
 which is what leaves the knob somewhere to go. The one time that bites is
 arriving in the mode: it freezes as soon as it has the length the knob is
-asking for, so there is nothing older to lengthen into yet. Give it a second
-and hit **trig** and it takes the whole buffer, after which the knob has its
-full range. The longest divisions need a buffer to fit in - 16 steps at 120 BPM
-is two seconds, so at the hardware's 1.15 s they clamp; the context menu's
-larger buffers hold them.
+asking for, so there is nothing older to lengthen into yet - until then you
+hear the input, not the last thing the mode froze. Give it a second and hit
+**trig** and it takes the whole buffer, after which the knob has its full
+range.
 
 The loop is the *end* of what was caught: shortening keeps the audio nearest
 the freeze point, which is what you had just heard, rather than the oldest of
