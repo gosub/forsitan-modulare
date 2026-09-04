@@ -174,18 +174,19 @@ v.set(sample=0.2, length=0.7)
 - [x] 5.1. Sweep **filter** end to end on a busy pattern: usable across the
       whole travel, resonance that sings without screaming.
       `v.set(rhythm=3)`
-- [x] 5.2. **fx** left: a dotted-quarter delay on the left channel against a
-      plain beat on the right, thrown side to side. The cross rhythm should be
-      the point, not a smear. On one hit a bar, because a hit on every beat
-      fills both channels with the same eighths and there is no 3:2 left to
-      hear.
+- [x] 5.2. **fx** left: a dotted-eighth delay on the left channel against a
+      plain sixteenth on the right - 187 ms and 125 ms at 120 BPM - thrown side
+      to side. The cross rhythm should be the point, not a smear. On one hit a
+      bar, because a hit on every step fills both channels and there is no 3:2
+      left to hear.
       `v.set(fx=-0.6, rhythm=12)`
 - [x] 5.3. **fx** hard left: a tail of some ten seconds that thickens as it
       saturates rather than clipping the output.
       `v.set(fx=-1.0)`
-- [x] 5.4. **fx** right: sweep the whole half. A chorus in the first third, a
-      flanger at the top, and two different effects rather than one getting
-      stronger.
+- [x] 5.4. **fx** right: sweep the whole half. The sweep is deep throughout and
+      what changes is its rate, 2 Hz down to 0.1 - a chorus in the first third,
+      a slow wide flanger at the top, and two different effects rather than one
+      getting stronger.
       `v.set(fx=0.2)`
 - [x] 5.5. Sweep **fx** across centre while a beat plays: it should fall out of
       the delay and into the flanger as one musical move.

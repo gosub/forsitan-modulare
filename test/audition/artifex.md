@@ -209,7 +209,8 @@ fx.set(fxmode="flanger", time=0.5, amt="50%")
 - [x] 3.2.3. **amount** at the extremes: deep sweep, pitch wobbling smoothly, no
       stair-stepping.
       `fx.set(amt="100%")`
-- [x] 3.2.4. **time** to the fast end: the modulator reaches an FM-ish buzz.
+- [x] 3.2.4. **time** to the fast end: the modulator reaches 50 Hz, well past a
+      sweep and into an FM-ish buzz.
       `fx.set(time=1.0)`
 
 ### 3.3 freezer (blue)
@@ -225,11 +226,13 @@ fx.set(fxmode="freezer", time=0.5, amt=0)
 - [x] 3.3.2. **trig** takes a new chunk. Repeated trigs on the beat should feel
       like a stutter instrument.
 - [x] 3.3.3. **time** moves the loop live, with no trig and without touching
-      amount. Sweep right: the loop shortens continuously into a pitch - 1130 ms
-      → 3.2 ms, 9 Hz → 308 Hz on a full capture. Sweep back and the bar returns.
-- [x] 3.3.4. Left half with a clock: the length lands on exact divisions - 8, 6,
-      4, 3, 2, 1. The longest clamp at the 1.15 s buffer; switch to 2.5 s and
-      they open up.
+      amount. Sweep right: the loop shortens continuously into a pitch - 500 ms
+      → 3.4 ms, 2 Hz → 294 Hz at 120 BPM on a full capture. It must not grow
+      anywhere on the way, least of all crossing the centre. Sweep back and the
+      beat returns.
+- [x] 3.3.4. Left half with a clock: the length lands on exact divisions of one
+      beat - beat/1, /2, /3, /4, /6, /8, /12, /16, and the display says which.
+      Nothing clamps at any tempo the knob will reach.
 - [x] 3.3.5. A freeze catches all the history it has. The exception is arriving
       in the mode, where it freezes as soon as it has the asked-for length - so
       sweeping left immediately may hit a wall. Trig, and the full range is
