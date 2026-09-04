@@ -247,7 +247,14 @@ Pitch shifting up by sweeping a delay tap with a ramp - crude on purpose,
 with the transient duplication that goes with it. **time** is the window
 size: long, and it chops rhythmically; short, and it turns into formant
 shift. **amount** is how far the ramp sweeps, which is the shift interval,
-and also the dry/wet. **trig** briefly stretches the window.
+and also the dry/wet. Wide open it reaches five times speed, a little over two
+octaves, which is where the mode stops being a shifter and starts being a
+machine. **trig** briefly stretches the window.
+
+The shift is the window times the sweep, so a long window runs out of tape
+before a short one does: past about a third of a second of window the top of
+the **amount** knob shifts less far than it says. Shorten the window and the
+full range comes back.
 
 Both knobs scale the tap's position, and so does the trig's stretch, so a grain
 takes its window and its shift when it starts and keeps them until it ends.

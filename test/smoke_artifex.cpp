@@ -1340,6 +1340,7 @@ static void testTrigDeclick() {
 		runTone(m, fr, 1.0, 220.f, 5.f);
 
 		double worst = 0.0, bend = 0.0;
+		double calmStep = 0.0, calmBend = 0.0;
 		for (int t = 0; t < 6; t++) {
 			// The step that matters is between the last sample before the trig
 			// and the first one after it, so the recording has to start before
@@ -1357,17 +1358,36 @@ static void testTrigDeclick() {
 				bend = std::max(bend, (double)std::fabs(rec.l[i] - 2.f * rec.l[i - 1]
 				                                        + rec.l[i - 2]));
 			}
+			// The same two numbers well away from the trig, as the baseline.
+			// A fixed reference taken from the 220 Hz input cannot serve a
+			// mode that changes pitch: the pitcher at four times speed emits
+			// 836 Hz, whose second difference is fourteen times the input's
+			// before anything has gone wrong, so the test was reading the
+			// shift and calling it a pop.
+			for (size_t i = rec.l.size() - (size_t)(0.005 * SR);
+			     i + 1 < rec.l.size(); i++) {
+				calmStep = std::max(calmStep,
+				                    (double)std::fabs(rec.l[i] - rec.l[i - 1]));
+				calmBend = std::max(calmBend,
+				                    (double)std::fabs(rec.l[i] - 2.f * rec.l[i - 1]
+				                                      + rec.l[i - 2]));
+			}
 		}
 		// A step shows in the first difference. A *pop* shows in the second:
 		// taking the step back out of the output afterwards leaves the signal
 		// continuous but its slope still broken, and the correction is a
-		// transient of its own. Both have to be near what the tone does alone.
-		double slew = 2.0 * M_PI * 220.0 / SR * 5.0;
-		double bendRef = slew * 2.0 * M_PI * 220.0 / SR;
+		// transient of its own. Both have to be near what the mode is already
+		// doing between trigs.
+		double slew = std::max(calmStep, 1e-6);
+		double bendRef = std::max(calmBend, 1e-9);
+		// Against a baseline the mode sets itself these can be tight: the
+		// worst of the four is the panner at 2.4, where the sixfold and
+		// twelvefold bounds were slack allowances against a reference that
+		// did not fit three of the modes.
 		report("artifex", (std::string("trig_no_click_") + names[k]).c_str(),
-		       worst / slew, worst < slew * 6.0);
+		       worst / slew, worst < slew * 3.0);
 		report("artifex", (std::string("trig_no_pop_") + names[k]).c_str(),
-		       bend / bendRef, bend < bendRef * 12.0);
+		       bend / bendRef, bend < bendRef * 5.0);
 	}
 
 	// and the panner's throw still lands on the other side

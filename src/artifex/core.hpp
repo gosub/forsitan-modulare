@@ -1214,15 +1214,27 @@ struct Core {
 		// the knobs clicking on top of it was never part of that.
 		window = pitchWinGl(window, ct.dt, kKnobGlide);
 		window *= 1.f + 3.f * grainStretch;
-		float shift = pitchAmtGl(amt, ct.dt, kKnobGlide);
+		// The tap's reach is the window times this, so the pitch it gives is
+		// 1 + shift: four is the hardware's, which scales its ramp by four
+		// windows (ticks * depth * 4 in ModePitcher) and reaches five times
+		// speed, a little over two octaves. One octave was the whole range
+		// before, and the mode is not a clean shifter -- the wide end is what
+		// it is for.
+		float shift = pitchAmtGl(amt * 4.f, ct.dt, kKnobGlide);
 
 		for (int c = 0; c < 2; c++) {
 			float w = clamp(window * detune(c, ct.stereo), 0.002f, 0.4f);
+			// A grain reaches w * shift seconds back, and there is only so
+			// much tape. The hardware wraps its offset into the buffer; here
+			// the reach is capped instead, so a long window simply shifts
+			// less far rather than reading a clamped, flat tap.
+			float reach = std::min(shift, ((float)tape[c].size() - 4.f)
+			                              / std::max(w * sr, 1.f));
 			float x = loopIn(c, in[c], ct, fb);
 			tape[c].write(x);
 			if (grainW[c] <= 0.f) {
 				grainW[c] = w;
-				grainShift[c] = shift;
+				grainShift[c] = reach;
 			}
 			grainPhase[c] += ct.dt / grainW[c];
 			// A grain reads a ramp whose length and reach are both scaled by
@@ -1234,7 +1246,7 @@ struct Core {
 			if (grainPhase[c] >= 1.f) {
 				grainPhase[c] -= std::floor(grainPhase[c]);
 				grainW[c] = w;
-				grainShift[c] = shift;
+				grainShift[c] = reach;
 			}
 			// the tap walks from a window back towards now: a falling delay
 			// raises the pitch, and the ramp restarting is the duplication
