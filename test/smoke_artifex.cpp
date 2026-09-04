@@ -2234,14 +2234,14 @@ static void testSampleRateInvariance() {
 						a.frame = fr++;
 						m.process(a);
 					}
-					// The crusher's rate spans 200 Hz to the sample rate --
+					// The crusher's rate spans 7.5 Hz to the sample rate --
 					// its top has to be sr for the clean end to be clean --
 					// so its reading is *supposed* to move, and neither the
 					// rate nor rate/sr is the invariant. The knob position
-					// recovered from it is: rate = 200 (sr/200)^t.
+					// recovered from it is: rate = 7.5 (sr/7.5)^t.
 					out[w++] = mode == artifex_fx::MODE_CRUSHER
-					           ? std::log(m.core.uiTime / 200.0)
-					             / std::log((double)sr / 200.0)
+					           ? std::log(m.core.uiTime / 7.5)
+					             / std::log((double)sr / 7.5)
 					           : m.core.uiTime;
 				}
 			}

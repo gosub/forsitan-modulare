@@ -180,7 +180,7 @@ sample is only a click.
 ### 5. crusher (yellow)
 
 Downsampling and bit mangling. **time** is the sample rate it decimates to,
-from 200 Hz at the far left up to the patch's own sample rate at the far
+from 7.5 Hz at the far left up to the patch's own sample rate at the far
 right, where the decimator holds for exactly one sample and passes the signal
 through untouched. **amount** deepens the effect and then folds in an XOR of
 the sample with itself towards the top, which is where it stops sounding like

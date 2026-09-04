@@ -1059,7 +1059,13 @@ struct Core {
 		// the signal through untouched. Stopping short of that - at sr/2, say
 		// - leaves a sample-and-hold on every other sample, which is a good
 		// 30 dB of grain that no knob position can get rid of.
-		float rate = 200.f * std::pow(sr / 200.f, t);
+		// 7.5 Hz at the far left, the hardware's own floor once
+		// kMapCrusherFrequency has been halved and stereo-scaled. It started
+		// at 200, which is a polite bitcrusher and nothing like the far end of
+		// the hardware's: at a few holds a second the mode stops being a
+		// texture and starts being a stutter, which is the reason the knob
+		// goes down there at all.
+		float rate = 7.5f * std::pow(sr / 7.5f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = rate;
 		if (ct.trig)
