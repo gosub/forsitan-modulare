@@ -735,7 +735,10 @@ struct Core {
 	// A short delay swept by a sine: chorus around the middle, flanger with
 	// feedback, pitch modulation at the extremes.
 	void doFlanger(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
-		float hz = 0.02f * std::pow(500.f, t);
+		// 0.02 Hz to 50, the hardware's kMapFlangerFrequency. It used to stop
+		// at 10, which is a sweep and never a modulation: the top of the knob
+		// is meant to leave the LFO band and start bending pitch.
+		float hz = 0.02f * std::pow(2500.f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = hz;
 		// The modulator's rate is integrated into a phase, so a step in it is

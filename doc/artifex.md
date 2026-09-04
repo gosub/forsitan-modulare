@@ -114,12 +114,13 @@ a tuned resonator you can play from the time knob.
 
 ### 2. flanger (cyan)
 
-A delay whose time is swept by a sine. **amount** sets how far it sweeps and
-how much of it you hear: around the middle, with no feedback, it is a stereo
-chorus; with feedback it is a flanger; at the extremes the sweep is deep
-enough to be pitch modulation. The depth scales the tap's position, so it
-glides towards the knob rather than stepping with it. **stereo** detunes the
-two modulators, which is what opens the image.
+A delay whose time is swept by a sine. **time** is the sweep rate, 0.02 Hz at
+the far left up to 50 Hz at the far right, where the modulator has left the LFO
+band and is bending pitch rather than sweeping. **amount** sets how far it
+sweeps and how much of it you hear: around the middle, with no feedback, it is
+a stereo chorus; with feedback it is a flanger. The depth scales the tap's
+position, so it glides towards the knob rather than stepping with it.
+**stereo** detunes the two modulators, which is what opens the image.
 
 ### 3. freezer (blue)
 
