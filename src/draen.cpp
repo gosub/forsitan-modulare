@@ -218,10 +218,13 @@ struct Draen : Module {
     void dataFromJson(json_t* root) override {
         if (json_t* j = json_object_get(root, "hzMode")) hzMode = json_integer_value(j);
         if (json_t* j = json_object_get(root, "fadeTime")) fadeTime = json_real_value(j);
-        if (json_t* j = json_object_get(root, "bank")) {
+        if (json_t* j = json_object_get(root, "bank"))
             bankRequest = clamp((int)json_integer_value(j), 0, 1);
-            bank = bankRequest;   // loading a patch lands directly on the saved bank
-        }
+        // Adopt the saved bank in process(), which initialises the engine before
+        // rendering it. Moving `bank` here instead points the audio thread at an
+        // engine of the other bank that has never been init()ed: its delay lines
+        // are unallocated, and half the engines segfault on the next sample.
+        firstFrame = true;
     }
 };
 
