@@ -7,7 +7,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 
 # One smoke binary per module: `make -j` builds them in parallel and a change
 # to one module only rebuilds its own harness.
-SMOKE_MODULES = rete ululo tabes lustro bulla perge vorax textor imber sylla \
+SMOKE_MODULES = draen rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
                 cartilago scrupea viginti gradus materiae aether vates artifex
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
@@ -126,6 +126,7 @@ smoke_oom: smoke_oom.cpp smoke_harness.hpp ../src/imber.cpp ../src/sylla.cpp \
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Header-only DSP libraries the modules pull in.
+smoke_draen: ../src/draen_ugens.hpp ../src/draen_engines.hpp ../src/draen_alt_engines.hpp
 smoke_lustro: ../src/scando_engine.hpp
 smoke_imber smoke_sylla: $(wildcard ../src/imber/*.hpp)
 # vespae, raucus and cartilago reuse guttur's vendored ChowDSP oversampler
