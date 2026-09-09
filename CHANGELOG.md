@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.16.1] - 2026-09-09
+### Fixed
+  - **dræn** taking Rack down when a preset moved it to the other
+    engine bank. The engines are built when the module is, but an engine
+    only allocates its delay lines when it is first selected, so only the
+    one that is playing has ever been initialised. Loading a preset set
+    the bank immediately while leaving the engine index alone, which
+    pointed the audio thread at the engine of that index in the other
+    bank: one nobody had built, whose delay lines are an empty buffer and
+    a null pointer. Half the engines crash on the first sample read that
+    way. The bank now moves where the engine index does, on the next
+    audio frame, which initialises the engine before it renders and fades
+    it in from silence, as adding the module does. Patches were never
+    affected: only a preset applied to a module already making sound.
+    Reported by alexgamma as
+    [#21](https://github.com/gosub/forsitan-modulare/issues/21).
+
+### Changed
+  - **dræn** has a smoke harness, `test/smoke_draen`. `draen_sweep`
+    measured the engines and nothing covered the module around them,
+    which is where the bug above lived. Its centre is a bank-crossing
+    preset applied at all 37 indices; around that, every engine of both
+    banks renders from cold, and presets applied inside their own fades
+    stay finite.
+
 ## [2.16.0] - 2026-08-31
 ### Added
   - **vates**, a 26 HP stereo sample player, after Bastl Instruments' Citadel
