@@ -17,7 +17,8 @@ SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 # The invariant harnesses are property-based rather than per-point: they
 # randomize and sweep the whole control space and assert invariants over it.
 CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
-             cartilago_invariants scrupea_invariants viginti_invariants
+             cartilago_invariants scrupea_invariants viginti_invariants \
+             vates_invariants
 
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
@@ -115,6 +116,16 @@ cartilago_invariants: cartilago_invariants.cpp smoke_harness.hpp ../src/cartilag
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 scrupea_invariants: scrupea_invariants.cpp smoke_harness.hpp ../src/scrupea.cpp ../src/scrupea_dsp.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# What the output jack must never do, whatever is done to the module. It is
+# the one harness that looks for a LATCH rather than for a NaN: process() ends
+# in clamp(x, -10, 10) and rack::clamp is fmax(fmin(x, hi), lo), so a NaN
+# leaves vates as exactly +10 V and every check that counts NaNs at the jack
+# passes on a dead rail.
+vates_invariants: vates_invariants.cpp smoke_harness.hpp ../src/vates.cpp \
+                  $(wildcard ../src/shared/*.hpp) $(wildcard ../src/vates/*.hpp) \
+                  ../src/sampler/kitloader.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 smoke_%: smoke_%.cpp smoke_harness.hpp ../src/%.cpp ../src/forsitan.hpp
