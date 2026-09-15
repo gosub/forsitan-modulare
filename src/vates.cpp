@@ -986,6 +986,12 @@ struct Vates : Module {
 		float level = params[LEVEL_PARAM].getValue();
 		outL *= level * 5.f;
 		outR *= level * 5.f;
+		// sanitized before the clamp, not after: rack::clamp is
+		// fmax(fmin(x, hi), lo), and fmin(NaN, 10) is 10, so a non-finite
+		// sample leaves here as a solid +10 V rather than as anything that
+		// looks wrong. Whatever goes bad upstream, this jack falls silent.
+		outL = forsitan_dsp::sanitize(outL);
+		outR = forsitan_dsp::sanitize(outR);
 		outputs[LEFT_OUTPUT].setVoltage(clamp(outL, -10.f, 10.f));
 		outputs[RIGHT_OUTPUT].setVoltage(clamp(outR, -10.f, 10.f));
 		lights[LEFT_LIGHT].setBrightnessSmooth(std::fabs(outL) * 0.2f, args.sampleTime);
