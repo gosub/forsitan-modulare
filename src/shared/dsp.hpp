@@ -14,6 +14,20 @@ namespace forsitan_dsp {
 
 using namespace rack;
 
+// A non-finite sample that reaches state which feeds itself never leaves it:
+// every later sample is computed from it, so one NaN becomes a channel stuck
+// at a rail for as long as the patch runs. Denormals need nothing here -
+// Rack sets FTZ and DAZ on every engine thread in system::resetFpuFlags() -
+// and NaN is untouched by those, so it has to be tested for.
+//
+// This only works because the plugin is built with
+// -funsafe-math-optimizations and not -ffast-math: the latter implies
+// -ffinite-math-only, under which the compiler folds isfinite() to true and
+// deletes the guard silently.
+inline float sanitize(float x) {
+	return std::isfinite(x) ? x : 0.f;
+}
+
 // TPT state-variable filter, one per channel. Used as a lowpass on one side
 // of a bipolar filter knob and a highpass on the other.
 struct Svf {
@@ -50,7 +64,10 @@ struct Delay {
 	void write(float x) {
 		if (buf.empty())
 			return;
-		buf[w] = x;
+		// sanitized here rather than at read: a line is written once per
+		// sample and may be tapped several times, and a buffer that cannot
+		// hold a NaN cannot circulate one either
+		buf[w] = sanitize(x);
 		if (++w >= (int)buf.size())
 			w = 0;
 	}
