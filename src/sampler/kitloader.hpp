@@ -10,6 +10,7 @@
 // violation (see check_symbols.py).
 
 #include <rack.hpp>
+#include <cmath>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -61,7 +62,13 @@ inline float pcmSample(const uint8_t* s, int bits, bool isFloat) {
 		uint32_t u = rd32(s);
 		float fv;
 		std::memcpy(&fv, &u, 4);
-		return fv;
+		// Nothing on the way in looks at what the bytes mean, and 32-bit
+		// float is the one format that can spell NaN and infinity: a bad
+		// render or a truncated export arrives in the voice as it was
+		// written, and a player that feeds it through a delay line with any
+		// feedback at all keeps it for good. The integer formats below
+		// cannot encode one, so this is the only place that needs the test.
+		return std::isfinite(fv) ? fv : 0.f;
 	}
 	if (bits == 16)
 		return (int16_t)rd16(s) / 32768.f;
