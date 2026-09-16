@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.16.2] - 2026-09-16
+### Fixed
+  - **vates** could leave one audio output sitting at a solid 10 V while the
+    other played normally. A single non-finite sample reaching a delay line
+    that feeds itself never leaves it: it is read back, the feedback write
+    turns that read into another one further on, and within a few seconds
+    every slot in the buffer holds one. The chorus half of the **fx** knob
+    runs its two lines independently, so one channel can fail while the other
+    is fine; the delay half cross-feeds and would have taken both. It
+    presented as a clean DC rather than as a noise because `clamp(x, -10, 10)`
+    is `fmax(fmin(x, hi), lo)`, and `fmin(NaN, 10)` is 10.
+
+    A 32-bit float WAV is the way in. It is the one sample format that can
+    spell NaN and infinity, and nothing on the way in looked at what the bytes
+    meant, so a bad render or a truncated export arrived in the voice exactly
+    as it was written. Generated banks were never affected: only a user kit
+    containing such a file, and only then with **fx** past centre. Moving the
+    knob silenced it, which is why it looked unreproducible; nothing short of
+    a sample-rate change or a patch reload actually cleared it.
+
+    Fixed in three places. A delay line no longer stores a non-finite sample,
+    which ends the whole class for vates and **artifex** at once. The WAV
+    loader sanitises 32-bit float data as it reads it, which covers
+    **pellicula** too, since it shares that loader. And vates' audio jacks
+    fall silent on a non-finite sample rather than presenting it as full-scale
+    DC. Reported by a user on the VCV Rack forum.
+
+### Changed
+  - **vates** has an invariants harness, `test/vates_invariants`. The existing
+    checks counted non-finite samples at the output jack, which is downstream
+    of the clamp that hides them, and passed a peak test that a dead rail also
+    passes - so no test we owned could have caught the above. This one asserts
+    what the jack must never do instead: over randomized knobs, CV and
+    gestures, no channel may rest on a rail or hold one value, and a NaN poked
+    into any piece of self-feeding state must be gone six seconds later.
+
 ## [2.16.1] - 2026-09-09
 ### Fixed
   - **dræn** taking Rack down when a preset moved it to the other
