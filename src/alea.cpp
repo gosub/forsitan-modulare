@@ -1,8 +1,11 @@
 #include <random>
 #include <iterator>
+#include <vector>
 #include "forsitan.hpp"
 #include "callback_button.hpp"
 
+
+namespace {
 
 void CreateModule(Model* model) {
     engine::Module* module = model->createModule();
@@ -34,11 +37,8 @@ Iter select_randomly(Iter start, Iter end) {
     return select_randomly(start, end, gen);
 }
 
-void CreateRandomModule(std::vector<Model*>& modules) {
-  if (modules.empty()) return;
-  Model* module = *select_randomly(modules.begin(), modules.end());
-  CreateModule(module);
-}
+} // namespace
+
 
 struct Alea : Module {
 	enum ParamIds {
@@ -54,17 +54,36 @@ struct Alea : Module {
 		NUM_LIGHTS
 	};
 
-
 	Alea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
-        for (const auto& p : rack::plugin::plugins) {
-            for (const auto& m : p->models) {
-                modules.push_back(m);
-	        }
-        }
-    }
-    std::vector<Model*> modules;
+	}
+
+	bool accepts(Model* m) {
+		// Hidden models are the ones a maker deprecated: loadable from an old
+		// patch, never offered in the browser, and never a good surprise here.
+		if (m->hidden) return false;
+		return true;
+	}
 };
+
+
+namespace {
+
+void CreateRandomModule(Alea* alea) {
+	// NULL in the module browser, where the button is only a picture.
+	if (!alea) return;
+
+	std::vector<Model*> models;
+	for (plugin::Plugin* p : rack::plugin::plugins) {
+		for (Model* m : p->models) {
+			if (alea->accepts(m)) models.push_back(m);
+		}
+	}
+	if (models.empty()) return;
+	CreateModule(*select_randomly(models.begin(), models.end()));
+}
+
+} // namespace
 
 
 typedef CallbackButton<Alea> CB;
@@ -81,7 +100,7 @@ struct AleaWidget : ModuleWidget {
 
         std::shared_ptr<rack::Svg> die = APP->window->loadSvg(asset::plugin(pluginInstance, "res/buttons/die.svg"));
         std::shared_ptr<rack::Svg> die_negative = APP->window->loadSvg(asset::plugin(pluginInstance, "res/buttons/die-negative.svg"));
-        addChild(CB::create(Vec(7.5, 128), [](Alea* m){CreateRandomModule(m->modules);}, module, die, die_negative));
+        addChild(CB::create(Vec(7.5, 128), [](Alea* m){CreateRandomModule(m);}, module, die, die_negative));
 	}
 };
 
