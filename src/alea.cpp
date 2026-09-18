@@ -1,5 +1,6 @@
 #include <random>
 #include <iterator>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -48,6 +49,14 @@ const std::vector<std::string> filterTags = {
     "Blank", "Controller", "Expander", "External", "MIDI", "Utility", "Visual"
 };
 
+// A maker, not a plugin: one author shipping several plugins under one brand
+// gets one ticket in the brand draw, which is what "by brand" means to a human.
+std::string brandOf(plugin::Plugin* p) {
+    if (!p->brand.empty()) return p->brand;
+    if (!p->name.empty()) return p->name;
+    return p->slug;
+}
+
 } // namespace
 
 
@@ -65,6 +74,9 @@ struct Alea : Module {
 		NUM_LIGHTS
 	};
 
+	// Draw a brand first, then a module inside it, so a plugin with 100
+	// modules is no likelier than a plugin with one.
+	bool weightByBrand = false;
 	// Canonical tag names, not tag IDs: the IDs are not part of the ABI.
 	std::set<std::string> excludedTags = {"Blank", "Expander", "External", "MIDI"};
 
@@ -94,6 +106,7 @@ struct Alea : Module {
 
 	json_t* dataToJson() override {
 		json_t* rootJ = json_object();
+		json_object_set_new(rootJ, "weightByBrand", json_boolean(weightByBrand));
 		json_t* tagsJ = json_array();
 		for (const std::string& t : excludedTags) {
 			json_array_append_new(tagsJ, json_string(t.c_str()));
@@ -103,6 +116,8 @@ struct Alea : Module {
 	}
 
 	void dataFromJson(json_t* rootJ) override {
+		json_t* weightJ = json_object_get(rootJ, "weightByBrand");
+		if (weightJ) weightByBrand = json_boolean_value(weightJ);
 		json_t* tagsJ = json_object_get(rootJ, "excludedTags");
 		if (json_is_array(tagsJ)) {
 			excludedTags.clear();
@@ -123,6 +138,20 @@ void CreateRandomModule(Alea* alea) {
 	// NULL in the module browser, where the button is only a picture.
 	if (!alea) return;
 	const std::set<int> excluded = alea->excludedTagIds();
+
+	if (alea->weightByBrand) {
+		std::map<std::string, std::vector<Model*>> byBrand;
+		for (plugin::Plugin* p : rack::plugin::plugins) {
+			for (Model* m : p->models) {
+				if (alea->accepts(m, excluded)) byBrand[brandOf(p)].push_back(m);
+			}
+		}
+		if (byBrand.empty()) return;
+		const std::vector<Model*>& models =
+			select_randomly(byBrand.begin(), byBrand.end())->second;
+		CreateModule(*select_randomly(models.begin(), models.end()));
+		return;
+	}
 
 	std::vector<Model*> models;
 	for (plugin::Plugin* p : rack::plugin::plugins) {
@@ -160,6 +189,9 @@ struct AleaWidget : ModuleWidget {
 
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createMenuLabel("The pool"));
+
+		menu->addChild(createBoolPtrMenuItem(
+			"Even odds per brand", "", &m->weightByBrand));
 
 		menu->addChild(createSubmenuItem("Excluded tags", "", [=](Menu* sub) {
 			for (const std::string& t : filterTags) {
