@@ -1,7 +1,12 @@
 #include <random>
 #include <iterator>
+#include <set>
+#include <string>
 #include <vector>
 #include "forsitan.hpp"
+// Not pulled in by rack.hpp, and the only way to a tag's name: the IDs
+// themselves are explicitly not part of the ABI.
+#include <tag.hpp>
 #include "callback_button.hpp"
 
 
@@ -37,6 +42,12 @@ Iter select_randomly(Iter start, Iter end) {
     return select_randomly(start, end, gen);
 }
 
+// The tags offered in the "excluded tags" submenu, canonical spelling as in
+// Rack's own tag list. Anything not here is never filtered on.
+const std::vector<std::string> filterTags = {
+    "Blank", "Controller", "Expander", "External", "MIDI", "Utility", "Visual"
+};
+
 } // namespace
 
 
@@ -54,15 +65,54 @@ struct Alea : Module {
 		NUM_LIGHTS
 	};
 
+	// Canonical tag names, not tag IDs: the IDs are not part of the ABI.
+	std::set<std::string> excludedTags = {"Blank", "Expander", "External", "MIDI"};
+
 	Alea() {
 		config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
 	}
 
-	bool accepts(Model* m) {
+	// Names resolved to this Rack's own IDs, once per draw.
+	std::set<int> excludedTagIds() {
+		std::set<int> ids;
+		for (const std::string& t : excludedTags) {
+			int id = tag::findId(t);
+			if (id >= 0) ids.insert(id);
+		}
+		return ids;
+	}
+
+	bool accepts(Model* m, const std::set<int>& excluded) {
 		// Hidden models are the ones a maker deprecated: loadable from an old
 		// patch, never offered in the browser, and never a good surprise here.
 		if (m->hidden) return false;
+		for (int tagId : m->tagIds) {
+			if (excluded.count(tagId)) return false;
+		}
 		return true;
+	}
+
+	json_t* dataToJson() override {
+		json_t* rootJ = json_object();
+		json_t* tagsJ = json_array();
+		for (const std::string& t : excludedTags) {
+			json_array_append_new(tagsJ, json_string(t.c_str()));
+		}
+		json_object_set_new(rootJ, "excludedTags", tagsJ);
+		return rootJ;
+	}
+
+	void dataFromJson(json_t* rootJ) override {
+		json_t* tagsJ = json_object_get(rootJ, "excludedTags");
+		if (json_is_array(tagsJ)) {
+			excludedTags.clear();
+			size_t i;
+			json_t* tagJ;
+			json_array_foreach(tagsJ, i, tagJ) {
+				const char* s = json_string_value(tagJ);
+				if (s) excludedTags.insert(s);
+			}
+		}
 	}
 };
 
@@ -72,11 +122,12 @@ namespace {
 void CreateRandomModule(Alea* alea) {
 	// NULL in the module browser, where the button is only a picture.
 	if (!alea) return;
+	const std::set<int> excluded = alea->excludedTagIds();
 
 	std::vector<Model*> models;
 	for (plugin::Plugin* p : rack::plugin::plugins) {
 		for (Model* m : p->models) {
-			if (alea->accepts(m)) models.push_back(m);
+			if (alea->accepts(m, excluded)) models.push_back(m);
 		}
 	}
 	if (models.empty()) return;
@@ -101,6 +152,25 @@ struct AleaWidget : ModuleWidget {
         std::shared_ptr<rack::Svg> die = APP->window->loadSvg(asset::plugin(pluginInstance, "res/buttons/die.svg"));
         std::shared_ptr<rack::Svg> die_negative = APP->window->loadSvg(asset::plugin(pluginInstance, "res/buttons/die-negative.svg"));
         addChild(CB::create(Vec(7.5, 128), [](Alea* m){CreateRandomModule(m);}, module, die, die_negative));
+	}
+
+	void appendContextMenu(Menu* menu) override {
+		Alea* m = dynamic_cast<Alea*>(module);
+		if (!m) return;
+
+		menu->addChild(new MenuSeparator);
+		menu->addChild(createMenuLabel("The pool"));
+
+		menu->addChild(createSubmenuItem("Excluded tags", "", [=](Menu* sub) {
+			for (const std::string& t : filterTags) {
+				sub->addChild(createCheckMenuItem(t, "",
+					[=]() { return m->excludedTags.count(t) > 0; },
+					[=]() {
+						if (m->excludedTags.count(t)) m->excludedTags.erase(t);
+						else m->excludedTags.insert(t);
+					}));
+			}
+		}));
 	}
 };
 
