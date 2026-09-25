@@ -90,7 +90,7 @@ r.set(src="Self", table="Text")
 - [x] 3.1. A slow ramp walks **Law** through its positions in order, one hard
       change at each step. The click at the change is meant.
       `vcv.modulate(r["law cv"], depth=0.5, rate=0.1, shape="sawtooth")`
-- [ ] 3.2. **Decide -** the same ramp on **Table** instead: is a hard jump
+- [x] 3.2. **Decide -** the same ramp on **Table** instead: is a hard jump
       between tables the right thing, or should a table change be the one
       place that is smoothed?
       ```python
@@ -110,9 +110,9 @@ r["audio"] >> r["audio"]
 r.set(src="Input", param=0)
 ```
 
-- [ ] 4.1. Bring **Param** up from zero: from the plain sine into a loop
+- [x] 4.1. Bring **Param** up from zero: from the plain sine into a loop
       that feeds on itself. Every **Law** gets there differently.
-- [ ] 4.2. **CV OUT** into **Param CV** as well, **Param** low: the loop is
+- [x] 4.2. **CV OUT** into **Param CV** as well, **Param** low: the loop is
       now modulated by its own rungler, stepping rather than howling.
       `r["cv"] >> r["param cv"]`
 
@@ -124,5 +124,5 @@ r.set(src="Input", param=0)
 r.set(table="Text")
 ```
 
-- [ ] 5.1. Type another string into the menu and press Enter: the wave
+- [x] 5.1. Type another string into the menu and press Enter: the wave
       changes to its letters, and a single repeated letter is silence.
