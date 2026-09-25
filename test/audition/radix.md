@@ -54,8 +54,9 @@ on Sine, **Param** at 128, a sine at C4.
       ```python
       r.set(src="Self", clock=0.537)  # about 4 kHz: at 32 kHz it is too fine to hear
       ```
-- [ ] 1.4. **Source** on Counters, **Law** on Sync, **Param** swept: a figure
-      that walks and never quite repeats. The busiest corner of the module.
+- [x] 1.4. **Source** on Counters, **Law** on Sync: a figure of timbres that
+      loops every 256 cycles, about once a second at C4, the pitch steady.
+      Each **Param** position is a different figure. The busiest corner.
       `r.set(src="Counters", law="Sync", table="Saw")`
 
 ---
