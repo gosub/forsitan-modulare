@@ -410,6 +410,18 @@
         "Sequencer",
         "Hardware clone"
       ]
+    },
+    {
+      "slug": "radix",
+      "name": "radix",
+      "description": "Chaotic 8-bit source on its own clock: 150 programs picked by three stepped knobs with CV.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.16.3/doc/radix.md",
+      "tags": [
+        "Oscillator",
+        "Noise",
+        "Digital",
+        "Random"
+      ]
     }
   ]
 }

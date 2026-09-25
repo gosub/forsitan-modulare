@@ -44,3 +44,4 @@ extern Model* modelMateriae;
 extern Model* modelAether;
 extern Model* modelVates;
 extern Model* modelArtifex;
+extern Model* modelRadix;
