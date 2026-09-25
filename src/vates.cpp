@@ -981,9 +981,16 @@ struct Vates : Module {
 				else
 					dlyT += clamp(diff, -0.002f, 0.002f);
 			}
-			float wetL = dly[0].read(dlyT);
-			float wetR = dly[1].read(dlyT * 0.667f);
-			if (dlyXf < 1.f) {
+			// With the knob on the other side, or at the centre, the wet and
+			// the feedback are both multiplied by zero: only the write below
+			// matters, so the reads are not made. A third of the fx section's
+			// cost, for a result that is the same to the bit.
+			float wetL = 0.f, wetR = 0.f;
+			if (amt > 0.f) {
+				wetL = dly[0].read(dlyT);
+				wetR = dly[1].read(dlyT * 0.667f);
+			}
+			if (dlyXf < 1.f && amt > 0.f) {
 				dlyXf = std::min(1.f, dlyXf + args.sampleTime / 0.05f);
 				float x = dlyXf;
 				wetL = dly[0].read(dlyPrevT) * (1.f - x) + wetL * x;
@@ -1024,12 +1031,16 @@ struct Vates : Module {
 			float shape = amt * amt;
 			modPhase += 0.35f * args.sampleTime;
 			modPhase -= std::floor(modPhase);
-			float m1 = std::sin(2.f * (float)M_PI * modPhase);
-			float m2 = std::sin(2.f * (float)M_PI * (modPhase + 0.25f));
-			float base = (8.f - 6.5f * shape) * 0.001f * sr;
-			float depth = (2.5f - 1.8f * shape) * 0.001f * sr;
-			float wetL = mod[0].read(base + depth * m1);
-			float wetR = mod[1].read(base + depth * m2);
+			// as in the delay: at zero only the write matters
+			float wetL = 0.f, wetR = 0.f;
+			if (amt > 0.f) {
+				float m1 = std::sin(2.f * (float)M_PI * modPhase);
+				float m2 = std::sin(2.f * (float)M_PI * (modPhase + 0.25f));
+				float base = (8.f - 6.5f * shape) * 0.001f * sr;
+				float depth = (2.5f - 1.8f * shape) * 0.001f * sr;
+				wetL = mod[0].read(base + depth * m1);
+				wetR = mod[1].read(base + depth * m2);
+			}
 			float fb = 0.7f * shape;
 			mod[0].write(std::tanh(outL + wetL * fb));
 			mod[1].write(std::tanh(outR + wetR * fb));
@@ -1041,8 +1052,10 @@ struct Vates : Module {
 			// the travel: a stepped CV crosses a shorter fade in a few dozen
 			// samples, and that is a click by another name
 			float sat = std::min(1.f, amt * 3.f);
-			yL += (std::tanh(yL * (1.f + amt)) - yL) * sat;
-			yR += (std::tanh(yR * (1.f + amt)) - yR) * sat;
+			if (sat > 0.f) {
+				yL += (std::tanh(yL * (1.f + amt)) - yL) * sat;
+				yR += (std::tanh(yR * (1.f + amt)) - yR) * sat;
+			}
 			outL = yL;
 			outR = yR;
 		}
