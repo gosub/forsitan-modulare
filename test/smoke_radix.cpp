@@ -197,5 +197,20 @@ static void testGrit() {
     report("radix", "grit_quarter_db", db, db > -40.0);
 }
 
-SMOKE_MAIN(testDefault, testAllPrograms, testStepped, testVoct, testCvOut,
+// The knob ranges written as literals, so that tools/audition can read
+// them, still agree with the engine they describe.
+static void testLiterals() {
+    Radix m;
+    int bad = 0;
+    bad += m.paramQuantities[Radix::SRC_PARAM]->maxValue != radix::NUM_SRC - 1;
+    bad += m.paramQuantities[Radix::LAW_PARAM]->maxValue != radix::NUM_LAW - 1;
+    bad += m.paramQuantities[Radix::TABLE_PARAM]->maxValue != radix::NUM_TABLE - 1;
+    // by hand: getDisplayValue() goes through APP, which the harness lacks
+    float hz = radix::kClockMin
+             * std::pow(kClockSpan, m.params[Radix::CLOCK_PARAM].getValue());
+    bad += std::fabs(hz - radix::kRefClock) > 50.f;
+    report("radix", "literal_ranges", bad, bad == 0);
+}
+
+SMOKE_MAIN(testLiterals, testDefault, testAllPrograms, testStepped, testVoct, testCvOut,
            testFeedback, testNanInputs, testJson, testGrit)

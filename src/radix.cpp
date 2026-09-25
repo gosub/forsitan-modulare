@@ -32,10 +32,6 @@ namespace {
 // CLOCK knob: 0..1 onto kClockMin..kClockMax, exponential
 const float kClockSpan = radix::kClockMax / radix::kClockMin;   // 960
 
-float clockKnobFor(float hz) {
-    return std::log(hz / radix::kClockMin) / std::log(kClockSpan);
-}
-
 }  // namespace
 
 struct Radix : Module {
@@ -78,16 +74,19 @@ struct Radix : Module {
         config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
         configParam(RATE_PARAM, -4.f, 4.f, 0.f, "Rate", " Hz", 2.f, dsp::FREQ_C4);
         configParam(PARAM_PARAM, 0.f, 255.f, 128.f, "Param");
-        configParam(CLOCK_PARAM, 0.f, 1.f, clockKnobFor(radix::kRefClock),
+        // the default is kRefClock, 32 kHz, written out as the knob position
+        // because tools/audition reads configParam's numbers from this file
+        configParam(CLOCK_PARAM, 0.f, 1.f, 0.84f,
                     "Clock", " Hz", kClockSpan, radix::kClockMin);
         configParam(BITS_PARAM, 1.f, 16.f, 16.f, "Bits");
         paramQuantities[BITS_PARAM]->snapEnabled = true;
         configParam(GRIT_PARAM, 0.f, 1.f, 0.f, "Grit", "%", 0.f, 100.f);
-        configSwitch(SRC_PARAM, 0.f, radix::NUM_SRC - 1, 0.f, "Source",
+        // literal ranges for the same reason; smoke_radix checks them
+        configSwitch(SRC_PARAM, 0.f, 4.f, 0.f, "Source",
                      {"Param", "Table walk", "Self", "Counters", "Input"});
-        configSwitch(LAW_PARAM, 0.f, radix::NUM_LAW - 1, 0.f, "Law",
+        configSwitch(LAW_PARAM, 0.f, 4.f, 0.f, "Law",
                      {"Add", "Multiply", "Shift", "XOR", "Sync"});
-        configSwitch(TABLE_PARAM, 0.f, radix::NUM_TABLE - 1, 0.f, "Table",
+        configSwitch(TABLE_PARAM, 0.f, 5.f, 0.f, "Table",
                      {"Sine", "Saw", "Pulse", "Noise", "Bits", "Text"});
         configInput(VOCT_INPUT, "1V/oct rate");
         configInput(PARAM_CV_INPUT, "Param CV (1 V = 25.5)");
