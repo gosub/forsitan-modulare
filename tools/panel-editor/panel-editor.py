@@ -130,7 +130,10 @@ def parse_cpp(path):
         }
         elem_order.append(eid)
 
-    # Extract positions from C++ lines (skip SVG-only kinds)
+    # Extract positions from C++ lines (skip SVG-only kinds). The enum's
+    # class is taken from them too: it is `Scrupea` where the layout says
+    # `scrupea`, and writing the layout name back broke the build.
+    cls = None
     for line in block.splitlines():
         mv = VEC_RE.search(line)
         if not mv:
@@ -140,6 +143,7 @@ def parse_cpp(path):
         eid = None
         if mi:
             eid = mi.group(2)
+            cls = cls or mi.group(1)
         elif ms:
             eid = ms.group(1)
         if eid and eid in elem_defs:
@@ -154,6 +158,7 @@ def parse_cpp(path):
     elements = [elem_defs[k] for k in elem_order if k in elem_defs]
     return {
         'module':   module_name,
+        'cls':      cls or module_name,
         'panel_w':  panel_w,
         'panel_h':  panel_h,
         'title_size': title_size,
@@ -223,7 +228,7 @@ def generate_block(layout):
                 f'{e["kind"]} "{e["label"]}" {e["label_dy"]}{tail}')
     lines.append('')
     for e in layout['elements']:
-        cl = cpp_line(e, m)
+        cl = cpp_line(e, layout.get('cls') or m)
         if cl:
             lines.append(cl)
     lines.append('        // @layout:end')
