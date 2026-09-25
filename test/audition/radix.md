@@ -79,7 +79,9 @@ on Sine, **Param** at 128, a sine at C4.
 ## 3. Sequencing the program
 
 The ramp is 0-10 V and the program knobs take 1 V a step, so the VCA
-starts half open: 0-5 V covers every position of Law and of Table.
+starts half open: 0-5 V covers every position of Law and of Table. Knob
+plus CV is rounded, so a position changes at the half volts (0.5, 1.5, 2.5)
+and each whole volt is the middle of one position; that is meant.
 
 ```python
 r.set(src="Self", table="Text")
@@ -91,7 +93,10 @@ r.set(src="Self", table="Text")
 - [ ] 3.2. **Decide -** the same ramp on **Table** instead: is a hard jump
       between tables the right thing, or should a table change be the one
       place that is smoothed?
-      `vcv.modulate(r["table cv"], depth=0.5, rate=0.1, shape="sawtooth")`
+      ```python
+      r.set(table="Sine")  # the CV adds to the knob; left on Text it stays pinned
+      vcv.modulate(r["table cv"], depth=0.5, rate=0.1, shape="sawtooth")
+      ```
 
 ---
 
