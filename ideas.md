@@ -24,6 +24,9 @@ permutation path.
 - 400-year-old algorithmic music tradition, maps 1:1 onto CV/gate.
 - Pure combinatorics, cheap to build on existing sequencer plumbing.
 - Nothing in the library (Grayscale Permutation is unrelated random seq).
+- Re-proposed 2026-09-24 with a voice attached: a proper bell model per row
+  (hum, prime, tierce, quint and nominal partials), so it is a sequencer and
+  an instrument in one panel. CV/gate outs stay; the voice is optional.
 
 ## 2. tela - weaving-draft sequencer
 
@@ -76,6 +79,10 @@ notes sound at once.
 
 - The shared-wind coupling (more notes starve them all) is the musically
   interesting part. Sits next to draen; nothing similar in the library.
+- Re-proposed 2026-09-24 as *follis* (bellows), without the Roman framing:
+  any pipe organ on one wind supply. Adds a bellows that refills at its own
+  rate, so a held cluster sags, then recovers when released, plus chiff on
+  attack. The shared resource is the idea whatever the name.
 
 ## 7. tempestas - weather-system modulation source
 
@@ -154,6 +161,11 @@ shapes with retrograde swerves; the panel visual explains itself.
 
 - Caveat: under the hood it is additive sine LFOs with phase coupling, so
   the least novel DSP here; concept, geometry, and 2D output carry it.
+- Kepler variant, proposed 2026-09-24 as *orbis* (*Harmonices Mundi*):
+  elliptical orbits instead of circles, so each body speeds up at perihelion
+  and the CV is not a sine; pitches from angular velocities, and a gate at
+  every conjunction. That answers the caveat above, and could be a mode here
+  rather than a second module.
 
 ## Spectral ideas (2026-08-06)
 
@@ -513,6 +525,10 @@ form, break and reform.
   distinction is that imber's clocks wander independently and these listen to
   each other. If that distinction cannot be heard, this is an imber mode.
 - Name candidates: concentus, scrupea.
+- Re-proposed 2026-09-24 as concentus (Kuramoto), with the audio-rate end
+  as a second face: slow, it is a gate cluster; fast, a tone cluster that
+  snaps into unison. That end is Firefly's territory, so the gates stay the
+  point.
 
 ### SC4. residuum, Xenakis sieves
 
@@ -952,6 +968,336 @@ one.
 
 SC6 (machina) also moves here: `SDTMotor` is a better engine than the Farnell
 patch it was based on, and it arrives with the same port.
+
+## boutique sweep (2026-09-24)
+
+Fifth brainstorm, in three rounds: clone and history targets outside the
+usual VCO/filter territory, then originals shaped like boutique hardware (one
+mechanism, one performable knob), then the same with physics and history
+left out. Numbered B, O and A, best first within each group, independent of
+the lists above.
+
+Ideas this sweep re-proposed that were already here are recorded in place,
+not repeated: campanae (1, now with a bell voice), hydraulis (6, as follis),
+epicyclus (14, Kepler variant), concentus (SC3), Xenakis sieves (SC4). The
+Triadex Muse and GENDYN came up again and stay dropped.
+
+**No library check yet.** Nothing below has been grepped against the
+library index the way the sccode sweep was; do that before ranking any of it
+against the older lists.
+
+**Overlap with the rejected SDT set.** Several entries (B11, B12, O5, O10,
+O11, and the cascades of B14) model a physical object or an avalanche of
+micro-events, which is what stridor, crepitus and ruina did before they were
+dropped on the sound. Read [doc/experiments.md](doc/experiments.md) and
+prototype by ear before drawing a panel for any of them.
+
+### Clone and history targets
+
+#### B1. nihil - no-input mixer
+
+The Toshimaru Nakamura instrument: four channel strips (3-band EQ, aux send,
+pan), with the master bus and the sends fed back into the channels. The
+routing matrix is the instrument, and there are no inputs at all.
+
+- Pure feedback like rete and vorax, but built from an object everyone knows.
+- The design question is how much desk to model: EQ curves, fader law and
+  bus saturation are where the character lives.
+
+#### B2. tactus - Cracklebox
+
+Michel Waisvisz's Cracklebox: one op-amp (LM709) with its internal nodes
+brought out to touch contacts. Six "finger" knobs or CVs set the resistances
+between nodes, and the circuit screams, chirps and stalls.
+
+- A small circuit, so a circuit-level emulation in the raucus / viginti way
+  is realistic.
+
+#### B3. helix - Eventide H910 Harmonizer
+
+The 1975 pitch shifter: audible splice glitches, and fed back into itself,
+the spiralling cascades it became known for. A period-device emulation in
+the MMCCCXCIX mould, where the flaws are the sound.
+
+- Name: not vertigo or gyrus, both already candidates for SC2.
+
+#### B4. fides - Soma Lyra-8
+
+The "organismic" synth: eight sine voices in pairs with cross-FM, a
+hyper-LFO, and a modulated delay feeding a distortion, the delay and the
+voices modulating each other. Sits beside draen and guttur.
+
+- fides is Latin for the strings of a lyre.
+- A current commercial product: inspired-by, not a clone.
+
+#### B5. garrulus - speech chip
+
+Votrax SC-01 (phonemes into an analog formant filter) or TI TMS5220 LPC (the
+Speak & Spell), played from CV, with circuit-bending in the menu (corrupted
+tables, clock bend).
+
+- MAME's emulations of both are BSD-3, so the reference code is usable.
+
+#### B6. cimex - Make Noise Wogglebug
+
+Stepped random, smooth random, and "woggle": a random voltage ringing
+through a resonant lowpass, so it overshoots and settles. Plus burst and
+chaos outs. A random source with a body.
+
+- Check the library first: this one may already have clones.
+
+#### B7. concha - Meng Qi Wingie
+
+A resonator bank that tracks the pitch of its input, plus "cave" mode with
+fixed bowl and bell partials. Between lustro and ululo.
+
+#### B8. rota - Wurlitzer Sideman
+
+The 1959 mechanical drum machine: a motor-driven disc with commutator
+contacts fires the voices. Tempo is motor speed with inertia, patterns are
+rings of contacts. A rhythm source whose mechanics are audible.
+
+#### B9. arca - Kircher's Arca Musarithmica
+
+The 1650 box of rods that composes four-voice counterpoint mechanically:
+choose a meter and rods, get four quantised voices. The most forsitan name on
+the list, and the historical term is Latin already.
+
+- Belongs with campanae (1) and tela (2) as a pre-electronic pattern
+  tradition.
+
+#### B10. talea - isorhythm
+
+Machaut's isorhythm: a rhythm cycle (talea) and a pitch cycle (color) of
+different lengths phase against each other, with diminution and
+augmentation.
+
+- Sibling: *mensura*, a mensuration canon, one line at several proportional
+  speeds (prolatio), poly out. Close to SC7's sloth canons; one panel may
+  hold both.
+
+#### B11. palma - Ondes Martenot diffusers
+
+The palme (a speaker driving twelve sympathetic strings) and the métallique
+(a gong as the speaker cone) as an effect: any input gets a halo of strings
+or metal.
+
+- Overlap: sympathetic strings were dropped below as Audible Instruments
+  Resonator territory. The gong half is what is new.
+
+#### B12. filum - Music on a Long Thin Wire
+
+Lucier's piece: a long wire in a magnetic field driven by an oscillator, its
+nonlinear modes drifting and beating on their own. A single-string drone that
+will not hold still.
+
+#### B13. cubiculum - I Am Sitting in a Room
+
+Capture a phrase, iterate it through a room response N times, with a
+GENERATION knob scrubbing from speech to pure resonance. Kin to tabes, but
+the decay is spectral rather than tape wear.
+
+#### B14. acervus - sandpile
+
+The Bak-Tang-Wiesenfeld sandpile: grains drop in on a clock or CV, most do
+nothing, then an avalanche releases a burst of gates with power-law sizes.
+Long calm, sudden cascade. acervus is the sorites heap.
+
+- Nearest rejected idea is crepitus's Hawkes cascades, but that was a voice
+  and this is a gate generator. The trigger out is the module.
+
+#### B15. mutatio - Polansky's morphological mutation
+
+Morph between two sequences through mutation functions that preserve
+contour, interval or direction, instead of crossfading values.
+
+#### B16. vitrum - ANS synthesizer
+
+Murzin's photoelectric sine bank read from a glass plate scratched through
+black mastic: a slowly scanned spectral plate with erase and scratch
+gestures. Needs a display, imber's widget is the precedent.
+
+#### B17. Lower down
+
+- **bombus** - tanpura with jawari bridge: four strings plucked in cycle,
+  the buzzing contact giving the slow overtone sweep. Sympathetic-string
+  overlap as B11.
+- **aeolia** - Aeolian harp: wind turbulence exciting strings by vortex
+  shedding, harmonics jumping with wind speed. `SDTWindKarman` (material
+  sweep) is the same mechanism, and would give tempestas (7) a voice.
+- **cera** - wax-cylinder chain: horn formants, diaphragm, cutter, groove
+  wear per playback, speed drift. Risks being another lo-fi box.
+
+### Boutique-style originals
+
+#### O1. fulgur - spark-gap oscillator
+
+A capacitor charges until the gap breaks down. The breakdown voltage is
+random, and a recent spark leaves the gap ionised, lowering the next
+threshold, so sparks come in bursts and chains. Near a critical charge rate
+it locks into a buzzing tone and breaks up again.
+
+- Panel: CHARGE, GAP, IONIZE (how much one spark helps the next), JITTER.
+  Outs: audio, gates, capacitor voltage.
+- Tiny DSP, wide range; a generator and a voice at once.
+
+#### O2. hydrargyrum - mercury delay-line memory
+
+1949 computer memory as a delay: audio becomes a pulse stream, travels a
+mercury tube and is recirculated; the tube smears pulses, bits flip, and the
+regeneration clock drifts against the tube until it slips a bit.
+
+- Panel: LENGTH, TEMPERATURE (sound speed in mercury, so it detunes and
+  desyncs the loop), REGEN, CLOCK.
+- The MMCCCXCIX tradition applied to a medium nobody has made an effect of.
+  A Williams tube (CRT charge-spot memory) is the sibling idea.
+
+#### O3. reminiscor - Hopfield sequencer
+
+Teach it up to four gate patterns, which become attractors; each clock it
+relaxes toward the nearest memory. TEMPERATURE adds noise so it wanders
+between memories, blends them, or settles on false memories nobody taught.
+
+- A sequencer that recalls rather than plays back; continues vestigia's
+  memory theme.
+
+#### O4. horologium - escapement clock
+
+Pendulum and escape wheel under mainspring torque. BEAT ERROR makes tick and
+tock unequal (swing from mechanics), the spring runs down until the clock
+stumbles and stops, a WIND trigger restores it. Tick/tock gates, pendulum
+CV, and the impact sound.
+
+#### O5. terrae motus - stick-slip chain
+
+A Burridge-Knopoff earthquake model: blocks on a moving belt, coupled by
+springs, held by friction until they slip. Slow belt: slip cascades of every
+size as gates. Audio-rate belt: squeal.
+
+- The squeal end is stridor's, rejected. Only the gate end is new.
+
+#### O6. lucerna - neon relaxation ladder
+
+Six neon-bulb oscillators sharing capacitors, as in a 1950s neon organ. Neon
+strikes with hysteresis and jittery striking voltage, so neighbours push and
+pull into rhythms, chirps and subharmonic lock. SUPPLY wakes the bulbs one at
+a time.
+
+#### O7. consonantia - self-tuning chord
+
+Poly V/oct in; each voice drifts to minimise roughness against the others
+(Sethares' dissonance curve on the module's own spectrum). Negative PULL
+hunts for beating instead. Chords that settle after you play them.
+
+- Shares its psychoacoustic model with SC12 (dissonator).
+
+#### O8. memor - memristor filter
+
+The cutoff resistor is a memristor, so resistance follows the charge that
+has passed: a loud passage opens the filter and it stays open, the opposite
+polarity closes it. DRIFT, RECALL, and a pinch knob for the hysteresis loop.
+
+#### O9. anhelitus - a compressor that breathes
+
+The sidechain is delayed and optionally inverted. Short delay pumps; longer
+delay self-oscillates, ducking and swelling even on a steady drone. LATENCY,
+DEPTH, INVERT, breath-rate CV out.
+
+- Neighbour of SC11 (Satan Maximizer): broken dynamics as a family.
+
+#### O10. numerus - input-driven rhythmicon
+
+Cowell's rhythmicon (pitch ratio = rhythm ratio) applied to incoming audio:
+track the strongest partials, divide them down to rhythmic rates, output
+gates and a percussive voice. A major triad becomes a 4:5:6 polyrhythm.
+
+- Needs the S0 peak picker, or a cheap resonator-bank tracker.
+
+#### O11. os - overdriven loudspeaker
+
+A cone driven past its excursion limit so it bottoms out, cabinet-port
+chuffing, voice-coil heating that sags the output while pushed and recovers.
+A distortion with a body and thermal memory. The most SDT-like entry here.
+
+### Abstract originals
+
+#### A1. ordo - audio sorter
+
+Grains inside a window, sorted by loudness, brightness or pitch. SORT is the
+number of bubble-sort passes, so sweeping it you hear order spreading
+through the sound until a phrase becomes a ramp.
+
+- An algorithm you can hear working; unlike existing effects.
+- Segmentation could be SC1's wavesets instead of fixed grains.
+
+#### A2. taedium - habituation
+
+What it has just heard gets quieter: repeats, loops and drones fade, novelty
+passes at full level. PATIENCE (how fast it gets bored), MEMORY (how fast it
+forgets). On audio as spectral habituation, on gates as a novelty filter.
+
+#### A3. fractio - Sturmian rhythms
+
+One knob sets a slope; the output is its mechanical word. Rationals give
+Euclidean patterns, irrationals patterns that never repeat but stay even.
+Sweeping morphs through near-rational almost-loops. Extra outs for the
+continued-fraction levels, a nested rhythm hierarchy.
+
+- A better Euclidean, and cheap. Fits beside SC4 and SC7.
+
+#### A4. exspectatio - surprise filter
+
+A predictor (LPC or simpler) guesses the next sample; one knob crossfades
+between the prediction (smooth, ghostly) and the error (only what surprised
+it). ORDER sets how clever the predictor is.
+
+#### A5. praesagium - anticipation
+
+Everything is delayed and the latency is used to know about hits in advance:
+each transient arrives preceded by its ghost (reverse swell, pre-echo,
+filtered hint). LOOKAHEAD sets how early.
+
+#### A6. plica - time folder
+
+A buffer read at the input phase put through a wavefolder: low FOLD plays
+straight, higher FOLD bounces time back and forth inside the buffer. FOLD,
+SYMMETRY, BUFFER, CV at audio rate.
+
+#### A7. gravitas - spectral gravity
+
+Spectral peaks as bodies with mass: they attract, orbit and merge, so a chord
+collapses into a tone; flip the sign and a tone smears into a cluster.
+G, MASS (from loudness or fixed), DAMPING.
+
+- Consumer of the S0 spectral core.
+
+#### A8. fama - game of telephone
+
+A melody passes through eight nodes, each learning the previous one's phrase
+imperfectly and with its own habits (rounds rhythms, flattens leaps, favours
+notes). Eight outs, eight generations drifting apart. FIDELITY.
+
+#### A9. consuetudo - a quantiser that learns
+
+The scale is the pitch histogram of what has passed through, with a
+forgetting rate: common notes become strong attractors, rare ones are
+absorbed. Play a new mode long enough and it converts.
+
+#### A10. entropia - predictability as a knob
+
+A sequencer whose control is the entropy rate: 0 loops, 1 is random, between
+it builds Markov structure meeting the target. DEPTH sets how far back the
+structure remembers.
+
+- Markov sequencers are saturated (see the sccode sweep's dropped list);
+  targeting entropy is the only differentiator.
+
+#### A11. certamen - iterated prisoner's dilemma
+
+Four to eight agents with strategies (tit-for-tat, grudger, random, pavlov)
+play every clock; each move is a gate, each score a CV. EVOLUTION replaces
+losers with copies of winners, so the patch goes through eras of cooperation
+and collapse.
 
 ## Considered and dropped
 
