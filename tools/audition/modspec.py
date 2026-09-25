@@ -87,7 +87,8 @@ class ModSpec:
 
         by_enum = {c.name: c for c in self.params.values()}
 
-        for m in re.finditer(r'configParam\w*\s*\(\s*([A-Z0-9_]+)\s*,\s*' + NUM +
+        # configParam<SomeQuantity>(...) is the same call with a display type
+        for m in re.finditer(r'configParam\w*(?:<\w+>)?\s*\(\s*([A-Z0-9_]+)\s*,\s*' + NUM +
                              r'\s*,\s*' + NUM + r'\s*,\s*' + NUM +
                              r'\s*,\s*"([^"]*)"', src):
             c = by_enum.get(m.group(1))
