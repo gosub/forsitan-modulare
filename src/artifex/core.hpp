@@ -58,6 +58,7 @@ struct Ctl {
 	bool stepped = false;     // the clock advanced this sample
 	int step = 0;             // which step it is on
 	float stepSeconds = 0.125f;
+	float tempoSeconds = 0.125f;  // the step, averaged: see forsitan_mod
 	float trigPeriod = 0.f;   // measured period of the trig input, 0 = none
 	bool limiter = true;
 	float dt = 1.f / 44100.f;
@@ -241,6 +242,13 @@ struct Core {
 	float panFade = 1.f;             // 0..1 across the throw
 	double freezePos[2] = {0.0, 0.0};
 	float freezeFrames = 0.f;    // the loop length now, which the knob moves
+	// The loop the playhead has just left, while it crossfades to a new
+	// length: its own position, length and start in the held chunk.
+	double freezeGhostPos[2] = {0.0, 0.0};
+	float freezeGhostFrames = 0.f, freezeGhostBase = 0.f;
+	float freezeXf = 1.f;        // 0..1 through that crossfade
+	float freezeOpen = 0.f;      // 0..1: the first capture fading in
+	bool freezeLapped[2] = {false, false};   // wrapped since the capture
 	float capturedFrames = 0.f;  // how much history the last freeze caught
 	double recorded = 0.0;        // frames recorded since arriving in the mode
 	bool frozen = false;
@@ -375,6 +383,9 @@ struct Core {
 		frozen = false;
 		recorded = 0.0;
 		capturedFrames = 0.f;
+		freezeFrames = 0.f;
+		freezeXf = 1.f;
+		freezeOpen = 0.f;
 		// Arriving in the freezer captures a chunk, as on the hardware - but
 		// it has to record one first. Leaving this true would freeze the
 		// empty buffer on the first sample and hold silence for good.
@@ -757,12 +768,39 @@ struct Core {
 	// ── 3. freezer ───────────────────────────────────────────────────────────
 	// Captures a chunk and loops it. Long times are divisions of the clock, so
 	// the freeze is rhythmic; short ones shrink until the loop is a pitch.
+	// One reading of the held chunk: `pos` into a loop of `frames` that starts
+	// `base` into it. The wrap is a splice, and with nothing done about it a
+	// loop clicked once a lap whatever the knobs did (#22). So the end of the
+	// loop crossfades into the audio that led up to its start - the chunk
+	// holds it, since a freeze catches more than it loops - and at the wrap
+	// the reading is already where the start is. Up to a splice length, but
+	// no more than a quarter of the loop: at the short end the loop is a
+	// pitch, and its wrap is part of the tone.
+	float freezeRead(int c, float base, float frames, double pos) const {
+		float p = (float)pos;
+		float v = frz[c].at(base + p);
+		float fade = std::min(std::min(kEdgeFade * sr, 0.25f * frames), base);
+		float into = p - (frames - fade);
+		if (fade >= 1.f && into > 0.f) {
+			float w = into / fade;
+			v += (frz[c].at(base + p - frames) - v) * w;
+		}
+		return v;
+	}
+
+	static void wrapPos(double& pos, float frames) {
+		if (pos >= (double)frames || pos < 0.0)
+			pos -= std::floor(pos / frames) * frames;
+	}
+
 	void doFreezer(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		float len;
 		if (t < 0.5f) {
 			static const float steps[8] = {16.f, 12.f, 8.f, 6.f, 4.f, 3.f, 2.f, 1.f};
 			int i = clamp((int)(t * 2.f * 8.f), 0, 7);
-			len = ct.stepSeconds * steps[i];
+			// the tempo, not the last step, or a swung clock would change
+			// the loop's length on every step
+			len = ct.tempoSeconds * steps[i];
 			uiUnit = UNIT_STEPS;
 			uiTime = steps[i];
 		}
@@ -771,14 +809,19 @@ struct Core {
 			uiUnit = UNIT_MS;
 			uiTime = len * 1000.f;
 		}
-		len = clamp(len, 0.002f, bufSeconds - 0.02f);
+		// room left in the buffer for the splice before the loop's start
+		len = clamp(len, 0.002f, bufSeconds - 0.02f - kEdgeFade);
+		float splice = kEdgeFade * sr;
 
 		// the record head never stops: what freezing does is take a copy, so
 		// the next freeze still catches whatever has just gone past
 		for (int c = 0; c < 2; c++)
 			tape[c].write(in[c]);
 		recorded += 1.0;
-		bool ready = recorded >= (double)(len * sr);
+		// and a first capture waits for a splice's worth of lead-in as well,
+		// so that even a chunk caught the moment it could be has something
+		// in front of its loop to fade the wrap into
+		bool ready = recorded >= (double)(len * sr + splice);
 
 		// three ways to catch a new chunk: arriving in the mode, a trigger,
 		// and amount leaving zero -- none of which may capture a buffer that
@@ -797,7 +840,7 @@ struct Core {
 		// is to shorten the loop, not to freeze a shorter one.
 		if (refreeze) {
 			float maxFrames = (bufSeconds - 0.02f) * sr;
-			capturedFrames = clamp((float)recorded, len * sr, maxFrames);
+			capturedFrames = clamp((float)recorded, len * sr + splice, maxFrames);
 			int frames = (int)capturedFrames;
 			for (int c = 0; c < 2; c++) {
 				// the last `frames` samples ending at the freeze moment, in
@@ -812,28 +855,94 @@ struct Core {
 				          tape[c].buf.begin() + (frames - first),
 				          frz[c].buf.begin() + first);
 				freezePos[c] = 0.0;
+				freezeLapped[c] = false;
 			}
+			// a new chunk is a new loop: no crossfade from the old one,
+			// whose audio has just been written over
+			freezeFrames = 0.f;
+			freezeXf = 1.f;
 			frozen = true;
 		}
+
+		// Until something is caught there is nothing to play: the buffer
+		// holds the last visit's chunk, or nothing. Then the first capture
+		// fades in rather than arriving at full level in one sample.
+		if (!frozen) {
+			for (int c = 0; c < 2; c++)
+				out[c] = in[c] * (1.f - amt);
+			return;
+		}
+		freezeOpen = std::min(1.f, freezeOpen + ct.dt / kEdgeFade);
 
 		// The loop is the last `freezeFrames` before the freeze moment: the
 		// captured chunk ends there, so shortening keeps the audio nearest to
 		// it -- what you had just heard -- rather than the oldest of it.
 		// Lengthening is limited by how much history the freeze actually got.
-		freezeFrames = clamp(len * sr, 4.f, std::max(capturedFrames, 4.f));
+		//
+		// A new length moves where the loop starts, so the reading would
+		// jump; instead the old loop keeps playing as a ghost and the output
+		// crossfades to the new one over a splice. Changes that arrive during
+		// a crossfade wait for it: a knob swept through the short end becomes
+		// a run of splices rather than a run of steps.
+		// never so long that the lead-in the wrap fades into is used up
+		float want = clamp(len * sr, 4.f, std::max(capturedFrames - splice, 4.f));
+		if (freezeFrames <= 0.f)
+			freezeFrames = want;
+		else if (freezeXf >= 1.f && std::fabs(want - freezeFrames) >= 1.f) {
+			for (int c = 0; c < 2; c++)
+				freezeGhostPos[c] = freezePos[c];
+			freezeGhostFrames = freezeFrames;
+			freezeGhostBase = capturedFrames - freezeFrames;
+			freezeFrames = want;
+			freezeXf = 0.f;
+		}
 		float base = capturedFrames - freezeFrames;
+		float xf = freezeXf;
+		if (freezeXf < 1.f)
+			freezeXf = std::min(1.f, freezeXf + ct.dt / kEdgeFade);
 
 		for (int c = 0; c < 2; c++) {
 			float rate = detune(c, ct.stereo);
 			// the knob can shorten the loop under the playhead, so wrap it
 			// round rather than assuming one subtraction is enough
-			if (freezePos[c] >= (double)freezeFrames || freezePos[c] < 0.0)
-				freezePos[c] -= std::floor(freezePos[c] / freezeFrames) * freezeFrames;
-			float wet = frz[c].at(base + (float)freezePos[c]);
-			// feedback here bleeds new audio into the frozen buffer rather
-			// than running the global loop, thickening what is held
-			if (fb > 0.001f)
-				frz[c].poke((int)(base + (float)freezePos[c]), wet + in[c] * fb * 0.5f);
+			if (freezePos[c] >= (double)freezeFrames)
+				freezeLapped[c] = true;
+			wrapPos(freezePos[c], freezeFrames);
+			float wet = freezeRead(c, base, freezeFrames, freezePos[c]);
+			if (xf < 1.f) {
+				wrapPos(freezeGhostPos[c], freezeGhostFrames);
+				float ghost = freezeRead(c, freezeGhostBase, freezeGhostFrames,
+				                         freezeGhostPos[c]);
+				wet = ghost + (wet - ghost) * xf;
+				freezeGhostPos[c] += rate;
+			}
+			wet *= freezeOpen;
+			// Feedback here bleeds new audio into the frozen buffer rather
+			// than running the global loop, thickening what is held. It is
+			// written back onto the loop's own reading, not the blended one
+			// - the interpolation is a gentle leak, and a 2 ms loop at full
+			// feedback piles up DC without it - and through the wrap's fade
+			// onto the lead-in as well: that is what
+			// the end of the loop turns into, so the two have to thicken
+			// together or the wrap is a seam again a few laps later. The
+			// lead-in takes its share at the end of each lap and the loop's
+			// start at the beginning of the next, so the loop itself starts
+			// taking it only once it has wrapped: from the capture on, its
+			// first slot was one lap ahead of the slot before it, and the
+			// difference sat there as a step.
+			if (fb > 0.001f) {
+				float add = in[c] * fb * 0.5f;
+				int slot = (int)(base + (float)freezePos[c]);
+				float p = (float)freezePos[c];
+				if (freezeLapped[c])
+					frz[c].poke(slot, frz[c].at(base + p) + add);
+				float fade = std::min(std::min(splice, 0.25f * freezeFrames), base);
+				if (fade >= 1.f && p > freezeFrames - fade) {
+					int lead = slot - (int)freezeFrames;
+					if (lead >= 0)
+						frz[c].poke(lead, frz[c].at(base + p - freezeFrames) + add);
+				}
+			}
 			freezePos[c] += rate;
 			float heard = loopFilter(c, wet);
 			out[c] = in[c] * (1.f - amt) + heard * amt;

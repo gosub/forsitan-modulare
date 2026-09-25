@@ -2088,9 +2088,9 @@ static void testModeCyclingDoesNotPop() {
 		z2 = rec.l[rec.l.size() - 2];
 		z1 = rec.l.back();
 	}
-	if (worst >= 1.5f)
+	if (worst >= 0.75f)
 		std::printf("# worst pop was entering mode %d\n", worstMode + 1);
-	report("artifex", "mode_cycling_does_not_pop", worst, worst < 1.5f);
+	report("artifex", "mode_cycling_does_not_pop", worst, worst < 0.75f);
 }
 
 // The numbers on the display are in seconds, hertz and semitones, so none of
@@ -2535,19 +2535,22 @@ static void settle(Artifex& m, long& fr, int mode) {
 }
 
 // The modes whose output is smooth when nothing moves, which is where a click
-// can be told from the mode's own character. The freezer's loop and the
-// pitcher's ramp wrap by design, and the crusher and slicer are made of edges.
+// can be told from the mode's own character. The pitcher's ramp wraps by
+// design, and the crusher and slicer are made of edges.
 static const int kSmoothModes[] = {
-	artifex_fx::MODE_DELAY, artifex_fx::MODE_FLANGER, artifex_fx::MODE_PANNER,
-	artifex_fx::MODE_REPLAYER, artifex_fx::MODE_SHIFTER};
+	artifex_fx::MODE_DELAY, artifex_fx::MODE_FLANGER, artifex_fx::MODE_FREEZER,
+	artifex_fx::MODE_PANNER, artifex_fx::MODE_REPLAYER, artifex_fx::MODE_SHIFTER};
+static const char* kSmoothNames[] = {
+	"delay", "flanger", "freezer", "panner", "replayer", "shifter"};
+static const int kSmoothCount = 6;
 
 // ── amount and feedback are smoothed ─────────────────────────────────────────
 // Neither was, so every mode with a wet path clicked on each UI frame of a
 // knob drag and on each step of a CV, and a feedback step was written into
 // the loop, which kept it.
 static void testKnobStepsDoNotClick() {
-	const char* names[] = {"delay", "flanger", "panner", "replayer", "shifter"};
-	for (int k = 0; k < 5; k++) {
+	const char* const* names = kSmoothNames;
+	for (int k = 0; k < kSmoothCount; k++) {
 		int mode = kSmoothModes[k];
 		double amt, fbk;
 		{
@@ -2582,8 +2585,8 @@ static void testKnobStepsDoNotClick() {
 // audio - with the delay's feedback keeping the splice. Measured going into
 // each smooth mode, and coming back to it after a third of a second away.
 static void testModeChangesDoNotClick() {
-	const char* names[] = {"delay", "flanger", "panner", "replayer", "shifter"};
-	for (int k = 0; k < 5; k++) {
+	const char* const* names = kSmoothNames;
+	for (int k = 0; k < kSmoothCount; k++) {
 		int mode = kSmoothModes[k];
 		int other = mode == artifex_fx::MODE_FLANGER ? artifex_fx::MODE_PANNER
 		                                              : artifex_fx::MODE_FLANGER;
@@ -2616,7 +2619,62 @@ static void testModeChangesDoNotClick() {
 	}
 }
 
-SMOKE_MAIN(testKnobStepsDoNotClick, testModeChangesDoNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
+// ── the clock moves a length, never a read head ──────────────────────────────
+// The delay's sync and the freezer's loop length came from the clock's last
+// step interval, so a swung clock moved them on every step. And the freezer's
+// loop wrapped with no fade at all, so it clicked once a lap with nothing
+// moving; a new length moved where the loop starts, in one sample.
+static void testClockDoesNotClick() {
+	const int modes[2] = {artifex_fx::MODE_DELAY, artifex_fx::MODE_FREEZER};
+	const char* names[2] = {"delay", "freezer"};
+	for (int k = 0; k < 2; k++) {
+		double still, swung, retimed;
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, modes[k]);
+			still = sharpness(m, fr, 3.0);
+		}
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, modes[k]);
+			m.inputs[Artifex::CLK_INPUT].channels = 1;
+			const long longStep = (long)(0.075 * SR), shortStep = (long)(0.05 * SR);
+			long at = 0, next = longStep;
+			bool swing = true;
+			auto clock = [&](long) {
+				if (at >= next) {
+					at = 0;
+					swing = !swing;
+					next = swing ? longStep : shortStep;
+				}
+				m.inputs[Artifex::CLK_INPUT].setVoltage(at < 48 ? 10.f : 0.f);
+				at++;
+			};
+			sharpness(m, fr, 2.0, clock);          // adopt the clock
+			swung = sharpness(m, fr, 3.0, clock);
+		}
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, modes[k]);
+			retimed = sharpness(m, fr, 2.0, [&](long i) {
+				if (i == (long)(0.5 * SR))
+					m.params[Artifex::TEMPO_PARAM].setValue(97.f);
+			});
+		}
+		char name[64];
+		std::snprintf(name, sizeof name, "%s_held_still_is_quiet", names[k]);
+		report("artifex", name, still, still < 0.01);
+		std::snprintf(name, sizeof name, "%s_under_a_swung_clock_is_quiet", names[k]);
+		report("artifex", name, swung, swung < 0.01);
+		std::snprintf(name, sizeof name, "%s_tempo_change_is_quiet", names[k]);
+		report("artifex", name, retimed, retimed < 0.01);
+	}
+}
+
+SMOKE_MAIN(testKnobStepsDoNotClick, testModeChangesDoNotClick, testClockDoesNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,

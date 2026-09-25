@@ -393,6 +393,7 @@ struct Artifex : Module {
 		ct.stepped = modul.stepped;
 		ct.step = modul.step;
 		ct.stepSeconds = modul.stepSeconds;
+		ct.tempoSeconds = modul.tempoSeconds;
 		// What the delay snaps its time to. A clock at **clk** is the module's
 		// clock -- it is what the freezer, the slicer, the LFO and the pattern
 		// all follow -- so the delay follows it too. A clock at the trig input
@@ -400,7 +401,9 @@ struct Artifex : Module {
 		// module had until now, but only when clk is not carrying one:
 		// patching a rhythm into trig should stutter the mode, not redefine
 		// what a bar is. With neither, nothing snaps and the knob is free.
-		ct.trigPeriod = modul.externalClock ? modul.stepSeconds : trigPeriod;
+		// The tempo rather than the last step, as the freezer takes it: a
+		// swung clock otherwise moved the delay on every step (#22).
+		ct.trigPeriod = modul.externalClock ? modul.tempoSeconds : trigPeriod;
 		ct.limiter = limiter;
 		ct.dt = args.sampleTime;
 
