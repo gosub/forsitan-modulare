@@ -210,12 +210,20 @@ throws it side to side. It wants **room to be heard**: under a hit on every
 beat the left tap lands on the offbeat, the feedback carries that into the
 right a beat later, and both channels come out as plain eighths. A sparse
 pattern is where the 3:2 is audible at all. Turning the knob out raises the wet from nothing and
-the feedback from 0.25 to 0.85 - and since the two lines feed *each other*,
+the feedback to 0.25 almost at once, then on to 0.85 - and since the two lines feed *each other*,
 that is a round trip of 0.72, which at the top leaves a tail running some ten
 seconds. The write path saturates, so a long tail thickens instead of clipping
 the output. At a tempo slow enough that a dotted quarter
 would not fit the buffer, the division halves rather than the time being
 clamped: it stays in tempo, just at a shorter one.
+
+The delay follows the **tempo, not the step**. With a clock patched in, its
+time is the mean of the last eight intervals, so a swung or ratcheting clock
+does not move it on every step; a change of tempo, or a halving, crossfades
+to the new time over 50 ms, and a drift of under a percent glides. Both
+lines keep recording whichever side the knob is on, and the feedback fades
+out over the first twentieth of the travel, so a tail left at the centre
+drains, and coming back to the delay picks up what was just played.
 
 To the right, one knob crosses a chorus into a flanger. The wet arrives over
 the first third of the travel and then holds, and the character keeps moving
