@@ -2805,7 +2805,105 @@ static void testClockDoesNotClick() {
 	}
 }
 
-SMOKE_MAIN(testKnobStepsDoNotClick, testModeChangesDoNotClick, testClockDoesNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
+// ── the 2.16.2 ranges, for patches saved before 2.16.3 ───────────────────────
+// 2.16.3 moved six modes' ranges and the delay's dry law to the hardware's.
+// A patch saved before then has no "ranges" key and opens on the old ones; a
+// new module takes the new. Each old range is checked against its 2.16.2
+// formula, by what the display reads at a few knob positions.
+static void testLegacyRanges() {
+	{
+		Artifex fresh;
+		json_t* empty = json_object();
+		Artifex old;
+		old.dataFromJson(empty);
+		json_decref(empty);
+		json_t* saved = fresh.dataToJson();
+		Artifex reopened;
+		reopened.core.legacyRanges = true;
+		reopened.dataFromJson(saved);
+		json_decref(saved);
+		report("artifex", "legacy_new_module_is_hardware", fresh.core.legacyRanges,
+		       !fresh.core.legacyRanges);
+		report("artifex", "legacy_old_patch_opens_legacy", old.core.legacyRanges,
+		       old.core.legacyRanges);
+		report("artifex", "legacy_new_patch_reopens_hardware", reopened.core.legacyRanges,
+		       !reopened.core.legacyRanges);
+	}
+
+	struct Local {
+		// what the display reads for a mode at a time knob position
+		static float shown(int mode, float t, bool legacy, int* unit = NULL) {
+			Artifex m;
+			long fr = 0;
+			m.core.legacyRanges = legacy;
+			m.params[Artifex::TIME_PARAM].setValue(t);
+			m.params[Artifex::AMT_PARAM].setValue(0.5f);
+			setMode(m, mode);
+			runSilence(m, fr, 0.05);
+			if (unit)
+				*unit = m.core.uiUnit;
+			return m.core.uiTime;
+		}
+		static bool near(float a, float b) {
+			return std::fabs(a - b) <= 0.002f * std::fabs(b) + 1e-4f;
+		}
+	};
+	const float ts[3] = {0.f, 0.3f, 1.f};
+	int bad = 0;
+	for (float t : ts) {
+		if (!Local::near(Local::shown(artifex_fx::MODE_FLANGER, t, true),
+		                 0.02f * std::pow(500.f, t))) bad |= 1;
+		if (!Local::near(Local::shown(artifex_fx::MODE_PANNER, t, true),
+		                 0.05f * std::pow(40000.f, t))) bad |= 2;
+		// the crusher's ceiling is the core's own rate, whatever the harness runs at
+		float coreSr = Artifex().core.sr;
+		if (!Local::near(Local::shown(artifex_fx::MODE_CRUSHER, t, true),
+		                 200.f * std::pow(coreSr / 200.f, t))) bad |= 4;
+		if (!Local::near(Local::shown(artifex_fx::MODE_SHIFTER, t, true),
+		                 (t - 0.5f) * 24.f)) bad |= 8;
+	}
+	int unit = 0;
+	float steps = Local::shown(artifex_fx::MODE_FREEZER, 0.2f, true, &unit);
+	if (unit != artifex_fx::UNIT_STEPS || steps != 6.f) bad |= 16;   // {16,12,8,6,..}[3]
+	float ms = Local::shown(artifex_fx::MODE_FREEZER, 0.75f, true, &unit);
+	if (unit != artifex_fx::UNIT_MS || !Local::near(ms, 250.f * std::pow(0.008f, 0.5f))) bad |= 32;
+	report("artifex", "legacy_ranges_are_the_2_16_2_ones", bad, bad == 0);
+
+	// and the hardware's are not the same, or the setting would do nothing
+	bool differs = !Local::near(Local::shown(artifex_fx::MODE_FLANGER, 1.f, false),
+	                            Local::shown(artifex_fx::MODE_FLANGER, 1.f, true));
+	report("artifex", "legacy_ranges_differ_from_hardware", differs, differs);
+
+	// the pitcher reached one octave, and the delay traded dry for wet
+	// straight across the knob
+	{
+		Artifex m;
+		long fr = 0;
+		m.core.legacyRanges = true;
+		m.params[Artifex::AMT_PARAM].setValue(0.75f);
+		setMode(m, artifex_fx::MODE_PITCHER);
+		runSilence(m, fr, 0.2);
+		report("artifex", "legacy_pitcher_reaches_one_octave", m.core.pitchAmtGl.v,
+		       std::fabs(m.core.pitchAmtGl.v - 0.75f) < 0.01f);
+	}
+	{
+		Artifex m;
+		long fr = 0;
+		m.core.legacyRanges = true;
+		m.params[Artifex::AMT_PARAM].setValue(0.75f);
+		m.params[Artifex::FBK_PARAM].setValue(0.f);
+		m.params[Artifex::TIME_PARAM].setValue(0.f);     // the longest delay
+		m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+		setMode(m, artifex_fx::MODE_DELAY);
+		Rec rec;
+		runTone(m, fr, 0.1, 220.f, 1.f, &rec);
+		double ratio = rmsOf(rec.l, 0, rec.l.size()) / rmsOf(rec.in, 0, rec.in.size());
+		report("artifex", "legacy_delay_dry_is_one_minus_amount", ratio,
+		       std::fabs(ratio - 0.25) < 0.02);
+	}
+}
+
+SMOKE_MAIN(testLegacyRanges, testKnobStepsDoNotClick, testModeChangesDoNotClick, testClockDoesNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testFreezerFeedbackSettles, testFreezerReentry, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,

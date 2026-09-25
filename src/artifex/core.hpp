@@ -45,6 +45,7 @@ enum TimeUnit {
 	UNIT_RHYTHM,     // which of the 32 patterns
 	UNIT_SEMI,       // a pitch interval
 	UNIT_SPEED,      // tape speed, signed
+	UNIT_STEPS,      // a length in clock steps, as the 2.16.2 freezer counts
 };
 
 struct Ctl {
@@ -226,6 +227,9 @@ struct Core {
 	bool filtWasLow = false;
 	// settings, from the context menu
 	bool fourPole = false;      // 24 dB/oct and the wider range, as vates has
+	// The ranges each mode had before 2.16.3 moved them to the hardware's, for
+	// a patch saved before then: see Artifex::dataFromJson.
+	bool legacyRanges = false;
 	bool filterDry = false;     // the filter moves to the output, dry included
 	bool filterInLoop = false;  // the delay and the flanger feed back filtered
 	float fbState[2] = {0.f, 0.f};
@@ -734,7 +738,8 @@ struct Core {
 			// the way up, so a delay loud enough to hear had already thinned
 			// what it was echoing - and half travel, where the mode is most
 			// useful, was the exact middle of that trade.
-			float dry = amt <= 0.5f ? 1.f : 2.f * (1.f - amt);
+			float dry = legacyRanges ? 1.f - amt
+			                         : amt <= 0.5f ? 1.f : 2.f * (1.f - amt);
 			out[c] = in[c] * dry + heard * amt;
 		}
 	}
@@ -746,7 +751,7 @@ struct Core {
 		// 0.02 Hz to 50, the hardware's kMapFlangerFrequency. It used to stop
 		// at 10, which is a sweep and never a modulation: the top of the knob
 		// is meant to leave the LFO band and start bending pitch.
-		float hz = 0.02f * std::pow(2500.f, t);
+		float hz = 0.02f * std::pow(legacyRanges ? 500.f : 2500.f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = hz;
 		// The modulator's rate is integrated into a phase, so a step in it is
@@ -816,7 +821,15 @@ struct Core {
 	// freeze to a tone.
 	void doFreezer(const Ctl& ct, float* in, float* out, float t, float amt, float fb) {
 		float len;
-		if (t < 0.5f) {
+		if (t < 0.5f && legacyRanges) {
+			// 2.16.2: whole steps, sixteen down to one
+			static const float steps[8] = {16.f, 12.f, 8.f, 6.f, 4.f, 3.f, 2.f, 1.f};
+			int i = clamp((int)(t * 2.f * 8.f), 0, 7);
+			len = ct.tempoSeconds * steps[i];
+			uiUnit = UNIT_STEPS;
+			uiTime = steps[i];
+		}
+		else if (t < 0.5f) {
 			static const float divisor[8] = {1.f, 2.f, 3.f, 4.f, 6.f, 8.f, 12.f, 16.f};
 			int i = clamp((int)(t * 2.f * 8.f), 0, 7);
 			// A beat does not fit the buffer at every tempo. Halving it keeps
@@ -834,7 +847,8 @@ struct Core {
 		else {
 			// 880 samples down to 150, the hardware's own pitched range,
 			// written in seconds so it does not move with the engine rate
-			len = 0.020f * std::pow(0.170f, (t - 0.5f) * 2.f);
+			len = legacyRanges ? 0.25f * std::pow(0.008f, (t - 0.5f) * 2.f)
+			                   : 0.020f * std::pow(0.170f, (t - 0.5f) * 2.f);
 			uiUnit = UNIT_MS;
 			uiTime = len * 1000.f;
 		}
@@ -1011,7 +1025,8 @@ struct Core {
 		// 2 kHz, which is inside the audio band but not far enough into it:
 		// the mode's whole top end is ring modulation, and the sidebands only
 		// separate properly once the carrier is well clear of the material.
-		float hz = 0.1f * std::pow(100000.f, t);
+		float hz = legacyRanges ? 0.05f * std::pow(40000.f, t)
+		                        : 0.1f * std::pow(100000.f, t);
 		uiUnit = UNIT_HZ;
 		uiTime = hz;
 		float depth = clamp(amt * 2.f, 0.f, 1.f);
@@ -1073,7 +1088,8 @@ struct Core {
 		// the hardware's: at a few holds a second the mode stops being a
 		// texture and starts being a stutter, which is the reason the knob
 		// goes down there at all.
-		float rate = 7.5f * std::pow(sr / 7.5f, t);
+		float floorHz = legacyRanges ? 200.f : 7.5f;
+		float rate = floorHz * std::pow(sr / floorHz, t);
 		uiUnit = UNIT_HZ;
 		uiTime = rate;
 		if (ct.trig)
@@ -1228,7 +1244,7 @@ struct Core {
 		// speed, a little over two octaves. One octave was the whole range
 		// before, and the mode is not a clean shifter -- the wide end is what
 		// it is for.
-		float shift = pitchAmtGl(amt * 4.f, ct.dt, kKnobGlide);
+		float shift = pitchAmtGl(amt * (legacyRanges ? 1.f : 4.f), ct.dt, kKnobGlide);
 
 		for (int c = 0; c < 2; c++) {
 			float w = clamp(window * detune(c, ct.stereo), 0.002f, 0.4f);
@@ -1644,7 +1660,7 @@ struct Core {
 		// stop at an octave up when the hardware goes to two. Asymmetric for
 		// the same reason the hardware is: down is where the artefacts live,
 		// because a tap that lengthens spends longer in the window.
-		float semis = t < 0.5f ? (t - 0.5f) * 24.f : (t - 0.5f) * 48.f;
+		float semis = (t < 0.5f || legacyRanges) ? (t - 0.5f) * 24.f : (t - 0.5f) * 48.f;
 		uiUnit = UNIT_SEMI;
 		uiTime = semis;
 		// A trig collapses the stereo spread to nothing and lets it open back

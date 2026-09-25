@@ -291,6 +291,9 @@ struct Artifex : Module {
 				              num[best], den[best]);
 			break;
 		}
+		case artifex_fx::UNIT_STEPS:
+			std::snprintf(uiTimeText, sizeof(uiTimeText), "%.0f steps", v);
+			break;
 		case artifex_fx::UNIT_BEATDIV:
 			std::snprintf(uiTimeText, sizeof(uiTimeText), "beat/%.0f", v);
 			break;
@@ -324,6 +327,7 @@ struct Artifex : Module {
 		min.lfoSynced = params[SYNC_PARAM].getValue() > 0.5f;
 		min.lfoResetVoltage = inputs[LFO_RESET_INPUT].getVoltage();
 		min.pulseWidth = params[PWM_PARAM].getValue();
+		min.legacy = core.legacyRanges;
 		modul.process(min);
 
 		// ── mode ─────────────────────────────────────────────────────────────
@@ -457,6 +461,7 @@ struct Artifex : Module {
 		bufSeconds = artifex_fx::kHardwareBuffer;
 		limiter = true;
 		core.fourPole = false;
+		core.legacyRanges = false;
 		core.filterDry = false;
 		core.filterInLoop = false;
 		core.setRates(core.sr, bufSeconds);
@@ -475,6 +480,7 @@ struct Artifex : Module {
 		json_object_set_new(root, "filterFourPole", json_boolean(core.fourPole));
 		json_object_set_new(root, "filterDry", json_boolean(core.filterDry));
 		json_object_set_new(root, "filterInLoop", json_boolean(core.filterInLoop));
+		json_object_set_new(root, "ranges", json_string(core.legacyRanges ? "2.16.2" : "hardware"));
 		return root;
 	}
 
@@ -499,6 +505,12 @@ struct Artifex : Module {
 			core.filterDry = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "filterInLoop"))
 			core.filterInLoop = json_boolean_value(j);
+		// No key: saved before 2.16.3, when every mode but the replayer had
+		// other ranges, so it keeps the ones it was made with. A new module
+		// never gets here and starts on the hardware's.
+		json_t* ranges = json_object_get(root, "ranges");
+		core.legacyRanges = !(json_is_string(ranges)
+		                      && std::string(json_string_value(ranges)) == "hardware");
 	}
 };
 
@@ -765,6 +777,10 @@ struct ArtifexWidget : ModuleWidget {
 				m->core.setRates(m->core.sr, m->bufSeconds);
 			}));
 		menu->addChild(createBoolPtrMenuItem("Feedback safety limiter", "", &m->limiter));
+		menu->addChild(createIndexSubmenuItem("Ranges",
+			{"Hardware", "2.16.2 (as saved before 2.16.3)"},
+			[=]() { return m->core.legacyRanges ? 1 : 0; },
+			[=](int v) { m->core.legacyRanges = (v == 1); }));
 
 		menu->addChild(new MenuSeparator);
 		menu->addChild(createMenuLabel("Filter"));
