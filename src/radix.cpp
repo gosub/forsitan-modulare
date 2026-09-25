@@ -177,7 +177,7 @@ struct RadixWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/radix.svg")));
 
-// @layout:begin radix 60.96 128.5
+// @layout:begin radix 60.96 128.5 notitle svg=tools/panels/gen_radix_panel.py
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
@@ -205,23 +205,23 @@ struct RadixWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(53.34f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(9.48f, 24.00f)), module, Radix::RATE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.48f, 24.00f)), module, Radix::PARAM_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.48f, 24.00f)), module, Radix::CLOCK_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(51.48f, 24.00f)), module, Radix::GRIT_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(9.48f, 42.00f)), module, Radix::SRC_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.48f, 42.00f)), module, Radix::LAW_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.48f, 42.00f)), module, Radix::TABLE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(51.48f, 42.00f)), module, Radix::BITS_PARAM));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.48f, 62.00f)), module, Radix::VOCT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(23.48f, 62.00f)), module, Radix::PARAM_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.48f, 62.00f)), module, Radix::CLOCK_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.48f, 62.00f)), module, Radix::AUDIO_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(9.48f, 80.00f)), module, Radix::SRC_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(23.48f, 80.00f)), module, Radix::LAW_CV_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(37.48f, 80.00f)), module, Radix::TABLE_CV_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(23.48f, 100.00f)), module, Radix::AUDIO_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(37.48f, 100.00f)), module, Radix::CV_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.00f, 22.00f)), module, Radix::RATE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.69f, 19.09f)), module, Radix::PARAM_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(37.39f, 16.18f)), module, Radix::CLOCK_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.69f, 97.09f)), module, Radix::GRIT_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(23.00f, 62.00f)), module, Radix::SRC_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.69f, 59.09f)), module, Radix::LAW_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(50.39f, 56.18f)), module, Radix::TABLE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(10.00f, 100.00f)), module, Radix::BITS_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.29f, 32.76f)), module, Radix::VOCT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.98f, 29.85f)), module, Radix::PARAM_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(39.68f, 26.94f)), module, Radix::CLOCK_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(12.29f, 110.76f)), module, Radix::AUDIO_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.29f, 72.76f)), module, Radix::SRC_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.98f, 69.85f)), module, Radix::LAW_CV_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(52.68f, 66.94f)), module, Radix::TABLE_CV_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(25.98f, 107.85f)), module, Radix::AUDIO_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(39.68f, 104.94f)), module, Radix::CV_OUTPUT));
         // @layout:end
     }
 
