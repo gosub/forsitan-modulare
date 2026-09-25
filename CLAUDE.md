@@ -249,6 +249,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | gradus | stepped CV source, a discrete cumuli (8 rows of knob + add/jump switch + a plus and a minus trigger with buttons, into one running output; jumps beat adds and the last row in reading order wins; reset button + trig beats everything; clip knob for 0-10/±5/±10/none) | 60.96mm (12HP) |
 | materiae | percussion from two square waves and the relation between them (5 crossfaded operators, A<->B feedback, GRID = the logic core rate as a knob, DIV as a subharmonic operand, resonant filter as the body, env 2 sweeping the operator; drone tap before the VCA, gain into a saturator) | 121.92mm (24HP) |
 | aether | broken transmission line (Interstellar Radio: a synchronous V/F converter clocked by the carrier into a PLL clocked by the demodulator; three phase comparators, error comparator, both clocks in and out) | 71.12mm (14HP) |
+| radix | chaotic 8-bit source (integer machine on its own clock; SRC x LAW x TABLE = 150 programs on stepped knobs with CV, BITS, GRIT, rungler CV out; label-free tilted panel with generated art, in the family of the Radical22) | 60.96mm (12HP) |
 
 ## limen module
 
@@ -448,7 +449,10 @@ global pip install):
   OCR-A font and a fonttools venv from the same candidate paths above.
 - `tools/typography/` - `gen_title_paths.py`, `measure_text.py`; see
   Typography above.
-- `tools/panels/` - `gen_pellicula_panel.py`, generates `res/pellicula.svg`
+- `tools/panels/` - `gen_radix_panel.py`, generates `res/radix.svg` (the
+  label-free panel: branching art from a fixed seed, discs under the
+  controls, read from the `@layout` block; its `svg=` header makes the panel
+  editor rerun it on save), and `gen_pellicula_panel.py`, generates `res/pellicula.svg`
   (background art for the matrix panel; widgets are placed in code).
 - `tools/release/` - `sync_version.py`, repoints every `manualUrl` /
   `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
