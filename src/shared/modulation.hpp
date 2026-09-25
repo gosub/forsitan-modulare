@@ -118,6 +118,16 @@ struct Modulation {
 	// ── clock ────────────────────────────────────────────────────────────────
 	double clockPhase = 0.0;              // 0..1 within a step
 	float stepSeconds = 0.125f;
+	// The tempo, as opposed to the step. An external clock's stepSeconds is
+	// the last interval it measured, which under swing alternates long and
+	// short on every step; anything timed from it - a delay, a loop length -
+	// moved on every step and clicked on every one (#22). This is the mean of
+	// the last eight measured intervals, which a swing of two or four steps
+	// averages out exactly. With the internal clock it is stepSeconds.
+	float tempoSeconds = 0.125f;
+	static constexpr int kTempoHist = 8;
+	float tempoHist[kTempoHist] = {};
+	int tempoHistN = 0, tempoHistI = 0;
 	float sinceExternal = 10.f;
 	bool externalClock = false;
 	int step = 0;
@@ -175,8 +185,14 @@ struct Modulation {
 		sinceStep += in.dt;
 		bool extEdge = clkIn.process(in.clkVoltage, 0.1f, 1.f);
 		if (extEdge && in.honourExternal) {
-			if (externalClock && sinceExternal > 1e-4f && sinceExternal < 4.f)
+			if (externalClock && sinceExternal > 1e-4f && sinceExternal < 4.f) {
 				stepSeconds = sinceExternal;
+				tempoHist[tempoHistI] = stepSeconds;
+				tempoHistI = (tempoHistI + 1) % kTempoHist;
+				tempoHistN = std::min(tempoHistN + 1, kTempoHist);
+			}
+			else if (!externalClock)
+				tempoHistN = tempoHistI = 0;   // adopting a clock: nothing measured yet
 			externalClock = true;
 			sinceExternal = 0.f;
 			clockPhase = 0.0;
@@ -204,6 +220,14 @@ struct Modulation {
 		}
 		else
 			clockPhase = std::min(1.0, clockPhase + in.dt / std::max(stepSeconds, 1e-4f));
+		if (externalClock && tempoHistN > 0) {
+			float sum = 0.f;
+			for (int i = 0; i < tempoHistN; i++)
+				sum += tempoHist[i];
+			tempoSeconds = sum / tempoHistN;
+		}
+		else
+			tempoSeconds = stepSeconds;
 
 		if (patResetIn.process(in.patResetVoltage, 0.1f, 1.f))
 			resetSequence();

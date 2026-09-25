@@ -245,11 +245,7 @@ struct Vates : Module {
 	float dlyFb[2] = {0.f, 0.f};
 	float modPhase = 0.f;
 	float fxSmooth1 = 0.f, fxSmooth = 0.f;
-	// the delay's view of the tempo, and the tap that follows it
-	static constexpr int kStepHist = 8;
-	float stepHist[kStepHist] = {};
-	int stepHistN = 0, stepHistI = 0;
-	bool wasExternal = false;
+	// the tap the delay reads, and the one it is crossfading away from
 	float dlyT = -1.f, dlyPrevT = 0.f, dlyXf = 1.f;
 
 	dsp::SchmittTrigger trigIn;
@@ -665,36 +661,6 @@ struct Vates : Module {
 
 	// ── process ──────────────────────────────────────────────────────────────
 
-	// The step length the delay is timed from. The internal clock's is
-	// exact; an external clock's is the last interval it measured, which
-	// under swing alternates long and short on every step, so the delay's
-	// time moved on every step and clicked on every one of them (#22). The
-	// delay wants the tempo, not the last step: the mean of the last eight
-	// intervals, which a swing of two or four steps averages out exactly.
-	float delayStepSeconds(float stepSeconds) {
-		if (!modul.externalClock) {
-			wasExternal = false;
-			return stepSeconds;
-		}
-		if (!wasExternal) {
-			// the first edge only adopts the clock; it has measured nothing
-			stepHistN = 0;
-			stepHistI = 0;
-			wasExternal = true;
-		}
-		else if (modul.stepped) {
-			stepHist[stepHistI] = stepSeconds;
-			stepHistI = (stepHistI + 1) % kStepHist;
-			stepHistN = std::min(stepHistN + 1, kStepHist);
-		}
-		if (stepHistN == 0)
-			return stepSeconds;
-		float sum = 0.f;
-		for (int i = 0; i < stepHistN; i++)
-			sum += stepHist[i];
-		return sum / stepHistN;
-	}
-
 	void process(const ProcessArgs& args) override {
 		const float sr = args.sampleRate;
 
@@ -811,7 +777,6 @@ struct Vates : Module {
 		min.pulseWidth = params[PWM_PARAM].getValue();
 		modul.process(min);
 
-		float stepSeconds = modul.stepSeconds;
 		float tri = modul.tri;
 
 		// ── triggers ─────────────────────────────────────────────────────────
@@ -986,7 +951,8 @@ struct Vates : Module {
 			// channel a plain beat against it, so the two run a 3:2 cross
 			// rhythm and the cross-feedback below throws it side to side.
 			float amt = std::max(-fxSmooth, 0.f);
-			float beat = delayStepSeconds(stepSeconds) * 4.f;
+			// timed from the tempo, not the last step: see tempoSeconds
+			float beat = modul.tempoSeconds * 4.f;
 			float maxT = (float)(dly[0].size() - 4) / sr;
 			float t = beat * 1.5f;
 			// A dotted quarter does not fit the buffer at every tempo. Halving
