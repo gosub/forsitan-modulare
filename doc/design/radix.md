@@ -1,0 +1,157 @@
+# radix - design doc
+
+Status: design, nothing built. Written 2026-09-25.
+
+A chaotic 8-bit source on its own panel: an integer machine on its own clock,
+whose program is chosen by three stepped knobs with CV. It is stage 1 of
+[olim](olim.md), built first and shipped alone; olim, if it ever comes, takes
+the engine header and adds nothing to it.
+
+**radix** is Latin for "root": the first stage of the chain, and the thing
+every sample grows from, one integer at a time.
+
+
+## Lineage, and the rule for building it
+
+radix is in the family of Dirty Electronics' **Radical22**, whose firmware is
+CC BY-NC-SA 4.0 and cannot be linked into a GPL-3 plugin. The rule from
+[olim.md](olim.md#lineage-and-the-rule-for-building-it) applies unchanged:
+**implement from this document**, never with `main.c` or `dsp.h` open, and
+nothing of the hardware's increment lines, `myarray` bytes or program map may
+appear. Credit in `doc/radix.md` is "in the family of", as bulla credits
+Hordijk.
+
+The panel takes its idea from Radical22's front, not its artwork: see Panel.
+
+
+## Engine
+
+As stage 1 of olim.md, which stays the reference for the algorithm (per-tick
+steps, the SRC / LAW / TABLE tables, `TEXT` from a seed and a string set in
+the context menu). What changes for the standalone module:
+
+- **SRC, LAW and TABLE are stepped knobs with CV, not switches.** A switch on
+  a label-free panel shows nothing, and a knob with CV restores the
+  hardware's best trick, sequencing the program, over 5 x 5 x 6 = 150
+  programs instead of 64. CV adds to the knob, 1 V per step, and the sum is
+  rounded and clamped, so a sequencer's semitone grid does not land on it and
+  a slow ramp walks through the positions in order.
+- **Program changes are not smoothed.** The accumulator carries across a
+  change, so a jump is a discontinuity in the rule, not in the phase. That
+  click is the instrument; do not fade it.
+- **Pitch belongs to RATE, CLOCK is resolution.** The increment is scaled by
+  the engine clock so that, with SRC at `PARAM` and LAW at `ADD`, the pitch
+  follows RATE and V/OCT and CLOCK changes only how coarsely it is drawn. On
+  the hardware the clock moves the pitch; here that is the `Clock moves
+  pitch` context-menu option, off by default. Other LAWs are chaotic and
+  track nothing, which is not a fault.
+- **No oversampling, no band-limiting, ever.** The aliasing is the sound.
+- **CV OUT** is the stepped chaos CV from olim's chaos bus: three bits off
+  the accumulator into a 3-bit DAC, smoothed as bulla smooths its rungler.
+  It lives here because it falls out of the accumulator.
+- **IN** is both the audio input for SRC = `IN` and the feedback return:
+  OUT (or CV OUT) patched back into IN is olim's FB IN, with a cable.
+- Mono. Output is +-5 V.
+
+Open, to settle by ear during step 1:
+
+- whether V/OCT tracking wants a `Loose tracking` menu option (olim.md open
+  question 5)
+- whether BITS and GRIT deserve CV; not on the list below, and adding them
+  later appends to the enums, so the default is to wait
+
+
+## Controls
+
+| knob | range | CV |
+|---|---|---|
+| RATE | pitch, V/oct | V/OCT |
+| PARAM | 0-255 | PARAM CV |
+| CLOCK | 100 Hz - 96 kHz, exponential | CLOCK CV |
+| BITS | 16 down to 1 | - |
+| GRIT | 0-100% | - |
+| SRC | 5 steps | SRC CV |
+| LAW | 5 steps | LAW CV |
+| TABLE | 6 steps | TABLE CV |
+
+Eight knobs; jacks V/OCT, PARAM CV, CLOCK CV, SRC CV, LAW CV, TABLE CV, IN,
+OUT, CV OUT: seven in, two out. Every one of them has a full `configParam` /
+`configInput` / `configOutput` name and, for the stepped knobs, a
+`configSwitch` label per position: on a label-free panel the hover tooltip
+is the only legend, so it has to be complete.
+
+Context menu: the `TEXT` string, `Clock moves pitch`, and anything step 1
+adds.
+
+
+## Panel
+
+**12 HP (60.96 mm)**, the Radical22's width.
+
+**Label-free.** No labels, no output badges with text, no title. The
+forsitan logo stays, at its usual `width/2`, y = 122.5, and is the only
+fixed, upright element. The module browser and the hover tooltips carry the
+names.
+
+**Tilted.** The controls sit on a lattice rotated off the panel axis, as the
+Radical22's jacks rise along a diagonal and its knobs sit in two staggered
+diagonal rows. Proposal, to be tried in the panel editor:
+
+- the nine jacks on two diagonal rows near the top, inputs above, the two
+  outputs at the high end of the lower row
+- the eight knobs in two staggered diagonal rows below, the three stepped
+  ones (SRC, LAW, TABLE) together at one end, each above or beside its CV
+  jack where the tilt allows
+- one tilt angle for the whole panel, somewhere around 10-15 degrees
+
+**Findable.** The panel is label-free, not unreadable:
+
+- every control and jack sits on a plain disc cut out of the artwork, dark
+  for inputs and knobs
+- the two outputs sit on **yellow** discs, the output-badge grammar with the
+  text taken out, so what comes out is visible at a glance
+- the stepped knobs get tick marks on their disc, one per position, so the
+  step count reads without a label
+
+**Artwork.** Full-bleed, generated, black / white / yellow on the `#1a1a1a`
+ground. It comes from its own generative process, not from the engine: a
+branching growth (space colonisation, or cracks propagating from seeds)
+drawn as filled shapes, in the spirit of the Radical22's branches without
+copying the photo. Requirements on the generator:
+
+- `tools/panels/gen_radix_panel.py`, deterministic from a seed in the file,
+  so the panel regenerates identically; nothing in `res/` made by hand
+- **NanoSVG-safe**: filled paths only, no filters, gradients, masks or
+  clip paths, and merged into a few compound paths rather than thousands of
+  small ones, with a node budget measured against the load time of the
+  heaviest existing panel
+- keeps out of the control discs, the screws and the logo area by
+  construction (reads the positions from the `@layout` block), rather than
+  painting over and hoping the discs cover it
+- density falls off near the controls, so the busiest art is in the empty
+  middle, as on the hardware
+
+**panel_audit.** It does not require a label on every control (it checks
+overlaps and label clearances only), so a label-free panel mostly passes as
+is. Two things to settle when the panel is drawn: the title element it
+synthesises from the module name must be suppressible (e.g. `title=none` on
+`@layout:begin`), and the audit geometry must follow the tilt, which it does
+if positions are stored as rotated centres rather than a rotated group.
+
+
+## Build order
+
+Each step is a commit, and the module is listenable before the next starts.
+
+1. `src/radix/radix.hpp` - the engine alone, own clock, ZOH, all 150
+   programs, with `test/radix_probe measure` reporting per-program level, DC
+   and spectral centroid, and flagging silent or stuck programs. Listen
+   before going on: if the engine is not interesting alone, stop here.
+2. `src/radix.cpp` with a placeholder panel: knobs, CVs, the stepped-knob
+   rounding, CV OUT, context menu. `test/smoke_radix`.
+3. `tools/panels/gen_radix_panel.py`, the tilted layout, the artwork;
+   `panel_audit.py` changes if needed.
+4. `test/audition/radix.md`, a dozen items.
+5. `doc/radix.md`, readme row, `plugin.json` entry, glossary entry,
+   CLAUDE.md table row. radix is a new module, so it goes out in a minor
+   version.
