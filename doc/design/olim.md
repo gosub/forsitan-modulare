@@ -1,7 +1,7 @@
 # olim - design doc
 
-Status: design settled against the firmware, engine next. Written
-2026-09-25.
+Status: built, 2026-09-25. The module follows this doc; `doc/olim.md` is
+the manual.
 
 An eight-head stereo delay over one long buffer: a TIME knob places the
 farthest head, SPREAD distributes the other seven between now and then, nine

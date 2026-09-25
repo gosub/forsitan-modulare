@@ -250,6 +250,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | materiae | percussion from two square waves and the relation between them (5 crossfaded operators, A<->B feedback, GRID = the logic core rate as a knob, DIV as a subharmonic operand, resonant filter as the body, env 2 sweeping the operator; drone tap before the VCA, gain into a saturator) | 121.92mm (24HP) |
 | aether | broken transmission line (Interstellar Radio: a synchronous V/F converter clocked by the carrier into a PLL clocked by the demodulator; three phase comparators, error comparator, both clocks in and out) | 71.12mm (14HP) |
 | radix | chaotic 8-bit source (integer machine on its own clock; SRC x LAW x TABLE = 150 programs on stepped knobs with CV, BITS, GRIT, rungler CV out; label-free tilted panel with generated art, in the family of the Radical22) | 60.96mm (12HP) |
+| olim | eight-head stereo delay (Time Machine clone: TIME/SPREAD/FEEDBACK, heads refade at 5 Hz, inverted loop normalised by the slider sum, nine lit sliders with the VCA expander built in, clock in power-of-two steps, Memory 20/60/150 s) | 121.92mm (24HP) |
 
 ## limen module
 
