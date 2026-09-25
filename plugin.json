@@ -422,6 +422,18 @@
         "Digital",
         "Random"
       ]
+    },
+    {
+      "slug": "olim",
+      "name": "olim",
+      "description": "Eight-head stereo delay over 150 s of memory, a Time Machine clone with its VCA expander built in.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.16.3/doc/olim.md",
+      "tags": [
+        "Delay",
+        "Granular",
+        "Hardware clone",
+        "Effect"
+      ]
     }
   ]
 }
