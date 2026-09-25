@@ -26,9 +26,11 @@ The panel takes its idea from Radical22's front, not its artwork: see Panel.
 
 ## Engine
 
-As stage 1 of olim.md, which stays the reference for the algorithm (per-tick
-steps, the SRC / LAW / TABLE tables, `TEXT` from a seed and a string set in
-the context menu). What changes for the standalone module:
+As stage 1 of olim.md (per-tick steps, the SRC / LAW / TABLE tables, `TEXT`
+from a string set in the context menu). Four of those table entries measured
+wrong once written down (ADD, MOD, SRC TABLE, the TEXT scaling), and PARAM
+was dead under SELF and IN; `src/radix/radix.hpp` says what replaced each and
+is the reference from here on. What changes for the standalone module:
 
 - **SRC, LAW and TABLE are stepped knobs with CV, not switches.** A switch on
   a label-free panel shows nothing, and a knob with CV restores the
