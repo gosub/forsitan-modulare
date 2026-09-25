@@ -53,7 +53,7 @@ SWEEP = 0.83 * math.pi
 DISC_PAD = 0.8        # disc radius past the widget's own
 # Outputs: a yellow crown this far past the jack, then a dark ring. At the
 # plain disc pad the yellow cleared the jack's nut by 0.1 mm and barely showed.
-CROWN, CROWN_RING = 1.4, 0.6
+CROWN, CROWN_RING = 0.8, 0.5
 TICK_IN, TICK_OUT = 0.4, 1.3   # ticks, past the knob's edge
 STEP = 0.8            # growth step, mm
 
