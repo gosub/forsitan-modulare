@@ -244,6 +244,7 @@ struct Vates : Module {
 	Delay dly[2], mod[2];
 	float dlyFb[2] = {0.f, 0.f};
 	float modPhase = 0.f;
+	float fxSmooth1 = 0.f, fxSmooth = 0.f;
 
 	dsp::SchmittTrigger trigIn;
 	dsp::BooleanTrigger trigButton, bankUpButton, bankDownButton;
@@ -915,14 +916,39 @@ struct Vates : Module {
 		}
 
 		// ── fx ───────────────────────────────────────────────────────────────
-		float fxParam = clamp(params[FX_PARAM].getValue()
-		                      + inputs[FX_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
-		if (fxParam < -0.01f) {
+		// One knob, two effects, and everything in both is continuous in it
+		// (issue #22). The two halves used to be separate branches that ran
+		// only while the knob was on their side, and each discontinuity was a
+		// click the delay's feedback then kept for good:
+		//
+		//  - the chorus saturates its output and the centre did not, so a
+		//    crossing switched a tanh in and out in one sample;
+		//  - a line was written only while its side was on, so coming back
+		//    replayed the audio of the last visit spliced onto the new one,
+		//    and a line never written began its first echo with a step out
+		//    of silence;
+		//  - nothing was smoothed, so a stepped CV did all of that at once.
+		//
+		// So the knob is smoothed as the filter's is, both lines are written
+		// on every sample whichever side is on, and each effect fades to
+		// exactly nothing at the centre: its wet, its feedback and its
+		// saturation. The two run in series, which is the old behaviour,
+		// since at most one of them is ever away from zero.
+		float fxTarget = clamp(params[FX_PARAM].getValue()
+		                       + inputs[FX_INPUT].getVoltage() * 0.2f, -1.f, 1.f);
+		// Two poles rather than one: the chorus's delay time is a function of
+		// the knob, and a one-pole moves at its fastest in the very first
+		// sample after a CV step, so the read head set off at once, turning
+		// a corner in the wet. Two start from standing.
+		float fxK = 1.f - std::exp(-args.sampleTime / 0.005f);
+		fxSmooth1 += (fxTarget - fxSmooth1) * fxK;
+		fxSmooth += (fxSmooth1 - fxSmooth) * fxK;
+		{
 			// Tempo-synced delay at three eighths of a note, as the hardware
 			// states - a dotted quarter, a beat and a half - with the right
 			// channel a plain beat against it, so the two run a 3:2 cross
 			// rhythm and the cross-feedback below throws it side to side.
-			float amt = -fxParam;
+			float amt = std::max(-fxSmooth, 0.f);
 			float beat = stepSeconds * 4.f;
 			float maxT = (float)(dly[0].size() - 4) / sr;
 			float t = beat * 1.5f;
@@ -938,14 +964,17 @@ struct Vates : Module {
 			// fb: 0.6 here was only 0.36 of loop gain and the tail died in a
 			// few seconds. The write saturates, as the chorus path already
 			// does, which is what lets the top of the knob sit near
-			// self-sustaining without the tail clipping the output.
-			float fb = 0.25f + 0.6f * amt;
+			// self-sustaining without the tail clipping the output. The
+			// feedback fades out over the first twentieth of the travel, so
+			// a tail left behind at the centre drains instead of waiting in
+			// the line for the knob to come back.
+			float fb = (0.25f + 0.6f * amt) * std::min(1.f, amt * 20.f);
 			dly[0].write(std::tanh(outL + wetR * fb));
 			dly[1].write(std::tanh(outR + wetL * fb));
 			outL += wetL * amt * 0.8f;
 			outR += wetR * amt * 0.8f;
 		}
-		else if (fxParam > 0.01f) {
+		{
 			// Chorus into flanger: the further up, the shorter the delay and
 			// the more feedback, and the wet path soft-clips.
 			//
@@ -962,7 +991,7 @@ struct Vates : Module {
 			// character moves on a square law: the long-delay, low-feedback
 			// end is a chorus you can hear rather than somewhere the knob
 			// passes through on its way in.
-			float amt = fxParam;
+			float amt = std::max(fxSmooth, 0.f);
 			float shape = amt * amt;
 			modPhase += 0.35f * args.sampleTime;
 			modPhase -= std::floor(modPhase);
@@ -976,10 +1005,17 @@ struct Vates : Module {
 			mod[0].write(std::tanh(outL + wetL * fb));
 			mod[1].write(std::tanh(outR + wetR * fb));
 			float mix = 0.9f * std::min(1.f, amt * 3.f);
-			outL = outL * (1.f - 0.5f * mix) + wetL * mix;
-			outR = outR * (1.f - 0.5f * mix) + wetR * mix;
-			outL = std::tanh(outL * (1.f + amt));
-			outR = std::tanh(outR * (1.f + amt));
+			float yL = outL * (1.f - 0.5f * mix) + wetL * mix;
+			float yR = outR * (1.f - 0.5f * mix) + wetR * mix;
+			// tanh(x) is not x at the centre, so the saturation is faded in
+			// with the wet rather than switched on - over the same third of
+			// the travel: a stepped CV crosses a shorter fade in a few dozen
+			// samples, and that is a click by another name
+			float sat = std::min(1.f, amt * 3.f);
+			yL += (std::tanh(yL * (1.f + amt)) - yL) * sat;
+			yR += (std::tanh(yR * (1.f + amt)) - yR) * sat;
+			outL = yL;
+			outR = yR;
 		}
 
 		// ── outputs ──────────────────────────────────────────────────────────

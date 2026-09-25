@@ -1375,6 +1375,133 @@ static void testReverseStart() {
 	       attacking && refused && accepted);
 }
 
+// ── the fx knob never puts a click into the delay (issue #22) ────────────────
+// A user making a clocked, glitchy groove got loud clicks out of the delay
+// side, which the feedback then kept for good. Three ways in, each measured on
+// a steady 220 Hz sine so that anything sharp is the module's own doing: the
+// sine's second difference is 8e-4 of its amplitude, and a step of a tenth of
+// it is a hundred times that.
+struct SineKit {
+	std::string root = "/tmp/vates_smoke_sine";
+	SineKit() {
+		rack::system::createDirectories(root + "/sine");
+		writeTestWav(root + "/sine/00.wav", 30 * 44100, 1, 0.5f);
+		forsitan_sampler::setKitsFolder(root, /*persist=*/false);
+	}
+	~SineKit() {
+		forsitan_sampler::setKitsFolder("", /*persist=*/false);
+		rack::system::removeRecursively(root);
+	}
+};
+
+// Start the sine and let it settle with the knob where the scenario begins.
+static bool startSine(Vates& m, long& fr, float fx) {
+	if (!waitForBanks(m, fr))
+		return false;
+	m.refreshKits();
+	m.bankBase = vates_bank::kNumBanks;
+	for (int i = 0; i < 200 && m.samplesInBank(vates_bank::kNumBanks) == 0; i++) {
+		run(m, fr, 0.01);
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	}
+	if (m.samplesInBank(vates_bank::kNumBanks) == 0)
+		return false;
+	m.params[Vates::SAMPLE_PARAM].setValue(0.f);
+	m.params[Vates::LENGTH_PARAM].setValue(1.f);
+	m.params[Vates::LEVEL_PARAM].setValue(1.f);
+	m.params[Vates::TEMPO_PARAM].setValue(120.f);
+	m.params[Vates::FX_PARAM].setValue(fx);
+	run(m, fr, 0.01);
+	pressTrigger(m, fr);
+	run(m, fr, 2.0);
+	return true;
+}
+
+// The sharpest corner either channel turns, over its peak: the largest second
+// difference in the window, so a sine scores 8e-4 and a step scores its size.
+// `drive`, if given, runs before each frame, for a clock or a CV.
+template <typename F>
+static double sharpness(Vates& m, long& fr, double seconds, F drive) {
+	long n = (long)(seconds * SR);
+	float y1[2] = {0.f, 0.f}, y2[2] = {0.f, 0.f};
+	double worst = 0.0, peak = 1e-6;
+	for (long i = 0; i < n; i++) {
+		drive(i);
+		m.process(makeArgs(fr++));
+		for (int c = 0; c < 2; c++) {
+			float y = m.outputs[c == 0 ? Vates::LEFT_OUTPUT : Vates::RIGHT_OUTPUT].getVoltage();
+			if (i >= 2)
+				worst = std::max(worst, (double)std::fabs(y - 2.f * y1[c] + y2[c]));
+			peak = std::max(peak, (double)std::fabs(y));
+			y2[c] = y1[c];
+			y1[c] = y;
+		}
+	}
+	return worst / peak;
+}
+static double sharpness(Vates& m, long& fr, double seconds) {
+	return sharpness(m, fr, seconds, [](long) {});
+}
+
+static void testFxClicks() {
+	SineKit kit;
+	char setup[] = "fx_clicks_setup";
+
+	// (1) The centre. The chorus side saturates its output and the dead
+	// zone does not, so a knob drag across it switched a tanh in and out in
+	// one sample.
+	{
+		Vates m;
+		long fr = 0;
+		if (!startSine(m, fr, 0.6f)) {
+			report("vates", setup, 0, false);
+			return;
+		}
+		double across = sharpness(m, fr, 1.0, [&](long i) {
+			if (i == (long)(0.5 * SR))
+				m.params[Vates::FX_PARAM].setValue(-0.02f);
+		});
+		report("vates", "fx_centre_is_quiet", across, across < 0.01);
+	}
+
+	// (2) Coming back to the delay. Its lines were written only while the
+	// knob was on its side, so a return played the audio of the last visit
+	// spliced onto the new, and a line never written began with a step out
+	// of silence.
+	{
+		Vates m;
+		long fr = 0;
+		if (!startSine(m, fr, -0.6f)) {
+			report("vates", setup, 0, false);
+			return;
+		}
+		// away for any time that is not a whole number of cycles
+		double back = sharpness(m, fr, 4.0, [&](long i) {
+			if (i == 0)
+				m.params[Vates::FX_PARAM].setValue(0.5f);
+			if (i == (long)(0.37 * SR))
+				m.params[Vates::FX_PARAM].setValue(-0.6f);
+		});
+		report("vates", "fx_return_to_delay_is_quiet", back, back < 0.01);
+	}
+
+	// (3) A stepped CV across the centre, as a sequencer into FX sends it.
+	{
+		Vates m;
+		long fr = 0;
+		if (!startSine(m, fr, 0.f)) {
+			report("vates", setup, 0, false);
+			return;
+		}
+		m.inputs[Vates::FX_INPUT].channels = 1;
+		auto cv = [&](long i) {
+			m.inputs[Vates::FX_INPUT].setVoltage(((i / 6000) % 2) ? 3.f : -3.f);
+		};
+		double stepped = sharpness(m, fr, 4.0, cv);
+		report("vates", "fx_cv_across_centre_is_quiet", stepped, stepped < 0.01);
+	}
+}
+
 // ── the right half of fx is two effects, not one getting louder ─────────────
 // The wet level and the character used to be the same number, so the chorus
 // end was inaudible: where the delay is still chorus-length the mix was under
@@ -1448,4 +1575,4 @@ static void testFxChorusEnd() {
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
-           testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd)
+           testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks)
