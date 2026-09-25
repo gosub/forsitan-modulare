@@ -190,6 +190,13 @@ struct Vates : Module {
 	// the sample knob never fires a hit, so a kit can be browsed in silence;
 	// this makes it a playing control in play mode
 	bool knobTriggersInPlay = false;
+	// The ranges 2.16.3 moved to the hardware's - the fx delay a quarter as
+	// long, the chorus ten times as deep with a falling rate, a 20 ms floor
+	// between two hits, the rungler CV and the sixteen-bar LFO divisions -
+	// or the ones this module shipped with before. A patch saved before the
+	// setting existed opens with it on, so it sounds as it did; a new module
+	// has it off.
+	bool legacyRanges = false;
 
 	// ── voice ────────────────────────────────────────────────────────────────
 	std::shared_ptr<void> voiceHold;      // keeps the bank or kit alive
@@ -788,6 +795,7 @@ struct Vates : Module {
 		min.lfoSynced = params[SYNC_PARAM].getValue() > 0.5f;
 		min.lfoResetVoltage = inputs[LFO_RESET_INPUT].getVoltage();
 		min.pulseWidth = params[PWM_PARAM].getValue();
+		min.legacy = legacyRanges;
 		modul.process(min);
 
 		float tri = modul.tri;
@@ -803,7 +811,7 @@ struct Vates : Module {
 			fire = true;
 		// The button is the hand and is never refused, as the hardware's own
 		// forced trigger is not.
-		if (fire && sinceTrig < kMinTrigGap
+		if (fire && !legacyRanges && sinceTrig < kMinTrigGap
 		    && !(params[TRIG_PARAM].getValue() > 0.5f))
 			fire = false;
 		if (fire) {
@@ -980,7 +988,8 @@ struct Vates : Module {
 			// timed from the tempo, not the last step: see tempoSeconds
 			float step = modul.tempoSeconds;
 			float maxT = (float)(dly[0].size() - 4) / sr;
-			float t = step * 1.5f;
+			// 2.16.2 took the ratio against a beat, four steps
+			float t = step * (legacyRanges ? 6.f : 1.5f);
 			// A dotted eighth does not fit the buffer at every tempo. Halving
 			// the division keeps the delay in tempo, where clamping it to
 			// whatever fits would leave it in no tempo at all.
@@ -1037,7 +1046,8 @@ struct Vates : Module {
 			// ringing for about a second. 0.97 puts the tail back where it
 			// was, and it is still short of the hardware's own ceiling, which
 			// is a loop gain of exactly 1.
-			float fb = (0.25f + 0.72f * amt) * std::min(1.f, amt * 20.f);
+			float fb = (0.25f + (legacyRanges ? 0.6f : 0.72f) * amt)
+			           * std::min(1.f, amt * 20.f);
 			dly[0].write(std::tanh(outL + wetR * fb));
 			dly[1].write(std::tanh(outR + wetL * fb));
 			outL += wetL * amt * 0.8f;
@@ -1077,14 +1087,27 @@ struct Vates : Module {
 			// can wait where it is - it resumes from the same phase
 			float wetL = 0.f, wetR = 0.f;
 			if (amt > 0.f) {
-				modPhase += 2.f * std::pow(0.05f, amt) * args.sampleTime;
-				modPhase -= std::floor(modPhase);
-				float m1 = std::sin(2.f * (float)M_PI * modPhase);
-				// antiphase, as the hardware's right tap is: it reads the
-				// complement of the same LFO
-				float m2 = -m1;
-				float base = (9.7f + 0.9f * shape) * 0.001f * sr;
-				float depth = 9.3f * 0.001f * sr;
+				float base, depth, m1, m2;
+				if (legacyRanges) {
+					// 2.16.2: a fixed 0.35 Hz in quadrature, ±2.5 ms around 8
+					// shortening to ±0.7 around 1.5
+					modPhase += 0.35f * args.sampleTime;
+					modPhase -= std::floor(modPhase);
+					m1 = std::sin(2.f * (float)M_PI * modPhase);
+					m2 = std::sin(2.f * (float)M_PI * (modPhase + 0.25f));
+					base = (8.f - 6.5f * shape) * 0.001f * sr;
+					depth = (2.5f - 1.8f * shape) * 0.001f * sr;
+				}
+				else {
+					modPhase += 2.f * std::pow(0.05f, amt) * args.sampleTime;
+					modPhase -= std::floor(modPhase);
+					m1 = std::sin(2.f * (float)M_PI * modPhase);
+					// antiphase, as the hardware's right tap is: it reads the
+					// complement of the same LFO
+					m2 = -m1;
+					base = (9.7f + 0.9f * shape) * 0.001f * sr;
+					depth = 9.3f * 0.001f * sr;
+				}
 				wetL = mod[0].read(base + depth * m1);
 				wetR = mod[1].read(base + depth * m2);
 			}
@@ -1096,7 +1119,8 @@ struct Vates : Module {
 			// feedback from nothing to 0.3 in a few milliseconds, which writes
 			// an edge into the line: it comes in over the first tenth instead,
 			// where the hardware's map starts from nothing too.
-			float fb = 0.9f * std::sqrt(amt) * std::min(1.f, amt * 10.f);
+			float fb = legacyRanges ? 0.7f * shape
+			                        : 0.9f * std::sqrt(amt) * std::min(1.f, amt * 10.f);
 			mod[0].write(std::tanh(outL + wetL * fb));
 			mod[1].write(std::tanh(outR + wetR * fb));
 			float mix = 0.9f * std::min(1.f, amt * 3.f);
@@ -1218,6 +1242,7 @@ struct Vates : Module {
 		reverseDecays = false;
 		reverseFromEnd = false;
 		retriggerDuringAttack = false;
+		legacyRanges = false;
 		knobTriggersInPlay = false;
 		bankSeed = (uint64_t)random::u32() | 1ull;
 		pendingGen = true;
@@ -1239,6 +1264,7 @@ struct Vates : Module {
 		json_object_set_new(root, "reverseDecays", json_boolean(reverseDecays));
 		json_object_set_new(root, "reverseFromEnd", json_boolean(reverseFromEnd));
 		json_object_set_new(root, "retriggerDuringAttack", json_boolean(retriggerDuringAttack));
+		json_object_set_new(root, "ranges", json_string(legacyRanges ? "2.16.2" : "hardware"));
 		json_object_set_new(root, "knobTriggersInPlay", json_boolean(knobTriggersInPlay));
 		return root;
 	}
@@ -1266,6 +1292,10 @@ struct Vates : Module {
 			reverseFromEnd = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "retriggerDuringAttack"))
 			retriggerDuringAttack = json_boolean_value(j);
+		// no key: saved before 2.16.3, so it keeps the ranges it was made with
+		json_t* ranges = json_object_get(root, "ranges");
+		legacyRanges = !(json_is_string(ranges)
+		                 && std::string(json_string_value(ranges)) == "hardware");
 		if (json_t* j = json_object_get(root, "knobTriggersInPlay"))
 			knobTriggersInPlay = json_boolean_value(j);
 	}
@@ -1556,6 +1586,11 @@ struct VatesWidget : ModuleWidget {
 		                                     &m->knobTriggersInPlay));
 		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
 			&m->honourExternalClock));
+
+		menu->addChild(createIndexSubmenuItem("Ranges",
+			{"Hardware", "2.16.2 (as saved before 2.16.3)"},
+			[=]() { return m->legacyRanges ? 1 : 0; },
+			[=](int v) { m->legacyRanges = (v == 1); }));
 
 		menu->addChild(createIndexSubmenuItem("Pattern input window",
 			{"0V neutral, +1V randomize, -1V invert", "Hardware: 1.6-3.2V neutral"},

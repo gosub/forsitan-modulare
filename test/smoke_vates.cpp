@@ -1774,7 +1774,146 @@ static void testFxChorusEnd() {
 	report("vates", "fx_ends_are_different_effects", apart, apart > 0.5);
 }
 
+// ── the 2.16.2 ranges, for patches saved before 2.16.3 ───────────────────────
+// 2.16.3 moved the fx delay, the chorus, the trigger floor, the pattern CV and
+// the LFO divisions to the hardware's. A patch saved before then has no
+// "ranges" key and must open on the old ones, sounding as it did; a new module
+// takes the new ones. Each old behaviour is measured here against the number
+// it had in 2.16.2.
+static void testLegacyRanges() {
+	// which setting each kind of load ends up with
+	{
+		Vates fresh;
+		json_t* empty = json_object();
+		Vates old;
+		old.dataFromJson(empty);
+		json_decref(empty);
+		json_t* saved = fresh.dataToJson();
+		Vates reopened;
+		reopened.legacyRanges = true;
+		reopened.dataFromJson(saved);
+		json_decref(saved);
+		json_t* savedOld = old.dataToJson();
+		Vates reopenedOld;
+		reopenedOld.dataFromJson(savedOld);
+		json_decref(savedOld);
+		report("vates", "legacy_new_module_is_hardware", fresh.legacyRanges, !fresh.legacyRanges);
+		report("vates", "legacy_old_patch_opens_legacy", old.legacyRanges, old.legacyRanges);
+		report("vates", "legacy_new_patch_reopens_hardware", reopened.legacyRanges,
+		       !reopened.legacyRanges);
+		report("vates", "legacy_setting_survives_a_save", reopenedOld.legacyRanges,
+		       reopenedOld.legacyRanges);
+	}
+
+	// the delay: a beat and a half, where the hardware's is a step and a half
+	{
+		Vates m;
+		long fr = 0;
+		if (!waitForBanks(m, fr)) {
+			report("vates", "legacy_setup", 0, false);
+			return;
+		}
+		m.legacyRanges = true;
+		selectSample(m, 0, 4);
+		m.params[Vates::LENGTH_PARAM].setValue(0.05f);
+		m.params[Vates::LEVEL_PARAM].setValue(1.f);
+		m.params[Vates::FX_PARAM].setValue(-1.f);
+		m.params[Vates::TEMPO_PARAM].setValue(120.f);
+		run(m, fr, 0.05);
+		pressTrigger(m, fr);
+		long n = (long)(1.5 * SR), guard = (long)(0.05 * SR), at = -1;
+		double dry = 0.0;
+		for (long i = 0; i < n; i++) {
+			m.process(makeArgs(fr++));
+			double v = std::fabs(m.outputs[Vates::LEFT_OUTPUT].getVoltage());
+			if (i < guard) {
+				dry = std::max(dry, v);
+				continue;
+			}
+			if (at < 0 && v > 0.4 * dry)
+				at = i;
+		}
+		double beats = at < 0 ? 0.0 : ((double)at / SR) / 0.5;
+		report("vates", "legacy_delay_is_a_dotted_quarter", beats, std::fabs(beats - 1.5) < 0.05);
+	}
+
+	// the chorus: a fixed 0.35 Hz at both ends
+	{
+		struct Local {
+			static double rate(float fx) {
+				Vates m;
+				m.legacyRanges = true;
+				long fr = 0;
+				m.params[Vates::FX_PARAM].setValue(fx);
+				float prev = m.modPhase;
+				int wraps = 0;
+				for (long i = 0; i < (long)(20.0 * SR); i++) {
+					m.process(makeArgs(fr++));
+					if (m.modPhase < prev)
+						wraps++;
+					prev = m.modPhase;
+				}
+				return wraps / 20.0;
+			}
+		};
+		double lo = Local::rate(0.02f), hi = Local::rate(1.f);
+		report("vates", "legacy_chorus_rate_is_fixed", hi,
+		       std::fabs(lo - 0.35) < 0.06 && std::fabs(hi - 0.35) < 0.06);
+	}
+
+	// no floor under the gap between two hits: every edge of a 5 ms train
+	{
+		Vates m;
+		long fr = 0;
+		if (!waitForBanks(m, fr)) {
+			report("vates", "legacy_setup", 0, false);
+			return;
+		}
+		m.legacyRanges = true;
+		selectSample(m, 0, 4);
+		m.params[Vates::LENGTH_PARAM].setValue(0.7f);
+		m.inputs[Vates::TRIG_INPUT].channels = 1;
+		int fired = 0;
+		double prevPos = 1e18;
+		long every = (long)(0.005 * SR);
+		for (long i = 0; i < (long)SR; i++) {
+			m.inputs[Vates::TRIG_INPUT].setVoltage(i % every < 20 ? 5.f : 0.f);
+			m.process(makeArgs(fr++));
+			if (m.voicePos < prevPos)
+				fired++;
+			prevPos = m.voicePos;
+		}
+		report("vates", "legacy_has_no_trigger_floor", fired, fired > 150);
+	}
+
+	// the pattern CV is the sixteen hashed levels, and the synced LFO's
+	// middle division is four steps (the hardware's table puts six there)
+	{
+		Vates m;
+		m.legacyRanges = true;
+		long fr = 0;
+		m.params[Vates::RHYTHM_PARAM].setValue(5.f);
+		m.params[Vates::RATE_PARAM].setValue(0.5f);
+		m.params[Vates::SYNC_PARAM].setValue(1.f);
+		int same = 0, lfoWraps = 0;
+		float prevPhase = 0.f;
+		for (int k = 0; k < 32; k++) {
+			runSteps(m, fr, 1);
+			if (std::fabs(m.modul.cv() - forsitan_mod::legacyRhythmCv(5, m.modul.step)) < 1e-6f)
+				same++;
+		}
+		for (long i = 0; i < (long)(4.0 * SR); i++) {    // 32 steps at 120 BPM
+			m.process(makeArgs(fr++));
+			if (m.modul.lfoPhase < prevPhase)
+				lfoWraps++;
+			prevPhase = m.modul.lfoPhase;
+		}
+		report("vates", "legacy_cv_is_the_old_sequence", same, same == 32);
+		report("vates", "legacy_lfo_middle_is_four_steps", lfoWraps, lfoWraps == 8);
+	}
+}
+
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testLfoDivisionsDivideTheCounter, testMinTriggerGap, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
            testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
            testPatternSwitches, testRunglerCoupling, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
-           testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks)
+           testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks, testLegacyRanges)
