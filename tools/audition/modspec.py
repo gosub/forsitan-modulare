@@ -30,10 +30,13 @@ def _enum(src, name, end):
     if not m:
         return []
     out = []
+    # one name a line, or several on one (`enum OutputId { OUT, OUTPUTS_LEN };`)
     for line in m.group(1).splitlines():
-        line = re.sub(r'//.*', '', line).strip().rstrip(',').strip()
-        if re.fullmatch(r'[A-Z0-9_]+', line):
-            out.append(line)
+        line = re.sub(r'//.*', '', line)
+        for name in line.split(','):
+            name = name.strip()
+            if re.fullmatch(r'[A-Z0-9_]+', name):
+                out.append(name)
     return out
 
 
