@@ -131,7 +131,8 @@ def audit(path):
     title_bb = (W/2 - title_w/2, title_base - title_sz,
                 W/2 + title_w/2, title_base)
     all_els = [(e, bbox(e)) for e in els]
-    all_els.append((title, title_bb))
+    if not data.get('notitle'):
+        all_els.append((title, title_bb))
     for i in range(len(all_els)):
         for j in range(i+1, len(all_els)):
             (a, ba), (b, bb) = all_els[i], all_els[j]

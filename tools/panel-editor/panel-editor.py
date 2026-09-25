@@ -67,7 +67,12 @@ SVG_ONLY = ('label', 'logo', 'box')
 # panel instead of being shrunk to fit between the screws.
 LAYOUT_HEAD_RE = re.compile(
     r'//\s*@layout:begin\s+(\w+)\s+([\d.]+)\s+([\d.]+)'
-    r'(?:\s+title=([\d.]+))?(?:\s+titley=([\d.]+))?')
+    r'(?:\s+title=([\d.]+))?(?:\s+titley=([\d.]+))?'
+    r'(?:\s+(notitle))?(?:\s+svg=(\S+))?')
+# `notitle`: the panel carries no title (radix, whose name is only in the
+# module browser). `svg=<script>`: the panel's SVG is made by that generator,
+# run from the repo root, and Save runs it instead of drawing the standard
+# panel over it.
 # @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  - X Y optional for SVG-only kinds
 # A box may carry `box=WxH` to override the default 14x14 badge, for panels
 # whose output row is too wide to wrap each jack in its own badge (quadrare).
@@ -94,6 +99,8 @@ def parse_cpp(path):
     panel_h     = float(mh.group(3))
     title_size  = float(mh.group(4)) if mh.group(4) else None
     title_y     = float(mh.group(5)) if mh.group(5) else None
+    notitle     = bool(mh.group(6))
+    svg_gen     = mh.group(7)
 
     block_m = re.search(
         r'(//\s*@layout:begin.*?//\s*@layout:end)', text, re.DOTALL)
@@ -151,6 +158,8 @@ def parse_cpp(path):
         'panel_h':  panel_h,
         'title_size': title_size,
         'title_y': title_y,
+        'notitle': notitle,
+        'svg_gen': svg_gen,
         'elements': elements,
         'widget_visuals': WIDGET_VISUALS,
         'kind_fill': KIND_FILL,
@@ -197,6 +206,10 @@ def generate_block(layout):
         head += f' title={ts}'
     if ty:
         head += f' titley={ty}'
+    if layout.get('notitle'):
+        head += ' notitle'
+    if layout.get('svg_gen'):
+        head += f' svg={layout["svg_gen"]}'
     lines = [head]
     for e in layout['elements']:
         if e['kind'] in SVG_ONLY:
@@ -304,6 +317,11 @@ def _ensure_fonttools():
 
 
 def regen_svg(layout, svg_path):
+    if layout.get('svg_gen'):
+        import subprocess
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        r = subprocess.run([sys.executable, layout['svg_gen']], cwd=root)
+        return r.returncode == 0
     font_path = _find_font()
     if font_path is None:
         print('  SVG: OCR-A font not found, skipping SVG regeneration')
@@ -366,7 +384,7 @@ def regen_svg(layout, svg_path):
     # panel; a crowded panel may override it with `title=` on the @layout:begin
     # line. Long names still shrink to clear the screw zones (MMCCCXCIX).
     title_sz, title_base, _ = title_metrics(layout, text_w)
-    d = text_path(mod, W/2, title_base, title_sz)
+    d = None if layout.get('notitle') else text_path(mod, W/2, title_base, title_sz)
     if d:
         lines.append(f'  <path d="{d}" fill="#dcdcdc"/>')
 
