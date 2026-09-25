@@ -1377,7 +1377,7 @@ static void testReverseStart() {
 
 // ── the fx knob never puts a click into the delay (issue #22) ────────────────
 // A user making a clocked, glitchy groove got loud clicks out of the delay
-// side, which the feedback then kept for good. Three ways in, each measured on
+// side, which the feedback then kept for good. Four ways in, each measured on
 // a steady 220 Hz sine so that anything sharp is the module's own doing: the
 // sine's second difference is 8e-4 of its amplitude, and a step of a tenth of
 // it is a hundred times that.
@@ -1485,7 +1485,50 @@ static void testFxClicks() {
 		report("vates", "fx_return_to_delay_is_quiet", back, back < 0.01);
 	}
 
-	// (3) A stepped CV across the centre, as a sequencer into FX sends it.
+	// (3) A swung clock. The delay's time came from the last step interval,
+	// so a long-short clock moved the read head on every step.
+	{
+		Vates m;
+		long fr = 0;
+		if (!startSine(m, fr, -0.8f)) {
+			report("vates", setup, 0, false);
+			return;
+		}
+		m.inputs[Vates::CLK_INPUT].channels = 1;
+		const long longStep = (long)(0.075 * SR), shortStep = (long)(0.05 * SR);
+		long at = 0, next = longStep;
+		bool swing = true;
+		auto clock = [&](long) {
+			if (at >= next) {
+				at = 0;
+				swing = !swing;
+				next = swing ? longStep : shortStep;
+			}
+			m.inputs[Vates::CLK_INPUT].setVoltage(at < 48 ? 10.f : 0.f);
+			at++;
+		};
+		sharpness(m, fr, 2.0, clock);          // let the delay adopt the clock
+		double swung = sharpness(m, fr, 4.0, clock);
+		report("vates", "fx_swung_clock_is_quiet", swung, swung < 0.01);
+	}
+
+	// (3b) And a tempo that changes outright, which the delay follows by a
+	// crossfade rather than by moving its read head.
+	{
+		Vates m;
+		long fr = 0;
+		if (!startSine(m, fr, -0.8f)) {
+			report("vates", setup, 0, false);
+			return;
+		}
+		double retimed = sharpness(m, fr, 3.0, [&](long i) {
+			if (i == (long)(0.5 * SR))
+				m.params[Vates::TEMPO_PARAM].setValue(97.f);
+		});
+		report("vates", "fx_tempo_change_is_quiet", retimed, retimed < 0.01);
+	}
+
+	// (4) A stepped CV across the centre, as a sequencer into FX sends it.
 	{
 		Vates m;
 		long fr = 0;

@@ -245,6 +245,12 @@ struct Vates : Module {
 	float dlyFb[2] = {0.f, 0.f};
 	float modPhase = 0.f;
 	float fxSmooth1 = 0.f, fxSmooth = 0.f;
+	// the delay's view of the tempo, and the tap that follows it
+	static constexpr int kStepHist = 8;
+	float stepHist[kStepHist] = {};
+	int stepHistN = 0, stepHistI = 0;
+	bool wasExternal = false;
+	float dlyT = -1.f, dlyPrevT = 0.f, dlyXf = 1.f;
 
 	dsp::SchmittTrigger trigIn;
 	dsp::BooleanTrigger trigButton, bankUpButton, bankDownButton;
@@ -322,6 +328,7 @@ struct Vates : Module {
 			dly[i].init(n);
 			mod[i].init((int)(0.05f * sampleRate) + 4);
 		}
+		dlyT = -1.f;   // the lines are empty: take the new time outright
 	}
 
 	void onSampleRateChange(const SampleRateChangeEvent& e) override {
@@ -658,6 +665,36 @@ struct Vates : Module {
 
 	// ── process ──────────────────────────────────────────────────────────────
 
+	// The step length the delay is timed from. The internal clock's is
+	// exact; an external clock's is the last interval it measured, which
+	// under swing alternates long and short on every step, so the delay's
+	// time moved on every step and clicked on every one of them (#22). The
+	// delay wants the tempo, not the last step: the mean of the last eight
+	// intervals, which a swing of two or four steps averages out exactly.
+	float delayStepSeconds(float stepSeconds) {
+		if (!modul.externalClock) {
+			wasExternal = false;
+			return stepSeconds;
+		}
+		if (!wasExternal) {
+			// the first edge only adopts the clock; it has measured nothing
+			stepHistN = 0;
+			stepHistI = 0;
+			wasExternal = true;
+		}
+		else if (modul.stepped) {
+			stepHist[stepHistI] = stepSeconds;
+			stepHistI = (stepHistI + 1) % kStepHist;
+			stepHistN = std::min(stepHistN + 1, kStepHist);
+		}
+		if (stepHistN == 0)
+			return stepSeconds;
+		float sum = 0.f;
+		for (int i = 0; i < stepHistN; i++)
+			sum += stepHist[i];
+		return sum / stepHistN;
+	}
+
 	void process(const ProcessArgs& args) override {
 		const float sr = args.sampleRate;
 
@@ -949,7 +986,7 @@ struct Vates : Module {
 			// channel a plain beat against it, so the two run a 3:2 cross
 			// rhythm and the cross-feedback below throws it side to side.
 			float amt = std::max(-fxSmooth, 0.f);
-			float beat = stepSeconds * 4.f;
+			float beat = delayStepSeconds(stepSeconds) * 4.f;
 			float maxT = (float)(dly[0].size() - 4) / sr;
 			float t = beat * 1.5f;
 			// A dotted quarter does not fit the buffer at every tempo. Halving
@@ -958,8 +995,34 @@ struct Vates : Module {
 			while (t > maxT && t > 0.02f)
 				t *= 0.5f;
 			t = clamp(t, 0.005f, maxT) * sr;
-			float wetL = dly[0].read(t);
-			float wetR = dly[1].read(t * 0.667f);
+			// The tap never jumps: a read head that moves by a whole
+			// interval in one sample is a splice with no fade, and the
+			// feedback writes it back in. A change within a percent - clock
+			// jitter, a tempo knob being turned - glides, at a rate that
+			// bends the pitch by a few cents at most. Anything bigger - a
+			// new clock, a halving - crossfades from the old tap to the new.
+			if (dlyT < 0.f) {
+				dlyT = t;
+				dlyXf = 1.f;
+			}
+			if (dlyXf >= 1.f) {
+				float diff = t - dlyT;
+				if (std::fabs(diff) > 0.01f * dlyT) {
+					dlyPrevT = dlyT;
+					dlyT = t;
+					dlyXf = 0.f;
+				}
+				else
+					dlyT += clamp(diff, -0.002f, 0.002f);
+			}
+			float wetL = dly[0].read(dlyT);
+			float wetR = dly[1].read(dlyT * 0.667f);
+			if (dlyXf < 1.f) {
+				dlyXf = std::min(1.f, dlyXf + args.sampleTime / 0.05f);
+				float x = dlyXf;
+				wetL = dly[0].read(dlyPrevT) * (1.f - x) + wetL * x;
+				wetR = dly[1].read(dlyPrevT * 0.667f) * (1.f - x) + wetR * x;
+			}
 			// The two lines feed each other, so the round trip is fb*fb, not
 			// fb: 0.6 here was only 0.36 of loop gain and the tail died in a
 			// few seconds. The write saturates, as the chorus path already
