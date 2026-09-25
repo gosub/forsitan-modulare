@@ -205,6 +205,8 @@ struct Core {
 
 	int lastMode = -1;
 	float filtSm = 0.f;
+	float amtS1 = 0.f, amtS = 0.f, fbS1 = 0.f, fbS = 0.f;
+	bool knobsPrimed = false;
 	bool filtWasLow = false;
 	// settings, from the context menu
 	bool fourPole = false;      // 24 dB/oct and the wider range, as vates has
@@ -532,8 +534,27 @@ struct Core {
 
 		float in[2] = {inL, inR};
 		float out[2] = {0.f, 0.f};
-		float amt = clamp(ct.amount, 0.f, 1.f);
-		float fb = clamp(ct.feedback, 0.f, 1.f);
+		// Amount and feedback are smoothed before any mode sees them. Both
+		// multiply signal straight into the output or into a line, so a knob
+		// that moves once per UI frame, or a stepped CV, was a click in every
+		// mode that has a wet path - and with the feedback it was a click
+		// written into the loop, which the loop then kept (#22). Two poles,
+		// not one: a one-pole moves at its fastest in the first sample after
+		// a step, which still turns a corner.
+		float amtIn = clamp(ct.amount, 0.f, 1.f);
+		float fbIn = clamp(ct.feedback, 0.f, 1.f);
+		if (!knobsPrimed) {
+			amtS1 = amtS = amtIn;
+			fbS1 = fbS = fbIn;
+			knobsPrimed = true;
+		}
+		float kk = 1.f - std::exp(-ct.dt / 0.005f);
+		amtS1 += (amtIn - amtS1) * kk;
+		amtS += (amtS1 - amtS) * kk;
+		fbS1 += (fbIn - fbS1) * kk;
+		fbS += (fbS1 - fbS) * kk;
+		float amt = amtS;
+		float fb = fbS;
 		float t = clamp(ct.time, 0.f, 1.f);
 
 		switch (ct.mode) {

@@ -2479,7 +2479,89 @@ static void testShifterTrig() {
 	       lapsOpen >= 3.0);
 }
 
-SMOKE_MAIN(testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
+
+// ── clicks, measured the way vates' were (issue #22) ─────────────────────────
+// The sharpest corner either channel turns, over its peak, while a 3 V 220 Hz
+// sine plays through: the largest second difference in the window. The sine
+// alone scores 8e-4, a clean mode about 1e-3, and a step of a tenth of the
+// signal about 0.1. `drive` runs before each frame, to move a knob or a clock.
+template <typename F>
+static double sharpness(Artifex& m, long& fr, double seconds, F drive) {
+	long n = (long)(seconds * SR);
+	float y1[2] = {m.outputs[Artifex::LEFT_OUTPUT].getVoltage(),
+	               m.outputs[Artifex::RIGHT_OUTPUT].getVoltage()};
+	float y2[2] = {y1[0], y1[1]};
+	double worst = 0.0, peak = 1e-6;
+	for (long i = 0; i < n; i++) {
+		drive(i);
+		float x = 3.f * std::sin(2.f * (float)M_PI * 220.f * (float)fr / SR);
+		step(m, fr, x, x);
+		for (int c = 0; c < 2; c++) {
+			float y = m.outputs[c ? Artifex::RIGHT_OUTPUT : Artifex::LEFT_OUTPUT].getVoltage();
+			if (i >= 1)
+				worst = std::max(worst, (double)std::fabs(y - 2.f * y1[c] + y2[c]));
+			peak = std::max(peak, (double)std::fabs(y));
+			y2[c] = y1[c];
+			y1[c] = y;
+		}
+	}
+	return worst / peak;
+}
+static double sharpness(Artifex& m, long& fr, double seconds) {
+	return sharpness(m, fr, seconds, [](long) {});
+}
+
+// A mode at middling knobs, with a second and a half of sine through it.
+static void settle(Artifex& m, long& fr, int mode) {
+	m.params[Artifex::TIME_PARAM].setValue(0.4f);
+	m.params[Artifex::AMT_PARAM].setValue(0.6f);
+	m.params[Artifex::FBK_PARAM].setValue(0.4f);
+	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
+	setMode(m, mode);
+	sharpness(m, fr, 1.5);
+}
+
+// The modes whose output is smooth when nothing moves, which is where a click
+// can be told from the mode's own character. The freezer's loop and the
+// pitcher's ramp wrap by design, and the crusher and slicer are made of edges.
+static const int kSmoothModes[] = {
+	artifex_fx::MODE_DELAY, artifex_fx::MODE_FLANGER, artifex_fx::MODE_PANNER,
+	artifex_fx::MODE_REPLAYER, artifex_fx::MODE_SHIFTER};
+
+// ── amount and feedback are smoothed ─────────────────────────────────────────
+// Neither was, so every mode with a wet path clicked on each UI frame of a
+// knob drag and on each step of a CV, and a feedback step was written into
+// the loop, which kept it.
+static void testKnobStepsDoNotClick() {
+	const char* names[] = {"delay", "flanger", "panner", "replayer", "shifter"};
+	for (int k = 0; k < 5; k++) {
+		int mode = kSmoothModes[k];
+		double amt, fbk;
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, mode);
+			amt = sharpness(m, fr, 2.0, [&](long i) {
+				m.params[Artifex::AMT_PARAM].setValue((i / 6000) % 2 ? 0.9f : 0.3f);
+			});
+		}
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, mode);
+			fbk = sharpness(m, fr, 2.0, [&](long i) {
+				m.params[Artifex::FBK_PARAM].setValue((i / 6000) % 2 ? 0.8f : 0.1f);
+			});
+		}
+		char name[64];
+		std::snprintf(name, sizeof name, "%s_amount_steps_are_quiet", names[k]);
+		report("artifex", name, amt, amt < 0.01);
+		std::snprintf(name, sizeof name, "%s_feedback_steps_are_quiet", names[k]);
+		report("artifex", name, fbk, fbk < 0.01);
+	}
+}
+
+SMOKE_MAIN(testKnobStepsDoNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
