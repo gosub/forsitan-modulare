@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.16.3] - 2026-09-25
+### Fixed
+  - **vates** clicked on the delay side of **fx**, and the feedback kept the
+    click for good ([#22](https://github.com/gosub/forsitan-modulare/issues/22)).
+    Three causes. The two halves of the knob ran only while it was on their
+    side, so crossing the centre switched the chorus's saturation in and out
+    in one sample, and a return to the delay replayed its last visit spliced
+    onto the new audio. The knob and its CV were not smoothed. And the delay
+    took its time from the last clock interval, so a swung or irregular clock
+    moved the read head on every step. Now both lines are always written,
+    each effect fades to nothing at the centre, the knob is smoothed, and the
+    delay follows the tempo - the mean of the last eight intervals - gliding
+    through small changes and crossfading through large ones. Reported by a
+    user.
+  - **artifex** had the same kinds of click. Amount and feedback were not
+    smoothed, so a knob drag or a stepped CV clicked in every mode with a wet
+    path, and in the delay and flanger the click went into the loop. A mode
+    change replaced one mode's output with another's in a sample; it is now
+    a 10 ms crossfade through the dry signal. Coming back to a mode replayed
+    what its line held from before. The freezer clicked once a lap with
+    nothing moving, because its loop wrapped with no fade; the wrap is now a
+    splice into the audio that led up to the loop, and a new loop length
+    crossfades rather than moving the playhead. The delay's sync and the
+    freezer's length follow the averaged tempo, as vates' delay does.
+  - **artifex**'s freezer grew without bound with the feedback up, climbing
+    into the limiter and staying there. It now decays what it holds as it
+    adds, and saturates, as the hardware's does.
+  - **artifex**'s freezer, re-entered after a freeze, played a four-sample
+    loop of the previous visit's capture - an 11 kHz buzz - until it had
+    caught a new one. It passes the input through while it fills, as the
+    hardware does.
+
+### Changed
+  - **vates** and **artifex** move to the ranges of the hardware they come
+    from, checked against its open firmware. vates: the **fx** delay is a
+    dotted eighth (it was four times too long), the chorus is ten times as
+    deep with a rate that falls from 2 Hz to 0.1 as the knob rises, and two
+    hits closer than 20 ms are one. artifex: the flanger reaches 50 Hz, the
+    panner 10 kHz, the crusher goes down to 7.5 Hz, the freezer's left half
+    divides a beat rather than a bar, the pitcher reaches two octaves and a
+    bit, the shifter goes up two, and the delay's amount adds repeats before
+    it takes the dry away. Both: the pattern **cv** is a rungler, and the
+    synced LFO has fifteen divisions reaching sixteen bars.
+  - Every one of those changes how a saved patch sounds, so both modules
+    have a **Ranges** setting in the context menu, hardware or 2.16.2. A
+    patch saved before 2.16.3 opens on 2.16.2 and sounds as it did; a new
+    module starts on hardware. The fixes above apply either way.
+  - **alea** draws from a pool built at the moment of the click, and skips
+    the models their makers have hidden. Its context menu can exclude seven
+    tags (Blank, Expander, External and MIDI are excluded by default) and
+    give every brand even odds, whatever the size of its library.
+  - The **fx** section of vates skips the reads of whichever side is off,
+    which takes back most of what running both sides at once costs: 0.56 to
+    0.79% of a core, against 0.34 to 0.59% in 2.16.2.
+
 ## [2.16.2] - 2026-09-16
 ### Fixed
   - **vates** could leave one audio output sitting at a solid 10 V while the
