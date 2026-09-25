@@ -106,7 +106,8 @@ freezer, the slicer, the LFO and the pattern all follow. A clock at the
 **trig** input snaps the delay too, which is where the hardware takes one, but
 only while **clk** is carrying none: patching a rhythm into trig should stutter
 the mode, not redefine what a bar is. With neither, nothing snaps and the knob
-is free.
+is free. What it snaps to at **clk** is the tempo, not the last step: see
+[clock and pattern](#clock-and-pattern).
 
 Short times turn the delay into a comb filter, and with feedback up it becomes
 a tuned resonator you can play from the time knob.
@@ -147,6 +148,14 @@ The loop is the *end* of what was caught: shortening keeps the audio nearest
 the freeze point, which is what you had just heard, rather than the oldest of
 it. **feedback** here does not run the global loop - it lets new audio bleed
 into the frozen buffer, thickening it.
+
+The loop's wrap is a splice, not a cut: its last 10 ms crossfade into the
+audio that led up to its start, which the chunk holds because a freeze always
+catches a little more than it loops. On a loop short enough to be a pitch the
+fade shrinks to a quarter of it, since there the wrap is part of the tone. A
+new length - the knob, or the tempo moving under the steps - crossfades from
+the old loop to the new over the same 10 ms rather than moving the playhead,
+and until the first chunk is caught the mode plays nothing but dry.
 
 ### 4. panner (white)
 
@@ -453,9 +462,18 @@ sample in half. The knob and the display picker change modes immediately.
 
 The waiting can be turned off in the context menu, and it is worth hearing
 once: with a mode CV faster than the clock, changes then land the instant the
-voltage crosses, in the middle of a slice or a repeat, and every one of them
-clicks. That is the point of the option rather than a fault, but on is the
-default because the quantized version is the musical one.
+voltage crosses, in the middle of a slice or a repeat. That is the point of
+the option rather than a fault, but on is the default because the quantized
+version is the musical one.
+
+However it arrives, a change is a crossfade, not a cut: the running mode fades
+down to dry over 5 ms, and the new one fades up from dry over another 5. Dry
+is the one signal every mode agrees on - it is what each gives at amount zero
+- so it is what two unrelated effects can be joined through. A mode also
+picks up where it should when you come back to it: the delay and the pitcher
+play only what they have recorded since arriving, the flanger's and the
+shifter's lines carry the input while other modes run, and each mode's
+feedback comes up over 10 ms rather than being switched in.
 
 ### time, feedback, amount
 
@@ -506,6 +524,11 @@ hardware's patch-programming tips describe.
 
 **tempo** sets the internal clock in BPM; a signal at **clk** takes over, and
 the module returns to its own clock two seconds after that signal stops.
+Whatever is *timed* from an external clock - the delay's snap, the freezer's
+steps - takes the mean of its last eight intervals rather than the last one,
+so a swung clock, long-short on every step, does not move them on every step:
+a swing of two or four steps averages out exactly. The pattern and the LFO
+still follow each edge as it comes.
 **clk** out passes the running clock on, so one module can drive another: patch
 it into a second artifex or into vates and both pattern generators and LFOs run
 as one. They agree from the first beat when both tempo knobs start at the same
