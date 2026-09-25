@@ -618,6 +618,14 @@ can see it change across the room.
   on its own tempo.
 - **Feedback safety** - a soft limiter in the loop, on by default. Off, the
   loop can run away, which is a legitimate thing to want.
+- **Ranges** - hardware, or 2.16.2. 2.16.3 moved six modes to the
+  hardware's ranges (flanger to 50 Hz, panner to 10 kHz, crusher down to
+  7.5 Hz, the freezer counting divisions of a beat with a shorter pitched
+  half, the pitcher past two octaves, the shifter up two), the delay's dry
+  level, the pattern **cv** to a rungler, and the synced LFO's divisions to
+  sixteen bars. A new module starts on hardware. A patch saved before 2.16.3
+  opens on 2.16.2, so it sounds as it did, and can be moved over here. The
+  fixes of 2.16.3 apply either way.
 - **Slope**, **Filter the dry signal too**, **Filter inside the feedback** -
   see [the filter](#the-filter).
 

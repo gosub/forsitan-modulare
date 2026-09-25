@@ -399,6 +399,13 @@ tight.
   the **tempo** knob.
 - **pattern input window** - the voltage window the two pattern jacks read:
   the Rack one (0V neutral) or the hardware's (1.6–3.2V neutral).
+- **ranges** - hardware, or 2.16.2. 2.16.3 moved vates to the hardware's
+  ranges: the **fx** delay a dotted eighth rather than a dotted quarter, the
+  chorus deep with a rate that falls as the knob rises, a 20 ms floor under
+  the gap between two hits, the pattern **cv** as a rungler, and the synced
+  LFO's sixteen-bar divisions. A new module starts on hardware. A patch saved
+  before 2.16.3 opens on 2.16.2, so it sounds as it did, and can be moved
+  over here. The fixes of 2.16.3 apply either way.
 
 ## What was left behind
 
