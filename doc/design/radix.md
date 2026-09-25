@@ -4,8 +4,8 @@ Status: design, nothing built. Written 2026-09-25.
 
 A chaotic 8-bit source on its own panel: an integer machine on its own clock,
 whose program is chosen by three stepped knobs with CV. It is stage 1 of
-[olim](olim.md), built first and shipped alone; olim, if it ever comes, takes
-the engine header and adds nothing to it.
+[the three-stage chain](olim-chain.md), built first and shipped alone; the
+chain, if it ever comes, takes the engine header and adds nothing to it.
 
 **radix** is Latin for "root": the first stage of the chain, and the thing
 every sample grows from, one integer at a time.
@@ -15,22 +15,22 @@ every sample grows from, one integer at a time.
 
 radix is in the family of Dirty Electronics' **Radical22**, whose firmware is
 CC BY-NC-SA 4.0 and cannot be linked into a GPL-3 plugin. The rule from
-[olim.md](olim.md#lineage-and-the-rule-for-building-it) applies unchanged:
-**implement from this document**, never with `main.c` or `dsp.h` open, and
-nothing of the hardware's increment lines, `myarray` bytes or program map may
-appear. Credit in `doc/radix.md` is "in the family of", as bulla credits
-Hordijk.
+[olim-chain.md](olim-chain.md#lineage-and-the-rule-for-building-it) applies
+unchanged: **implement from this document**, never with `main.c` or `dsp.h`
+open, and nothing of the hardware's increment lines, `myarray` bytes or program
+map may appear. Credit in `doc/radix.md` is "in the family of", as bulla
+credits Hordijk.
 
 The panel takes its idea from Radical22's front, not its artwork: see Panel.
 
 
 ## Engine
 
-As stage 1 of olim.md (per-tick steps, the SRC / LAW / TABLE tables, `TEXT`
-from a string set in the context menu). Four of those table entries measured
-wrong once written down (ADD, MOD, SRC TABLE, the TEXT scaling), and PARAM
-was dead under SELF and IN; `src/radix/radix.hpp` says what replaced each and
-is the reference from here on. What changes for the standalone module:
+As stage 1 of olim-chain.md (per-tick steps, the SRC / LAW / TABLE tables,
+`TEXT` from a string set in the context menu). Four of those table entries
+measured wrong once written down (ADD, MOD, SRC TABLE, the TEXT scaling), and
+PARAM was dead under SELF and IN; `src/radix/radix.hpp` says what replaced each
+and is the reference from here on. What changes for the standalone module:
 
 - **SRC, LAW and TABLE are stepped knobs with CV, not switches.** A switch on
   a label-free panel shows nothing, and a knob with CV restores the
@@ -48,17 +48,17 @@ is the reference from here on. What changes for the standalone module:
   pitch` context-menu option, off by default. Other LAWs are chaotic and
   track nothing, which is not a fault.
 - **No oversampling, no band-limiting, ever.** The aliasing is the sound.
-- **CV OUT** is the stepped chaos CV from olim's chaos bus: three bits off
-  the accumulator into a 3-bit DAC, smoothed as bulla smooths its rungler.
+- **CV OUT** is the stepped chaos CV from the chain's chaos bus: three bits
+  off the accumulator into a 3-bit DAC, smoothed as bulla smooths its rungler.
   It lives here because it falls out of the accumulator.
 - **IN** is both the audio input for SRC = `IN` and the feedback return:
-  OUT (or CV OUT) patched back into IN is olim's FB IN, with a cable.
+  OUT (or CV OUT) patched back into IN is the chain's FB IN, with a cable.
 - Mono. Output is +-5 V.
 
 Open, to settle by ear during step 1:
 
-- whether V/OCT tracking wants a `Loose tracking` menu option (olim.md open
-  question 5)
+- whether V/OCT tracking wants a `Loose tracking` menu option (olim-chain.md
+  open question 5)
 - whether BITS and GRIT deserve CV; not on the list below, and adding them
   later appends to the enums, so the default is to wait
 

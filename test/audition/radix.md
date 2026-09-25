@@ -103,7 +103,7 @@ r.set(src="Self", table="Text")
 ## 4. Feedback
 
 OUT patched back into IN, **Source** on Input: the delay-free version of the
-howl olim was designed around.
+howl the three-stage chain was designed around.
 
 ```python
 r["audio"] >> r["audio"]

@@ -1,6 +1,9 @@
-# olim - design doc
+# the chain (was olim) - design doc
 
 Status: design, nothing built. Written 2026-08-30.
+
+The name olim has gone to stage 3, built alone as its own module: see
+[olim.md](olim.md). Below, "olim" means the three-stage chain.
 
 On hold as a whole: stage 1 is being built first as a standalone module,
 see [radix.md](radix.md), which supersedes this file where they differ.
