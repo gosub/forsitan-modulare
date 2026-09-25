@@ -63,32 +63,35 @@ on Sine, **Param** at 128, a sine at C4.
 
 ## 2. Clock, bits and grit
 
-- [ ] 2.1. Bring **Clock** down from 32 kHz with **Rate** still: the pitch
+- [x] 2.1. Bring **Clock** down from 32 kHz with **Rate** still: the pitch
       stays, the sound turns to steps and aliases. That is the resolution
       falling, not a fault.
-- [ ] 2.2. The same sweep with "Clock moves pitch" on in the menu: now the
+- [x] 2.2. The same sweep with "Clock moves pitch" on in the menu: now the
       pitch falls with the clock, as on the hardware.
       `r.menu(clockMovesPitch=True)`
-- [ ] 2.3. **Bits** down to 1: the sine turns to a square by audible steps,
+- [x] 2.3. **Bits** down to 1: the sine turns to a square by audible steps,
       one per tick on the disc.
-- [ ] 2.4. **Grit** swept on the default sine: audible from the first tenth,
+- [x] 2.4. **Grit** swept on the default sine: audible from the first tenth,
       and it stays in tune all the way to fully corrupted.
 
 ---
 
 ## 3. Sequencing the program
 
+The ramp is 0-10 V and the program knobs take 1 V a step, so the VCA
+starts half open: 0-5 V covers every position of Law and of Table.
+
 ```python
 r.set(src="Self", table="Text")
 ```
 
-- [ ] 3.1. Open the VCA: a slow ramp walks **Law** through its positions in
-      order, one hard change at each step. The click at the change is meant.
-      `vcv.modulate(r["law cv"], rate=0.1, shape="sawtooth")`
+- [x] 3.1. A slow ramp walks **Law** through its positions in order, one hard
+      change at each step. The click at the change is meant.
+      `vcv.modulate(r["law cv"], depth=0.5, rate=0.1, shape="sawtooth")`
 - [ ] 3.2. **Decide -** the same ramp on **Table** instead: is a hard jump
       between tables the right thing, or should a table change be the one
       place that is smoothed?
-      `vcv.modulate(r["table cv"], rate=0.1, shape="sawtooth")`
+      `vcv.modulate(r["table cv"], depth=0.5, rate=0.1, shape="sawtooth")`
 
 ---
 
