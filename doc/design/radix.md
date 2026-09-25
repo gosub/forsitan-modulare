@@ -95,16 +95,13 @@ forsitan logo stays, at its usual `width/2`, y = 122.5, and is the only
 fixed, upright element. The module browser and the hover tooltips carry the
 names.
 
-**Tilted.** The controls sit on a lattice rotated off the panel axis, as the
-Radical22's jacks rise along a diagonal and its knobs sit in two staggered
-diagonal rows. Proposal, to be tried in the panel editor:
-
-- the nine jacks on two diagonal rows near the top, inputs above, the two
-  outputs at the high end of the lower row
-- the eight knobs in two staggered diagonal rows below, the three stepped
-  ones (SRC, LAW, TABLE) together at one end, each above or beside its CV
-  jack where the tilt allows
-- one tilt angle for the whole panel, somewhere around 10-15 degrees
+**Tilted.** The controls sit on a lattice rotated 12 degrees off the panel
+axis, as the Radical22's jacks rise along a diagonal. Built: three blocks,
+each a row of knobs with their CV jacks directly under them, zigzagging down
+the panel - RATE / PARAM / CLOCK at the top left, SRC / LAW / TABLE in the
+middle right, BITS and GRIT over IN, OUT and CV OUT at the bottom left. The
+two-rows-of-jacks proposal lost to this because a knob beside its own CV is
+the only grouping a label-free panel has left.
 
 **Findable.** The panel is label-free, not unreadable:
 
@@ -127,18 +124,23 @@ copying the photo. Requirements on the generator:
   clip paths, and merged into a few compound paths rather than thousands of
   small ones, with a node budget measured against the load time of the
   heaviest existing panel
-- keeps out of the control discs, the screws and the logo area by
-  construction (reads the positions from the `@layout` block), rather than
-  painting over and hoping the discs cover it
-- density falls off near the controls, so the busiest art is in the empty
-  middle, as on the hardware
+- keeps out of the screws and the logo, and grows **under** the controls,
+  with the opaque discs drawn over it. Keeping it out of the discs by
+  construction was the plan and was tried first: a branch cannot find its
+  way into the narrow gaps inside a block of knobs and jacks, so every block
+  sat in a black blob several times its own size. Falling density near the
+  controls went for the same reason.
+
+As built: gold limbs, a white tangle over them and black cracks through
+both, each layer one compound path under the nonzero rule, 220 KB against
+imber's 279. It renders in Rack as drawn (`gen_screenshots.py radix`).
 
 **panel_audit.** It does not require a label on every control (it checks
-overlaps and label clearances only), so a label-free panel mostly passes as
-is. Two things to settle when the panel is drawn: the title element it
-synthesises from the module name must be suppressible (e.g. `title=none` on
-`@layout:begin`), and the audit geometry must follow the tilt, which it does
-if positions are stored as rotated centres rather than a rotated group.
+overlaps and label clearances only), so the label-free panel passes as is.
+`notitle` on `@layout:begin` drops the title from the audit, and
+`svg=tools/panels/gen_radix_panel.py` makes a Save in the panel editor rerun
+the generator instead of drawing the standard panel over the art. The tilt
+needs nothing: positions are stored as rotated centres.
 
 
 ## Build order
