@@ -51,6 +51,9 @@ STEPS = {'SRC_PARAM': 5, 'LAW_PARAM': 5, 'TABLE_PARAM': 6, 'BITS_PARAM': 16}
 SWEEP = 0.83 * math.pi
 
 DISC_PAD = 0.8        # disc radius past the widget's own
+# Outputs: a yellow crown this far past the jack, then a dark ring. At the
+# plain disc pad the yellow cleared the jack's nut by 0.1 mm and barely showed.
+CROWN, CROWN_RING = 1.4, 0.6
 TICK_IN, TICK_OUT = 0.4, 1.3   # ticks, past the knob's edge
 STEP = 0.8            # growth step, mm
 
@@ -78,6 +81,8 @@ class Field:
             k = e['kind']
             if k in ('param', 'input', 'output'):
                 r = e['radius'] + DISC_PAD
+                if k == 'output':
+                    r = e['radius'] + CROWN + CROWN_RING
                 if e['id'] in STEPS:
                     r = max(r, e['radius'] + TICK_OUT + 0.3)
                 self.discs.append((e['x'], e['y'], r, k, e['id'], e['radius']))
@@ -283,7 +288,7 @@ def discs_svg(field):
         lines.append(f'  <circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.2f}" fill="{BG}"/>')
         if kind == 'output':
             # yellow inside a dark ring, or it melts into the gold art
-            lines.append(f'  <circle cx="{x:.2f}" cy="{y:.2f}" r="{r - 0.7:.2f}" '
+            lines.append(f'  <circle cx="{x:.2f}" cy="{y:.2f}" r="{r - CROWN_RING:.2f}" '
                          f'fill="{YELLOW}"/>')
         n = STEPS.get(eid)
         if not n:
