@@ -45,13 +45,15 @@ def scope(port="audio"):
 The defaults are the plain end: **Source** on Param, **Law** on Add, **Table**
 on Sine, **Param** at 128, a sine at C4.
 
-- [ ] 1.1. Sweep **Param**: the pitch bends up to half an octave either side
+- [x] 1.1. Sweep **Param**: the pitch bends up to half an octave either side
       of C4 and stays a clean tone throughout.
-- [ ] 1.2. Step **Table** through its six positions: six different waves,
+- [x] 1.2. Step **Table** through its six positions: six different waves,
       and Text is a staircase of the letters of "forsitan radix".
-- [ ] 1.3. **Source** on Self, then step **Law** through its five positions:
+- [x] 1.3. **Source** on Self, then step **Law** through its five positions:
       five different kinds of instability, none of them a plain tone.
-      `r.set(src="Self")`
+      ```python
+      r.set(src="Self", clock=0.537)  # about 4 kHz: at 32 kHz it is too fine to hear
+      ```
 - [ ] 1.4. **Source** on Counters, **Law** on Sync, **Param** swept: a figure
       that walks and never quite repeats. The busiest corner of the module.
       `r.set(src="Counters", law="Sync", table="Saw")`
