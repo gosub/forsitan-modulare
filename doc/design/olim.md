@@ -2,6 +2,9 @@
 
 Status: design, nothing built. Written 2026-08-30.
 
+On hold as a whole: stage 1 is being built first as a standalone module,
+see [radix.md](radix.md), which supersedes this file where they differ.
+
 A three-stage instrument on one panel: a chaotic 8-bit source, a filter, and
 a multi-head delay, normalled in series with every junction broken out, and a
 stepped chaos bus tying them together.
