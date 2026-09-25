@@ -93,6 +93,26 @@ inline float runglerVolts(int i) {
 // they evolve from there; seeding from the rhythm index instead keeps the one
 // thing our own version bought - that a rhythm brings its own contour back
 // with it - without giving up the rungler's dynamics.
+// ── the 2.16.2 behaviour ──────────────────────────────────────────────────────
+// Both modules keep the pattern CV and the synced LFO divisions they had before
+// 2.16.3 behind a context-menu setting, so a patch saved then still sounds as
+// it did: the rungler above gives a different sequence from the same rhythm,
+// and the fifteen divisions below put a different one under the same knob. A
+// patch that predates the setting opens with it on; a new module has it off.
+
+// The CV sequence as it was: sixteen stepped levels, hashed from the pattern
+// index so a rhythm always brings the same contour.
+inline float legacyRhythmCv(int pat, int step) {
+	uint32_t h = (uint32_t)(pat + 1) * 2654435761u ^ (uint32_t)(step + 1) * 2246822519u;
+	h ^= h >> 13;
+	h *= 2654435761u;
+	h ^= h >> 16;
+	return (h % 16u) / 15.f * 10.f;
+}
+
+// The synced LFO's eight divisions as they were, in steps per cycle.
+static const float kLegacyLfoDiv[8] = {32.f, 16.f, 8.f, 4.f, 2.f, 1.f, 0.5f, 0.25f};
+
 inline uint16_t rhythmCvBits(int pat) {
 	uint32_t h = (uint32_t)(pat + 1) * 2654435761u;
 	h ^= h >> 13;
@@ -168,6 +188,7 @@ struct ModIn {
 	bool lfoSynced = true;
 	float lfoResetVoltage = 0.f;
 	float pulseWidth = 0.5f;      // 0..1, the fraction of the cycle spent rising
+	bool legacy = false;          // the 2.16.2 pattern CV and LFO divisions
 };
 
 struct Modulation {
@@ -196,6 +217,8 @@ struct Modulation {
 	// ── pattern ──────────────────────────────────────────────────────────────
 	uint16_t gateWork = 0;
 	uint16_t cvBits = 0;      // one bit a step, read three at a time
+	float cvLegacy[kSteps] = {0.f};   // the 2.16.2 sequence, one level a step
+	bool legacy = false;      // which of the two cv() reads, and which LFO table
 	int loadedRhythm = -1;
 	uint32_t patRng = 0x1234567u;
 	float gateTimer = 0.f;
@@ -220,6 +243,8 @@ struct Modulation {
 	}
 	float cv() const {
 		int s = clamp(step, 0, kSteps - 1);
+		if (legacy)
+			return cvLegacy[s];
 		int i = (cvBitAt(s) ? 1 : 0) | (cvBitAt(s + 3) ? 2 : 0)
 		        | (cvBitAt(s + 5) ? 4 : 0);
 		return runglerVolts(i);
@@ -301,7 +326,10 @@ struct Modulation {
 			loadedRhythm = in.rhythm;
 			gateWork = rhythmPattern(in.rhythm);
 			cvBits = rhythmCvBits(in.rhythm);
+			for (int s = 0; s < kSteps; s++)
+				cvLegacy[s] = legacyRhythmCv(in.rhythm, s);
 		}
+		legacy = in.legacy;
 		if (stepped) {
 			step = (step + 1) % kSteps;
 			barStep = (barStep + 1) % kBarCycle;
@@ -321,14 +349,21 @@ struct Modulation {
 				gateWork ^= mask;
 			// One bit, at the step the sequence is on - and three steps of
 			// the output move with it, which is the rungler working.
+			//
+			// Both sequences are edited, whichever is being read, so that
+			// flipping the setting mid-patch finds the other one where the
+			// switches have taken it too.
 			if (in.cvMode == 2) {
 				if (nextRandom() & 1)
 					cvBits |= mask;
 				else
 					cvBits &= (uint16_t)~mask;
+				cvLegacy[step] = (nextRandom() % 16u) / 15.f * 10.f;
 			}
-			else if (in.cvMode == 0)
+			else if (in.cvMode == 0) {
 				cvBits ^= mask;
+				cvLegacy[step] = 10.f - cvLegacy[step];
+			}
 
 			if (gateWork & mask)
 				gateTimer = 0.75f * stepSeconds;
@@ -351,15 +386,23 @@ struct Modulation {
 			// Synced means phase-locked, not merely a synced rate: the phase is
 			// derived from the step clock, so the LFO cannot drift against the
 			// pattern and its saw stays a usable phasor.
-			int d = clamp((int)(in.lfoRateKnob * (kLfoDivCount - 0.001f)
-			                    + in.lfoRateMod * (kLfoDivCount / 2)),
-			              0, kLfoDivCount - 1);
 			// modulation moves the division rather than detuning the rate: a
 			// phase derived from the clock has nothing to detune
 			if (lfoReset)
 				lfoOffset = barPos;
-			double phase = (barPos - lfoOffset) * (double)kLfoDivDen[d]
-			               / (double)kLfoDivNum[d];
+			double phase;
+			if (in.legacy) {
+				// kBarCycle is a multiple of 32 steps, so these wrap cleanly too
+				int d = clamp((int)(in.lfoRateKnob * 7.999f + in.lfoRateMod * 4.f), 0, 7);
+				phase = (barPos - lfoOffset) / kLegacyLfoDiv[d];
+			}
+			else {
+				int d = clamp((int)(in.lfoRateKnob * (kLfoDivCount - 0.001f)
+				                    + in.lfoRateMod * (kLfoDivCount / 2)),
+				              0, kLfoDivCount - 1);
+				phase = (barPos - lfoOffset) * (double)kLfoDivDen[d]
+				        / (double)kLfoDivNum[d];
+			}
 			phase -= std::floor(phase);
 			lfoPhase = (float)phase;
 		}
