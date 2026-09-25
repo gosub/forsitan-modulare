@@ -5,6 +5,7 @@
 //                                nearest neighbour; flags silent and stuck ones
 //   ./radix_probe pitch          RATE's pitch against CLOCK, both menu settings
 //   ./radix_probe param S L T    one program across the PARAM knob
+//   ./radix_probe grit           what GRIT adds, in dB under the signal
 //   ./radix_probe cpu            ns per host sample at the top of CLOCK
 //   ./radix_probe wav <dir>      one WAV per program, PARAM swept 0..255
 //   ./radix_probe tour <file>    all 150 programs in one WAV, a second each
@@ -268,6 +269,36 @@ static int cmdParam(int s, int l, int t) {
     return 0;
 }
 
+// GRIT against the clean program: how loud the corruption it adds is, in dB
+// below the signal, and where it moves the centroid. The knob is only doing
+// its job if every step of it is audible.
+static int cmdGrit() {
+    const int progs[][3] = {{SRC_PARAM, LAW_ADD, TAB_SINE}, {SRC_PARAM, LAW_ADD, TAB_SAW},
+                            {SRC_SELF, LAW_XOR, TAB_TEXT}};
+    for (auto& pr : progs) {
+        printf("%s\n%6s %9s %7s\n", progName(pr[0], pr[1], pr[2]).c_str(),
+               "grit", "added dB", "cent");
+        Params p = base();
+        p.src = pr[0]; p.law = pr[1]; p.table = pr[2];
+        p.grit = 0.f;
+        std::vector<float> clean = run(p, 0.5f);
+        for (int g = 0; g <= 10; g++) {
+            p.grit = g / 10.f;
+            std::vector<float> x = run(p, 0.5f);
+            double e = 0.0, s = 0.0;
+            for (size_t i = 0; i < x.size(); i++) {
+                e += (double)(x[i] - clean[i]) * (x[i] - clean[i]);
+                s += (double)clean[i] * clean[i];
+            }
+            double db = e > 0.0 ? 10.0 * std::log10(e / s) : -999.0;
+            printf("%6.1f %9.1f %7.0f\n", p.grit, db,
+                   centroid(spectrum(x, (int)x.size() - kFFT)));
+        }
+        printf("\n");
+    }
+    return 0;
+}
+
 static int cmdCpu() {
     Params p = base();
     p.clock = kClockMax;
@@ -320,13 +351,14 @@ int main(int argc, char** argv) {
     if (cmd == "measure") return cmdMeasure();
     if (cmd == "pitch") return cmdPitch();
     if (cmd == "cpu") return cmdCpu();
+    if (cmd == "grit") return cmdGrit();
     if (cmd == "param" && argc > 4)
         return cmdParam(parseIndex(argv[2], NUM_SRC, srcName),
                         parseIndex(argv[3], NUM_LAW, lawName),
                         parseIndex(argv[4], NUM_TABLE, tableName));
     if (cmd == "wav" && argc > 2) return cmdWav(argv[2]);
     if (cmd == "tour" && argc > 2) return cmdTour(argv[2]);
-    fprintf(stderr, "usage: radix_probe measure | pitch | cpu | param S L T | "
+    fprintf(stderr, "usage: radix_probe measure | pitch | grit | cpu | param S L T | "
                     "wav <dir> | tour <file>\n");
     return 2;
 }
