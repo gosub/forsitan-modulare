@@ -102,6 +102,15 @@ static const float kKnobGlide = 0.020f;
 // click. Two milliseconds is long enough to carry the step and short enough
 // that a triggered stereo throw still lands on the beat.
 static const float kTrigDeclick = 0.002f;
+// How long each half of a mode change takes. A change is one effect's output
+// replaced by another's, and the two differ in value and in slope. Taking the
+// step out, as the trig declick does, still leaves a corner where the slopes
+// meet - 0.06 of the signal on a sine, a click by any other name - and
+// bending the slope round instead drifts volts off the signal. What joins
+// two unrelated signals cleanly is a crossfade, and there is one signal both
+// modes agree on: at amount zero every mode is dry. So a change fades the
+// old mode down to dry, switches, and fades the new one up from it (#22).
+static const float kModeFade = 0.005f;
 // How long the shifter takes to open its stereo spread back up after a
 // trig collapses it. Squaring the two channels up is inaudible on its own -
 // they are at different pitches, so the image is already sweeping - so the
@@ -202,6 +211,12 @@ struct Core {
 	float declick[2] = {0.f, 0.f};   // the step a trig left, on its way out
 	float declickZ1[2] = {0.f, 0.f}; // the last two samples actually emitted,
 	float declickZ2[2] = {0.f, 0.f}; // so the step can be measured against them
+	int runMode = -1;          // the mode actually running, lagging a change
+	float modeWet = 1.f;       // 0..1: how far up from dry that mode is
+	// Samples processed since arriving in the mode. The tape was last written
+	// by whichever mode had it before, or by this one on its previous visit,
+	// so everything further back on it than this is stale.
+	double freshFrames = 0.0;
 
 	int lastMode = -1;
 	float filtSm = 0.f;
@@ -338,6 +353,7 @@ struct Core {
 			corrXY[c] = corrXX[c] = corrYY[c] = 0.f;
 		}
 		shiftSpread = 1.f;
+		freshFrames = 0.0;
 		panDir = 1;
 		panFade = 1.f;
 		for (int c = 0; c < 2; c++) {
@@ -514,8 +530,26 @@ struct Core {
 	}
 
 	void process(const Ctl& ct, float inL, float inR, float& outL, float& outR) {
-		if (ct.mode != lastMode)
+		// A new mode waits for the running one to fade down to dry; the
+		// very first one after the lines were made starts at once, and finds
+		// them empty, which is nothing stale: all of it may be read.
+		if (lastMode < 0) {
 			enterMode(ct.mode);
+			runMode = ct.mode;
+			modeWet = 1.f;
+			freshFrames = 1e9;
+		}
+		float fadeStep = ct.dt / kModeFade;
+		if (ct.mode != runMode) {
+			modeWet -= fadeStep;
+			if (modeWet <= 0.f) {
+				modeWet = 0.f;
+				enterMode(ct.mode);
+				runMode = ct.mode;
+			}
+		}
+		else
+			modeWet = std::min(1.f, modeWet + fadeStep);
 
 		// the filter knob, smoothed, with the states cleared as it crosses
 		// the centre - where the wet path above is faded out, so the clearing
@@ -554,10 +588,15 @@ struct Core {
 		fbS1 += (fbIn - fbS1) * kk;
 		fbS += (fbS1 - fbS) * kk;
 		float amt = amtS;
-		float fb = fbS;
+		// A mode's feedback comes up over a splice length after it is
+		// entered. The line it feeds held something else until now - the
+		// plain input, for the flanger's and the shifter's - and switching
+		// the feedback in at full wrote a seam into it, heard one read-delay
+		// later when the head got there.
+		float fb = fbS * std::min(1.f, (float)freshFrames / (kEdgeFade * sr));
 		float t = clamp(ct.time, 0.f, 1.f);
 
-		switch (ct.mode) {
+		switch (runMode) {
 		case MODE_DELAY:      doDelay(ct, in, out, t, amt, fb); break;
 		case MODE_FLANGER:    doFlanger(ct, in, out, t, amt, fb); break;
 		case MODE_FREEZER:    doFreezer(ct, in, out, t, amt, fb); break;
@@ -580,6 +619,8 @@ struct Core {
 		// for a 220 Hz tone at 5 V is four millivolts -- so on a trig that
 		// happens not to jump anything, almost nothing is subtracted.
 		float declickDecay = std::exp(-ct.dt / kTrigDeclick);
+		// smoothstep, so the fade itself has no corner at either end
+		float mw = modeWet * modeWet * (3.f - 2.f * modeWet);
 
 		for (int c = 0; c < 2; c++) {
 			if (!std::isfinite(out[c]))
@@ -588,6 +629,7 @@ struct Core {
 				declick[c] = out[c] - (2.f * declickZ1[c] - declickZ2[c]);
 			out[c] -= declick[c];
 			declick[c] *= declickDecay;
+			out[c] = in[c] + (out[c] - in[c]) * mw;
 			declickZ2[c] = declickZ1[c];
 			declickZ1[c] = out[c];
 			out[c] = outputFilter(c, out[c]);
@@ -597,8 +639,31 @@ struct Core {
 				out[c] = clamp(out[c], -20.f, 20.f);
 			fbState[c] = out[c];
 		}
+		// The flanger's and the shifter's lines belong to them alone, so
+		// the other modes keep the input running through them: arriving
+		// there finds the last moments of the input, continuous, rather than
+		// what the mode was doing when it was last left (#22).
+		for (int c = 0; c < 2; c++) {
+			if (runMode != MODE_FLANGER)
+				flg[c].write(in[c]);
+			if (runMode != MODE_SHIFTER)
+				shf[c].write(in[c]);
+		}
 		outL = out[0];
 		outR = out[1];
+		freshFrames += 1.0;
+
+	}
+
+	// How much of a read `d` samples back on the tape to let through: none of
+	// it if this mode had not written it yet, all of it a splice length
+	// later. The tape is shared by four modes that use it four ways - the
+	// replayer does not even write it at the delay's write head - so coming
+	// back to the delay or the pitcher played the last visit, or another
+	// mode's use of it, spliced onto the new audio with no fade, and in the
+	// delay the feedback kept the splice (#22).
+	float fresh(float d) const {
+		return clamp(((float)freshFrames - d) / (kEdgeFade * sr), 0.f, 1.f);
 	}
 
 	// The global loop: the module's own output, filtered, back into its input.
@@ -647,7 +712,7 @@ struct Core {
 
 		for (int c = 0; c < 2; c++) {
 			float d = clamp(glided * detune(c, ct.stereo), 0.002f, maxT) * sr;
-			float wet = tape[c].read(d);
+			float wet = tape[c].read(d) * fresh(d);
 			tape[c].write(softClip((in[c] + feedbackFilter(c, wet) * fb * 0.98f)
 			                       / kClipVolts) * kClipVolts);
 			float heard = loopFilter(c, wet);
@@ -1009,7 +1074,7 @@ struct Core {
 			// the tap walks from a window back towards now: a falling delay
 			// raises the pitch, and the ramp restarting is the duplication
 			float d = (1.f - grainPhase[c]) * grainW[c] * grainShift[c] * sr + 2.f;
-			float wet = tape[c].read(d);
+			float wet = tape[c].read(d) * fresh(d);
 			// fade the ends of the ramp so the wrap is a click and not a bang
 			float e = std::min(grainPhase[c], 1.f - grainPhase[c]) * 20.f;
 			wet *= clamp(e, 0.f, 1.f);

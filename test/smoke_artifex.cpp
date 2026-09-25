@@ -2050,10 +2050,11 @@ static void testModeCyclingDoesNotPop() {
 	m.params[Artifex::FBK_PARAM].setValue(0.8f);
 	m.params[Artifex::LEVEL_PARAM].setValue(1.f);
 	setMode(m, 0);
-	runTone(m, fr, 2.0, 220.f, 3.f);            // fill the tails
+	Rec warm;
+	runTone(m, fr, 2.0, 220.f, 3.f, &warm);     // fill the tails
 	float worst = 0.f;
 	int worstMode = 0;
-	float z1 = 0.f, z2 = 0.f;
+	float z1 = warm.l.back(), z2 = warm.l[warm.l.size() - 2];
 	for (int k = 0; k < kModes * 3; k++) {
 		setMode(m, k % kModes);
 		Rec rec;
@@ -2065,8 +2066,14 @@ static void testModeCyclingDoesNotPop() {
 		// climbs to the limiter and thrashes there, correctly, and is bounded
 		// by feedback_bounded -- a pop at a mode change it had nothing to do
 		// with.
-		size_t look = std::min(rec.l.size(), (size_t)(0.005 * SR));
-		for (size_t i = 0; i < look; i++) {
+		// A change now fades the old mode down to dry and the new one up,
+		// 5 ms each, so the window covers both halves. A change into or out
+		// of the crusher is left out: its staircase is the sound, and both
+		// halves of the fade run it.
+		size_t look = std::min(rec.l.size(), (size_t)(0.012 * SR));
+		bool crusher = k % kModes == artifex_fx::MODE_CRUSHER
+		               || (k + kModes - 1) % kModes == artifex_fx::MODE_CRUSHER;
+		for (size_t i = 0; i < look && !crusher; i++) {
 			// the step against where the last two samples were heading
 			float pred = 2.f * z1 - z2;
 			float jump = std::fabs(rec.l[i] - pred);
@@ -2074,10 +2081,16 @@ static void testModeCyclingDoesNotPop() {
 			z2 = z1;
 			z1 = rec.l[i];
 		}
+		// and the next mode is measured against where this one *ended*. The
+		// prediction used to carry over from the fifth millisecond, so each
+		// change was compared with a sample a quarter second old, and the
+		// check could only pass by setting its limit above the signal
+		z2 = rec.l[rec.l.size() - 2];
+		z1 = rec.l.back();
 	}
-	if (worst >= 6.f)
+	if (worst >= 1.5f)
 		std::printf("# worst pop was entering mode %d\n", worstMode + 1);
-	report("artifex", "mode_cycling_does_not_pop", worst, worst < 6.f);
+	report("artifex", "mode_cycling_does_not_pop", worst, worst < 1.5f);
 }
 
 // The numbers on the display are in seconds, hertz and semitones, so none of
@@ -2561,7 +2574,49 @@ static void testKnobStepsDoNotClick() {
 	}
 }
 
-SMOKE_MAIN(testKnobStepsDoNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
+// ── a mode change is a crossfade, not a splice ───────────────────────────────
+// Every mode starts from its own reset state, so a change put one effect's
+// output in place of another's in one sample. And the lines the delay, the
+// pitcher, the flanger and the shifter read held whatever was in them when
+// the mode was last left, so coming back replayed that, spliced onto the new
+// audio - with the delay's feedback keeping the splice. Measured going into
+// each smooth mode, and coming back to it after a third of a second away.
+static void testModeChangesDoNotClick() {
+	const char* names[] = {"delay", "flanger", "panner", "replayer", "shifter"};
+	for (int k = 0; k < 5; k++) {
+		int mode = kSmoothModes[k];
+		int other = mode == artifex_fx::MODE_FLANGER ? artifex_fx::MODE_PANNER
+		                                              : artifex_fx::MODE_FLANGER;
+		double enter, back;
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, other);
+			enter = sharpness(m, fr, 0.5, [&](long i) {
+				if (i == 100)
+					setMode(m, mode);
+			});
+		}
+		{
+			Artifex m;
+			long fr = 0;
+			settle(m, fr, mode);
+			back = sharpness(m, fr, 3.0, [&](long i) {
+				if (i == 0)
+					setMode(m, other);
+				if (i == (long)(0.37 * SR))
+					setMode(m, mode);
+			});
+		}
+		char name[64];
+		std::snprintf(name, sizeof name, "entering_%s_is_quiet", names[k]);
+		report("artifex", name, enter, enter < 0.01);
+		std::snprintf(name, sizeof name, "returning_to_%s_is_quiet", names[k]);
+		report("artifex", name, back, back < 0.01);
+	}
+}
+
+SMOKE_MAIN(testKnobStepsDoNotClick, testModeChangesDoNotClick, testFilterCrossing, testModeLabels, testDryAtZero, testAllModesAudible, testDelay,
            testFreezer, testPanner, testCrusher, testSlicer, testSlicerDecay, testPitch,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
