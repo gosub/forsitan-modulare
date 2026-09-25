@@ -178,5 +178,24 @@ static void testJson() {
     report("radix", "empty_text_silent", s.rms(), s.rms() < 0.01);
 }
 
+// GRIT is audible from early in its travel: at a quarter it has already
+// moved the default sine by more than -40 dB. It once spent its first 60%
+// under -52 dB and sounded like a knob wired to nothing.
+static void testGrit() {
+    Radix a, b; long fa = 0, fb = 0;
+    b.params[Radix::GRIT_PARAM].setValue(0.25f);
+    double e = 0.0, s = 0.0;
+    for (long i = 0; i < (long)(0.5 * SR); i++) {
+        a.process(makeArgs(fa++));
+        b.process(makeArgs(fb++));
+        float x = a.outputs[Radix::AUDIO_OUTPUT].getVoltage();
+        float y = b.outputs[Radix::AUDIO_OUTPUT].getVoltage();
+        e += (double)(y - x) * (y - x);
+        s += (double)x * x;
+    }
+    double db = 10.0 * std::log10(e / s + 1e-30);
+    report("radix", "grit_quarter_db", db, db > -40.0);
+}
+
 SMOKE_MAIN(testDefault, testAllPrograms, testStepped, testVoct, testCvOut,
-           testFeedback, testNanInputs, testJson)
+           testFeedback, testNanInputs, testJson, testGrit)

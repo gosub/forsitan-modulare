@@ -268,18 +268,30 @@ struct Engine {
 
     // GRIT: the accumulator's middle bits XORed into the sample's low ones.
     // The amount is continuous by crossfading the two nearest bit counts.
+    //
+    // Every bit is worth about 7 dB, so a knob spread evenly over bit counts
+    // is a knob whose first half does nothing: 0 to 12 bits measured under
+    // -52 dB up to 0.6 of the travel and only -23 dB at the top
+    // (`radix_probe grit`). The knob runs over 8 to 16 bits instead, faded in
+    // over its first 5%, which is about 5 dB a tenth from -46 dB up to the
+    // whole sample corrupted. The XOR source is the accumulator's own bits,
+    // so the grit stays locked to the pitch.
     float grit(int16_t s, float amount) const {
-        float k = std::min(std::max(amount, 0.f), 1.f) * 12.f;
-        int k0 = (int)k;
+        float g = std::min(std::max(amount, 0.f), 1.f);
+        if (g <= 0.f) return (float)s;
+        float k = 8.f + 8.f * g;
+        int k0 = std::min((int)k, 15);
         float f = k - (float)k0;
-        uint16_t noise = (uint16_t)(acc >> 12);
+        uint16_t noise = (uint16_t)((acc >> 16) ^ (acc >> 5));
         auto at = [&](int n) {
             uint16_t mask = (uint16_t)((1u << n) - 1u);
             return (float)(int16_t)((uint16_t)s ^ (noise & mask));
         };
         float a = at(k0);
-        float b = k0 < 12 ? at(k0 + 1) : a;
-        return a + (b - a) * f;
+        float b = at(k0 + 1);
+        float y = a + (b - a) * f;
+        float fade = std::min(1.f, g / 0.05f);
+        return (float)s + (y - (float)s) * fade;
     }
 
     // One host sample. Returns the audio, -1..1; the CV comes out in `cvOut`,
