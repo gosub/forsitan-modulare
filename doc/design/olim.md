@@ -1,6 +1,7 @@
 # olim - design doc
 
-Status: design, nothing built. Written 2026-09-25.
+Status: design settled against the firmware, engine next. Written
+2026-09-25.
 
 An eight-head stereo delay over one long buffer: a TIME knob places the
 farthest head, SPREAD distributes the other seven between now and then, nine
@@ -15,175 +16,169 @@ word points both directions, which is what the heads are.
 
 ## Lineage, and the rule for building it
 
-olim is in the family of Olivia Artz Modular's **Time Machine** (22 HP,
-stereo, 2024), and of its VCA expander (2026). The firmware is public and
-licensed CC BY-NC-SA 4.0, which cannot be linked into a GPL-3 plugin, so the
-rule from [olim-chain.md](olim-chain.md#lineage-and-the-rule-for-building-it)
-applies unchanged: **implement from this document**. Do not open the
-firmware's sources or its schematic, do not transcribe a constant, do not
-compare output with it sample for sample. The technique is not anyone's to
-license: a circular buffer, read heads at fractions of a delay time, a
-distribution law across them, clock quantisation, crossfaded head jumps,
-feedback through a limiter.
+olim is a clone of Olivia Artz Modular's **Time Machine** (22 HP, stereo,
+2024), with its VCA expander (2026) built in. The firmware is public
+(`github.com/oamodular/time-machine`) under CC BY-NC-SA 4.0, which cannot be
+linked into a GPL-3 plugin.
 
-Everything the hardware is known to do comes from its public manual
-(`oamodular.org/docs/tm`) and its product pages; the rest is inference, and
-is marked as inference below. Credit in `doc/olim.md` is "in the family of",
-as bulla credits Hordijk.
+The first draft of this doc kept the firmware closed, as radix kept the
+Radical22's. For olim the user decided otherwise: **the firmware is the
+source of truth for behaviour**, and was read to settle the open questions
+the manual left. What that allows and what it does not:
+
+- the behaviour, the signal flow and the numbers that set it (a 200 ms
+  crossfade, a limiter at full scale, a knob's dead zone) are taken as they
+  are, because being a clone means matching them;
+- the code is not: `src/olim/olim.hpp` is written fresh from this doc, in
+  this repo's idiom, with no line, name or structure carried over, and the
+  firmware's sources are not copied into the repo;
+- `doc/olim.md` credits the Time Machine by name and says the firmware was
+  studied.
+
+Everything below marked **firmware** was read there; everything else is ours.
 
 
-## What the hardware does, from the manual
+## What the hardware does
 
-- **t** sets the farthest delay, [almost] 0 to 8 s, exponential.
-- **t/2v** is exponential CV on it, +1 V halves the time, -1 V doubles it,
-  -5 to +5 V, for 0.0001 s to 2 min 30 s overall.
-- **Spread**: at noon the eight heads are evenly spaced; left bunches them
-  toward now, right toward t. CV -5 to +5 V.
-- **Clock**: with a clock patched, t is always quantised to it, and with
-  spread at noon so are all eight heads. Spread moves the seven inner heads
-  off the beat; the last one stays.
-- **Feedback**: an arc on the panel marks the zone where sound "will neither
-  disappear nor swell out of control", the sound-on-sound zone. Beyond it,
-  "feedback and chaos similar to guitar-amp feedback but evil and digital".
-  CV -5 to +5 V.
-- **Nine faders**: the dry signal and the eight heads.
-- **VCA expander**: nine inputs, linear VCAs on the nine faders, unity at
-  +5 V, clamped below 0 and above +5 V. Patched, a fader becomes an
-  attenuator on its VCA. The manual mentions a "subtle volume normalization"
-  that the clamping works together with.
-- Stereo in, stereo out, 24-bit audio at +-5 V. Firmware 1.1.2 removed
-  dropouts and clicks when moving spread and t.
-- A row of lights, one per head.
+From the manual (`oamodular.org/docs/tm`):
+
+- **t** sets the farthest delay, [almost] 0 to 8 s; **t/2v** halves it per
+  +1 V, -5 to +5 V, for 0.0001 s to 2 min 30 s overall.
+- **Spread**: noon spaces the eight heads evenly, left bunches them toward
+  now, right toward t.
+- **Clock**: t is quantised to it; with spread at noon so are all eight
+  heads.
+- **Feedback**: an arc marks the sound-on-sound zone; beyond it, feedback
+  "similar to guitar-amp feedback but evil and digital".
+- **Nine faders**: dry and eight heads. **VCA expander**: nine linear VCAs
+  on them, unity at +5 V, clamped to 0..5 V, the fader becoming an
+  attenuator.
+- Stereo in and out, +-5 V. A light per fader.
+
+From the firmware, which fills in how:
+
+### Signal flow, per channel (firmware)
+
+The two channels are two independent copies with the same settings; nothing
+crosses between them. Full scale 1.0 is 5 V. Per sample:
+
+```
+buf[w]  = in
+wet     = sum of the eight heads, each already times its gain
+wet     = wet - verySlowDC(wet)                  (0.08 Hz)
+wet     = compress(wet, key = in + wet)          (0 dB, 5:1, 20 ms / 200 ms)
+buf[w]  = -limit_fb(in + wet * fb * norm)        (written inverted)
+out     = limit_out(wet + in * dry)
+w       = w + 1
+```
+
+- **norm** = `1 / max(1, sum of head gains)`, smoothed over about 0.2 s. It
+  is in the **feedback path only**: the output is the plain sum, so raising
+  more sliders makes it louder, but the loop gain at fb = 1 stays at most 1.
+- **Inverted feedback**: the buffer holds the negated signal, so the first
+  echo is inverted and each pass flips the sign again.
+- **limit** is a gain limiter at full scale: gain `1 / max(1, |x|)`, instant
+  attack, release at 16 per second. One in the loop, one on the output.
+- **compress** is a feed-forward compressor keyed on `in + wet`, threshold
+  0 dB (full scale), ratio 5, attack 20 ms, release 200 ms, no makeup: it
+  only acts above full scale, and it is what holds the howl.
+- A head at delay 0 reads `buf[w]` after `in` is written and before the
+  feedback overwrites it: TIME at zero plays the input, not inverted.
+
+### Heads (firmware)
+
+- Delay in whole samples, truncated; no interpolation.
+- Each head has two positions A and B, and gains A and B, and crossfades
+  linearly from A to B at **5 Hz** (200 ms). When a fade ends it starts the
+  next at once, with B becoming A and the current target becoming B. The
+  heads are therefore **always** fading, every 200 ms, even standing still;
+  a knob move lands within 200 ms and sounds as a crossfade to the new
+  place, never as a pitch bend. Slider moves are carried the same way, in
+  200 ms linear steps.
+- **Blur**: with feedback above 1, each fade's rate is drawn at random from
+  `5 +- (fb - 1)` Hz, so at fb = 3 the fades run anywhere from 3 to 7 Hz.
+  Every head in every channel draws its own: the stereo image decorrelates
+  as feedback rises.
+- Each head's light is its own level before the slider (a follower on
+  `|head|`, about 20 ms). The dry fader's light is the input's level.
+
+### Controls (firmware)
+
+- **TIME**, free: `T = 8 s * knob^2 / 2^(5 * cv)`, cv being volts / 5,
+  clamped to +-1, and T clamped to the buffer. Quadratic, not exponential,
+  and it reaches 0.
+- **TIME**, clocked: the knob becomes 12 steps and the CV 10 steps over its
+  +-5 V (2 steps per volt), each a factor of two, with hysteresis of a third
+  of a step so it does not chatter at the edges. At noon T is one clock
+  period, from 1/64 to 64 periods, halved until it fits the buffer.
+- **Clock**: the period is the running mean of the last two edge intervals
+  (`(old + new) / 2`); a clock that has not ticked for 2 s is gone, and TIME
+  goes back to free.
+- **SPREAD**: `x = i / 8` for head i = 1..8, `s` the knob with its CV in
+  0..1, `k = 1 + 2.5 * |2s - 1|`:
+  `w = x^k` below noon (bunched toward now), `1 - (1 - x)^k` above (toward
+  T), `x` at noon. `w8 = 1` always: the last head is T.
+- **FEEDBACK**: `fb = clamp(2 * dz(knob) + cv, 0, 3)`. `dz` is a dead zone
+  at noon applied twice, so knob 0.405 to 0.595 gives exactly fb = 1: that
+  is the **arc**, and the sound-on-sound zone is the dead zone.
+- **SPREAD** has the same double dead zone, so noon is exactly even.
+- **Sliders**: linear, times the VCA (0..5 V to 0..1, clamped).
+- **Dry** is smoothed (about 20 ms), feedback lightly (2 ms).
+- Buffer 150 s at 48 kHz, fixed.
 
 
 ## Engine
 
-`src/olim/olim.hpp`, header-only, `namespace olim`, no Rack dependency past
-`dsp` helpers, so the probe links it without a module.
+`src/olim/olim.hpp`, header-only, `namespace olim`, no Rack dependency, so
+the probe links it alone. It takes the controls already read (knob positions,
+CV in volts, slider and VCA values, a clock gate) and does the mapping above
+itself, so the probe exercises the same laws the module plays.
 
-### Buffer
+**Where it has to differ from the hardware**, because the host is not a
+Daisy at 48 kHz:
 
-One float buffer per channel, written every sample with `in + feedback`.
-Length is a context-menu choice, **Memory: 20 s / 60 s / 150 s**, default
-150 s, the hardware's figure: 57.6 MB at 48 kHz stereo, 115 MB at 96 kHz.
-Allocated with `calloc`, whose pages are only committed as the write head
-reaches them, and reallocated on a sample-rate or menu change off the audio
-thread (`imber_worker::startDetached`, as imber builds its bank). A
-delay that asks for more than the buffer holds clamps to it.
+- **Sample rate.** Every rate above is in hertz or seconds and is converted
+  at the host rate: the firmware's per-sample smoothing constants were
+  written for 48 kHz and are restated as time constants.
+- **Memory.** 150 s at 48 kHz stereo is 57.6 MB, at 96 kHz 115 MB, at
+  192 kHz 230 MB. The buffer is sized for the host rate, and a context-menu
+  **Memory** of 20 / 60 / 150 s (default 150, the hardware's) caps it. Long
+  TIMEs clamp to it as the hardware clamps to 150 s. Allocation happens off
+  the audio thread (`imber_worker::startDetached`), with `calloc` so pages
+  are committed only as the write head reaches them.
+- **Per block vs per sample.** The firmware reads its controls once per
+  7-sample block; olim sets the head targets every 8 samples, which is the
+  same thing at Rack's rates.
+- **Calibration, knob noise gates, ADC dead bands at the ends**: hardware
+  concerns with no Rack equivalent, left out.
 
-### Head positions
-
-`T = TIME knob * 2^(-t/2v)`, clamped to [2 samples, buffer]. The knob runs
-3.2 ms to 8 s exponentially: 3.2 ms is 0.0001 s times 2^5, so the manual's
-overall range falls out of the knob and the CV range together.
-
-Head `i` of 8 sits at `d_i = T * w_i`, with `x = i / 8` and
-
-```
-w_i = x ^ p,    p = 4 ^ (-spread)      spread in [-1, 1]
-```
-
-At noon `p = 1` and the heads are even. Negative spread gives `p > 1` and
-bunches them toward now; positive gives `p < 1` and bunches them toward T.
-`w_8 = 1` whatever `p` is, so the last head is always T, as the manual has
-it. The base 4 is a first guess, to set by ear.
-
-**Clock (inference).** With a clock patched, T snaps to the clock period `P`
-times a power of two, `T = P * 2^round(log2(T / P))`. A power of two, not an
-integer multiple, because it is the only reading under which the manual's
-"all eight quantised when evenly spaced" holds: with T = 8P the heads land on
-every beat, with T = P on every eighth of one. The period is measured
-between rising edges and taken as the mean of the last few, as vates does,
-so a jittery clock does not shake the heads.
-
-### Moving a head (inference, and the character)
-
-A head never slides. It holds its position until the target moves, then
-**crossfades** from the old position to the new one over a grain of length
-`G`, and only picks up the next target once the fade is done. Turning TIME
-therefore does not pitch-shift; it re-grabs the buffer in overlapping grains,
-which is where "granulizing like grey goo" and the smear between heads have
-to come from. Two read pointers per head, equal-power fade.
-
-`G` is the first number to settle by ear, and the one with a known conflict:
-
-- long (order 100 to 200 ms) makes the smear, and hides the jump;
-- short makes t/2v at short delays act like the comb, flanger and
-  Karplus-Strong the reviews describe, because a comb tuned by t/2v at 1 V
-  per octave has to follow its CV, not step every 200 ms.
-
-Proposal: `G = clamp(T, 2 ms, 150 ms)` per head, so a head reaches for a new
-position about once per its own round trip. Measured, not argued: the probe
-reports what a t/2v sweep does to the comb pitch at each candidate.
-
-Reads are cubic (Hermite): at T of a few samples the heads are a tuned comb
-and linear interpolation audibly damps it.
-
-### Mix and feedback
-
-```
-wet   = sum_i  g_i * head_i  /  N(g)
-out   = g_dry * in + wet
-write = in + limit(fb * wet)
-```
-
-`g_i` is slider i times its VCA, `g_dry` the dry slider times its VCA.
-
-**N(g) is the normalisation** (inference): without it, loop gain is
-`fb * sum(g_i)` and the sound-on-sound zone would move every time a slider
-does. With `N = max(1, sum(g_i))` the zone stays put: loop gain at a single
-head is `fb`, and with several correlated heads never above it. Whether
-`sum` or a power sum (`sqrt(sum(g_i^2))`, which assumes decorrelated heads)
-holds the zone better is a probe measurement, not a guess. It is also what
-makes a VCA patched into a head change the timbre and not just the level.
-
-**FEEDBACK** runs 0 to 1.5 in loop gain. The **arc** on the panel covers the
-range where the probe measures the loop as neither decaying nor growing
-within a few dB over a minute, expected around 0.95 to 1.0.
-
-**limit** is a soft limiter in the loop, `x / (1 + |x| / L)`-like, at
-L = 5 V, plus a DC blocker at a few hertz: past unity the loop must go
-somewhere, and a symmetric soft limit is what turns runaway into sustain.
-"Evil and digital" says the hardware does something harder; a hard clip is
-the fallback if the soft one sounds polite.
-
-Stereo is two identical engines sharing positions: L in feeds L buffer.
-R in is normalled from L in. Nothing crosses between channels.
-
-### Clicks
-
-Every jump is a crossfade, the sliders and FEEDBACK are smoothed (one pole,
-about 10 ms), and the Memory change fades to silence first. The #22 method
-applies: max second difference over peak on a 220 Hz sine through a moving
-TIME or SPREAD, clean near 0.001, limit 0.01.
+There is nothing else to choose. The earlier draft's open questions (grain
+length, normalisation, limiter, spread law, feedback ceiling, what the lights
+show) all have firmware answers above.
 
 
 ## Controls and jacks
 
 | param | range | notes |
 |---|---|---|
-| TIME | 3.2 ms - 8 s, exponential | display in seconds |
-| SPREAD | -1 .. +1, noon even | |
-| FEEDBACK | 0 - 1.5 loop gain | arc on the panel |
-| DRY | 0 - 1 | slider |
-| HEAD 1..8 | 0 - 1 | slider, lit by its head's level |
+| TIME | 0..1, displays seconds (or clock multiple) | quadratic, 0 to 8 s |
+| SPREAD | 0..1, noon even | double dead zone |
+| FEEDBACK | 0..1, displays loop gain 0..2 | arc at 0.405..0.595 |
+| DRY | 0..1 | slider, lit by the input level |
+| HEAD 1..8 | 0..1 | slider, lit by its head's level |
 
 | input | range |
 |---|---|
 | IN L, IN R | audio, R normalled from L |
-| TIME CV | -5 .. +5 V, +1 V halves T |
-| SPREAD CV | +-5 V spans the knob |
-| FEEDBACK CV | +-5 V spans the knob |
-| CLOCK | rising edges |
-| DRY VCA, HEAD 1..8 VCA | 0 .. +5 V linear, unity at 5 V, clamped; normalled to +5 V |
+| TIME CV | -5 .. +5 V, +1 V halves T (2 steps per volt clocked) |
+| SPREAD CV | +-5 V adds +-1 to the knob |
+| FEEDBACK CV | +-5 V adds +-1 to the loop gain |
+| CLOCK | rising edges; gone after 2 s without one |
+| DRY VCA, HEAD 1..8 VCA | 0 .. +5 V linear, unity at 5 V, clamped; unpatched is unity |
 
-Outputs: OUT L, OUT R.
+Outputs: OUT L, OUT R (limited to +-5 V).
 
-Four knob-like params, eight sliders plus dry, sixteen inputs counting the
-nine VCAs, two outputs, nine slider lights, a clock LED, two output LEDs.
-Every enum is appended to, never reordered, once released.
-
-Context menu: Memory (20 / 60 / 150 s), and anything the probe earns.
+Context menu: **Memory** 20 / 60 / 150 s.
 
 
 ## Panel
@@ -193,46 +188,31 @@ DRY first on the left, then heads 1 to 8 with their times rising left to
 right, each slider over its VCA jack: about **24 HP** (121.92 mm), two
 more than the hardware for the nine VCA jacks it keeps on a separate board.
 Above the sliders TIME, SPREAD and FEEDBACK as big knobs, each with its CV
-jack; FEEDBACK has the arc drawn round it. Along the bottom IN L, IN R,
-CLOCK, OUT L, OUT R, then the logo.
-
-`VCVLightSlider` is 6.7 by 25.9 mm; the column pitch is whatever 24 HP
-leaves after the screws, and `panel_audit.py` decides.
+jack; FEEDBACK has the arc drawn over its dead zone. Along the bottom IN L,
+IN R, CLOCK, OUT L, OUT R, then the logo.
 
 
 ## Tests
 
 - `test/olim_probe`:
-  - `heads` - the eight positions against SPREAD and TIME, clock or not;
-    checks `w_8 == 1` and the power-of-two snap.
-  - `loop` - loop gain against FEEDBACK and slider settings, level after
-    60 s; gives the arc its ends and picks N(g).
-  - `clicks` - the #22 measurement under TIME and SPREAD sweeps, CV and
-    knob.
-  - `comb` - the pitch a short T gives, and how well it follows t/2v at
-    each grain length `G`.
+  - `heads` - the eight positions across SPREAD, TIME free and clocked;
+    checks `w8 == 1`, the dead zones, and the power-of-two steps.
+  - `loop` - level per pass against FEEDBACK and slider sets: at fb = 1
+    (the arc) one head and eight heads both hold, below it they decay,
+    above it the compressor catches the growth under full scale.
+  - `clicks` - the #22 measurement (max second difference over peak on a
+    220 Hz sine) under TIME and SPREAD sweeps, knob and CV.
+  - `cpu`, and `wav <dir>` for listening.
 - `test/smoke_olim`: construction at each Memory setting, NaN and silence
-  checks, the VCA normalling, the clamp at 150 s.
+  checks, the VCA normalling, the clamp to the buffer.
 - `test/audition/olim.md`, about a dozen items.
-
-
-## Open questions
-
-1. `G`, the grain length, and whether it depends on T (see Moving a head).
-2. `N(g)`: plain sum or power sum.
-3. Soft or hard limit in the loop.
-4. The spread base (4) and the feedback ceiling (1.5).
-5. Whether the heads' lights show the head's level or its slider times its
-   VCA (the second is what the expander's patching needs to see).
 
 
 ## Build order
 
 Each step is a commit.
 
-1. `src/olim/olim.hpp` and `test/olim_probe`: buffer, heads, spread law,
-   clock snap, crossfading moves, mix, feedback, limit. Settle open
-   questions 1 to 4 by measurement before any panel.
+1. `src/olim/olim.hpp` and `test/olim_probe`.
 2. `src/olim.cpp` on a placeholder panel, context menu, `test/smoke_olim`.
 3. The panel, `panel_audit.py`.
 4. `test/audition/olim.md`.
