@@ -192,10 +192,17 @@ struct Olim : Module {
         configParam<OlimTimeQuantity>(TIME_PARAM, 0.f, 1.f, 0.5f, "Time", " s");
         configParam<OlimSpreadQuantity>(SPREAD_PARAM, 0.f, 1.f, 0.5f, "Spread", "%");
         configParam<OlimFeedbackQuantity>(FEEDBACK_PARAM, 0.f, 1.f, 0.f, "Feedback", "x");
+        // one line each, not a loop: tools/audition/modspec reads the
+        // defaults from these literals
         configParam(DRY_PARAM, 0.f, 1.f, 1.f, "Dry", "%", 0.f, 100.f);
-        for (int i = 0; i < olim::kHeads; i++)
-            configParam(HEAD1_PARAM + i, 0.f, 1.f, 0.5f,
-                        string::f("Head %d", i + 1), "%", 0.f, 100.f);
+        configParam(HEAD1_PARAM, 0.f, 1.f, 0.5f, "Head 1", "%", 0.f, 100.f);
+        configParam(HEAD2_PARAM, 0.f, 1.f, 0.5f, "Head 2", "%", 0.f, 100.f);
+        configParam(HEAD3_PARAM, 0.f, 1.f, 0.5f, "Head 3", "%", 0.f, 100.f);
+        configParam(HEAD4_PARAM, 0.f, 1.f, 0.5f, "Head 4", "%", 0.f, 100.f);
+        configParam(HEAD5_PARAM, 0.f, 1.f, 0.5f, "Head 5", "%", 0.f, 100.f);
+        configParam(HEAD6_PARAM, 0.f, 1.f, 0.5f, "Head 6", "%", 0.f, 100.f);
+        configParam(HEAD7_PARAM, 0.f, 1.f, 0.5f, "Head 7", "%", 0.f, 100.f);
+        configParam(HEAD8_PARAM, 0.f, 1.f, 0.5f, "Head 8", "%", 0.f, 100.f);
         configInput(IN_L_INPUT, "Left");
         configInput(IN_R_INPUT, "Right (normalled from left)");
         configInput(TIME_CV_INPUT, "Time CV (+1 V halves it)");
