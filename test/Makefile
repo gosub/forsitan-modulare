@@ -24,12 +24,19 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
-     aether_probe vates_probe artifex_probe radix_probe $(SMOKE_BINS) $(CROSS_BINS)
+     aether_probe vates_probe artifex_probe radix_probe olim_probe \
+     $(SMOKE_BINS) $(CROSS_BINS)
 
 # Every one of the 150 programs at the defaults: level, DC, centroid, CV OUT
 # and the nearest other program, flagging silent and duplicate ones. It drives
 # the engine header alone. `wav <dir>` and `tour <file>` are for listening.
 radix_probe: radix_probe.cpp ../src/radix/radix.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Head positions, the loop's level per pass, the #22 click measure under
+# TIME and SPREAD sweeps, and `wav <dir>` to listen. Drives the engine header
+# alone; `heads`, `loop` and `clicks` exit nonzero on a failed check.
+olim_probe: olim_probe.cpp ../src/olim/olim.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Measures and auditions the generated banks: every family of the four ported
