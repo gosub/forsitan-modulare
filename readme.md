@@ -46,6 +46,7 @@ A collection of VCV Rack modules.
 | [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound | [doc/aether.md](doc/aether.md) |
 | [vates](doc/vates.md) | Stereo sample player over banks it generates itself: modulate which sample plays and the rhythm falls out, with a reversing envelope, a filter and FX, an LFO and a 16-step pattern generator | [doc/vates.md](doc/vates.md) |
 | [artifex](doc/artifex.md) | Nine stereo effects - delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter - sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator | [doc/artifex.md](doc/artifex.md) |
+| [radix](doc/radix.md) | Chaotic 8-bit source on its own clock: where the modulator comes from, how it bends the accumulator and how the result is read, 150 programs on three stepped knobs with CV, on a label-free panel (in the family of the Radical22) | [doc/radix.md](doc/radix.md) |
 
 ## Tools
 
@@ -112,6 +113,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **aether** | the upper air, the medium a signal was once thought to need in order to travel (this one travels badly) |
 | **vates** | the bard, the poet-seer - the one who sings what he is given (after the Bastl Citadel Wave Bard) |
 | **artifex** | the maker, the contriver - the craftsman who works a material rather than choosing from a catalogue (after the Bastl Citadel FX Wizard) |
+| **radix** | root - what every sample grows from, one integer at a time; also the base of a number system, which is all this module has to work with |
 
 ## Author
 
