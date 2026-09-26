@@ -43,11 +43,12 @@ def sine(hz=220):
     s["sine"] >> o["in l"] + o["in r"]
     return s
 
-def notes():
+def notes(release=0.5):
     """Four short notes, then four rests, two steps a second: C, E flat, G
     and the C above over 1.5 s, and the rests leave the echoes alone. The
     pitch says which note an echo belongs to. CV 2 gates SEQ3's trigger, so
-    only steps 1 to 4 play."""
+    only steps 1 to 4 play. A longer `release` gives a loop something to
+    build on."""
     seq = vcv.module("SEQ3", tempo=1, run=1, steps=8,
                      cv_1_step_1=0, cv_1_step_2=0.25, cv_1_step_3=0.5833,
                      cv_1_step_4=1, cv_2_step_1=10, cv_2_step_2=10,
@@ -55,7 +56,7 @@ def notes():
     gate = vcv.module("VCA-1")
     seq["trigger"] >> gate["channel"]
     seq["cv 2"] >> gate["cv"]
-    env = vcv.module("ADSR", attack=0.1, decay=0.5, sustain=0, release=0.5)
+    env = vcv.module("ADSR", attack=0.1, decay=0.5, sustain=0, release=release)
     gate["channel"] >> env["gate"]
     osc = vcv.module("VCO")
     seq["cv 1"] >> osc["pitch"]
@@ -118,9 +119,19 @@ o.set(feedback=0.5)   # on the arc: 1.00x on the display
       o.set(head1=1, head2=1, head3=1, head4=1,
             head5=1, head6=1, head7=1, head8=1)
       ```
-- [ ] 2.3. **Feedback** past the arc: it builds into a howl that stays under
-      the clip, and the stereo image comes apart as it rises.
-      `o.set(feedback=0.85)  # 1.63x on the display`
+- [ ] 2.3. Only **Head 8**, **Feedback** past the arc: the phrase builds to
+      the ceiling (-6 dB on Rack's meters, olim's 5 V) with a little grit.
+      Up to 2x it gets there faster and wanders more, not louder.
+      ```python
+      seq = notes(release=0.8)
+      o.set(head1=0, head2=0, head3=0, head4=0,
+            head5=0, head6=0, head7=0, head8=1)
+      o.set(feedback=0.85)  # 1.63x on the display
+      ```
+- [ ] 2.4. All eight heads, **Time** short, **Feedback** at the top: the
+      loop takes off into a howl held under the ceiling, and the stereo
+      image comes apart. At a long **Time** the same fan only fades.
+      `o.set(time=0.177, feedback=1)  # 0.25 s, 2.00x on the display`
 
 ---
 
