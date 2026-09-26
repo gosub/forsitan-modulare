@@ -579,6 +579,34 @@ static int cmdAlias() {
         check(exact, "Auto, a 2 Hz eight-step sequence: every sample is exactly a stage's voltage");
     }
 
+    // The quantizer: a sample-and-hold at X jumping across several thresholds
+    // in one sample. Those are several steps inside one sample, and Auto must
+    // not round the later ones for following the first.
+    {
+        Rig r;
+        r.internal = false;
+        r.c.length = false;
+        r.c.range = RANGE_FIVE;
+        for (int k = 0; k < kStages; k++) {
+            r.c.threshold[k] = k / 8.f;
+            r.c.direction[k] = RISE;
+            r.c.value[k] = k / 8.f;
+        }
+        r.c.direction[0] = FALL;
+        uint32_t seed = 7;
+        bool exact = true;
+        for (int n = 0; n < 48000; n++) {
+            if (n % 4800 == 0) {
+                seed = seed * 1664525u + 1013904223u;
+                r.in[0].x = 10.f * ((seed >> 8) / 16777216.f) - 5.f;
+            }
+            r.run();
+            float v = r.out[0].fx / 5.f * 8.f;
+            exact = exact && std::fabs(v - std::round(v)) < 1e-5f;
+        }
+        check(exact, "Auto, a sample-and-hold at X jumping across thresholds: every sample exact");
+    }
+
     printf("%s\n", failures ? "FAILED" : "all passed");
     return failures ? 1 : 0;
 }

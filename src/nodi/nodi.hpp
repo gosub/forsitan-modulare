@@ -179,17 +179,26 @@ struct Path {
 // Rounds a step with a two-sample polyBLEP, at the price of one sample of
 // delay: a step inside the interval ending at this sample corrects both this
 // sample and the one before it, which has not left yet.
+//
+// Whether to round is decided once per sample, by the time since the last
+// sample that had a step: a jump at X across three thresholds is three steps
+// inside one sample, and rounding the second and third because they follow
+// the first would smear a quantizer's output over three samples.
 struct Stepper {
     float held = 0.f;         // the naive value one sample back
     float corrHeld = 0.f;     // its correction
     float corrNow = 0.f;      // this sample's correction so far
-    int since = 1 << 30;      // samples since the last step
+    int since = 1 << 30;      // samples since the last sample with a step
+    bool decided = false;     // this sample has had a step
+    bool round = false;       // and whether its steps are rounded
 
     // A step of `a` at `tau` (0..1] inside the current interval.
     void step(float a, float tau, int mode, int autoSamples) {
         if (a == 0.f) return;
-        bool round = mode == AA_ON || (mode == AA_AUTO && since < autoSamples);
-        since = 0;
+        if (!decided) {
+            round = mode == AA_ON || (mode == AA_AUTO && since < autoSamples);
+            decided = true;
+        }
         if (!round) return;
         float u = 1.f - tau;
         corrHeld += 0.5f * a * u * u;
@@ -201,6 +210,8 @@ struct Stepper {
         held = naive;
         corrHeld = corrNow;
         corrNow = 0.f;
+        if (decided) since = 0;
+        decided = false;
         if (since < (1 << 30)) since++;
         return o;
     }
