@@ -105,15 +105,18 @@ seq = notes()
 o.set(feedback=0.5)   # on the arc: 1.00x on the display
 ```
 
-- [ ] 2.1. Stop SEQ3 after a cycle: the echoes neither fade nor build.
-      Sound on sound, for as long as it is left.
-- [ ] 2.2. **Feedback** past the arc: it builds into a howl that stays under
+- [ ] 2.1. Only **Head 8** up, stop SEQ3 after a cycle: the phrase neither
+      fades nor builds. Sound on sound, for as long as it is left.
+      ```python
+      o.set(head1=0, head2=0, head3=0, head4=0,
+            head5=0, head6=0, head7=0, head8=1)
+      ```
+- [ ] 2.2. All eight heads up, stop SEQ3 after a cycle: the echoes blur into
+      each other and fade within about ten seconds. Not a fault: the loop
+      averages the heads, and only a single head holds at the arc.
+- [ ] 2.3. **Feedback** past the arc: it builds into a howl that stays under
       the clip, and the stereo image comes apart as it rises.
       `o.set(feedback=0.85)  # 1.63x on the display`
-- [ ] 2.3. **Decide -** at the arc one head holds for good but eight heads
-      fade by 4.4 dB over 40 passes (`olim_probe loop`), because the loop is
-      divided by the sum of the sliders, as on the hardware. Keep it, or
-      divide by their power sum so a full fan of heads holds too?
 
 ---
 
