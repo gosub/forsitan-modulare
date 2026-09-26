@@ -10,7 +10,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 SMOKE_MODULES = draen rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
                 cartilago scrupea viginti gradus materiae aether vates artifex \
-                radix olim
+                radix olim nodi
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
