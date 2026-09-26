@@ -124,3 +124,17 @@ o.set(time=0.03, feedback=0.5, dry=0)   # about 7 ms
       the depth. `vcv.modulate(o["head4 vca"], rate=1.0)`
 - [ ] 5.2. Menu, Memory, 20 s: the output drops out for a moment and the
       echoes start again from an empty buffer. Not a fault.
+
+---
+
+## 6. Heads presets
+
+```python
+clock(2.0)
+o.set(time=0.75)   # 8 clocks: each head an eighth of TIME
+```
+
+- [ ] 6.1. Menu, Heads presets, Tresillo, then Rotate left a few times from
+      Heads transform: the rhythm walks across the bar a head at a time.
+- [ ] 6.2. Any preset, then Ctrl+Z once: all eight sliders go back to where
+      they were, and **Dry** never moved.
