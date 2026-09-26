@@ -76,19 +76,20 @@ seq = notes()
 
 ## 1. The heads
 
-- [ ] 1.1. Defaults: the four notes, and behind each one eight echoes
+- [x] 1.1. Defaults: the four notes, and behind each one eight echoes
       spread evenly over the two seconds after it.
-- [ ] 1.2. **Spread** fully left: the echoes crowd right behind each note
+- [x] 1.2. **Spread** fully left: the echoes crowd right behind each note
       and thin out toward two seconds.
       `o.set(spread=0)  # -100% on the display`
-- [ ] 1.3. **Spread** fully right: one early echo, then a cluster close to
+- [x] 1.3. **Spread** fully right: one early echo, then a cluster close to
       two seconds.
       `o.set(spread=1)  # +100% on the display`
-- [ ] 1.4. Sweep **Spread** through noon by hand: a stretch in the middle
+- [x] 1.4. Sweep **Spread** through noon by hand: a stretch in the middle
       changes nothing. That is the flat spot, not a fault.
-- [ ] 1.5. Open the VCA: **Time** moves under the notes and the echoes smear
-      and re-grab, never bending pitch and never clicking.
-      `vcv.modulate(o["time cv"], rate=0.05)`
+- [ ] 1.5. Open the VCA to about 20%: **Time** swings between 1 and 4 s
+      under the notes, and the echoes smear and re-grab, never bending pitch
+      and never clicking.
+      `vcv.modulate(o["time cv"], rate=0.05, offset=False)  # +-5 V`
 - [ ] 1.6. Only **Head 8** up, then flick it down and up: one echo at two
       seconds, and the slider lands in steps of a fifth of a second, not at
       once. Not a fault.
@@ -142,7 +143,7 @@ o.set(time=0.03, feedback=0.5, dry=0)   # 0.0072 s on the display
 
 - [ ] 4.1. A comb on the sine: open the VCA and its pitch walks in steps a
       fifth of a second apart rather than gliding. Not a fault.
-      `vcv.modulate(o["time cv"], rate=0.2)`
+      `vcv.modulate(o["time cv"], rate=0.2, offset=False)  # +-5 V`
 
 ---
 
