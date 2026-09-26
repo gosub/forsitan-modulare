@@ -259,5 +259,39 @@ static void testTransforms() {
     report("olim", "transforms", bad, bad == 0);
 }
 
+// The mutations stay small: Mutate keeps silent heads silent and each level
+// within 20%, Mutate wide within 10 points, Mutate pattern swaps exactly one
+// pair of neighbours. Checked over many draws, each from the same start.
+static void testMutations() {
+    Olim m;
+    float a[olim::kHeads], b[olim::kHeads];
+    int bad = 0;
+    for (int k = 0; k < 200; k++) {
+        m.applyPreset(olim::PRESET_TRESILLO);
+        m.params[Olim::HEAD1_PARAM].setValue(0.9f);   // near the top, to see the clamp
+        heads(m, a);
+        m.applyTransform(olim::TRANSFORM_MUTATE); heads(m, b);
+        for (int i = 0; i < olim::kHeads; i++) {
+            if (a[i] == 0.f) bad += b[i] != 0.f;
+            else bad += b[i] < 0.8f * a[i] - 1e-6f || b[i] > std::min(1.2f * a[i], 1.f) + 1e-6f;
+        }
+        m.applyPreset(olim::PRESET_TRESILLO); heads(m, a);
+        m.applyTransform(olim::TRANSFORM_MUTATE_WIDE); heads(m, b);
+        for (int i = 0; i < olim::kHeads; i++)
+            bad += std::fabs(b[i] - a[i]) > 0.1f + 1e-6f || b[i] < 0.f || b[i] > 1.f;
+        m.applyPreset(olim::PRESET_TRESILLO); heads(m, a);
+        m.applyTransform(olim::TRANSFORM_MUTATE_PATTERN); heads(m, b);
+        int moved = 0, first = -1;
+        for (int i = 0; i < olim::kHeads; i++)
+            if (a[i] != b[i]) { moved++; if (first < 0) first = i; }
+        bad += moved != 2 || a[first] != b[first + 1] || a[first + 1] != b[first];
+    }
+    // nothing to swap on a flat shape
+    m.applyPreset(olim::PRESET_ALL_50); heads(m, a);
+    m.applyTransform(olim::TRANSFORM_MUTATE_PATTERN); heads(m, b);
+    bad += !same(a, b);
+    report("olim", "mutations", bad, bad == 0);
+}
+
 SMOKE_MAIN(testEcho, testVca, testNormal, testNan, testClock, testMemory, testDeleteMidSwap,
-           testPresets, testTransforms)
+           testPresets, testTransforms, testMutations)

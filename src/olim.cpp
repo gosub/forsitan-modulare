@@ -177,18 +177,42 @@ enum HeadTransform {
     TRANSFORM_INVERT,
     TRANSFORM_HALF,
     TRANSFORM_DOUBLE,
+    TRANSFORM_MUTATE,
+    TRANSFORM_MUTATE_WIDE,
+    TRANSFORM_MUTATE_PATTERN,
     NUM_TRANSFORMS
 };
 
 inline const char* transformName(int t) {
     static const char* n[NUM_TRANSFORMS] = {
-        "Reverse", "Rotate left", "Rotate right", "Invert", "Scale x0.5", "Scale x2"};
+        "Reverse", "Rotate left", "Rotate right", "Invert", "Scale x0.5", "Scale x2",
+        "Mutate", "Mutate wide", "Mutate pattern"};
     return n[t];
 }
 
+// Where the menu draws a line: before Invert and before the mutations.
+inline bool transformStartsGroup(int t) {
+    return t == TRANSFORM_INVERT || t == TRANSFORM_MUTATE;
+}
+
 // Reshapes v[0..7] in place. Rotate left moves every level one head earlier,
-// the first wrapping round to the last.
-inline void transformShape(int t, float* v) {
+// the first wrapping round to the last. The three mutations are small random
+// steps, so repeated clicks walk: Mutate varies the levels by up to 20% and
+// leaves silent heads silent (the rhythm holds, the dynamics move); Mutate
+// wide moves each by up to 10 points, so a silent head can wake and a quiet
+// one drop out; Mutate pattern swaps one pair of neighbouring heads that
+// differ (the levels hold, the rhythm moves a step). `uniform` is 0..1.
+template <typename Uniform>
+inline void transformShape(int t, float* v, Uniform uniform) {
+    if (t == TRANSFORM_MUTATE_PATTERN) {
+        int pairs[kHeads - 1], n = 0;
+        for (int i = 0; i + 1 < kHeads; i++)
+            if (v[i] != v[i + 1]) pairs[n++] = i;
+        if (n == 0) return;
+        int i = pairs[std::min((int)(uniform() * n), n - 1)];
+        std::swap(v[i], v[i + 1]);
+        return;
+    }
     float w[kHeads];
     for (int i = 0; i < kHeads; i++) w[i] = v[i];
     for (int i = 0; i < kHeads; i++) {
@@ -199,6 +223,12 @@ inline void transformShape(int t, float* v) {
             case TRANSFORM_INVERT: v[i] = 1.f - w[i]; break;
             case TRANSFORM_HALF: v[i] = 0.5f * w[i]; break;
             case TRANSFORM_DOUBLE: v[i] = std::min(2.f * w[i], 1.f); break;
+            case TRANSFORM_MUTATE:
+                v[i] = std::min(w[i] * (0.8f + 0.4f * uniform()), 1.f);
+                break;
+            case TRANSFORM_MUTATE_WIDE:
+                v[i] = std::min(std::max(w[i] + 0.2f * uniform() - 0.1f, 0.f), 1.f);
+                break;
             default: break;
         }
     }
@@ -458,7 +488,7 @@ struct Olim : Module {
     void applyTransform(int t) {
         float v[olim::kHeads];
         for (int i = 0; i < olim::kHeads; i++) v[i] = params[HEAD1_PARAM + i].getValue();
-        olim::transformShape(t, v);
+        olim::transformShape(t, v, []() { return random::uniform(); });
         setHeads(v, olim::transformName(t));
     }
 
@@ -676,7 +706,7 @@ struct OlimWidget : ModuleWidget {
         }));
         menu->addChild(createSubmenuItem("Heads transform", "", [=](Menu* sub) {
             for (int t = 0; t < olim::NUM_TRANSFORMS; t++) {
-                if (t == olim::TRANSFORM_INVERT) sub->addChild(new MenuSeparator);
+                if (olim::transformStartsGroup(t)) sub->addChild(new MenuSeparator);
                 sub->addChild(createMenuItem(olim::transformName(t), "",
                                              [=]() { m->applyTransform(t); }));
             }
