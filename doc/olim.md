@@ -42,7 +42,7 @@ loop gain is exactly 1.
 |---|---|
 | **Time** | the last head's delay, 0 to 8 s, quadratic so the short end has room. With a clock patched, 1/64 to 64 clock periods in powers of two, one period at noon |
 | **Spread** | where the other seven heads sit. At noon, evenly; to the left they crowd toward now, to the right toward **Time**. A flat stretch around noon is exactly even |
-| **Feedback** | loop gain, 0 to 2. The arc is exactly 1, the sound-on-sound zone: what is in the loop neither fades nor builds. Past it the loop runs hot, a compressor holds it under full scale, and each head's crossfade rate goes random, so the heads drift apart and the stereo image with them |
+| **Feedback** | loop gain, 0 to 2. The arc is exactly 1, the sound-on-sound zone: with one head up, what is in the loop neither fades nor builds (with several, see below). Past it the loop runs hot, a compressor holds it under full scale, and each head's crossfade rate goes random, so the heads drift apart and the stereo image with them |
 | **Dry** | the input on the output. Its light is the input's level |
 | **Head 1-8** | each head's level, on the output and into the loop. Each light shows its head's level before the slider |
 
@@ -50,8 +50,15 @@ The sliders move in the heads' own steps: a slider pulled down reaches its new
 level over the head's next crossfade, not at once.
 
 The loop is divided by the sum of the head sliders, when that is over 1, so
-the arc stays unity however many heads are up. The output is not: more heads
-up is louder, and the output limits at 5 V.
+its gain never passes **Feedback**'s however many heads are up. The output is
+not: more heads up is louder, and the output limits at 5 V.
+
+With several heads up the loop feeds back their average, and averaging
+delayed copies of a sound blurs it: on the arc, a single head holds forever,
+but a fan of heads smears into itself and fades within seconds. That is the
+hardware's loop, not a fault. To keep a fan going, run **Feedback** a little
+past the arc; to hold a phrase exactly, use one head (Heads presets > Last
+head only) and bring the others in on the output.
 
 ## Inputs and outputs
 
@@ -104,8 +111,8 @@ up is louder, and the output limits at 5 V.
 
 - **Spread** left with **Time** long is a room; right is a cluster of late
   repeats, a reverse-shaped tail.
-- **Feedback** on the arc with the loop playing, then cut the input: the
-  loop keeps what it has. Move **Time** to smear it.
+- Last head only, **Feedback** on the arc, then cut the input: the loop
+  keeps what it has, a looper **Time** long. Move **Time** to smear it.
 - **Time** a few milliseconds up from zero with **Feedback** near the arc is
   a comb, tuned by **Time CV** at a volt per octave, and stepping five times
   a second rather than gliding.

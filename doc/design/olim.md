@@ -120,7 +120,11 @@ w       = w + 1
   T), `x` at noon. `w8 = 1` always: the last head is T.
 - **FEEDBACK**: `fb = clamp(2 * dz(knob) + cv, 0, 3)`. `dz` is a dead zone
   at noon applied twice, so knob 0.405 to 0.595 gives exactly fb = 1: that
-  is the **arc**, and the sound-on-sound zone is the dead zone.
+  is the **arc**, and the sound-on-sound zone is the dead zone. It holds a
+  single head exactly; several heads are averaged, which blurs the loop and
+  lets it fade (only what lines up across every head survives a pass), and
+  no normalisation changes that: a sum of delayed copies has unit gain at
+  every frequency only when there is one copy.
 - **SPREAD** has the same double dead zone, so noon is exactly even.
 - **Sliders**: linear, times the VCA (0..5 V to 0..1, clamped).
 - **Dry** is smoothed (about 20 ms), feedback lightly (2 ms).
@@ -198,8 +202,8 @@ IN R, CLOCK, OUT L, OUT R, then the logo.
   - `heads` - the eight positions across SPREAD, TIME free and clocked;
     checks `w8 == 1`, the dead zones, and the power-of-two steps.
   - `loop` - level per pass against FEEDBACK and slider sets: at fb = 1
-    (the arc) one head and eight heads both hold, below it they decay,
-    above it the compressor catches the growth under full scale.
+    (the arc) one head holds, below it they decay, above it the compressor
+    catches the growth under full scale.
   - `clicks` - the #22 measurement (max second difference over peak on a
     220 Hz sine) under TIME and SPREAD sweeps, knob and CV.
   - `cpu`, and `wav <dir>` for listening.

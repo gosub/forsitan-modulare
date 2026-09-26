@@ -6,8 +6,9 @@
 //                              that the last head is TIME, noon is even and
 //                              the clocked steps are powers of two
 //   ./olim_probe loop          level per pass against FEEDBACK, one head and
-//                              all eight: the arc must hold, below it decays,
-//                              above it stays under full scale
+//                              all eight: the arc holds one head, below it
+//                              decays, above it stays under full scale. All
+//                              eight fade at the arc: the loop averages them
 //   ./olim_probe clicks        the #22 measure (max second difference over
 //                              peak, 220 Hz sine) under TIME, SPREAD and CV
 //                              sweeps; clean ~0.001, fails above 0.01
