@@ -42,27 +42,49 @@ def sine(hz=220):
     s["sine"] >> o["in l"] + o["in r"]
     return s
 
+def notes():
+    """Four short notes, then four rests, two steps a second: C, E flat, G
+    and the C above over 1.5 s, and the rests leave the echoes alone. The
+    pitch says which note an echo belongs to. CV 2 gates SEQ3's trigger, so
+    only steps 1 to 4 play."""
+    seq = vcv.module("SEQ3", tempo=1, run=1, steps=8,
+                     cv_1_step_1=0, cv_1_step_2=0.25, cv_1_step_3=0.5833,
+                     cv_1_step_4=1, cv_2_step_1=10, cv_2_step_2=10,
+                     cv_2_step_3=10, cv_2_step_4=10)
+    gate = vcv.module("VCA-1")
+    seq["trigger"] >> gate["channel"]
+    seq["cv 2"] >> gate["cv"]
+    env = vcv.module("ADSR", attack=0.1, decay=0.5, sustain=0, release=0.5)
+    gate["channel"] >> env["gate"]
+    osc = vcv.module("VCO")
+    seq["cv 1"] >> osc["pitch"]
+    amp = vcv.module("VCA-1")
+    osc["triangle"] >> amp["channel"]
+    env["envelope"] >> amp["cv"]
+    amp["channel"] >> o["in l"] + o["in r"]
+    return seq
+
 def clock(hz=2.0):
     c = vcv.module("LFO", freq=vcv.hz(hz, "LFO"), offset=1)
     c["square"] >> o["clock"]
     return c
 
-drums()
+seq = notes()
 ```
 
 ---
 
 ## 1. The heads
 
-- [ ] 1.1. Defaults: the dry loop, and behind it eight echoes spread evenly
-      over the two seconds after each hit.
-- [ ] 1.2. **Spread** fully left: the echoes crowd right behind each hit and
-      thin out toward two seconds. `o.set(spread=0)`
+- [ ] 1.1. Defaults: the four notes, and behind each one eight echoes
+      spread evenly over the two seconds after it.
+- [ ] 1.2. **Spread** fully left: the echoes crowd right behind each note
+      and thin out toward two seconds. `o.set(spread=0)`
 - [ ] 1.3. **Spread** fully right: one early echo, then a cluster close to
       two seconds. `o.set(spread=1)`
 - [ ] 1.4. Sweep **Spread** through noon by hand: a stretch in the middle
       changes nothing. That is the flat spot, not a fault.
-- [ ] 1.5. Open the VCA: **Time** moves under the loop and the echoes smear
+- [ ] 1.5. Open the VCA: **Time** moves under the notes and the echoes smear
       and re-grab, never bending pitch and never clicking.
       `vcv.modulate(o["time cv"], rate=0.05)`
 - [ ] 1.6. Only **Head 8** up, then flick it down and up: one echo at two
@@ -78,7 +100,7 @@ drums()
 o.set(feedback=0.5)   # on the arc: loop gain exactly 1
 ```
 
-- [ ] 2.1. Stop the loop after a bar: the echoes neither fade nor build.
+- [ ] 2.1. Stop SEQ3 after a cycle: the echoes neither fade nor build.
       Sound on sound, for as long as it is left.
 - [ ] 2.2. **Feedback** past the arc: it builds into a howl that stays under
       the clip, and the stereo image comes apart as it rises.
@@ -93,7 +115,7 @@ o.set(feedback=0.5)   # on the arc: loop gain exactly 1
 ## 3. Clock
 
 ```python
-clock(2.0)
+clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 ```
 
 - [ ] 3.1. Turn **Time**: it jumps in doubles and halves, and its tooltip
@@ -130,7 +152,7 @@ o.set(time=0.03, feedback=0.5, dry=0)   # about 7 ms
 ## 6. Heads presets
 
 ```python
-clock(2.0)
+clock(2.0)["square"] >> seq["clock"]
 o.set(time=0.75)   # 8 clocks: each head an eighth of TIME
 ```
 
@@ -139,5 +161,5 @@ o.set(time=0.75)   # 8 clocks: each head an eighth of TIME
 - [ ] 6.2. Any preset, then Ctrl+Z once: all eight sliders go back to where
       they were, and **Dry** never moved.
 - [ ] 6.3. Tresillo, then each mutation a few times: Mutate keeps the
-      rhythm and moves the accents, Mutate pattern moves one hit a step,
+      rhythm and moves the accents, Mutate pattern moves one echo a step,
       Mutate wide starts to blur it.
