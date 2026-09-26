@@ -20,11 +20,17 @@
 //   In      : V/O, FM, SYNC, /N, X (poly, normalled to RAMP), HI, LO, EXT,
 //             +Y, THR A / B / C, A / B / C
 //   Out     : RAMP, EOC, f(X), GATE, GATE A / B / C, COM
-//   Menu    : Anti-aliasing
+//   Menu    : Anti-aliasing, Setups (the manual's quick starts), and presets
+//             and transforms for each bank of sliders and switches, one undo
+//             step each
 
 #include "forsitan.hpp"
 #include "position_switch.hpp"
 #include "nodi/nodi.hpp"
+#include "nodi/shapes.hpp"
+
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -44,6 +50,8 @@ int directionOf(float v) {
     return i >= 2 ? nodi::RISE : i == 1 ? nodi::OFF : nodi::FALL;
 }
 int groupOf(float v) { return 2 - clamp((int)std::round(v), 0, 2); }
+float directionParam(int d) { return d == nodi::RISE ? 2.f : d == nodi::OFF ? 1.f : 0.f; }
+float groupParam(int g) { return (float)(2 - g); }
 // A non-finite voltage reads as zero: a NaN at X would otherwise reach the
 // event sort, and one at HI or LO every threshold.
 float finite(float v) { return std::isfinite(v) ? v : 0.f; }
@@ -236,6 +244,118 @@ struct Nodi : Module {
     void dataFromJson(json_t* root) override {
         json_t* j = json_object_get(root, "antiAlias");
         if (j) antiAlias = clamp((int)json_integer_value(j), 0, 2);
+    }
+
+    // Sets many parameters as one undo step.
+    void setParams(const std::vector<std::pair<int, float>>& changes, const std::string& what) {
+        history::ComplexAction* h = new history::ComplexAction;
+        h->name = "nodi: " + what;
+        for (const auto& c : changes) {
+            float old = params[c.first].getValue();
+            params[c.first].setValue(c.second);
+            if (old == c.second) continue;
+            history::ParamChange* pc = new history::ParamChange;
+            pc->moduleId = id;
+            pc->paramId = c.first;
+            pc->oldValue = old;
+            pc->newValue = c.second;
+            h->push(pc);
+        }
+        if (APP && APP->history && !h->isEmpty()) APP->history->push(h);
+        else delete h;
+    }
+
+    int range() { return rangeOf(params[RANGE_PARAM].getValue()); }
+    bool lengthMode() { return params[MODE_PARAM].getValue() < 0.5f; }
+
+    void readBank(int first, float* v) {
+        for (int k = 0; k < nodi::kStages; k++) v[k] = params[first + k].getValue();
+    }
+    void bankChanges(int first, const float* v, std::vector<std::pair<int, float>>& c) {
+        for (int k = 0; k < nodi::kStages; k++)
+            c.push_back(std::make_pair(first + k, clamp(v[k], 0.f, 1.f)));
+    }
+    void readDirections(int* d) {
+        for (int k = 0; k < nodi::kStages; k++) d[k] = directionOf(params[DIR1_PARAM + k].getValue());
+    }
+    void readGroups(int* g) {
+        for (int k = 0; k < nodi::kStages; k++) g[k] = groupOf(params[GROUP1_PARAM + k].getValue());
+    }
+
+    static float uniform() { return random::uniform(); }
+
+    void applyValuePreset(int p) {
+        float v[nodi::kStages];
+        nodi::valuePreset(p, range(), v, uniform);
+        std::vector<std::pair<int, float>> c;
+        bankChanges(VALUE1_PARAM, v, c);
+        setParams(c, std::string("f(X) ") + nodi::valuePresetName(p));
+    }
+    void applyValueTransform(int t) {
+        float v[nodi::kStages];
+        readBank(VALUE1_PARAM, v);
+        nodi::valueTransform(t, range(), v, uniform);
+        std::vector<std::pair<int, float>> c;
+        bankChanges(VALUE1_PARAM, v, c);
+        setParams(c, std::string("f(X) ") + nodi::valueTransformName(t));
+    }
+    void applyThresholdPreset(int p) {
+        float v[nodi::kStages];
+        nodi::thresholdPreset(p, lengthMode(), v, uniform);
+        std::vector<std::pair<int, float>> c;
+        bankChanges(THRESH1_PARAM, v, c);
+        setParams(c, std::string("thresholds ") + nodi::thresholdPresetName(p));
+    }
+    void applyThresholdTransform(int t) {
+        float v[nodi::kStages];
+        readBank(THRESH1_PARAM, v);
+        nodi::thresholdTransform(t, v, uniform);
+        std::vector<std::pair<int, float>> c;
+        bankChanges(THRESH1_PARAM, v, c);
+        setParams(c, std::string("thresholds ") + nodi::thresholdTransformName(t));
+    }
+    // Flips POS / LEN and rewrites the threshold sliders so every threshold
+    // stays where it was (see positionsToLengths for when that is exact).
+    void convertMode() {
+        float v[nodi::kStages], w[nodi::kStages];
+        readBank(THRESH1_PARAM, v);
+        bool toPosit = lengthMode();
+        if (toPosit) nodi::lengthsToPositions(v, w);
+        else nodi::positionsToLengths(v, w);
+        std::vector<std::pair<int, float>> c;
+        bankChanges(THRESH1_PARAM, w, c);
+        c.push_back(std::make_pair((int)MODE_PARAM, toPosit ? 1.f : 0.f));
+        setParams(c, toPosit ? "convert to positions" : "convert to lengths");
+    }
+    void applyDirections(const int* d, const std::string& what) {
+        std::vector<std::pair<int, float>> c;
+        for (int k = 0; k < nodi::kStages; k++)
+            c.push_back(std::make_pair(DIR1_PARAM + k, directionParam(d[k])));
+        setParams(c, "directions " + what);
+    }
+    void applyGroups(const int* g, const std::string& what) {
+        std::vector<std::pair<int, float>> c;
+        for (int k = 0; k < nodi::kStages; k++)
+            c.push_back(std::make_pair(GROUP1_PARAM + k, groupParam(g[k])));
+        setParams(c, "groups " + what);
+    }
+    void applySetup(int id) {
+        nodi::Setup s;
+        nodi::setup(id, s);
+        std::vector<std::pair<int, float>> c;
+        c.push_back(std::make_pair((int)FAST_PARAM, s.fast ? 1.f : 0.f));
+        c.push_back(std::make_pair((int)RATE_PARAM, clamp(knobForHz(s.hz, s.fast), 0.f, 1.f)));
+        c.push_back(std::make_pair((int)LOOP_PARAM, s.once ? 0.f : 1.f));
+        c.push_back(std::make_pair((int)MODE_PARAM, s.length ? 0.f : 1.f));
+        c.push_back(std::make_pair((int)RANGE_PARAM,
+                                   s.range == nodi::RANGE_BIPOLAR ? 2.f : s.range == nodi::RANGE_FIVE ? 1.f : 0.f));
+        bankChanges(VALUE1_PARAM, s.value, c);
+        bankChanges(THRESH1_PARAM, s.threshold, c);
+        for (int k = 0; k < nodi::kStages; k++) {
+            c.push_back(std::make_pair(DIR1_PARAM + k, directionParam(s.direction[k])));
+            c.push_back(std::make_pair(GROUP1_PARAM + k, groupParam(s.group[k])));
+        }
+        setParams(c, std::string("setup ") + nodi::setupName(id));
     }
 
     void readControls() {
@@ -521,6 +641,73 @@ struct NodiWidget : ModuleWidget {
         menu->addChild(new MenuSeparator);
         menu->addChild(createIndexPtrSubmenuItem("Anti-aliasing",
             {"Auto: steps closer than 2 ms", "Off", "On"}, &m->antiAlias));
+        menu->addChild(new MenuSeparator);
+        menu->addChild(createSubmenuItem("Setups", "", [=](Menu* sub) {
+            for (int i = 0; i < nodi::NUM_SETUPS; i++)
+                sub->addChild(createMenuItem(nodi::setupName(i), "", [=]() { m->applySetup(i); }));
+        }));
+        menu->addChild(createSubmenuItem("f(X) sliders", "", [=](Menu* sub) {
+            sub->addChild(createMenuLabel("Presets, in the current range"));
+            for (int p = 0; p < nodi::NUM_VALUE_PRESETS; p++) {
+                if (nodi::valuePresetStartsGroup(p)) sub->addChild(new MenuSeparator);
+                sub->addChild(createMenuItem(nodi::valuePresetName(p), "",
+                                             [=]() { m->applyValuePreset(p); }));
+            }
+            sub->addChild(new MenuSeparator);
+            sub->addChild(createMenuLabel("Transforms"));
+            for (int t = 0; t < nodi::NUM_VALUE_TRANSFORMS; t++) {
+                if (nodi::valueTransformStartsGroup(t)) sub->addChild(new MenuSeparator);
+                sub->addChild(createMenuItem(nodi::valueTransformName(t), "",
+                                             [=]() { m->applyValueTransform(t); }));
+            }
+        }));
+        menu->addChild(createSubmenuItem("Threshold sliders", "", [=](Menu* sub) {
+            sub->addChild(createMenuLabel(m->lengthMode() ? "Rhythms, as lengths" : "Rhythms, as positions"));
+            for (int p = 0; p < nodi::NUM_THRESHOLD_PRESETS; p++)
+                sub->addChild(createMenuItem(nodi::thresholdPresetName(p), "",
+                                             [=]() { m->applyThresholdPreset(p); }));
+            sub->addChild(new MenuSeparator);
+            sub->addChild(createMenuLabel("Transforms"));
+            for (int t = 0; t < nodi::NUM_THRESHOLD_TRANSFORMS; t++)
+                sub->addChild(createMenuItem(nodi::thresholdTransformName(t), "",
+                                             [=]() { m->applyThresholdTransform(t); }));
+            sub->addChild(new MenuSeparator);
+            sub->addChild(createMenuItem(
+                m->lengthMode() ? "Convert to positions, thresholds kept" : "Convert to lengths, thresholds kept",
+                "", [=]() { m->convertMode(); }));
+        }));
+        menu->addChild(createSubmenuItem("Direction switches", "", [=](Menu* sub) {
+            for (int p = 0; p < nodi::NUM_DIRECTION_PRESETS; p++)
+                sub->addChild(createMenuItem(nodi::directionPresetName(p), "", [=]() {
+                    int d[nodi::kStages];
+                    nodi::directionPreset(p, d);
+                    m->applyDirections(d, nodi::directionPresetName(p));
+                }));
+            sub->addChild(new MenuSeparator);
+            for (int t = 0; t < nodi::NUM_SWITCH_TRANSFORMS; t++)
+                sub->addChild(createMenuItem(nodi::directionTransformName(t), "", [=]() {
+                    int d[nodi::kStages];
+                    m->readDirections(d);
+                    nodi::directionTransform(t, d);
+                    m->applyDirections(d, nodi::directionTransformName(t));
+                }));
+        }));
+        menu->addChild(createSubmenuItem("Group switches", "", [=](Menu* sub) {
+            for (int p = 0; p < nodi::NUM_GROUP_PRESETS; p++)
+                sub->addChild(createMenuItem(nodi::groupPresetName(p), "", [=]() {
+                    int g[nodi::kStages];
+                    nodi::groupPreset(p, g, Nodi::uniform);
+                    m->applyGroups(g, nodi::groupPresetName(p));
+                }));
+            sub->addChild(new MenuSeparator);
+            for (int t = 0; t < nodi::NUM_SWITCH_TRANSFORMS; t++)
+                sub->addChild(createMenuItem(nodi::groupTransformName(t), "", [=]() {
+                    int g[nodi::kStages];
+                    m->readGroups(g);
+                    nodi::groupTransform(t, g);
+                    m->applyGroups(g, nodi::groupTransformName(t));
+                }));
+        }));
     }
 };
 

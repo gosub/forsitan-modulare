@@ -5,7 +5,8 @@
 // module's own checks: that the defaults are a running eight-step sequencer,
 // the RAMP -> X normal, the panel switches read the right way up, polyphony,
 // the groups' gates and the switch, NaN at every input, other sample rates,
-// and the context menu's state surviving a save.
+// the context menu's state surviving a save, and the menus writing the
+// parameters they say (the shapes themselves are nodi_probe's).
 
 #include "smoke_harness.hpp"
 #include "../src/nodi.cpp"
@@ -249,5 +250,49 @@ static void testJson() {
     report("nodi", "json_missing_key_is_auto", fresh.antiAlias, fresh.antiAlias == nodi::AA_AUTO);
 }
 
+// The menus write what they say: a setup sets both switch banks and the
+// mode, a scale lands in the current range, and a conversion flips POS / LEN
+// with every threshold kept.
+static void testMenus() {
+    Nodi m; long fr = 0;
+    m.applySetup(nodi::SETUP_CRUSHER);
+    m.readControls();
+    bool crusher = !m.ctl.length && m.ctl.range == nodi::RANGE_BIPOLAR &&
+                   m.ctl.direction[0] == nodi::RISE && m.ctl.direction[7] == nodi::FALL &&
+                   std::fabs(m.ctl.threshold[3] - 0.8f) < 1e-6f;
+    report("nodi", "menu_setup_crusher", 0, crusher);
+
+    m.params[Nodi::RANGE_PARAM].setValue(1.f);          // 0..5 V
+    m.applyValuePreset(nodi::VALUE_MINOR_PENTA);
+    float v = nodi::sliderVolts(m.params[Nodi::VALUE3_PARAM].getValue(), nodi::RANGE_FIVE);
+    report("nodi", "menu_minor_penta_stage3_volts", v, std::fabs(v - 5.f / 12.f) < 1e-5f);
+
+    Nodi c;
+    for (int k = 0; k < nodi::kStages; k++)
+        c.params[Nodi::THRESH1_PARAM + k].setValue(0.1f + 0.1f * k);
+    c.readControls();
+    const float zero[3] = {0.f, 0.f, 0.f};
+    float before[nodi::kStages], after[nodi::kStages];
+    nodi::thresholds(c.ctl, nodi::kLow, nodi::kHigh, zero, before);
+    c.convertMode();
+    c.readControls();
+    nodi::thresholds(c.ctl, nodi::kLow, nodi::kHigh, zero, after);
+    bool kept = !c.ctl.length;
+    for (int k = 0; k < nodi::kStages; k++) kept = kept && std::fabs(before[k] - after[k]) < 1e-4f;
+    report("nodi", "menu_convert_to_positions_keeps_thresholds", 0, kept);
+
+    // Every setup runs a second without anything non-finite.
+    Stats s;
+    for (int id = 0; id < nodi::NUM_SETUPS; id++) {
+        Nodi n;
+        n.applySetup(id);
+        for (int i = 0; i < (int)SR; i++) {
+            n.process(makeArgs(fr++));
+            for (int o = 0; o < Nodi::NUM_OUTPUTS; o++) s.add(n.outputs[o].getVoltage());
+        }
+    }
+    report("nodi", "menu_every_setup_runs_finite", s.nans, s.nans == 0);
+}
+
 SMOKE_MAIN(testDefaults, testNormal, testSwitches, testPoly, testGroups, testNan,
-           testSampleRates, testJson)
+           testSampleRates, testJson, testMenus)

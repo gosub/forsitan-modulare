@@ -14,12 +14,17 @@
 //   ./nodi_probe alias       the graphic VCO and RAMP: alias energy with the
 //                            steps rounded and without; Auto leaves a slow
 //                            sequence's steps exact
+//   ./nodi_probe shapes      the context menu's presets, transforms and
+//                            setups: scales on exact semitones, transforms
+//                            that undo, conversions that keep every
+//                            threshold, the quantizer setup exact both ways
 //   ./nodi_probe cpu         ns per sample
 //   ./nodi_probe wav <dir>   scenes to listen to
 //
 // Every command but `cpu` and `wav` exits nonzero on a failed check.
 
 #include "../src/nodi/nodi.hpp"
+#include "../src/nodi/shapes.hpp"
 
 #include <chrono>
 #include <complex>
@@ -633,6 +638,235 @@ static int cmdAlias() {
     return failures ? 1 : 0;
 }
 
+// ---------------------------------------------------------------- shapes
+
+static uint32_t shapeSeed = 12345;
+static float shapeUniform() {
+    shapeSeed = shapeSeed * 1664525u + 1013904223u;
+    return (shapeSeed >> 8) / 16777216.f;
+}
+
+static bool onSemitones(const float* v, int range) {
+    for (int k = 0; k < kStages; k++) {
+        float s = sliderVolts(v[k], range) * 12.f;
+        if (std::fabs(s - std::round(s)) > 1e-3f) return false;
+        if (v[k] < 0.f || v[k] > 1.f) return false;
+    }
+    return true;
+}
+
+static bool same(const float* a, const float* b, float tol = 1e-5f) {
+    for (int k = 0; k < kStages; k++)
+        if (std::fabs(a[k] - b[k]) > tol) return false;
+    return true;
+}
+
+static int cmdShapes() {
+    printf("shapes\n");
+    char what[160];
+
+    // Every scale preset in every range lands on exact semitones.
+    bool ok = true;
+    for (int range = 0; range < 3; range++)
+        for (int p = VALUE_ZERO; p < VALUE_RANDOM; p++) {
+            if (p == VALUE_UP || p == VALUE_DOWN) continue;
+            float v[kStages];
+            valuePreset(p, range, v, shapeUniform);
+            if (!onSemitones(v, range)) {
+                ok = false;
+                printf("    off semitones: %s in range %d\n", valuePresetName(p), range);
+            }
+        }
+    check(ok, "f(X) scale presets land on exact semitones, in all three ranges");
+    {
+        float v[kStages];
+        valuePreset(VALUE_MAJOR, RANGE_HALF, v, shapeUniform);
+        const int want[kStages] = {0, 2, 4, 5, 7, 9, 11, 12};
+        ok = true;
+        for (int k = 0; k < kStages; k++)
+            ok = ok && std::fabs(sliderVolts(v[k], RANGE_HALF) - want[k] / 12.f) < 1e-5f;
+        check(ok, "major scale, 0..2.5 V: 0 2 4 5 7 9 11 12 semitones from 0 V");
+    }
+
+    // Transforms that undo each other.
+    {
+        float a[kStages], b[kStages];
+        valuePreset(VALUE_MAJOR, RANGE_BIPOLAR, a, shapeUniform);
+        std::copy(a, a + kStages, b);
+        const int pairs[][2] = {{VT_REVERSE, VT_REVERSE}, {VT_ROTATE_LEFT, VT_ROTATE_RIGHT},
+                                {VT_MIRROR, VT_MIRROR}, {VT_SEMITONE_UP, VT_SEMITONE_DOWN},
+                                {VT_OCTAVE_UP, VT_OCTAVE_DOWN}};
+        ok = true;
+        for (auto& pr : pairs) {
+            valueTransform(pr[0], RANGE_BIPOLAR, b, shapeUniform);
+            valueTransform(pr[1], RANGE_BIPOLAR, b, shapeUniform);
+            if (!same(a, b)) {
+                ok = false;
+                printf("    %s then %s is not the identity\n", valueTransformName(pr[0]),
+                       valueTransformName(pr[1]));
+            }
+        }
+        check(ok, "f(X): reverse, rotate, mirror, transpose each undo");
+        valueTransform(VT_SHUFFLE, RANGE_BIPOLAR, b, shapeUniform);
+        float sa[kStages], sb[kStages];
+        std::copy(a, a + kStages, sa);
+        std::copy(b, b + kStages, sb);
+        std::sort(sa, sa + kStages);
+        std::sort(sb, sb + kStages);
+        check(same(sa, sb), "f(X) shuffle is a permutation");
+        ok = true;
+        valuePreset(VALUE_MINOR, RANGE_HALF, b, shapeUniform);
+        for (int n = 0; n < 200; n++) {
+            valueTransform(VT_MUTATE, RANGE_HALF, b, shapeUniform);
+            ok = ok && onSemitones(b, RANGE_HALF);
+        }
+        check(ok, "f(X) mutate, 200 times: always on semitones, always in range");
+        for (int k = 0; k < kStages; k++) b[k] = shapeUniform();
+        valueTransform(VT_SNAP, RANGE_FIVE, b, shapeUniform);
+        check(onSemitones(b, RANGE_FIVE), "f(X) snap puts random sliders on semitones");
+    }
+
+    // Each rhythm is the same thresholds in either mode, and the conversions
+    // keep every threshold where it was.
+    {
+        const float zero[kGroups] = {0.f, 0.f, 0.f};
+        ok = true;
+        bool fits = true;
+        for (int p = 0; p < TH_RANDOM; p++) {
+            Controls len, pos;
+            pos.length = false;
+            thresholdPreset(p, true, len.threshold, shapeUniform);
+            thresholdPreset(p, false, pos.threshold, shapeUniform);
+            float a[kStages], b[kStages];
+            thresholds(len, kLow, kHigh, zero, a);
+            thresholds(pos, kLow, kHigh, zero, b);
+            if (!same(a, b, 1e-4f)) {
+                ok = false;
+                printf("    %s differs between the modes\n", thresholdPresetName(p));
+            }
+            for (int k = 0; k < kStages; k++) fits = fits && len.threshold[k] <= 1.f && len.threshold[k] >= 0.f;
+        }
+        check(ok, "threshold presets: the same thresholds whether LENGTH or POSIT.");
+        check(fits, "threshold presets: every LENGTH slider within its travel");
+
+        ok = true;
+        for (int trial = 0; trial < 100; trial++) {
+            Controls len, pos, back;
+            pos.length = false;
+            for (int k = 0; k < kStages; k++) len.threshold[k] = shapeUniform();
+            lengthsToPositions(len.threshold, pos.threshold);
+            positionsToLengths(pos.threshold, back.threshold);
+            float a[kStages], b[kStages], c[kStages];
+            thresholds(len, kLow, kHigh, zero, a);
+            thresholds(pos, kLow, kHigh, zero, b);
+            thresholds(back, kLow, kHigh, zero, c);
+            ok = ok && same(a, b, 1e-4f) && same(a, c, 1e-4f);
+        }
+        check(ok, "LENGTH -> POSIT. -> LENGTH, 100 random banks: every threshold kept");
+
+        Controls pos, len;
+        pos.length = false;
+        const float out[kStages] = {0.f, 0.3f, 0.2f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f};
+        std::copy(out, out + kStages, pos.threshold);
+        positionsToLengths(pos.threshold, len.threshold);
+        float a[kStages], b[kStages];
+        thresholds(pos, kLow, kHigh, zero, a);
+        thresholds(len, kLow, kHigh, zero, b);
+        bool kept = true;
+        for (int k = 0; k < kStages; k++)
+            if (k != 2) kept = kept && std::fabs(b[k] - a[k]) < 1e-4f;
+        snprintf(what, sizeof what,
+                 "POSIT. -> LENGTH, stage 3 out of order: it lands on stage 4 (%.2f, %.2f V), the rest kept",
+                 b[2], b[3]);
+        check(std::fabs(b[2] - b[3]) < 1e-4f && kept, what);
+    }
+
+    // Switch transforms that undo.
+    {
+        int d[kStages], e[kStages];
+        directionPreset(DIR_ALTERNATE, d);
+        d[3] = OFF;
+        std::copy(d, d + kStages, e);
+        directionTransform(ST_FLIP, e);
+        bool flipped = e[0] == FALL && e[1] == RISE && e[3] == OFF;
+        directionTransform(ST_FLIP, e);
+        check(flipped && std::equal(d, d + kStages, e), "directions: swap rise and fall, OFF kept, undoes");
+        int g[kStages], h[kStages];
+        groupPreset(GROUP_THIRDS, g, shapeUniform);
+        std::copy(g, g + kStages, h);
+        for (int n = 0; n < 3; n++) groupTransform(ST_FLIP, h);
+        check(std::equal(g, g + kStages, h), "groups: cycling A -> B -> C three times is the identity");
+    }
+
+    // Setups: everything in range; then the three that can be heard here.
+    {
+        ok = true;
+        for (int id = 0; id < NUM_SETUPS; id++) {
+            Setup su;
+            setup(id, su);
+            float knob = std::log(su.hz / (su.fast ? kFastMin : kSlowMin)) /
+                         std::log((su.fast ? kFastMax : kSlowMax) / (su.fast ? kFastMin : kSlowMin));
+            ok = ok && knob >= 0.f && knob <= 1.f;
+            for (int k = 0; k < kStages; k++)
+                ok = ok && su.value[k] >= 0.f && su.value[k] <= 1.f && su.threshold[k] >= 0.f &&
+                     su.threshold[k] <= 1.f && su.group[k] >= 0 && su.group[k] < kGroups;
+        }
+        check(ok, "every setup: sliders, groups and rate within their ranges");
+
+        // The quantizer: a sample-and-hold jumping anywhere, from above or
+        // below, always comes out as the note of the region it landed in.
+        Setup su;
+        setup(SETUP_QUANTIZER, su);
+        Rig r;
+        r.internal = false;
+        r.c.length = su.length;
+        r.c.range = su.range;
+        for (int k = 0; k < kStages; k++) {
+            r.c.value[k] = su.value[k];
+            r.c.threshold[k] = su.threshold[k];
+            r.c.direction[k] = su.direction[k];
+        }
+        const float notes[4] = {0.f, 4.f / 12.f, 7.f / 12.f, 1.f};
+        // An X that has not moved yet has crossed nothing: start it below.
+        r.in[0].x = -6.f;
+        r.run();
+        int wrong = 0;
+        for (int n = 0; n < 20000; n++) {
+            float x = 9.98f * shapeUniform() - 4.99f;
+            r.in[0].x = x;
+            r.run();
+            r.run();
+            r.run();
+            int region = std::min(3, (int)((x + 5.f) / 2.5f));
+            if (std::fabs(r.out[0].fx - notes[region]) > 1e-5f) wrong++;
+        }
+        snprintf(what, sizeof what, "quantizer setup, 20000 random jumps: %d on the wrong note (0)", wrong);
+        check(wrong == 0, what);
+
+        // The graphic VCO at its 110 Hz: stage 1 fires 110 times a second.
+        setup(SETUP_VCO, su);
+        Rig v;
+        v.c.fast = su.fast;
+        v.c.rate = knobFor(su.hz, true);
+        for (int k = 0; k < kStages; k++) {
+            v.c.value[k] = su.value[k];
+            v.c.threshold[k] = su.threshold[k];
+            v.c.direction[k] = su.direction[k];
+        }
+        v.c.range = su.range;
+        int fires = 0;
+        for (int n = 0; n < 48000; n++) {
+            v.run();
+            fires += v.fired(0);
+        }
+        snprintf(what, sizeof what, "graphic VCO setup: %d cycles in a second (110)", fires);
+        check(std::abs(fires - 110) <= 1, what);
+    }
+
+    printf("%s\n", failures ? "FAILED" : "all passed");
+    return failures ? 1 : 0;
+}
+
 // ---------------------------------------------------------------- cpu
 
 static int cmdCpu() {
@@ -742,8 +976,9 @@ int main(int argc, char** argv) {
     if (cmd == "length") return cmdLength();
     if (cmd == "ext") return cmdExt();
     if (cmd == "alias") return cmdAlias();
+    if (cmd == "shapes") return cmdShapes();
     if (cmd == "cpu") return cmdCpu();
     if (cmd == "wav" && argc > 2) return cmdWav(argv[2]);
-    fprintf(stderr, "usage: nodi_probe cross|length|ext|alias|cpu|wav <dir>\n");
+    fprintf(stderr, "usage: nodi_probe cross|length|ext|alias|shapes|cpu|wav <dir>\n");
     return 2;
 }

@@ -41,9 +41,9 @@ olim_probe: olim_probe.cpp ../src/olim/olim.hpp
 
 # Stage activation times against a ramp, thresholds from lengths, EXT and a
 # sixteen-step pair through one-sample cables, alias energy with the steps
-# rounded and not. Drives the engine header alone; every command but `cpu`
+# rounded and not, and the context menu's shapes. Drives the headers alone; every command but `cpu`
 # and `wav <dir>` exits nonzero on a failed check.
-nodi_probe: nodi_probe.cpp ../src/nodi/nodi.hpp
+nodi_probe: nodi_probe.cpp ../src/nodi/nodi.hpp ../src/nodi/shapes.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Measures and auditions the generated banks: every family of the four ported
@@ -175,6 +175,7 @@ smoke_materiae: ../src/materiae_dsp.hpp
 smoke_aether: ../src/aether_dsp.hpp $(wildcard ../src/guttur/*.hpp)
 smoke_radix: ../src/radix/radix.hpp
 smoke_olim: ../src/olim/olim.hpp ../src/imber/imber_worker.hpp
+smoke_nodi: ../src/nodi/nodi.hpp ../src/nodi/shapes.hpp ../src/position_switch.hpp
 
 # Run every smoke test, printing one CSV header for the lot.
 # Fails if any binary does.
