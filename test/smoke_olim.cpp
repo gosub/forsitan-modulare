@@ -5,7 +5,8 @@
 // module's own checks: where an echo lands and its sign, the VCA normalling,
 // R normalled from L, NaN at the input, the clock cable, the Memory swap and
 // its fade, TIME clamped to the memory, a module deleted while its buffer
-// is still being allocated, and the head presets and transforms.
+// is still being allocated, the head presets and transforms, and a slider
+// move riding the next crossfades.
 
 #include "smoke_harness.hpp"
 #include "../src/olim.cpp"
@@ -293,5 +294,37 @@ static void testMutations() {
     report("olim", "mutations", bad, bad == 0);
 }
 
+// A slider move rides the head's next crossfade, as on the hardware: it is
+// not heard at once, and it has landed within two fades (one to pick it up,
+// one to ramp), 400 ms.
+static void testSliderRamp() {
+    Olim m; long fr = 0;
+    m.params[Olim::DRY_PARAM].setValue(0.f);
+    m.params[Olim::TIME_PARAM].setValue(0.1f);   // 80 ms
+    soloHead(m, 7);
+    m.params[Olim::HEAD8_PARAM].setValue(1.f);
+    m.inputs[Olim::IN_L_INPUT].channels = 1;
+    auto step = [&]() {
+        m.inputs[Olim::IN_L_INPUT].setVoltage(2.f * std::sin(2.f * M_PI * 220.f * fr / SR));
+        m.process(makeArgs(fr++));
+        return std::fabs(m.outputs[Olim::OUT_L_OUTPUT].getVoltage());
+    };
+    for (int k = 0; k < 5; k++) {
+        // land the move at a different point of the fade cycle each time
+        for (long i = 0; i < 24000 + 1777 * k; i++) step();
+        m.params[Olim::HEAD8_PARAM].setValue(0.f);
+        float early = 0.f, late = 0.f;
+        for (long i = 0; i < (long)(0.5f * SR); i++) {
+            float y = step();
+            if (i < (long)(0.01f * SR)) early = std::max(early, y);
+            if (i > (long)(0.41f * SR)) late = std::max(late, y);
+        }
+        report("olim", "slider_not_instant_peak", early, early > 1.8f);
+        report("olim", "slider_landed_by_400ms_peak", late, late < 1e-3f);
+        m.params[Olim::HEAD8_PARAM].setValue(1.f);
+    }
+}
+
 SMOKE_MAIN(testEcho, testVca, testNormal, testNan, testClock, testMemory, testDeleteMidSwap,
-           testPresets, testTransforms, testMutations)
+           testPresets, testTransforms, testMutations,
+           testSliderRamp)
