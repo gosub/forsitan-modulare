@@ -79,9 +79,9 @@ seq = notes()
 - [ ] 1.1. Defaults: the four notes, and behind each one eight echoes
       spread evenly over the two seconds after it.
 - [ ] 1.2. **Spread** fully left: the echoes crowd right behind each note
-      and thin out toward two seconds. `o.set(spread=0)`
+      and thin out toward two seconds. `o.set(spread=0)  # -100% on the display`
 - [ ] 1.3. **Spread** fully right: one early echo, then a cluster close to
-      two seconds. `o.set(spread=1)`
+      two seconds. `o.set(spread=1)  # +100% on the display`
 - [ ] 1.4. Sweep **Spread** through noon by hand: a stretch in the middle
       changes nothing. That is the flat spot, not a fault.
 - [ ] 1.5. Open the VCA: **Time** moves under the notes and the echoes smear
@@ -90,21 +90,24 @@ seq = notes()
 - [ ] 1.6. Only **Head 8** up, then flick it down and up: one echo at two
       seconds, and the slider lands in steps of a fifth of a second, not at
       once. Not a fault.
-      `o.set(head1=0, head2=0, head3=0, head4=0, head5=0, head6=0, head7=0, head8=1)`
+      ```python
+      o.set(head1=0, head2=0, head3=0, head4=0,
+            head5=0, head6=0, head7=0, head8=1)
+      ```
 
 ---
 
 ## 2. Feedback
 
 ```python
-o.set(feedback=0.5)   # on the arc: loop gain exactly 1
+o.set(feedback=0.5)   # on the arc: 1.00x on the display
 ```
 
 - [ ] 2.1. Stop SEQ3 after a cycle: the echoes neither fade nor build.
       Sound on sound, for as long as it is left.
 - [ ] 2.2. **Feedback** past the arc: it builds into a howl that stays under
       the clip, and the stereo image comes apart as it rises.
-      `o.set(feedback=0.85)`
+      `o.set(feedback=0.85)  # 1.63x on the display`
 - [ ] 2.3. **Decide -** at the arc one head holds for good but eight heads
       fade by 4.4 dB over 40 passes (`olim_probe loop`), because the loop is
       divided by the sum of the sliders, as on the hardware. Keep it, or
@@ -121,7 +124,7 @@ clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 - [ ] 3.1. Turn **Time**: it jumps in doubles and halves, and its tooltip
       reads in clocks. With **Spread** at noon every echo is on the beat.
 - [ ] 3.2. **Spread** off noon: the inner echoes leave the beat, the last
-      one stays on it. `o.set(spread=0.8)`
+      one stays on it. `o.set(spread=0.8)  # +51% on the display`
 - [ ] 3.3. Pull the clock cable: **Time** is free again at once, back to two
       seconds. `o["clock"].unpatch()`
 
@@ -131,7 +134,7 @@ clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 
 ```python
 sine(110)
-o.set(time=0.03, feedback=0.5, dry=0)   # about 7 ms
+o.set(time=0.03, feedback=0.5, dry=0)   # 0.0072 s on the display
 ```
 
 - [ ] 4.1. A comb on the sine: open the VCA and its pitch walks in steps a
