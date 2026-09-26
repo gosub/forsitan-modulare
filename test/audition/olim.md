@@ -111,9 +111,13 @@ o.set(feedback=0.5)   # on the arc: 1.00x on the display
       o.set(head1=0, head2=0, head3=0, head4=0,
             head5=0, head6=0, head7=0, head8=1)
       ```
-- [ ] 2.2. All eight heads up, stop SEQ3 after a cycle: the echoes blur into
-      each other and fade within about ten seconds. Not a fault: the loop
-      averages the heads, and only a single head holds at the arc.
+- [ ] 2.2. All eight heads at 100%, stop SEQ3 after a cycle: the echoes
+      blur into each other and fade within about ten seconds. Not a fault:
+      the loop averages the heads, and only a single head holds at the arc.
+      ```python
+      o.set(head1=1, head2=1, head3=1, head4=1,
+            head5=1, head6=1, head7=1, head8=1)
+      ```
 - [ ] 2.3. **Feedback** past the arc: it builds into a howl that stays under
       the clip, and the stereo image comes apart as it rises.
       `o.set(feedback=0.85)  # 1.63x on the display`
