@@ -16,7 +16,8 @@
 //   In      : IN L, IN R (normalled from L), TIME / SPREAD / FEEDBACK CV,
 //             CLOCK, and a linear VCA per slider (0..5 V, unpatched = unity)
 //   Out     : OUT L, OUT R (limited to +-5 V)
-//   Menu    : Memory 20 / 60 / 150 s
+//   Menu    : Heads presets, Heads transform (the eight sliders at once,
+//             one undo step each), Memory 20 / 60 / 150 s
 
 #include "forsitan.hpp"
 #include "imber/imber_worker.hpp"
@@ -80,6 +81,128 @@ struct SwapJob {
     std::atomic<bool> done{false};
     std::atomic<bool> failed{false};
 };
+
+// ------------------------------------------------------------ head shapes
+//
+// Eight sliders are easy to set together by hand and tedious with a mouse, so
+// the context menu sets them in one go: presets write a shape, transforms
+// reshape what is there. DRY is never touched. Every shape except "All 100%"
+// peaks at 50%, so the sum stays near one head's level; Scale x2 brings a
+// shape to full.
+
+enum HeadPreset {
+    PRESET_ALL_100,
+    PRESET_ALL_50,
+    PRESET_ALL_0,
+    PRESET_ODDS,
+    PRESET_EVENS,
+    PRESET_LINEAR_UP,
+    PRESET_LINEAR_DOWN,
+    PRESET_EXP_UP,
+    PRESET_EXP_DOWN,
+    PRESET_LAST,
+    PRESET_FIRST,
+    PRESET_TAPE,
+    PRESET_BELL,
+    PRESET_HALVES,
+    PRESET_DOTTED,
+    PRESET_TRESILLO,
+    PRESET_RANDOM,
+    NUM_PRESETS
+};
+
+inline const char* presetName(int p) {
+    static const char* n[NUM_PRESETS] = {
+        "All 100%", "All 50%", "All 0%", "Odds 50%", "Evens 50%",
+        "Linear ascending", "Linear descending",
+        "Exponential ascending", "Exponential descending",
+        "Last head only", "First head only", "Tape echo", "Bell",
+        "Halves (4, 8)", "Dotted (3, 6)", "Tresillo (3, 6, 8)", "Random"};
+    return n[p];
+}
+
+// Where the menu draws a line: before the odds, the ramps, the single heads,
+// the rhythms and the random one.
+inline bool presetStartsGroup(int p) {
+    return p == PRESET_ODDS || p == PRESET_LINEAR_UP || p == PRESET_LAST
+        || p == PRESET_HALVES || p == PRESET_RANDOM;
+}
+
+// Fills v[0..7] with preset p. `uniform` is 0..1, for Random.
+template <typename Uniform>
+inline void presetShape(int p, float* v, Uniform uniform) {
+    const float top = 0.5f;
+    for (int i = 0; i < kHeads; i++) {
+        const int h = i + 1;                 // head number, 1..8
+        const float x = (float)i / (kHeads - 1);
+        float y = 0.f;
+        switch (p) {
+            case PRESET_ALL_100: y = 1.f; break;
+            case PRESET_ALL_50: y = top; break;
+            case PRESET_ALL_0: y = 0.f; break;
+            case PRESET_ODDS: y = h % 2 ? top : 0.f; break;
+            case PRESET_EVENS: y = h % 2 ? 0.f : top; break;
+            case PRESET_LINEAR_UP: y = top * h / kHeads; break;
+            case PRESET_LINEAR_DOWN: y = top * (kHeads + 1 - h) / kHeads; break;
+            // doubling per head: the first is 42 dB under the last
+            case PRESET_EXP_UP: y = top * std::exp2((float)(h - kHeads)); break;
+            case PRESET_EXP_DOWN: y = top * std::exp2((float)(1 - h)); break;
+            case PRESET_LAST: y = h == kHeads ? top : 0.f; break;
+            case PRESET_FIRST: y = h == 1 ? top : 0.f; break;
+            // each repeat 70% of the one before, as a tape loop's would be
+            case PRESET_TAPE: y = top * std::pow(0.7f, (float)i); break;
+            // centred between heads 4 and 5, so both peak: scaled by the
+            // bell's own value there to reach 50%
+            case PRESET_BELL: {
+                auto bell = [](float d) { return std::exp(-0.5f * std::pow(d / 0.22f, 2.f)); };
+                y = top * bell(x - 0.5f) / bell(0.5f / (kHeads - 1));
+                break;
+            }
+            // With a clock and SPREAD at noon the heads are eighths of TIME,
+            // so these are rhythms: two halves, a dotted pair, a 3-3-2.
+            case PRESET_HALVES: y = (h == 4 || h == 8) ? top : 0.f; break;
+            case PRESET_DOTTED: y = (h == 3 || h == 6) ? top : 0.f; break;
+            case PRESET_TRESILLO: y = (h == 3 || h == 6 || h == 8) ? top : 0.f; break;
+            case PRESET_RANDOM: y = top * uniform(); break;
+            default: break;
+        }
+        v[i] = y;
+    }
+}
+
+enum HeadTransform {
+    TRANSFORM_REVERSE,
+    TRANSFORM_ROTATE_LEFT,
+    TRANSFORM_ROTATE_RIGHT,
+    TRANSFORM_INVERT,
+    TRANSFORM_HALF,
+    TRANSFORM_DOUBLE,
+    NUM_TRANSFORMS
+};
+
+inline const char* transformName(int t) {
+    static const char* n[NUM_TRANSFORMS] = {
+        "Reverse", "Rotate left", "Rotate right", "Invert", "Scale x0.5", "Scale x2"};
+    return n[t];
+}
+
+// Reshapes v[0..7] in place. Rotate left moves every level one head earlier,
+// the first wrapping round to the last.
+inline void transformShape(int t, float* v) {
+    float w[kHeads];
+    for (int i = 0; i < kHeads; i++) w[i] = v[i];
+    for (int i = 0; i < kHeads; i++) {
+        switch (t) {
+            case TRANSFORM_REVERSE: v[i] = w[kHeads - 1 - i]; break;
+            case TRANSFORM_ROTATE_LEFT: v[i] = w[(i + 1) % kHeads]; break;
+            case TRANSFORM_ROTATE_RIGHT: v[i] = w[(i + kHeads - 1) % kHeads]; break;
+            case TRANSFORM_INVERT: v[i] = 1.f - w[i]; break;
+            case TRANSFORM_HALF: v[i] = 0.5f * w[i]; break;
+            case TRANSFORM_DOUBLE: v[i] = std::min(2.f * w[i], 1.f); break;
+            default: break;
+        }
+    }
+}
 
 }  // namespace olim
 
@@ -306,6 +429,39 @@ struct Olim : Module {
         job = j;
     }
 
+    // Sets the eight head sliders at once, as one undo step.
+    void setHeads(const float* v, const std::string& what) {
+        history::ComplexAction* h = new history::ComplexAction;
+        h->name = "olim heads: " + what;
+        for (int i = 0; i < olim::kHeads; i++) {
+            float old = params[HEAD1_PARAM + i].getValue();
+            float now = clamp(v[i], 0.f, 1.f);
+            params[HEAD1_PARAM + i].setValue(now);
+            if (old == now) continue;
+            history::ParamChange* c = new history::ParamChange;
+            c->moduleId = id;
+            c->paramId = HEAD1_PARAM + i;
+            c->oldValue = old;
+            c->newValue = now;
+            h->push(c);
+        }
+        if (APP && APP->history && !h->isEmpty()) APP->history->push(h);
+        else delete h;
+    }
+
+    void applyPreset(int p) {
+        float v[olim::kHeads];
+        olim::presetShape(p, v, []() { return random::uniform(); });
+        setHeads(v, olim::presetName(p));
+    }
+
+    void applyTransform(int t) {
+        float v[olim::kHeads];
+        for (int i = 0; i < olim::kHeads; i++) v[i] = params[HEAD1_PARAM + i].getValue();
+        olim::transformShape(t, v);
+        setHeads(v, olim::transformName(t));
+    }
+
     // Memory menu: a new size clears a failed allocation's latch.
     void setMemory(float seconds) {
         memory = seconds;
@@ -511,6 +667,20 @@ struct OlimWidget : ModuleWidget {
         Olim* m = getModule<Olim>();
         if (!m) return;
         menu->addChild(new MenuSeparator);
+        menu->addChild(createSubmenuItem("Heads presets", "", [=](Menu* sub) {
+            for (int p = 0; p < olim::NUM_PRESETS; p++) {
+                if (olim::presetStartsGroup(p)) sub->addChild(new MenuSeparator);
+                sub->addChild(createMenuItem(olim::presetName(p), "",
+                                             [=]() { m->applyPreset(p); }));
+            }
+        }));
+        menu->addChild(createSubmenuItem("Heads transform", "", [=](Menu* sub) {
+            for (int t = 0; t < olim::NUM_TRANSFORMS; t++) {
+                if (t == olim::TRANSFORM_INVERT) sub->addChild(new MenuSeparator);
+                sub->addChild(createMenuItem(olim::transformName(t), "",
+                                             [=]() { m->applyTransform(t); }));
+            }
+        }));
         std::vector<std::string> labels;
         for (int i = 0; i < kNumMemoryChoices; i++)
             labels.push_back(string::f("%g s", kMemoryChoices[i]));

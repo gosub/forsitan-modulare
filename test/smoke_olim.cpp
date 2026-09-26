@@ -4,8 +4,8 @@
 // The engine is measured by olim_probe, which needs no Rack. These are the
 // module's own checks: where an echo lands and its sign, the VCA normalling,
 // R normalled from L, NaN at the input, the clock cable, the Memory swap and
-// its fade, TIME clamped to the memory, and a module deleted while its
-// buffer is still being allocated.
+// its fade, TIME clamped to the memory, a module deleted while its buffer
+// is still being allocated, and the head presets and transforms.
 
 #include "smoke_harness.hpp"
 #include "../src/olim.cpp"
@@ -179,4 +179,85 @@ static void testDeleteMidSwap() {
     report("olim", "delete_mid_swap", 0, true);
 }
 
-SMOKE_MAIN(testEcho, testVca, testNormal, testNan, testClock, testMemory, testDeleteMidSwap)
+static void heads(Olim& m, float* v) {
+    for (int i = 0; i < olim::kHeads; i++) v[i] = m.params[Olim::HEAD1_PARAM + i].getValue();
+}
+
+static bool same(const float* a, const float* b) {
+    for (int i = 0; i < olim::kHeads; i++)
+        if (std::fabs(a[i] - b[i]) > 1e-6f) return false;
+    return true;
+}
+
+// Every preset lands in range, peaks at 50% (All 100% and All 0% aside),
+// leaves DRY where it was, and the patterns are the heads they say.
+static void testPresets() {
+    Olim m;
+    m.params[Olim::DRY_PARAM].setValue(0.37f);
+    int bad = 0;
+    for (int p = 0; p < olim::NUM_PRESETS; p++) {
+        m.applyPreset(p);
+        float v[olim::kHeads];
+        heads(m, v);
+        float top = 0.f;
+        for (float x : v) {
+            bad += x < 0.f || x > 1.f;
+            top = std::max(top, x);
+        }
+        float want = p == olim::PRESET_ALL_100 ? 1.f : p == olim::PRESET_ALL_0 ? 0.f : 0.5f;
+        if (p == olim::PRESET_RANDOM) bad += top > 0.5f;
+        else bad += std::fabs(top - want) > 1e-6f;
+        bad += m.params[Olim::DRY_PARAM].getValue() != 0.37f;
+    }
+    report("olim", "presets_range_peak_dry", bad, bad == 0);
+
+    auto on = [&](int p) {
+        m.applyPreset(p);
+        int mask = 0;
+        for (int i = 0; i < olim::kHeads; i++)
+            if (m.params[Olim::HEAD1_PARAM + i].getValue() > 0.f) mask |= 1 << i;
+        return mask;
+    };
+    int wrong = 0;
+    wrong += on(olim::PRESET_ODDS) != 0x55;
+    wrong += on(olim::PRESET_EVENS) != 0xaa;
+    wrong += on(olim::PRESET_LAST) != 0x80;
+    wrong += on(olim::PRESET_FIRST) != 0x01;
+    wrong += on(olim::PRESET_HALVES) != 0x88;
+    wrong += on(olim::PRESET_DOTTED) != 0x24;
+    wrong += on(olim::PRESET_TRESILLO) != 0xa4;
+    report("olim", "preset_patterns", wrong, wrong == 0);
+}
+
+// Reverse turns each ascending shape into its descending twin, and each
+// transform undoes with its opposite.
+static void testTransforms() {
+    Olim m;
+    float a[olim::kHeads], b[olim::kHeads], c[olim::kHeads];
+    int bad = 0;
+    const int pairs[][2] = {{olim::PRESET_LINEAR_UP, olim::PRESET_LINEAR_DOWN},
+                            {olim::PRESET_EXP_UP, olim::PRESET_EXP_DOWN}};
+    for (auto& pr : pairs) {
+        m.applyPreset(pr[1]); heads(m, a);
+        m.applyPreset(pr[0]); m.applyTransform(olim::TRANSFORM_REVERSE); heads(m, b);
+        bad += !same(a, b);
+    }
+    m.applyPreset(olim::PRESET_TRESILLO); heads(m, a);
+    m.applyTransform(olim::TRANSFORM_ROTATE_LEFT); heads(m, b);
+    bad += b[1] != 0.5f || b[4] != 0.5f || b[6] != 0.5f;   // one head earlier
+    m.applyTransform(olim::TRANSFORM_ROTATE_RIGHT); heads(m, c);
+    bad += !same(a, c);
+    m.applyTransform(olim::TRANSFORM_INVERT);
+    m.applyTransform(olim::TRANSFORM_INVERT); heads(m, c);
+    bad += !same(a, c);
+    m.applyTransform(olim::TRANSFORM_DOUBLE);
+    m.applyTransform(olim::TRANSFORM_HALF); heads(m, c);
+    bad += !same(a, c);
+    m.applyPreset(olim::PRESET_ALL_100);
+    m.applyTransform(olim::TRANSFORM_DOUBLE); heads(m, c);
+    for (float x : c) bad += x != 1.f;
+    report("olim", "transforms", bad, bad == 0);
+}
+
+SMOKE_MAIN(testEcho, testVca, testNormal, testNan, testClock, testMemory, testDeleteMidSwap,
+           testPresets, testTransforms)
