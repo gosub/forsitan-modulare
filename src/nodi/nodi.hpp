@@ -16,7 +16,7 @@
 //
 // A stage fires exactly at its threshold and re-arms only after X has been
 // 5 mV past it the other way, so a still or noisy X sitting on a threshold
-// fires it once. A moving threshold
+// fires it once; a jump that lands 5 mV or more past it always fires. A moving threshold
 // crosses a still X just as a moving X crosses a still threshold.
 //
 // Every output leaves one sample late. That is the room a polyBLEP needs to
@@ -466,16 +466,20 @@ struct Channel {
                 float d0 = g.x0 - (thPrev[k] + dth * g.t0);
                 float d1 = g.x1 - (thPrev[k] + dth * g.t1);
                 bool fire = false, up = d1 > d0;
+                // A crossing that lands a whole hysteresis width past the
+                // threshold fires even unarmed: X parked just past it and
+                // then sent across by a sample-and-hold is a real crossing,
+                // and noise inside the band never lands that far.
                 if (up) {
                     if (d0 <= -kHysteresis) armedUp[k] = true;
-                    if (armedUp[k] && d1 >= 0.f) {
+                    if ((armedUp[k] && d1 >= 0.f) || (d0 < 0.f && d1 >= kHysteresis)) {
                         fire = true;
                         armedUp[k] = false;
                     }
                     if (d1 >= kHysteresis) armedDown[k] = true;
                 } else if (d1 < d0) {
                     if (d0 >= kHysteresis) armedDown[k] = true;
-                    if (armedDown[k] && d1 <= 0.f) {
+                    if ((armedDown[k] && d1 <= 0.f) || (d0 > 0.f && d1 <= -kHysteresis)) {
                         fire = true;
                         armedDown[k] = false;
                     }

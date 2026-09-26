@@ -207,6 +207,28 @@ static int cmdCross() {
         check(fires == 1, what);
     }
 
+    // X parked just past a FALL threshold, inside the hysteresis band, then
+    // sent well below it in one jump: that is a crossing, and it fires.
+    {
+        Rig r;
+        r.internal = false;
+        r.c.length = false;
+        for (int k = 0; k < kStages; k++) r.c.direction[k] = OFF;
+        r.c.direction[0] = FALL;
+        r.c.direction[1] = RISE;
+        r.c.threshold[0] = r.c.threshold[1] = 0.5f;
+        r.in[0].x = -1.f;
+        r.run();
+        r.in[0].x = 0.002f;                  // RISE fires, FALL is not armed
+        r.run();
+        int before = r.active();
+        r.in[0].x = -1.f;
+        r.run();
+        snprintf(what, sizeof what, "parked 2 mV past a FALL threshold, then a jump to -1 V: stage %d -> %d (2 -> 1)",
+                 before + 1, r.active() + 1);
+        check(before == 1 && r.active() == 0, what);
+    }
+
     // The very top of the ramp fires, every cycle.
     {
         Rig r;
