@@ -67,6 +67,28 @@ up is louder, and the output limits at 5 V.
 
 ## Context menu
 
+- **Heads presets**: sets the eight head sliders at once, where a hand would
+  sweep them together. **Dry** is left alone, and one Ctrl+Z undoes the lot.
+  Every preset but All 100% peaks at 50%, so the output stays near one
+  head's level; **Heads transform** > Scale x2 takes it to full.
+
+  | preset | heads 1 to 8 |
+  |---|---|
+  | All 100% / 50% / 0% | flat |
+  | Odds 50%, Evens 50% | 1, 3, 5, 7 or 2, 4, 6, 8 |
+  | Linear ascending / descending | 6% to 50% in equal steps, or back |
+  | Exponential ascending / descending | doubling per head, 0.4% to 50%, or back |
+  | Last head only | a plain delay at **Time** |
+  | First head only | a single early repeat, a slapback at short times |
+  | Tape echo | each repeat 70% of the one before, as a tape loop would decay |
+  | Bell | the middle heads up, the ends down |
+  | Halves (4, 8), Dotted (3, 6), Tresillo (3, 6, 8) | rhythms: with a clock and **Spread** at noon each head is an eighth of **Time**, so these repeat on the half, on the dotted eighths, and as a 3-3-2 |
+  | Random | each head anywhere from 0 to 50% |
+
+- **Heads transform**: reshapes the sliders as they are, also one undo step.
+  Reverse (so ascending becomes descending), Rotate left and right (every
+  level moves one head earlier or later, the end wrapping round: walks a
+  rhythm across the bar), Invert (100% minus each), Scale x0.5 and x2.
 - **Memory**: 20, 60 or 150 s, default 150 (the hardware's). The buffer is
   sized for Rack's sample rate: 150 s at 48 kHz is 58 MB, at 192 kHz 230 MB.
   Changing it fades the output out, empties the buffer and fades back in.
