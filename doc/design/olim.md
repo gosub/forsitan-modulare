@@ -127,8 +127,10 @@ w       = w + 1
   of reach. Measured (2026-09-26, all heads at 50%): at TIME 1 to 2 s the
   fan fades at 2x from even plucks, uneven plucks and noise alike, so it is
   the loop and not the material; at TIME 0.25 s and 2x all three take off,
-  because the compressor and limiter pump at the loop's own rate and break
-  the cancellation. No normalisation changes the long-TIME case.
+  but into a hiss at 7 to 18 kHz, not a howl: the sample-by-sample limiter
+  adds harmonics and those survive the cancellation. The pitched howl is a
+  single head at a few ms: at 10 ms and 2x it settles at 50 Hz, 1 / (2 T),
+  odd harmonics. No normalisation changes the long-TIME case.
 - **SPREAD** has the same double dead zone, so noon is exactly even.
 - **Sliders**: linear, times the VCA (0..5 V to 0..1, clamped).
 - **Dry** is smoothed (about 20 ms), feedback lightly (2 ms).

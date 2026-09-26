@@ -59,8 +59,12 @@ builds depends on which heads are up, not on what is played. On the arc a
 single head holds forever, and so do the odd heads alone. A full fan smears
 into itself and fades within seconds at a long **Time**, even at 2x: that is
 the hardware's loop, not a fault. At a short **Time** (a quarter of a second)
-and high **Feedback** the limiter and compressor pump at the loop's own rate
-and break the cancellation, and the fan howls. To hold a phrase exactly, use
+and high **Feedback** the fan breaks instead into a high hiss held under the
+limit: the limiter works sample by sample, and the harmonics it adds are what
+survives the cancellation. The howl belongs to a single head: at a **Time** of
+a few milliseconds and high **Feedback** it rings at half the rate the delay
+suggests (the inverted loop needs two passes a cycle), a buzz with odd
+harmonics that **Time CV** plays at a volt per octave. To hold a phrase exactly, use
 one head (Heads presets > Last head only) and bring the others in on the
 output.
 
