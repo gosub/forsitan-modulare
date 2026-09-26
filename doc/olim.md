@@ -89,6 +89,12 @@ up is louder, and the output limits at 5 V.
   Reverse (so ascending becomes descending), Rotate left and right (every
   level moves one head earlier or later, the end wrapping round: walks a
   rhythm across the bar), Invert (100% minus each), Scale x0.5 and x2.
+  Then three mutations, small random steps that walk when repeated:
+  **Mutate** varies each level by up to 20% and leaves silent heads silent,
+  so the rhythm holds and the dynamics move; **Mutate wide** moves each
+  level by up to 10 points, so a silent head can wake as a ghost note and a
+  quiet one drop out; **Mutate pattern** swaps one pair of neighbouring
+  heads, so the levels hold and the rhythm moves a step.
 - **Memory**: 20, 60 or 150 s, default 150 (the hardware's). The buffer is
   sized for Rack's sample rate: 150 s at 48 kHz is 58 MB, at 192 kHz 230 MB.
   Changing it fades the output out, empties the buffer and fades back in.
