@@ -172,9 +172,9 @@ o.set(time=0.025, dry=0)   # 0.0050 s on the display
 o.set(feedback=0.385)      # 0.95x, just under the arc
 ```
 
-- [ ] 4.1. Noise rings as a pitched buzz, a plucked string held open: 100 Hz,
+- [x] 4.1. Noise rings as a pitched buzz, a plucked string held open: 100 Hz,
       an octave under what 5 ms suggests (the inverted loop).
-- [ ] 4.2. Open the VCA to about 20%: the pitch sweeps an octave either way,
+- [x] 4.2. Open the VCA to about 20%: the pitch sweeps an octave either way,
       in steps a fifth of a second apart rather than gliding. Not a fault.
       `vcv.modulate(o["time cv"], rate=0.2, offset=False)  # +-5 V`
 
@@ -182,14 +182,14 @@ o.set(feedback=0.385)      # 0.95x, just under the arc
 
 ## 5. VCAs and memory
 
-- [ ] 5.1. Only **Head 4** up. Open the VCA: its echo pulses with the LFO,
+- [x] 5.1. Only **Head 4** up. Open the VCA: its echo pulses with the LFO,
       and its slider sets the depth.
       ```python
       o.set(head1=0, head2=0, head3=0, head4=1,
             head5=0, head6=0, head7=0, head8=0)
       vcv.modulate(o["head4 vca"], rate=1.0)
       ```
-- [ ] 5.2. Menu, Memory, 20 s: the output drops out for a moment and the
+- [x] 5.2. Menu, Memory, 20 s: the output drops out for a moment and the
       echoes start again from an empty buffer. Not a fault.
 
 ---
@@ -201,10 +201,10 @@ clock(2.0)["square"] >> seq["clock"]
 o.set(time=0.75)   # 8 clocks: each head an eighth of TIME
 ```
 
-- [ ] 6.1. Menu, Heads presets, Tresillo, then Rotate left a few times from
+- [x] 6.1. Menu, Heads presets, Tresillo, then Rotate left a few times from
       Heads transform: the rhythm walks across the bar a head at a time.
-- [ ] 6.2. Any preset, then Ctrl+Z once: all eight sliders go back to where
+- [x] 6.2. Any preset, then Ctrl+Z once: all eight sliders go back to where
       they were, and **Dry** never moved.
-- [ ] 6.3. Tresillo, then each mutation a few times: Mutate keeps the
+- [x] 6.3. Tresillo, then each mutation a few times: Mutate keeps the
       rhythm and moves the accents, Mutate pattern moves one echo a step,
       Mutate wide starts to blur it.
