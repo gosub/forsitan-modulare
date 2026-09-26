@@ -24,7 +24,7 @@ CROSS_BINS = smoke_oom caligo_invariants raucus_invariants tundo_invariants \
 all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
-     aether_probe vates_probe artifex_probe radix_probe olim_probe \
+     aether_probe vates_probe artifex_probe radix_probe olim_probe nodi_probe \
      $(SMOKE_BINS) $(CROSS_BINS)
 
 # Every one of the 150 programs at the defaults: level, DC, centroid, CV OUT
@@ -37,6 +37,13 @@ radix_probe: radix_probe.cpp ../src/radix/radix.hpp
 # TIME and SPREAD sweeps, and `wav <dir>` to listen. Drives the engine header
 # alone; `heads`, `loop` and `clicks` exit nonzero on a failed check.
 olim_probe: olim_probe.cpp ../src/olim/olim.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# Stage activation times against a ramp, thresholds from lengths, EXT and a
+# sixteen-step pair through one-sample cables, alias energy with the steps
+# rounded and not. Drives the engine header alone; every command but `cpu`
+# and `wav <dir>` exits nonzero on a failed check.
+nodi_probe: nodi_probe.cpp ../src/nodi/nodi.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Measures and auditions the generated banks: every family of the four ported
@@ -206,7 +213,7 @@ check: $(SMOKE_BINS) $(CROSS_BINS)
 clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
 	      caligo_probe raucus_probe tundo_probe cartilago_probe \
-	      textor_probe scrupea_probe viginti_probe aether_probe \
+	      textor_probe scrupea_probe viginti_probe aether_probe nodi_probe \
 	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
