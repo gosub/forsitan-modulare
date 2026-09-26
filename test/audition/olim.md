@@ -38,10 +38,10 @@ def drums():
     d["left", "right"] >> o["in l", "in r"]
     return d
 
-def sine(hz=220):
-    s = vcv.module("VCO", freq=vcv.hz(hz))
-    s["sine"] >> o["in l"] + o["in r"]
-    return s
+def noise():
+    n = vcv.module("Noise")
+    n["pink noise"] >> o["in l"] + o["in r"]
+    return n
 
 def notes(release=0.5):
     """Four short notes, then four rests, two steps a second: C, E flat, G
@@ -150,14 +150,14 @@ o.set(feedback=0.5)   # on the arc: 1.00x on the display
 clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 ```
 
-- [ ] 3.1. Turn **Time**: it jumps in doubles and halves, and its tooltip
+- [x] 3.1. Turn **Time**: it jumps in doubles and halves, and its tooltip
       reads in clocks. With **Spread** at noon every echo is on the beat.
       Past 8 clocks the echoes land on later repeats of the phrase (it
       repeats every 8); stop SEQ3 there and they spread out instead.
-- [ ] 3.2. **Spread** off noon: the inner echoes leave the beat, the last
+- [x] 3.2. **Spread** off noon: the inner echoes leave the beat, the last
       one stays on it.
       `o.set(spread=0.8)  # +51% on the display`
-- [ ] 3.3. Pull the clock cable: **Time** is free again at once, back to two
+- [x] 3.3. Pull the clock cable: **Time** is free again at once, back to two
       seconds.
 
 ---
@@ -165,12 +165,17 @@ clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 ## 4. Short times
 
 ```python
-sine(110)
-o.set(time=0.03, feedback=0.5, dry=0)   # 0.0072 s on the display
+noise()
+o.set(head1=0, head2=0, head3=0, head4=0,
+      head5=0, head6=0, head7=0, head8=1)
+o.set(time=0.025, dry=0)   # 0.0050 s on the display
+o.set(feedback=0.385)      # 0.95x, just under the arc
 ```
 
-- [ ] 4.1. A comb on the sine: open the VCA and its pitch walks in steps a
-      fifth of a second apart rather than gliding. Not a fault.
+- [ ] 4.1. Noise rings as a pitched buzz, a plucked string held open: 100 Hz,
+      an octave under what 5 ms suggests (the inverted loop).
+- [ ] 4.2. Open the VCA to about 20%: the pitch sweeps an octave either way,
+      in steps a fifth of a second apart rather than gliding. Not a fault.
       `vcv.modulate(o["time cv"], rate=0.2, offset=False)  # +-5 V`
 
 ---
