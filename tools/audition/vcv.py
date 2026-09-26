@@ -481,16 +481,20 @@ def hz(f, model='Fundamental/VCO'):
     return 12.0 * math.log2(float(f) / 261.6255653005986)
 
 
-def modulate(target, depth=0.0, rate=0.5, shape='sine'):
+def modulate(target, depth=0.0, rate=0.5, shape='sine', offset=True):
     """An LFO into a VCA into `target`, with the VCA shut.
 
     The audition then says "open the VCA": a slow sweep by hand is not
     repeatable and not describable, and this makes the depth a knob someone
     can turn while listening, at a rate that is written down.
+
+    The LFO is unipolar (0..10 V) unless `offset=False`, which makes it
+    bipolar (+-5 V): the one to use on a CV that swings either side of its
+    knob, like a time or a pitch, where a unipolar sweep only goes one way.
     """
     p = current()
     lfo = p.module('LFO')
-    lfo.set(frequency=hz(rate, 'LFO'))
+    lfo.set(frequency=hz(rate, 'LFO'), offset=1 if offset else 0)
     vca = p.module('VCA')
     vca.set(channel_1_level=depth)
     lfo[shape] >> vca['channel_1']
