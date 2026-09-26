@@ -188,6 +188,10 @@ def cpp_line(el, module):
     ref = f'module, {module}::{eid}'
     if kind == 'param':
         if el.get('light'):
+            # A lit slider is a template on its light's colour, and the
+            # house colour is the accent yellow (olim, nodi).
+            if ctype == 'VCVLightSlider':
+                ctype = 'VCVLightSlider<YellowLight>'
             return (f'        addParam(createLightParamCentered<{ctype}>'
                     f'({vec}, {ref}, {module}::{el["light"]}));')
         return f'        addParam(createParamCentered<{ctype}>({vec}, {ref}));'
@@ -218,9 +222,11 @@ def generate_block(layout):
     lines = [head]
     for e in layout['elements']:
         if e['kind'] in SVG_ONLY:
+            size = (e.get('box_w', 14.0), e.get('box_h', 14.0))
+            tail = f' box={size[0]:g}x{size[1]:g}' if e['kind'] == 'box' and size != (14.0, 14.0) else ''
             lines.append(
                 f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
-                f'{e["kind"]} "{e["label"]}" {e["label_dy"]} {e["x"]:.2f} {e["y"]:.2f}')
+                f'{e["kind"]} "{e["label"]}" {e["label_dy"]} {e["x"]:.2f} {e["y"]:.2f}{tail}')
         else:
             tail = f' light={e["light"]}' if e.get('light') else ''
             lines.append(
