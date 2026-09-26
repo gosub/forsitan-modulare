@@ -58,7 +58,7 @@ up is louder, and the output limits at 5 V.
 | jack | function |
 |---|---|
 | **In L / In R** | audio, +-5 V full scale. **In R** is normalled from **In L** |
-| **Time CV** | +1 V halves **Time**, -1 V doubles it, over +-5 V (clocked: two power-of-two steps per volt) |
+| **Time CV** | +1 V halves **Time**, -1 V doubles it, over +-5 V (clocked: two power-of-two steps per volt). Bipolar, centred on the knob: a unipolar 0-10 V source only ever shortens **Time**, and past +5 V it holds at 1/32 of it |
 | **Spread CV** | +-5 V sweeps the whole knob either way |
 | **Feedback CV** | +5 V adds 1 to the loop gain, up to 3 in all |
 | **Clk** | rising edges. The period is the mean of the last two intervals; with no edge for two seconds, or the cable pulled, **Time** is free again |
