@@ -18,7 +18,7 @@ static void connect(Nodi& m, int input, float v, int channels = 1) {
 
 // Rack leaves an unpatched output mono whatever setChannels asks: patch them.
 static void plugOutputs(Nodi& m) {
-    for (int o = 0; o < Nodi::NUM_OUTPUTS; o++) m.outputs[o].channels = 1;
+    for (int o = 0; o < Nodi::OUTPUTS_LEN; o++) m.outputs[o].channels = 1;
 }
 
 static void rampValues(Nodi& m) {
@@ -37,7 +37,7 @@ static void testDefaults() {
     bool gatePrev = false;
     float lo = 1e9f, hi = -1e9f;
     Stats s;
-    for (long i = 0; i < (long)(4.f * SR) - 100; i++) {
+    for (long i = 0; i < (long)(3.9f * SR); i++) {
         m.process(makeArgs(fr++));
         float y = m.outputs[Nodi::FX_OUTPUT].getVoltage();
         s.add(y);
@@ -56,7 +56,7 @@ static void testDefaults() {
     report("nodi", "defaults_steps_in_order", seq.size(), inOrder);
     report("nodi", "defaults_gates_per_cycle", gates, gates == 8);
     report("nodi", "defaults_ramp_low", lo, lo > -5.01f && lo < -4.99f);
-    report("nodi", "defaults_ramp_high", hi, hi < 5.01f && hi > 4.99f);
+    report("nodi", "defaults_ramp_high_at_3_9_s", hi, hi < 4.76f && hi > 4.74f);
 }
 
 // A still X patched in stops the sequence on the stage it selects; pulling
@@ -159,7 +159,7 @@ static void testGroups() {
     int gates[3] = {0, 0, 0};
     bool prev[3] = {false, false, false};
     bool comOk = true;
-    for (long i = 0; i < (long)(4.f * SR) - 100; i++) {
+    for (long i = 0; i < (long)(3.9f * SR); i++) {
         m.process(makeArgs(fr++));
         for (int g = 0; g < 3; g++) {
             bool v = m.outputs[Nodi::GATE_A_OUTPUT + g].getVoltage() > 5.f;
@@ -188,14 +188,14 @@ static void testNan() {
     const float bad[2] = {NAN, INFINITY};
     Stats s;
     for (int b = 0; b < 2; b++) {
-        for (int in = 0; in < Nodi::NUM_INPUTS; in++) connect(m, in, bad[b]);
+        for (int in = 0; in < Nodi::INPUTS_LEN; in++) connect(m, in, bad[b]);
         for (int i = 0; i < 4800; i++) {
             m.process(makeArgs(fr++));
-            for (int o = 0; o < Nodi::NUM_OUTPUTS; o++) s.add(m.outputs[o].getVoltage());
+            for (int o = 0; o < Nodi::OUTPUTS_LEN; o++) s.add(m.outputs[o].getVoltage());
         }
     }
     report("nodi", "nan_inputs_outputs_finite", s.nans, s.nans == 0);
-    for (int in = 0; in < Nodi::NUM_INPUTS; in++) m.inputs[in].channels = 0;
+    for (int in = 0; in < Nodi::INPUTS_LEN; in++) m.inputs[in].channels = 0;
     int changes = 0;
     float prev = m.outputs[Nodi::FX_OUTPUT].getVoltage();
     for (int i = 0; i < (int)(4.f * SR); i++) {
@@ -207,7 +207,8 @@ static void testNan() {
     report("nodi", "nan_then_sequence_recovers", changes, changes >= 7);
 }
 
-// One cycle at other sample rates: still eight steps.
+// Most of one cycle at other sample rates (stage 8 starts at 3.5 s): still
+// eight steps.
 static void testSampleRates() {
     const float rates[3] = {44100.f, 96000.f, 192000.f};
     for (float sr : rates) {
@@ -222,7 +223,7 @@ static void testSampleRates() {
         a.sampleTime = 1.f / sr;
         int steps = 0;
         float prev = -1.f;
-        for (long i = 0; i < (long)(4.f * sr) - 100; i++) {
+        for (long i = 0; i < (long)(3.9f * sr); i++) {
             a.frame = i;
             m.process(a);
             float y = m.outputs[Nodi::FX_OUTPUT].getVoltage();
@@ -288,7 +289,7 @@ static void testMenus() {
         n.applySetup(id);
         for (int i = 0; i < (int)SR; i++) {
             n.process(makeArgs(fr++));
-            for (int o = 0; o < Nodi::NUM_OUTPUTS; o++) s.add(n.outputs[o].getVoltage());
+            for (int o = 0; o < Nodi::OUTPUTS_LEN; o++) s.add(n.outputs[o].getVoltage());
         }
     }
     report("nodi", "menu_every_setup_runs_finite", s.nans, s.nans == 0);

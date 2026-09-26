@@ -34,7 +34,6 @@
 
 namespace {
 
-const float kDefaultHz = 0.25f;           // eight steps at two a second
 const float kLightFlash = 0.05f;          // seconds a fired threshold stays lit
 const int kLightDivision = 32;            // samples between light updates
 
@@ -76,26 +75,26 @@ struct Nodi : Module {
         GROUP1_PARAM, GROUP2_PARAM, GROUP3_PARAM, GROUP4_PARAM,
         GROUP5_PARAM, GROUP6_PARAM, GROUP7_PARAM, GROUP8_PARAM,
         THR_A_PARAM, THR_B_PARAM, THR_C_PARAM,
-        NUM_PARAMS
+        PARAMS_LEN
     };
     enum InputId {
         VOCT_INPUT, FM_INPUT, SYNC_INPUT, SYNCN_INPUT,
         X_INPUT, HI_INPUT, LO_INPUT, EXT_INPUT, Y_INPUT,
         THR_A_INPUT, THR_B_INPUT, THR_C_INPUT,
         SW_A_INPUT, SW_B_INPUT, SW_C_INPUT,
-        NUM_INPUTS
+        INPUTS_LEN
     };
     enum OutputId {
         RAMP_OUTPUT, EOC_OUTPUT, FX_OUTPUT, GATE_OUTPUT,
         GATE_A_OUTPUT, GATE_B_OUTPUT, GATE_C_OUTPUT, COM_OUTPUT,
-        NUM_OUTPUTS
+        OUTPUTS_LEN
     };
     enum LightId {
         VALUE1_LIGHT, VALUE2_LIGHT, VALUE3_LIGHT, VALUE4_LIGHT,
         VALUE5_LIGHT, VALUE6_LIGHT, VALUE7_LIGHT, VALUE8_LIGHT,
         THRESH1_LIGHT, THRESH2_LIGHT, THRESH3_LIGHT, THRESH4_LIGHT,
         THRESH5_LIGHT, THRESH6_LIGHT, THRESH7_LIGHT, THRESH8_LIGHT,
-        NUM_LIGHTS
+        LIGHTS_LEN
     };
 
     nodi::Engine engine;
@@ -167,9 +166,9 @@ struct Nodi : Module {
     };
 
     Nodi() {
-        config(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS);
+        config(PARAMS_LEN, INPUTS_LEN, OUTPUTS_LEN, LIGHTS_LEN);
 
-        configParam<RateQuantity>(RATE_PARAM, 0.f, 1.f, knobForHz(kDefaultHz, false), "Rate");
+        configParam<RateQuantity>(RATE_PARAM, 0.f, 1.f, 0.5333f, "Rate");  // 0.25 Hz: two steps a second
         configSwitch(FAST_PARAM, 0.f, 1.f, 0.f, "Range",
                      {"Slow: 4 min to 9 Hz", "Fast: 4 Hz to 12 kHz"});
         configParam(FM_PARAM, 0.f, 1.f, 0.f, "FM amount", "%", 0.f, 100.f);
@@ -181,20 +180,43 @@ struct Nodi : Module {
         configSwitch(RANGE_PARAM, 0.f, 2.f, 0.f, "f(X) range",
                      {"0 to 2.5 V", "0 to 5 V", "-5 to +5 V"});
         configParam<DurQuantity>(DUR_PARAM, 0.f, 1.f, 0.6f, "Gate length");
-        for (int k = 0; k < nodi::kStages; k++) {
-            configParam<ValueQuantity>(VALUE1_PARAM + k, 0.f, 1.f, 0.f,
-                                       string::f("Stage %d f(X)", k + 1));
-            configParam<ThreshQuantity>(THRESH1_PARAM + k, 0.f, 1.f, 0.5f,
-                                        string::f("Stage %d threshold", k + 1));
-            configSwitch(DIR1_PARAM + k, 0.f, 2.f, k == 0 ? 0.f : 2.f,
-                         string::f("Stage %d direction", k + 1), {"Fall", "Off", "Rise"});
-            configSwitch(GROUP1_PARAM + k, 0.f, 2.f, (float)(2 - k % 3),
-                         string::f("Stage %d group", k + 1), {"C", "B", "A"});
-        }
-        const char* g[3] = {"A", "B", "C"};
-        for (int i = 0; i < 3; i++)
-            configParam(THR_A_PARAM + i, 0.f, 1.f, 1.f,
-                        string::f("Group %s threshold CV amount", g[i]), "%", 0.f, 100.f);
+        // One literal call a control, which is what tools/audition/modspec.py
+        // reads the ranges, defaults and switch labels from.
+        configParam<ValueQuantity>(VALUE1_PARAM, 0.f, 1.f, 0.f, "Stage 1 f(X)");
+        configParam<ValueQuantity>(VALUE2_PARAM, 0.f, 1.f, 0.f, "Stage 2 f(X)");
+        configParam<ValueQuantity>(VALUE3_PARAM, 0.f, 1.f, 0.f, "Stage 3 f(X)");
+        configParam<ValueQuantity>(VALUE4_PARAM, 0.f, 1.f, 0.f, "Stage 4 f(X)");
+        configParam<ValueQuantity>(VALUE5_PARAM, 0.f, 1.f, 0.f, "Stage 5 f(X)");
+        configParam<ValueQuantity>(VALUE6_PARAM, 0.f, 1.f, 0.f, "Stage 6 f(X)");
+        configParam<ValueQuantity>(VALUE7_PARAM, 0.f, 1.f, 0.f, "Stage 7 f(X)");
+        configParam<ValueQuantity>(VALUE8_PARAM, 0.f, 1.f, 0.f, "Stage 8 f(X)");
+        configParam<ThreshQuantity>(THRESH1_PARAM, 0.f, 1.f, 0.5f, "Stage 1 threshold");
+        configParam<ThreshQuantity>(THRESH2_PARAM, 0.f, 1.f, 0.5f, "Stage 2 threshold");
+        configParam<ThreshQuantity>(THRESH3_PARAM, 0.f, 1.f, 0.5f, "Stage 3 threshold");
+        configParam<ThreshQuantity>(THRESH4_PARAM, 0.f, 1.f, 0.5f, "Stage 4 threshold");
+        configParam<ThreshQuantity>(THRESH5_PARAM, 0.f, 1.f, 0.5f, "Stage 5 threshold");
+        configParam<ThreshQuantity>(THRESH6_PARAM, 0.f, 1.f, 0.5f, "Stage 6 threshold");
+        configParam<ThreshQuantity>(THRESH7_PARAM, 0.f, 1.f, 0.5f, "Stage 7 threshold");
+        configParam<ThreshQuantity>(THRESH8_PARAM, 0.f, 1.f, 0.5f, "Stage 8 threshold");
+        configSwitch(DIR1_PARAM, 0.f, 2.f, 0.f, "Stage 1 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR2_PARAM, 0.f, 2.f, 2.f, "Stage 2 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR3_PARAM, 0.f, 2.f, 2.f, "Stage 3 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR4_PARAM, 0.f, 2.f, 2.f, "Stage 4 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR5_PARAM, 0.f, 2.f, 2.f, "Stage 5 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR6_PARAM, 0.f, 2.f, 2.f, "Stage 6 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR7_PARAM, 0.f, 2.f, 2.f, "Stage 7 direction", {"Fall", "Off", "Rise"});
+        configSwitch(DIR8_PARAM, 0.f, 2.f, 2.f, "Stage 8 direction", {"Fall", "Off", "Rise"});
+        configSwitch(GROUP1_PARAM, 0.f, 2.f, 2.f, "Stage 1 group", {"C", "B", "A"});
+        configSwitch(GROUP2_PARAM, 0.f, 2.f, 1.f, "Stage 2 group", {"C", "B", "A"});
+        configSwitch(GROUP3_PARAM, 0.f, 2.f, 0.f, "Stage 3 group", {"C", "B", "A"});
+        configSwitch(GROUP4_PARAM, 0.f, 2.f, 2.f, "Stage 4 group", {"C", "B", "A"});
+        configSwitch(GROUP5_PARAM, 0.f, 2.f, 1.f, "Stage 5 group", {"C", "B", "A"});
+        configSwitch(GROUP6_PARAM, 0.f, 2.f, 0.f, "Stage 6 group", {"C", "B", "A"});
+        configSwitch(GROUP7_PARAM, 0.f, 2.f, 2.f, "Stage 7 group", {"C", "B", "A"});
+        configSwitch(GROUP8_PARAM, 0.f, 2.f, 1.f, "Stage 8 group", {"C", "B", "A"});
+        configParam(THR_A_PARAM, 0.f, 1.f, 1.f, "Group A threshold CV amount", "%", 0.f, 100.f);
+        configParam(THR_B_PARAM, 0.f, 1.f, 1.f, "Group B threshold CV amount", "%", 0.f, 100.f);
+        configParam(THR_C_PARAM, 0.f, 1.f, 1.f, "Group C threshold CV amount", "%", 0.f, 100.f);
 
         configInput(VOCT_INPUT, "Rate V/oct");
         configInput(FM_INPUT, "Rate linear FM");
@@ -205,16 +227,19 @@ struct Nodi : Module {
         configInput(LO_INPUT, "Below: bottom of the threshold space (-5 V)");
         configInput(EXT_INPUT, "Ext (cancels the stage)");
         configInput(Y_INPUT, "+Y (added to f(X))");
-        for (int i = 0; i < 3; i++) {
-            configInput(THR_A_INPUT + i, string::f("Group %s threshold CV", g[i]));
-            configInput(SW_A_INPUT + i, string::f("Switch %s", g[i]));
-        }
+        configInput(THR_A_INPUT, "Group A threshold CV");
+        configInput(THR_B_INPUT, "Group B threshold CV");
+        configInput(THR_C_INPUT, "Group C threshold CV");
+        configInput(SW_A_INPUT, "Switch A");
+        configInput(SW_B_INPUT, "Switch B");
+        configInput(SW_C_INPUT, "Switch C");
         configOutput(RAMP_OUTPUT, "Ramp");
         configOutput(EOC_OUTPUT, "End of cycle");
         configOutput(FX_OUTPUT, "f(X)");
         configOutput(GATE_OUTPUT, "Gate");
-        for (int i = 0; i < 3; i++)
-            configOutput(GATE_A_OUTPUT + i, string::f("Group %s gate", g[i]));
+        configOutput(GATE_A_OUTPUT, "Group A gate");
+        configOutput(GATE_B_OUTPUT, "Group B gate");
+        configOutput(GATE_C_OUTPUT, "Group C gate");
         configOutput(COM_OUTPUT, "Switch common");
         for (int k = 0; k < nodi::kStages; k++) {
             configLight(VALUE1_LIGHT + k, string::f("Stage %d active", k + 1));
