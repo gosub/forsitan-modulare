@@ -128,7 +128,7 @@ o.set(feedback=0.5)   # on the arc: 1.00x on the display
             head5=0, head6=0, head7=0, head8=1)
       o.set(feedback=0.85)  # 1.63x on the display
       ```
-- [ ] 2.4. Only **Head 8**, **Time** very short, **Feedback** at the top: a
+- [x] 2.4. Only **Head 8**, **Time** very short, **Feedback** at the top: a
       pitched, buzzing howl held under the ceiling, an octave below what the
       delay alone would ring at (the inverted loop takes two passes a cycle).
       ```python
@@ -136,7 +136,7 @@ o.set(feedback=0.5)   # on the arc: 1.00x on the display
             head5=0, head6=0, head7=0, head8=1)
       o.set(time=0.0354, feedback=1)  # 0.0100 s, 2.00x: a 50 Hz howl
       ```
-- [ ] 2.5. All eight heads, **Time** a quarter second, **Feedback** at the
+- [x] 2.5. All eight heads, **Time** a quarter second, **Feedback** at the
       top: no howl, the fan breaks into a high hiss held under the ceiling.
       Not a fault: the hardware's limiter at work. At a long **Time** the
       same fan only fades.
@@ -152,6 +152,8 @@ clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 
 - [ ] 3.1. Turn **Time**: it jumps in doubles and halves, and its tooltip
       reads in clocks. With **Spread** at noon every echo is on the beat.
+      Past 8 clocks the echoes land on later repeats of the phrase (it
+      repeats every 8); stop SEQ3 there and they spread out instead.
 - [ ] 3.2. **Spread** off noon: the inner echoes leave the beat, the last
       one stays on it.
       `o.set(spread=0.8)  # +51% on the display`
