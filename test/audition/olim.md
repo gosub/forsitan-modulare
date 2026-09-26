@@ -23,7 +23,8 @@ of taste resting on numbers the harness prints.
 Anything that yields a number is not here. `./test/smoke_olim` checks where
 an echo lands and that it is inverted, the VCA normalling and clamp, R
 normalled from L, NaN at the input, the clock cable, the Memory swap and
-TIME clamped to it. `./test/olim_probe heads` prints the head positions,
+TIME clamped to it, and that a slider move lands over the next fades, not
+at once. `./test/olim_probe heads` prints the head positions,
 `loop` the level per pass against **Feedback**, `clicks` the roughness of
 every sweep.
 
@@ -86,13 +87,11 @@ seq = notes()
       `o.set(spread=1)  # +100% on the display`
 - [x] 1.4. Sweep **Spread** through noon by hand: a stretch in the middle
       changes nothing. That is the flat spot, not a fault.
-- [ ] 1.5. Open the VCA to about 20%: **Time** swings between 1 and 4 s
+- [x] 1.5. Open the VCA to about 20%: **Time** swings between 1 and 4 s
       under the notes, and the echoes smear and re-grab, never bending pitch
       and never clicking.
       `vcv.modulate(o["time cv"], rate=0.05, offset=False)  # +-5 V`
-- [ ] 1.6. Only **Head 8** up, then flick it down and up: one echo at two
-      seconds, and the slider lands in steps of a fifth of a second, not at
-      once. Not a fault.
+- [ ] 1.6. Only **Head 8** up: one echo, two seconds after each note.
       ```python
       o.set(head1=0, head2=0, head3=0, head4=0,
             head5=0, head6=0, head7=0, head8=1)
