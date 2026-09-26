@@ -92,7 +92,7 @@ seq = notes()
       under the notes, and the echoes smear and re-grab, never bending pitch
       and never clicking.
       `vcv.modulate(o["time cv"], rate=0.05, offset=False)  # +-5 V`
-- [ ] 1.6. Only **Head 8** up: one echo, two seconds after each note.
+- [x] 1.6. Only **Head 8** up: one echo, two seconds after each note.
       ```python
       o.set(head1=0, head2=0, head3=0, head4=0,
             head5=0, head6=0, head7=0, head8=1)
@@ -106,20 +106,20 @@ seq = notes()
 o.set(feedback=0.5)   # on the arc: 1.00x on the display
 ```
 
-- [ ] 2.1. Only **Head 8** up, stop SEQ3 after a cycle: the phrase neither
+- [x] 2.1. Only **Head 8** up, stop SEQ3 after a cycle: the phrase neither
       fades nor builds. Sound on sound, for as long as it is left.
       ```python
       o.set(head1=0, head2=0, head3=0, head4=0,
             head5=0, head6=0, head7=0, head8=1)
       ```
-- [ ] 2.2. All eight heads at 100%, stop SEQ3 after a cycle: the echoes
+- [x] 2.2. All eight heads at 100%, stop SEQ3 after a cycle: the echoes
       blur into each other and fade within about ten seconds. Not a fault:
       the loop averages the heads, and only a single head holds at the arc.
       ```python
       o.set(head1=1, head2=1, head3=1, head4=1,
             head5=1, head6=1, head7=1, head8=1)
       ```
-- [ ] 2.3. Only **Head 8**, **Feedback** past the arc: the phrase builds to
+- [x] 2.3. Only **Head 8**, **Feedback** past the arc: the phrase builds to
       the ceiling (-6 dB on Rack's meters, olim's 5 V) with a little grit.
       Up to 2x it gets there faster and wanders more, not louder.
       ```python
@@ -128,9 +128,18 @@ o.set(feedback=0.5)   # on the arc: 1.00x on the display
             head5=0, head6=0, head7=0, head8=1)
       o.set(feedback=0.85)  # 1.63x on the display
       ```
-- [ ] 2.4. All eight heads, **Time** short, **Feedback** at the top: the
-      loop takes off into a howl held under the ceiling, and the stereo
-      image comes apart. At a long **Time** the same fan only fades.
+- [ ] 2.4. Only **Head 8**, **Time** very short, **Feedback** at the top: a
+      pitched, buzzing howl held under the ceiling, an octave below what the
+      delay alone would ring at (the inverted loop takes two passes a cycle).
+      ```python
+      o.set(head1=0, head2=0, head3=0, head4=0,
+            head5=0, head6=0, head7=0, head8=1)
+      o.set(time=0.0354, feedback=1)  # 0.0100 s, 2.00x: a 50 Hz howl
+      ```
+- [ ] 2.5. All eight heads, **Time** a quarter second, **Feedback** at the
+      top: no howl, the fan breaks into a high hiss held under the ceiling.
+      Not a fault: the hardware's limiter at work. At a long **Time** the
+      same fan only fades.
       `o.set(time=0.177, feedback=1)  # 0.25 s, 2.00x on the display`
 
 ---
