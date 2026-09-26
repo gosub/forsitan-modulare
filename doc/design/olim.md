@@ -121,10 +121,14 @@ w       = w + 1
 - **FEEDBACK**: `fb = clamp(2 * dz(knob) + cv, 0, 3)`. `dz` is a dead zone
   at noon applied twice, so knob 0.405 to 0.595 gives exactly fb = 1: that
   is the **arc**, and the sound-on-sound zone is the dead zone. It holds a
-  single head exactly; several heads are averaged, which blurs the loop and
-  lets it fade (only what lines up across every head survives a pass), and
-  no normalisation changes that: a sum of delayed copies has unit gain at
-  every frequency only when there is one copy.
+  single head exactly. Several heads are summed and the loop is inverted,
+  so they partly cancel: a pass can only build where the heads add up with
+  the sign flip, which a full fan of eight never does below about 3.4x, out
+  of reach. Measured (2026-09-26, all heads at 50%): at TIME 1 to 2 s the
+  fan fades at 2x from even plucks, uneven plucks and noise alike, so it is
+  the loop and not the material; at TIME 0.25 s and 2x all three take off,
+  because the compressor and limiter pump at the loop's own rate and break
+  the cancellation. No normalisation changes the long-TIME case.
 - **SPREAD** has the same double dead zone, so noon is exactly even.
 - **Sliders**: linear, times the VCA (0..5 V to 0..1, clamped).
 - **Dry** is smoothed (about 20 ms), feedback lightly (2 ms).

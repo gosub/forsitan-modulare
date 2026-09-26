@@ -53,12 +53,16 @@ The loop is divided by the sum of the head sliders, when that is over 1, so
 its gain never passes **Feedback**'s however many heads are up. The output is
 not: more heads up is louder, and the output limits at 5 V.
 
-With several heads up the loop feeds back their average, and averaging
-delayed copies of a sound blurs it: on the arc, a single head holds forever,
-but a fan of heads smears into itself and fades within seconds. That is the
-hardware's loop, not a fault. To keep a fan going, run **Feedback** a little
-past the arc; to hold a phrase exactly, use one head (Heads presets > Last
-head only) and bring the others in on the output.
+With several heads up the loop feeds back their sum, and since every pass
+is written back inverted, the heads partly cancel each other: what holds or
+builds depends on which heads are up, not on what is played. On the arc a
+single head holds forever, and so do the odd heads alone. A full fan smears
+into itself and fades within seconds at a long **Time**, even at 2x: that is
+the hardware's loop, not a fault. At a short **Time** (a quarter of a second)
+and high **Feedback** the limiter and compressor pump at the loop's own rate
+and break the cancellation, and the fan howls. To hold a phrase exactly, use
+one head (Heads presets > Last head only) and bring the others in on the
+output.
 
 ## Inputs and outputs
 
@@ -70,7 +74,7 @@ head only) and bring the others in on the output.
 | **Feedback CV** | +5 V adds 1 to the loop gain, up to 3 in all |
 | **Clk** | rising edges. The period is the mean of the last two intervals; with no edge for two seconds, or the cable pulled, **Time** is free again |
 | **Dry / Head VCA** | linear, 0 to 5 V for silence to unity, clamped. Unpatched is unity; patched, the slider becomes the depth |
-| **Out L / Out R** | audio, limited to +-5 V |
+| **Out L / Out R** | audio, limited to +-5 V, as on the hardware. Rack's audio interface reads 10 V as full scale, so a howl at the limit shows as -6 dB there |
 
 ## Context menu
 
