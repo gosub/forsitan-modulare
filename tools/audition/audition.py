@@ -127,6 +127,16 @@ def parse_audition(slug):
                     elif re.match(r'^`[^`]+`$', body):
                         code.append(body[1:-1])
                     else:
+                        # Code only runs from a line of its own. A span
+                        # trailing the words is read as words, and the item
+                        # opens without the change it describes.
+                        # Only what looks like code: a quoted display
+                        # reading (`8 replayer`) is prose.
+                        tail = re.search(r'`([^`]+)`\s*$', body)
+                        if tail and re.search(r'\(.*\)|>>|=', tail.group(1)):
+                            sys.stderr.write('audition: %s: a code span ends a line of '
+                                             'text and will not run; give it a line of '
+                                             'its own\n' % m.group(2))
                         text.append(body)
                     j += 1
                 items.append(Item(ident, ' '.join(text).strip(), section,
