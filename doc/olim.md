@@ -121,9 +121,10 @@ output.
   repeats, a reverse-shaped tail.
 - Last head only, **Feedback** on the arc, then cut the input: the loop
   keeps what it has, a looper **Time** long. Move **Time** to smear it.
-- **Time** a few milliseconds up from zero with **Feedback** near the arc is
-  a comb, tuned by **Time CV** at a volt per octave, and stepping five times
-  a second rather than gliding.
+- One head, **Time** a few milliseconds and **Feedback** just under the arc,
+  fed with noise: a plucked string held open, ringing at 1 / (2 x **Time**)
+  with odd harmonics (100 Hz at 5 ms). **Time CV** tunes it at a volt per
+  octave, stepping five times a second rather than gliding.
 - An LFO into the head VCAs pans a pattern across the heads; a sequencer
   into them picks which echoes play.
 - A clock turns the heads into a rhythm at noon, and **Spread** pulls all but
