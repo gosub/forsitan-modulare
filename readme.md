@@ -48,6 +48,7 @@ A collection of VCV Rack modules.
 | [artifex](doc/artifex.md) | Nine stereo effects - delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter - sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator | [doc/artifex.md](doc/artifex.md) |
 | [radix](doc/radix.md) | Chaotic 8-bit source on its own clock: where the modulator comes from, how it bends the accumulator and how the result is read, 150 programs on three stepped knobs with CV, on a label-free panel (in the family of the Radical22) | [doc/radix.md](doc/radix.md) |
 | [olim](doc/olim.md) | Eight-head stereo delay over up to 150 s of memory: TIME places the last head, SPREAD crowds the rest toward now or then, nine lit sliders with a VCA each, feedback from sound on sound to a howl (Time Machine clone, VCA expander built in) | [doc/olim.md](doc/olim.md) |
+| [nodi](doc/nodi.md) | Continuous-time sequencer: eight rising or falling thresholds on a moving voltage X pick one of eight stages, so the lower sliders place steps in time, map a melody onto an LFO or quantize a random voltage; a graphic VCO or waveshaper at audio rate (Discrete Map clone, A / B / C Expander built in) | [doc/nodi.md](doc/nodi.md) |
 
 ## Tools
 
@@ -116,6 +117,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **artifex** | the maker, the contriver - the craftsman who works a material rather than choosing from a catalogue (after the Bastl Citadel FX Wizard) |
 | **radix** | root - what every sample grows from, one integer at a time; also the base of a number system, which is all this module has to work with |
 | **olim** | once upon a time, and also someday - the same word points both ways, which is what eight heads over one memory do |
+| **nodi** | knots, nodes - Hegel's nodal lines, where a quantity changing smoothly turns into a different quality; eight thresholds, eight such knots |
 
 ## Author
 

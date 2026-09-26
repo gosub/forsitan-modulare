@@ -1,6 +1,8 @@
 # nodi - design doc
 
-Status: design, 2026-09-26. Nothing is built yet.
+Status: built, 2026-09-26. The module follows this doc; `doc/nodi.md` is
+the manual. Where building it changed a decision, the doc says what was
+decided and why.
 
 A continuous-time sequencer: eight thresholds turn the motion of a voltage X
 into the activation of one of eight stages, and each stage puts out its own
@@ -123,9 +125,18 @@ Every activation produces a gate, **including a stage re-activating itself**
 (**inferred**: "whenever a stage is activated"; it makes a single RISE stage
 a comparator with a gate out).
 
-A threshold re-arms only after X has been at least **5 mV** on the other
-side (**inferred**, and our only hysteresis): a digital comparator on a
-noisy signal would otherwise fire every sample.
+A stage fires **exactly at its threshold**, then re-arms for that direction
+only after X has been **5 mV** past it the other way (**inferred**, and our
+only hysteresis): a digital comparator on a noisy signal would otherwise
+fire every sample. A first draft put the trip points 2.5 mV either side of
+the threshold instead, which delayed every step by that much travel: 60 ms a
+step on a 4-minute ramp. And a crossing that lands **5 mV or more past** the
+threshold fires even unarmed: without that, X parked inside the band and
+then sent across by a sample-and-hold was missed (3 wrong notes in 2000 on
+the quantizer setup, 0 in 20000 after).
+
+An external X that has not moved since the module started has crossed
+nothing, so no stage is active until it does, as on the hardware.
 
 ### Where it has to differ from the hardware
 
@@ -134,10 +145,12 @@ noisy signal would otherwise fire every sample.
   after a FALL one there. ONCE parks just above +5 V, as the hardware does.
   There is **no dead zone at the top**: a threshold at exactly +5 V fires.
   The hardware's dead zone is an analog imperfection, not a behaviour.
-- **EXT lockout.** Every Rack cable is one sample of delay, so the GATE ->
-  EXT round trip between two modules is two samples (45 us at 44.1 kHz),
-  not a few microseconds. The lockout is therefore **4 samples** rather than
-  12.5 us, which keeps the 16-step patch working.
+- **EXT lockout.** Every Rack cable is one sample of delay and every nodi
+  output one more (see Aliasing), so the GATE -> EXT round trip between two
+  modules is four samples, not a few microseconds. The lockout is therefore
+  **8 samples** rather than 12.5 us, which keeps the 16-step patch working.
+  The same delays leave both modules active for **4 samples** at each
+  handover, which `nodi_probe ext` measures and the audition asks about.
 - **Gate length** runs from **one sample** (6 us is shorter than a sample)
   to 2.8 s.
 - **Bidirectional switch.** A Rack jack is an input or an output. nodi's
@@ -156,15 +169,25 @@ noisy signal would otherwise fire every sample.
 
 At audio rate f(X) is a stepped wave, RAMP a saw and COM a hard switch:
 each would alias badly as naive samples. The crossing times are already
-known to a fraction of a sample, so each step can be inserted as a
-**minBLEP** at its exact time.
+known to a fraction of a sample, so each step can be rounded at its exact
+time.
 
-But a minBLEP rings, and at sequencer rates that ringing would be a small
-pitch blip right where a sample-and-hold clocked by GATE is looking. So the
-rule is per step: **a step is band-limited when it follows the previous
-step on that output by less than 2 ms** (500 Hz and up), and is a plain step
-otherwise. A sequence stays exact; an oscillator is clean. A context-menu
-**Anti-aliasing** item offers Auto (that rule, the default) / Off / On.
+The draft said minBLEP. What was built is a two-sample **polyBLEP**, as
+tundo, scrupea and aether use: it keeps the header free of Rack, where
+Rack's MinBlepGenerator lives, and `nodi_probe alias` shows it takes 17 to
+35 dB off the alias energy. A polyBLEP corrects the sample before a step
+too, so **every output leaves one sample late**, gates included, and a gate
+and its voltage still arrive together.
+
+A rounded step is not exactly a stage's voltage for a sample, which is
+wrong where a sample-and-hold clocked by GATE is looking. So the rule is:
+**a step is rounded when it comes within 2 ms of the last one on that
+output** (500 Hz and up), and is a plain step otherwise, decided **once per
+sample**: a jump across three thresholds is three steps in one sample, and
+rounding the second and third for following the first smeared a
+quantizer's output. A sequence stays exact; an oscillator is clean. A
+context-menu **Anti-aliasing** item offers Auto (that rule, the default) /
+Off / On.
 
 ### Polyphony
 
@@ -208,6 +231,8 @@ The stage lights show channel 1.
 
 Outputs: RAMP, EOC, f(X), GATE, GATE A / B / C, COM.
 
+The shapes live in `src/nodi/shapes.hpp`, beside the engine.
+
 Context menu: **Anti-aliasing** Auto / Off / On, and five submenus that set
 many controls at once. Each is **one undo step**, as olim's heads menus are,
 and the shapes live in the engine header so the probe can check them.
@@ -227,7 +252,11 @@ and the shapes live in the engine header so the probe can check them.
   transforms are reverse, rotate, mutate, and **LENGTH <-> POSIT.**
   conversion, which flips the switch and rewrites the sliders so every
   threshold stays where it was (from LENGTH always; from POSIT. only the
-  stages that are in ascending order).
+  stages that are in ascending order). A stage below one before it gets
+  zero length *onto the next stage in order*: at coincident thresholds the
+  higher stage wins on the way up, so it is the out-of-order stage that is
+  passed over. The first version raised it onto the stage before instead,
+  which silenced that one.
 - **Directions**: all RISE, all FALL, the sequencer (1 FALL, rest RISE),
   the bitcrusher (four RISE, four FALL), alternate, reverse, rotate.
 - **Groups**: all A, A B C cycling, pairs, thirds, random, rotate.
@@ -243,28 +272,31 @@ The hardware is 34 + 10 = 44 HP. nodi aims at **24 HP** (121.92 mm).
 
 The eight stages are columns in the middle, 8.5 mm apart (a slider is
 6.72 mm wide; that leaves the 1.5 mm clearance), so the block is 66 mm wide.
-Top to bottom in each column: the f(X) slider, lit by its stage; the
-threshold slider; the RISE / OFF / FALL switch; the A / B / C switch. Two
-slider heights and two switch heights come to about 85 mm, from under the
-title to y = 95. The row labels (rise / fall, A / B / C) sit once, at the
-left of the block. A thin **X indicator** is drawn in code beside the
-threshold sliders, a marker at X on a track from BELOW to ABOVE.
+Top to bottom in each column: the f(X) slider, lit by its stage; the stage
+number; the threshold slider; the RISE / OFF / FALL switch; the A / B / C
+switch. The switch rows are legended once, at the left of the block (rise /
+fall, a / c at the ends of the throw).
+
+The **X indicator** is not a separate widget: the threshold sliders are lit,
+faintly while X is above their threshold and fully for 50 ms when they
+fire. With the ramp at X they fill up like a bar graph and empty at the
+reset, which is the hardware's LED column drawn where the thresholds are.
 
 That leaves about 28 mm on each side and a band under the block, for 23
 jacks, 7 knobs and 4 switches:
 
-- **left**, the clock: RATE, FM knob and jack, V/O, SYNC, N and SYNC/N,
-  LOOP / ONCE, SLOW / FAST, EOC and RAMP out;
-- **right**, the map and the event inputs: X, ABOVE, BELOW, EXT, +Y, RANGE,
-  POSIT / LENGTH, GATE LEN, f(X) and GATE out;
-- **the band under the stages**, the expander: THR A / B / C with their
-  attenuators, A / B / C in, GATE A / B / C and COM out, then the logo.
+- **left**, the clock: RATE, SLOW / FAST, FM attenuator and jack, V/O,
+  SYNC, N and /N, LOOP / ONCE, EOC and RAMP out;
+- **right**, POS / LEN, X, EXT, HI, LO, +Y and RANGE; then the outputs in
+  badges, GATE A / B / C, f(X) and GATE, with DUR (the gate length) in the
+  sixth place beside them;
+- **the band under the stages**: THR A / B / C, each an attenuator and a
+  jack, then the switch, A and B left of the logo, C and COM right of it.
 
-Two columns of jacks each side at 12.5 mm row pitch give 16 places a side;
-with the band that is about 38 for 34 elements. It is tight, and the jack
-labels have to stay short (OCR-A is about 2 mm a character). If it will not
-fit with `panel_audit.py` clean, the fallback is **26 HP**, not a smaller
-slider pitch.
+It fits at **24 HP** with `panel_audit.py` clean; the labels are short
+(OCR-A is 2.24 mm a character at the house size), so ABOVE and BELOW read
+**hi** and **lo**, and the gate length **dur**. One place is left empty, top
+right under the screw.
 
 
 ## Tests
@@ -284,7 +316,10 @@ slider pitch.
   - `cpu`, and `wav <dir>` for listening.
 - `test/smoke_nodi`: construction, NaN and silence, poly channel counts,
   the RAMP -> X normal, the defaults being a running sequencer.
-- `test/audition/nodi.md`, about a dozen items.
+- `test/audition/nodi.md`, 18 items.
+
+CPU (`nodi_probe cpu`): 62 ns a sample mono, 0.30% of a 48 kHz sample; 690
+ns at 16 channels, 3.3%. About 40 ns of it is per channel.
 
 
 ## Build order
