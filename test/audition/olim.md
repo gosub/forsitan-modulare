@@ -79,9 +79,11 @@ seq = notes()
 - [ ] 1.1. Defaults: the four notes, and behind each one eight echoes
       spread evenly over the two seconds after it.
 - [ ] 1.2. **Spread** fully left: the echoes crowd right behind each note
-      and thin out toward two seconds. `o.set(spread=0)  # -100% on the display`
+      and thin out toward two seconds.
+      `o.set(spread=0)  # -100% on the display`
 - [ ] 1.3. **Spread** fully right: one early echo, then a cluster close to
-      two seconds. `o.set(spread=1)  # +100% on the display`
+      two seconds.
+      `o.set(spread=1)  # +100% on the display`
 - [ ] 1.4. Sweep **Spread** through noon by hand: a stretch in the middle
       changes nothing. That is the flat spot, not a fault.
 - [ ] 1.5. Open the VCA: **Time** moves under the notes and the echoes smear
@@ -124,9 +126,10 @@ clock(2.0)["square"] >> seq["clock"]   # the notes on the same clock
 - [ ] 3.1. Turn **Time**: it jumps in doubles and halves, and its tooltip
       reads in clocks. With **Spread** at noon every echo is on the beat.
 - [ ] 3.2. **Spread** off noon: the inner echoes leave the beat, the last
-      one stays on it. `o.set(spread=0.8)  # +51% on the display`
+      one stays on it.
+      `o.set(spread=0.8)  # +51% on the display`
 - [ ] 3.3. Pull the clock cable: **Time** is free again at once, back to two
-      seconds. `o["clock"].unpatch()`
+      seconds.
 
 ---
 
@@ -146,7 +149,8 @@ o.set(time=0.03, feedback=0.5, dry=0)   # 0.0072 s on the display
 ## 5. VCAs and memory
 
 - [ ] 5.1. Open the VCA: **Head 4** pulses with the LFO and its slider sets
-      the depth. `vcv.modulate(o["head4 vca"], rate=1.0)`
+      the depth.
+      `vcv.modulate(o["head4 vca"], rate=1.0)`
 - [ ] 5.2. Menu, Memory, 20 s: the output drops out for a moment and the
       echoes start again from an empty buffer. Not a fault.
 
