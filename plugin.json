@@ -434,6 +434,19 @@
         "Hardware clone",
         "Effect"
       ]
+    },
+    {
+      "slug": "nodi",
+      "name": "nodi",
+      "description": "Continuous-time sequencer: thresholds on X pick one of eight stages. A Discrete Map clone.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.16.3/doc/nodi.md",
+      "tags": [
+        "Sequencer",
+        "Quantizer",
+        "Waveshaper",
+        "Hardware clone",
+        "Polyphonic"
+      ]
     }
   ]
 }

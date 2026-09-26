@@ -46,3 +46,4 @@ extern Model* modelVates;
 extern Model* modelArtifex;
 extern Model* modelRadix;
 extern Model* modelOlim;
+extern Model* modelNodi;
