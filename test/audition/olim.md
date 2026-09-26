@@ -182,9 +182,13 @@ o.set(feedback=0.385)      # 0.95x, just under the arc
 
 ## 5. VCAs and memory
 
-- [ ] 5.1. Open the VCA: **Head 4** pulses with the LFO and its slider sets
-      the depth.
-      `vcv.modulate(o["head4 vca"], rate=1.0)`
+- [ ] 5.1. Only **Head 4** up. Open the VCA: its echo pulses with the LFO,
+      and its slider sets the depth.
+      ```python
+      o.set(head1=0, head2=0, head3=0, head4=1,
+            head5=0, head6=0, head7=0, head8=0)
+      vcv.modulate(o["head4 vca"], rate=1.0)
+      ```
 - [ ] 5.2. Menu, Memory, 20 s: the output drops out for a moment and the
       echoes start again from an empty buffer. Not a fault.
 
