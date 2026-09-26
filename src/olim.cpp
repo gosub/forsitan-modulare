@@ -630,15 +630,15 @@ struct OlimWidget : ModuleWidget {
 // @elem LABEL_TIME_CV label 0.0 label "cv" 0.0 25.00 47.50
 // @elem LABEL_SPREAD_CV label 0.0 label "cv" 0.0 61.00 47.50
 // @elem LABEL_FEEDBACK_CV label 0.0 label "cv" 0.0 97.00 47.50
-// @elem LABEL_DRY label 0.0 label "dry" 0.0 15.00 91.50
-// @elem LABEL_H1 label 0.0 label "1" 0.0 26.50 91.50
-// @elem LABEL_H2 label 0.0 label "2" 0.0 38.00 91.50
-// @elem LABEL_H3 label 0.0 label "3" 0.0 49.50 91.50
-// @elem LABEL_H4 label 0.0 label "4" 0.0 61.00 91.50
-// @elem LABEL_H5 label 0.0 label "5" 0.0 72.50 91.50
-// @elem LABEL_H6 label 0.0 label "6" 0.0 84.00 91.50
-// @elem LABEL_H7 label 0.0 label "7" 0.0 95.50 91.50
-// @elem LABEL_H8 label 0.0 label "8" 0.0 107.00 91.50
+// @elem LABEL_DRY label 0.0 label "dry" 0.0 15.00 95.00
+// @elem LABEL_H1 label 0.0 label "1" 0.0 26.50 95.00
+// @elem LABEL_H2 label 0.0 label "2" 0.0 38.00 95.00
+// @elem LABEL_H3 label 0.0 label "3" 0.0 49.50 95.00
+// @elem LABEL_H4 label 0.0 label "4" 0.0 61.00 95.00
+// @elem LABEL_H5 label 0.0 label "5" 0.0 72.50 95.00
+// @elem LABEL_H6 label 0.0 label "6" 0.0 84.00 95.00
+// @elem LABEL_H7 label 0.0 label "7" 0.0 95.50 95.00
+// @elem LABEL_H8 label 0.0 label "8" 0.0 107.00 95.00
 // @elem LABEL_IN_L label 0.0 label "in L" 0.0 16.00 114.50
 // @elem LABEL_IN_R label 0.0 label "in R" 0.0 32.00 114.50
 // @elem LABEL_CLK label 0.0 label "clk" 0.0 61.00 114.50
@@ -658,24 +658,24 @@ struct OlimWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 40.00f)), module, Olim::TIME_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 40.00f)), module, Olim::SPREAD_CV_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(97.00f, 40.00f)), module, Olim::FEEDBACK_CV_INPUT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(15.00f, 63.50f)), module, Olim::DRY_PARAM, Olim::DRY_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(26.50f, 63.50f)), module, Olim::HEAD1_PARAM, Olim::HEAD1_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(38.00f, 63.50f)), module, Olim::HEAD2_PARAM, Olim::HEAD2_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(49.50f, 63.50f)), module, Olim::HEAD3_PARAM, Olim::HEAD3_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(61.00f, 63.50f)), module, Olim::HEAD4_PARAM, Olim::HEAD4_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(72.50f, 63.50f)), module, Olim::HEAD5_PARAM, Olim::HEAD5_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(84.00f, 63.50f)), module, Olim::HEAD6_PARAM, Olim::HEAD6_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(95.50f, 63.50f)), module, Olim::HEAD7_PARAM, Olim::HEAD7_LIGHT));
-        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(107.00f, 63.50f)), module, Olim::HEAD8_PARAM, Olim::HEAD8_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.00f, 84.00f)), module, Olim::DRY_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.50f, 84.00f)), module, Olim::HEAD1_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.00f, 84.00f)), module, Olim::HEAD2_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.50f, 84.00f)), module, Olim::HEAD3_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 84.00f)), module, Olim::HEAD4_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.50f, 84.00f)), module, Olim::HEAD5_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(84.00f, 84.00f)), module, Olim::HEAD6_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(95.50f, 84.00f)), module, Olim::HEAD7_VCA_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(107.00f, 84.00f)), module, Olim::HEAD8_VCA_INPUT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(15.00f, 67.00f)), module, Olim::DRY_PARAM, Olim::DRY_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(26.50f, 67.00f)), module, Olim::HEAD1_PARAM, Olim::HEAD1_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(38.00f, 67.00f)), module, Olim::HEAD2_PARAM, Olim::HEAD2_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(49.50f, 67.00f)), module, Olim::HEAD3_PARAM, Olim::HEAD3_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(61.00f, 67.00f)), module, Olim::HEAD4_PARAM, Olim::HEAD4_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(72.50f, 67.00f)), module, Olim::HEAD5_PARAM, Olim::HEAD5_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(84.00f, 67.00f)), module, Olim::HEAD6_PARAM, Olim::HEAD6_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(95.50f, 67.00f)), module, Olim::HEAD7_PARAM, Olim::HEAD7_LIGHT));
+        addParam(createLightParamCentered<VCVLightSlider<YellowLight>>(mm2px(Vec(107.00f, 67.00f)), module, Olim::HEAD8_PARAM, Olim::HEAD8_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.00f, 87.50f)), module, Olim::DRY_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(26.50f, 87.50f)), module, Olim::HEAD1_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(38.00f, 87.50f)), module, Olim::HEAD2_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(49.50f, 87.50f)), module, Olim::HEAD3_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 87.50f)), module, Olim::HEAD4_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(72.50f, 87.50f)), module, Olim::HEAD5_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(84.00f, 87.50f)), module, Olim::HEAD6_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(95.50f, 87.50f)), module, Olim::HEAD7_VCA_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(107.00f, 87.50f)), module, Olim::HEAD8_VCA_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(16.00f, 107.00f)), module, Olim::IN_L_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(32.00f, 107.00f)), module, Olim::IN_R_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(61.00f, 107.00f)), module, Olim::CLOCK_INPUT));
