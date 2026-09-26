@@ -138,3 +138,6 @@ o.set(time=0.75)   # 8 clocks: each head an eighth of TIME
       Heads transform: the rhythm walks across the bar a head at a time.
 - [ ] 6.2. Any preset, then Ctrl+Z once: all eight sliders go back to where
       they were, and **Dry** never moved.
+- [ ] 6.3. Tresillo, then each mutation a few times: Mutate keeps the
+      rhythm and moves the accents, Mutate pattern moves one hit a step,
+      Mutate wide starts to blur it.
