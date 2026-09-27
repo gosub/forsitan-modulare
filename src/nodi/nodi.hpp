@@ -309,6 +309,9 @@ struct Clock {
         bool eocNow = false;
         while (t < 1.f) {
             if (parked) {
+                // Back on LOOP, a parked ramp restarts at once, as a sync
+                // would restart it; its EOC fired when it parked.
+                if (!once) ts = t;
                 if (ts <= 1.f && ts >= t) {
                     path.add(t, ts, x, x);
                     path.add(ts, ts, x, bottom);

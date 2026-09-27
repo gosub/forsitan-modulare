@@ -275,6 +275,28 @@ static int cmdCross() {
         check(cycles == 4 && eocs == 3, what);
     }
 
+    // Back to LOOP, a parked ramp restarts without a sync, and without a
+    // second EOC.
+    {
+        Rig r;
+        r.c.rate = knobFor(4.f, false);
+        r.c.once = true;
+        int eocs = 0, cycles = 0;
+        bool eocPrev = false;
+        for (int n = 0; n < 43200; n++) {     // 0.9 s
+            if (n == 24000) r.c.once = false;   // parked since 0.25 s
+            r.run();
+            if (r.e.eoc && !eocPrev) eocs++;
+            eocPrev = r.e.eoc;
+            cycles += r.fired(0);
+        }
+        // Cycles start at 0, 0.5 and 0.75 s; EOC at 0.25 s, then at 0.75 s
+        // as the third cycle starts.
+        snprintf(what, sizeof what, "ONCE parked, LOOP at 0.5 s: %d cycles (3), %d EOC (2)",
+                 cycles, eocs);
+        check(cycles == 3 && eocs == 2, what);
+    }
+
     printf("%s\n", failures ? "FAILED" : "all passed");
     return failures ? 1 : 0;
 }

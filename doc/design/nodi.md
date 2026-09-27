@@ -46,7 +46,8 @@ A ramp from -5 V to +5 V, out on RAMP and normalled to X.
 - **SYNC/N** counts edges and resets on the N-th, N = 1..16 on a knob. A
   SYNC edge also clears the count.
 - **LOOP / ONCE**: in ONCE the ramp stops *just above* +5 V and waits for a
-  sync.
+  sync. Switched back to LOOP, a waiting ramp restarts at once (no second
+  EOC: it fired when the ramp stopped).
 - **EOC** fires a trigger when the ramp resets or reaches the end of a
   cycle.
 - On reset the ramp **overshoots below -5 V** for a moment, so a rising

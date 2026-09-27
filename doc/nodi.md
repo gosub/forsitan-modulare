@@ -50,7 +50,7 @@ pitch, or audio.
 | **fm** | linear rate modulation, through its attenuator: +5 V at full doubles the rate, -5 V stops it. It stops rather than running backwards |
 | **sync** | a rising edge (over 4 V, re-armed under 1 V) resets the ramp at once, and clears the **/n** count |
 | **n**, **/n** | **/n** counts edges and resets the ramp on the n-th, 1 to 16 |
-| **loop / once** | **once** runs the ramp to the top and waits there for a sync |
+| **loop / once** | **once** runs the ramp to the top and waits there for a sync; back on **loop** it restarts at once |
 | **eoc** | a 1 ms trigger when a cycle ends or a sync cuts one short (not when a waiting **once** ramp is restarted) |
 | **ramp** | the ramp, normalled to **x** |
 
