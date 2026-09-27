@@ -5,8 +5,8 @@
 // module's own checks: that the defaults are a running eight-step sequencer,
 // the RAMP -> X normal, the panel switches read the right way up, polyphony,
 // the groups' gates and the switch, NaN at every input, other sample rates,
-// the context menu's state surviving a save, and the menus writing the
-// parameters they say (the shapes themselves are nodi_probe's).
+// the context menu's state surviving a save, the menus writing the
+// parameters they say (the shapes themselves are nodi_probe's), and TRIG.
 
 #include "smoke_harness.hpp"
 #include "../src/nodi.cpp"
@@ -295,5 +295,22 @@ static void testMenus() {
     report("nodi", "menu_every_setup_runs_finite", s.nans, s.nans == 0);
 }
 
+// The TRIG button restarts a ramp parked in ONCE, as a sync edge does.
+static void testTrig() {
+    Nodi m; long fr = 0;
+    m.params[Nodi::FAST_PARAM].setValue(1.f);
+    m.params[Nodi::RATE_PARAM].setValue(0.f);            // 4 Hz
+    m.params[Nodi::LOOP_PARAM].setValue(0.f);            // ONCE
+    for (long i = 0; i < (long)(0.5f * SR); i++) m.process(makeArgs(fr++));
+    float parked = m.outputs[Nodi::RAMP_OUTPUT].getVoltage();
+    m.params[Nodi::TRIG_PARAM].setValue(1.f);
+    for (int i = 0; i < 10; i++) m.process(makeArgs(fr++));
+    m.params[Nodi::TRIG_PARAM].setValue(0.f);
+    for (long i = 0; i < (long)(0.1f * SR); i++) m.process(makeArgs(fr++));
+    float after = m.outputs[Nodi::RAMP_OUTPUT].getVoltage();
+    report("nodi", "trig_parked_at_top", parked, parked > 4.9f);
+    report("nodi", "trig_restarts_ramp", after, after < 0.f);
+}
+
 SMOKE_MAIN(testDefaults, testNormal, testSwitches, testPoly, testGroups, testNan,
-           testSampleRates, testJson, testMenus)
+           testSampleRates, testJson, testMenus, testTrig)

@@ -34,7 +34,7 @@ pitch, or audio.
 
 | area | contents |
 |---|---|
-| left | the clock: **rate** with **fast / slow**, **fm** (attenuator and jack), **v/o**, **sync**, **n** and its **/n** jack, **loop / once**; **eoc** and **ramp** out |
+| left | the clock: **rate** with **fast / slow**, **fm** (attenuator and jack), **v/o**, **sync**, **n** and its **/n** jack, **loop / once**, **trig**; **eoc** and **ramp** out |
 | upper sliders | **f(X)** for stages 1 to 8, each lit while its stage is active |
 | lower sliders | the thresholds, each glowing while X is above it and flashing as it fires |
 | switches | per stage: **rise / off / fall**, and the group **a / b / c** |
@@ -49,6 +49,7 @@ pitch, or audio.
 | **v/o** | 1 V per octave on the rate: at sequencer speeds, an exact way to double or halve it, or to set it in musical ratios |
 | **fm** | linear rate modulation, through its attenuator: +5 V at full doubles the rate, -5 V stops it. It stops rather than running backwards |
 | **sync** | a rising edge (over 4 V, re-armed under 1 V) resets the ramp at once, and clears the **/n** count |
+| **trig** | a button, the same as an edge at **sync**: it starts a ramp waiting in **once**, or cuts a running one short |
 | **n**, **/n** | **/n** counts edges and resets the ramp on the n-th, 1 to 16 |
 | **loop / once** | **once** runs the ramp to the top and waits there for a sync; back on **loop** it restarts at once |
 | **eoc** | a 1 ms trigger when a cycle ends or a sync cuts one short (not when a waiting **once** ramp is restarted) |

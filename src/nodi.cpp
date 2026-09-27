@@ -75,6 +75,7 @@ struct Nodi : Module {
         GROUP1_PARAM, GROUP2_PARAM, GROUP3_PARAM, GROUP4_PARAM,
         GROUP5_PARAM, GROUP6_PARAM, GROUP7_PARAM, GROUP8_PARAM,
         THR_A_PARAM, THR_B_PARAM, THR_C_PARAM,
+        TRIG_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -175,6 +176,7 @@ struct Nodi : Module {
         configParam(N_PARAM, 1.f, 16.f, 1.f, "Sync count N");
         getParamQuantity(N_PARAM)->snapEnabled = true;
         configSwitch(LOOP_PARAM, 0.f, 1.f, 1.f, "Cycle", {"Once", "Loop"});
+        configButton(TRIG_PARAM, "Trigger (restarts the ramp, as sync)");
         configSwitch(MODE_PARAM, 0.f, 1.f, 0.f, "Threshold sliders",
                      {"Length: relative lengths", "Posit.: positions"});
         configSwitch(RANGE_PARAM, 0.f, 2.f, 0.f, "f(X) range",
@@ -424,7 +426,10 @@ struct Nodi : Module {
             }
         }
 
-        engine.process(ctl, finite(inputs[SYNC_INPUT].getVoltage()),
+        // The button is a second sync, OR'd with the jack.
+        float sync = finite(inputs[SYNC_INPUT].getVoltage());
+        if (params[TRIG_PARAM].getValue() > 0.5f) sync = std::max(sync, 10.f);
+        engine.process(ctl, sync,
                        finite(inputs[SYNCN_INPUT].getVoltage()),
                        internal, channels, in, out);
 
@@ -529,12 +534,14 @@ struct NodiWidget : ModuleWidget {
 // @elem LOOP_PARAM CKSS 2.3 param "" 0.0
 // @elem LABEL_LOOP label 0.0 label "loop" 0.0 6.75 76.30
 // @elem LABEL_ONCE label 0.0 label "once" 0.0 6.75 91.20
-// @elem BOX_EOC panel_box 7.0 box "" 0.0 6.75 107.50 box=11x14
+// @elem TRIG_PARAM TL1105 2.6 param "" 0.0
+// @elem LABEL_TRIG label 0.0 label "trig" 0.0 13.00 105.00
+// @elem BOX_EOC panel_box 7.0 box "" 0.0 6.75 114.65 box=11x13.3
 // @elem EOC_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_EOC label 0.0 label "eoc" 0.0 6.75 113.00
-// @elem BOX_RAMP panel_box 7.0 box "" 0.0 19.25 107.50 box=11x14
+// @elem LABEL_EOC label 0.0 label "eoc" 0.0 6.75 120.50
+// @elem BOX_RAMP panel_box 7.0 box "" 0.0 19.25 114.65 box=11x13.3
 // @elem RAMP_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_RAMP label 0.0 label "ramp" 0.0 19.25 113.00
+// @elem LABEL_RAMP label 0.0 label "ramp" 0.0 19.25 120.50
 // @elem MODE_PARAM CKSS 2.3 param "" 0.0
 // @elem LABEL_POS label 0.0 label "pos" 0.0 102.67 7.30
 // @elem LABEL_LEN label 0.0 label "len" 0.0 102.67 22.20
@@ -550,23 +557,23 @@ struct NodiWidget : ModuleWidget {
 // @elem LABEL_Y label 0.0 label "+y" 0.0 102.67 66.50
 // @elem RANGE_PARAM CKSSThreePos 2.3 param "" 0.0
 // @elem LABEL_RANGE label 0.0 label "range" 0.0 115.17 67.20
-// @elem BOX_GATE_A panel_box 7.0 box "" 0.0 102.67 76.50 box=11x14
+// @elem BOX_GATE_A panel_box 7.0 box "" 0.0 102.67 84.00 box=11x14
 // @elem GATE_A_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_GATE_A label 0.0 label "a" 0.0 102.67 82.00
-// @elem BOX_GATE_B panel_box 7.0 box "" 0.0 115.17 76.50 box=11x14
+// @elem LABEL_GATE_A label 0.0 label "a" 0.0 102.67 89.50
+// @elem BOX_GATE_B panel_box 7.0 box "" 0.0 115.17 84.00 box=11x14
 // @elem GATE_B_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_GATE_B label 0.0 label "b" 0.0 115.17 82.00
-// @elem BOX_GATE_C panel_box 7.0 box "" 0.0 102.67 92.00 box=11x14
+// @elem LABEL_GATE_B label 0.0 label "b" 0.0 115.17 89.50
+// @elem BOX_GATE_C panel_box 7.0 box "" 0.0 102.67 99.50 box=11x14
 // @elem GATE_C_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_GATE_C label 0.0 label "c" 0.0 102.67 97.50
-// @elem BOX_FX panel_box 7.0 box "" 0.0 102.67 107.50 box=11x14
+// @elem LABEL_GATE_C label 0.0 label "c" 0.0 102.67 105.00
+// @elem BOX_FX panel_box 7.0 box "" 0.0 102.67 114.65 box=11x13.3
 // @elem FX_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_FX label 0.0 label "f(x)" 0.0 102.67 113.00
-// @elem BOX_GATE panel_box 7.0 box "" 0.0 115.17 107.50 box=11x14
+// @elem LABEL_FX label 0.0 label "f(x)" 0.0 102.67 120.50
+// @elem BOX_GATE panel_box 7.0 box "" 0.0 115.17 114.65 box=11x13.3
 // @elem GATE_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_GATE label 0.0 label "gate" 0.0 115.17 113.00
+// @elem LABEL_GATE label 0.0 label "gate" 0.0 115.17 120.50
 // @elem DUR_PARAM RoundBlackKnob 4.8 param "" 0.0
-// @elem LABEL_DUR label 0.0 label "dur" 0.0 115.17 98.50
+// @elem LABEL_DUR label 0.0 label "dur" 0.0 115.17 106.00
 // @elem THR_A_PARAM Trimpot 3.03 param "" 0.0
 // @elem THR_A_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem LABEL_THR_A label 0.0 label "thr a" 0.0 37.71 107.00
@@ -577,14 +584,14 @@ struct NodiWidget : ModuleWidget {
 // @elem THR_C_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem LABEL_THR_C label 0.0 label "thr c" 0.0 84.21 107.00
 // @elem SW_A_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem LABEL_SW_A label 0.0 label "a" 0.0 33.20 121.00
+// @elem LABEL_SW_A label 0.0 label "a" 0.0 33.20 120.50
 // @elem SW_B_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem LABEL_SW_B label 0.0 label "b" 0.0 45.20 121.00
+// @elem LABEL_SW_B label 0.0 label "b" 0.0 45.20 120.50
 // @elem SW_C_INPUT PJ301MPort 4.01 input "" 0.0
-// @elem LABEL_SW_C label 0.0 label "c" 0.0 76.72 121.00
-// @elem BOX_COM panel_box 7.0 box "" 0.0 88.72 115.00 box=11x13
+// @elem LABEL_SW_C label 0.0 label "c" 0.0 76.72 120.50
+// @elem BOX_COM panel_box 7.0 box "" 0.0 88.72 114.65 box=11x13.3
 // @elem COM_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_COM label 0.0 label "com" 0.0 88.72 121.00
+// @elem LABEL_COM label 0.0 label "com" 0.0 88.72 120.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 60.96 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -632,8 +639,9 @@ struct NodiWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(6.75f, 59.00f)), module, Nodi::N_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(19.25f, 59.00f)), module, Nodi::SYNCN_INPUT));
         addParam(createParamCentered<CKSS>(mm2px(Vec(6.75f, 83.00f)), module, Nodi::LOOP_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(6.75f, 105.50f)), module, Nodi::EOC_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(19.25f, 105.50f)), module, Nodi::RAMP_OUTPUT));
+        addParam(createParamCentered<TL1105>(mm2px(Vec(13.00f, 98.00f)), module, Nodi::TRIG_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(6.75f, 113.00f)), module, Nodi::EOC_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(19.25f, 113.00f)), module, Nodi::RAMP_OUTPUT));
         addParam(createParamCentered<CKSS>(mm2px(Vec(102.67f, 14.00f)), module, Nodi::MODE_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(102.67f, 29.00f)), module, Nodi::X_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(115.17f, 29.00f)), module, Nodi::EXT_INPUT));
@@ -641,22 +649,22 @@ struct NodiWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(115.17f, 44.00f)), module, Nodi::LO_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(102.67f, 59.00f)), module, Nodi::Y_INPUT));
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(115.17f, 59.00f)), module, Nodi::RANGE_PARAM));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(102.67f, 74.50f)), module, Nodi::GATE_A_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.17f, 74.50f)), module, Nodi::GATE_B_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(102.67f, 90.00f)), module, Nodi::GATE_C_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(102.67f, 105.50f)), module, Nodi::FX_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.17f, 105.50f)), module, Nodi::GATE_OUTPUT));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(115.17f, 90.00f)), module, Nodi::DUR_PARAM));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(102.67f, 82.00f)), module, Nodi::GATE_A_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.17f, 82.00f)), module, Nodi::GATE_B_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(102.67f, 97.50f)), module, Nodi::GATE_C_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(102.67f, 113.00f)), module, Nodi::FX_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(115.17f, 113.00f)), module, Nodi::GATE_OUTPUT));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(115.17f, 97.50f)), module, Nodi::DUR_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(33.21f, 99.50f)), module, Nodi::THR_A_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(42.21f, 99.50f)), module, Nodi::THR_A_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(56.46f, 99.50f)), module, Nodi::THR_B_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(65.46f, 99.50f)), module, Nodi::THR_B_INPUT));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(79.71f, 99.50f)), module, Nodi::THR_C_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(88.71f, 99.50f)), module, Nodi::THR_C_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.20f, 113.50f)), module, Nodi::SW_A_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.20f, 113.50f)), module, Nodi::SW_B_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.72f, 113.50f)), module, Nodi::SW_C_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(88.72f, 113.50f)), module, Nodi::COM_OUTPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(33.20f, 113.00f)), module, Nodi::SW_A_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(45.20f, 113.00f)), module, Nodi::SW_B_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(76.72f, 113.00f)), module, Nodi::SW_C_INPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(88.72f, 113.00f)), module, Nodi::COM_OUTPUT));
         // @layout:end
     }
 

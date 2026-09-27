@@ -284,20 +284,21 @@ fire. With the ramp at X they fill up like a bar graph and empty at the
 reset, which is the hardware's LED column drawn where the thresholds are.
 
 That leaves about 28 mm on each side and a band under the block, for 23
-jacks, 7 knobs and 4 switches:
+jacks, 7 knobs, 4 switches and a button:
 
 - **left**, the clock: RATE, SLOW / FAST, FM attenuator and jack, V/O,
-  SYNC, N and /N, LOOP / ONCE, EOC and RAMP out;
+  SYNC, N and /N, LOOP / ONCE, TRIG (a button OR'd with SYNC), then EOC
+  and RAMP out level with the switch inputs;
 - **right**, POS / LEN, X, EXT, HI, LO, +Y and RANGE; then the outputs in
   badges, GATE A / B / C, f(X) and GATE, with DUR (the gate length) in the
-  sixth place beside them;
+  sixth place beside them, the bottom pair level with the switch inputs;
 - **the band under the stages**: THR A / B / C, each an attenuator and a
   jack, then the switch, A and B left of the logo, C and COM right of it.
 
 It fits at **24 HP** with `panel_audit.py` clean; the labels are short
 (OCR-A is 2.24 mm a character at the house size), so ABOVE and BELOW read
-**hi** and **lo**, and the gate length **dur**. One place is left empty, top
-right under the screw.
+**hi** and **lo**, and the gate length **dur**. The bottom row's badges are
+13.3 mm tall rather than 14, to clear the screws.
 
 
 ## Tests
