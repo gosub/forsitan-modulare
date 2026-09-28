@@ -429,11 +429,20 @@ struct Clock {
     long subPeriod = 0;
     long nextSub = 0;
     bool wasPlaying = false;
+    bool primed = false;
 
     bool process(const Controls& c, bool edge, float sampleRate, bool& started) {
         now++;
         started = false;
         bool due = false;
+        // The first sample after a load or an add is not a switch to RUN:
+        // it plays, but does not restart the sequence, and with a clock
+        // patched it waits for the clock rather than play off the grid.
+        if (!primed) {
+            primed = true;
+            wasPlaying = c.play;
+            if (c.play && !c.clockConnected) due = true;
+        }
         if (c.play && !wasPlaying) {
             started = true;
             internalHeld = false;
