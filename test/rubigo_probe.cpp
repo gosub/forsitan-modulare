@@ -13,7 +13,7 @@
 //                            muted, the RUST rate, peak level per effect
 //   ./rubigo_probe random    the reasoned random against a uniform draw:
 //                            how many come out inaudible or clipped flat,
-//                            level and brightness per archetype
+//                            level and brightness (RMS frequency) per archetype
 //   ./rubigo_probe fuzz      random controls and events: finite and bounded
 //   ./rubigo_probe cpu       ns per sample
 //   ./rubigo_probe wav <dir> the manual's recipes, to listen to
@@ -457,27 +457,24 @@ static int cmdFuzz() {
 // ---------------------------------------------------------------- random
 
 struct Heard {
-    float rms, peak, centroid;    // centroid in Hz, from zero crossings while sounding
+    float rms, peak, brightness;  // brightness: the RMS frequency, in Hz
 };
 
+// Brightness as the RMS frequency, SR / 2pi * sqrt(sum dy^2 / sum y^2): the
+// silence between hits adds nothing to either sum.
 static Heard listen(Rig& g, float seconds) {
     std::vector<float> y = render(g, seconds);
-    double e = 0.;
+    double e = 0., de = 0.;
     float m = 0.f;
-    int zc = 0;
-    long sounding = 0;
     size_t from = y.size() / 4;                             // settle first
     for (size_t i = from; i < y.size(); i++) {
-        e += y[i] * y[i];
+        e += (double)y[i] * y[i];
+        de += (double)(y[i] - y[i - 1]) * (y[i] - y[i - 1]);
         m = std::max(m, std::fabs(y[i]));
-        // Brightness only while it sounds, not across the gaps between hits.
-        if (std::fabs(y[i]) > 0.05f || std::fabs(y[i - 1]) > 0.05f) {
-            sounding++;
-            if ((y[i - 1] < 0.f) != (y[i] < 0.f)) zc++;
-        }
     }
     size_t n = y.size() - from;
-    return {(float)std::sqrt(e / n), m, sounding ? zc * SR / (2.f * sounding) : 0.f};
+    float b = e > 0. ? SR / (2.f * kPi) * (float)std::sqrt(de / e) : 0.f;
+    return {(float)std::sqrt(e / n), m, b};
 }
 
 // Rhythms are sparse, so a short kick twice a second has a low rms however
@@ -516,11 +513,11 @@ static int cmdRandom() {
             Heard h = listen(g, 4.f);
             dead += inaudible(h);
             rms += h.rms;
-            cen += h.centroid;
+            cen += h.brightness;
             pk += h.peak;
         }
         deadReasoned += dead;
-        printf("    %-9s %2d of %d inaudible, mean rms %.2f V, peak %.2f V, centroid %5.0f Hz\n",
+        printf("    %-9s %2d of %d inaudible, mean rms %.2f V, peak %.2f V, brightness %5.0f Hz\n",
                archetypeName(a), dead, M, rms / M, pk / M, cen / M);
     }
     char what[80];
