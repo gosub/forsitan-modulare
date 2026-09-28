@@ -11,6 +11,9 @@
 //   ./rubigo_probe voice     silence untriggered, the three decay times,
 //                            PITCH, the resonance ringing with the sources
 //                            muted, the RUST rate, peak level per effect
+//   ./rubigo_probe random    the reasoned random against a uniform draw:
+//                            how many come out inaudible or clipped flat,
+//                            level and brightness per archetype
 //   ./rubigo_probe fuzz      random controls and events: finite and bounded
 //   ./rubigo_probe cpu       ns per sample
 //   ./rubigo_probe wav <dir> the manual's recipes, to listen to
@@ -18,6 +21,7 @@
 // Every command but `cpu` and `wav` exits nonzero on a failed check.
 
 #include "../src/rubigo/rubigo.hpp"
+#include "../src/rubigo/reasoned.hpp"
 
 #include <chrono>
 #include <cstdio>
@@ -450,6 +454,81 @@ static int cmdFuzz() {
     return failures ? 1 : 0;
 }
 
+// ---------------------------------------------------------------- random
+
+struct Heard {
+    float rms, peak, centroid;    // centroid in Hz, from zero crossings while sounding
+};
+
+static Heard listen(Rig& g, float seconds) {
+    std::vector<float> y = render(g, seconds);
+    double e = 0.;
+    float m = 0.f;
+    int zc = 0;
+    long sounding = 0;
+    size_t from = y.size() / 4;                             // settle first
+    for (size_t i = from; i < y.size(); i++) {
+        e += y[i] * y[i];
+        m = std::max(m, std::fabs(y[i]));
+        // Brightness only while it sounds, not across the gaps between hits.
+        if (std::fabs(y[i]) > 0.05f || std::fabs(y[i - 1]) > 0.05f) {
+            sounding++;
+            if ((y[i - 1] < 0.f) != (y[i] < 0.f)) zc++;
+        }
+    }
+    size_t n = y.size() - from;
+    return {(float)std::sqrt(e / n), m, sounding ? zc * SR / (2.f * sounding) : 0.f};
+}
+
+// Rhythms are sparse, so a short kick twice a second has a low rms however
+// loud it is: judged on the peak.
+static bool inaudible(const Heard& h) { return h.peak < 0.5f; }
+
+static int cmdRandom() {
+    printf("random\n");
+    const int N = 200;
+    Rng r;
+    r.seed(4242);
+    auto u = [&r]() { return r.uniform(); };
+    int deadUniform = 0;
+    for (int i = 0; i < N; i++) {
+        Rig g;
+        g.e.seed(r.next());
+        Controls& c = g.c;
+        c.pitch = u(); c.wave = r.next() & 1; c.pitchDecay = u(); c.pitchAmount = u();
+        c.noise = u(); c.cutoff = u(); c.resonance = u(); c.highpass = r.next() & 1;
+        c.cutoffDecay = u(); c.cutoffAmount = u(); c.volume = u(); c.volumeDecay = u();
+        c.effect = u(); c.rust = r.next() & 1; c.mix = u(); c.tempo = u(); c.skips = u();
+        c.stepMod = u(); c.dest = r.next() % 3; c.steps = r.next() % 7; c.play = true;
+        deadUniform += inaudible(listen(g, 4.f));
+    }
+    printf("    uniform: %d of %d inaudible\n", deadUniform, N);
+    int deadReasoned = 0;
+    for (int a = 0; a < ARCH_LEN; a++) {
+        int dead = 0;
+        double rms = 0., cen = 0., pk = 0.;
+        const int M = N / ARCH_LEN;
+        for (int i = 0; i < M; i++) {
+            Rig g;
+            g.e.seed(r.next());
+            apply(roll(a, u), g.c);
+            g.c.play = true;
+            Heard h = listen(g, 4.f);
+            dead += inaudible(h);
+            rms += h.rms;
+            cen += h.centroid;
+            pk += h.peak;
+        }
+        deadReasoned += dead;
+        printf("    %-9s %2d of %d inaudible, mean rms %.2f V, peak %.2f V, centroid %5.0f Hz\n",
+               archetypeName(a), dead, M, rms / M, pk / M, cen / M);
+    }
+    char what[80];
+    snprintf(what, sizeof what, "reasoned: %d of %d inaudible, uniform %d", deadReasoned, N, deadUniform);
+    check(deadReasoned * 4 <= deadUniform && deadReasoned <= N / 20, what);
+    return failures ? 1 : 0;
+}
+
 // ---------------------------------------------------------------- cpu
 
 static int cmdCpu() {
@@ -550,9 +629,10 @@ int main(int argc, char** argv) {
     if (cmd == "seq") return cmdSeq();
     if (cmd == "clock") return cmdClock();
     if (cmd == "voice") return cmdVoice();
+    if (cmd == "random") return cmdRandom();
     if (cmd == "fuzz") return cmdFuzz();
     if (cmd == "cpu") return cmdCpu();
     if (cmd == "wav" && argc > 2) return cmdWav(argv[2]);
-    fprintf(stderr, "usage: rubigo_probe seq|clock|voice|fuzz|cpu|wav <dir>\n");
+    fprintf(stderr, "usage: rubigo_probe seq|clock|voice|random|fuzz|cpu|wav <dir>\n");
     return 2;
 }

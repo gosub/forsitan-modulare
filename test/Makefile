@@ -39,7 +39,7 @@ radix_probe: radix_probe.cpp ../src/radix/radix.hpp
 # times, PITCH, self-oscillation and RUST rate, and a fuzz over the controls.
 # Drives the engine header alone; every command but `cpu` and `wav <dir>`
 # exits nonzero on a failed check.
-rubigo_probe: rubigo_probe.cpp ../src/rubigo/rubigo.hpp
+rubigo_probe: rubigo_probe.cpp ../src/rubigo/rubigo.hpp ../src/rubigo/reasoned.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Head positions, the loop's level per pass, the #22 click measure under
