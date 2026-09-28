@@ -84,6 +84,9 @@ def graphic_vco():
             thresh1=0, thresh2=0.125, thresh3=0.25, thresh4=0.375,
             thresh5=0.5, thresh6=0.625, thresh7=0.75, thresh8=0.875)
       ```
+- [ ] 1.5. ONCE: the scale plays up once and stops on note 8. Press TRIG:
+      once more. Switch back to LOOP: it starts again at once.
+      `n.set(loop="Once")`
 
 ---
 
