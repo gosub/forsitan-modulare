@@ -296,22 +296,21 @@ static int cmdVoice() {
         for (float v : y) m = std::max(m, std::fabs(v));
         check(m < 1e-3f, "silent until triggered");
     }
+    // AdEnv's decay reaches zero exactly at the DECAY time.
     for (float T : {0.05f, 0.4f, 2.f}) {
         Rig g;
-        g.c.volumeDecay = knobFor(T, kDecayMin, kDecayMax);
-        g.c.cutoff = 1.f;
-        g.c.volume = 0.4f;
+        g.c.volumeDecay = std::sqrt((T - kDecayMin) / (kDecayMax - kDecayMin));
         g.ev.trigger = true;
-        // The envelope itself: the output's DC blocker adds a tail of its own.
-        std::vector<float> y;
-        for (long i = 0; i < (long)((T + 1.f) * SR); i++) {
+        long n = 0;
+        g.tick();
+        while (g.e.volumeEnv.output > 0.f && n < (long)(4.f * SR)) {
             g.tick();
-            y.push_back(g.e.volumeEnv.v);
+            n++;
         }
-        float d = decayTime(y);
+        float d = n / SR - kAttack;
         char what[80];
-        snprintf(what, sizeof what, "volume DECAY %.2f s: -60 dB after %.3f s", T, d);
-        check(d > 0.85f * T && d < 1.15f * T + 0.01f, what);
+        snprintf(what, sizeof what, "volume DECAY %.2f s: silent after %.3f s", T, d);
+        check(std::fabs(d - T) < 0.002f + 0.01f * T, what);
     }
     for (float hz : {30.f, 110.f, 1500.f}) {
         Rig g;
@@ -333,7 +332,7 @@ static int cmdVoice() {
         g.c.extConnected = true;
         g.c.noise = 1.f;
         g.c.resonance = 1.f;
-        g.c.cutoff = knobFor(440.f, kCutoffMin, kCutoffMax);
+        g.c.cutoff = std::sqrt((440.f - kCutoffMin) / (kCutoffMax - kCutoffMin));   // fmap EXP
         g.c.volumeDecay = 1.f;
         g.c.volume = 0.5f;
         g.c.play = true;
@@ -373,10 +372,10 @@ static int cmdVoice() {
             for (long i = 0; i < (long)SR; i++) {
                 g.c.ext = 0.01f * n.bipolar();
                 g.tick();
-                changes += g.e.rustHeld != prev;
-                prev = g.e.rustHeld;
+                changes += g.e.decimator.held != prev;
+                prev = g.e.decimator.held;
             }
-            float want = SR * std::pow(kRustMinRate / SR, k);
+            float want = SR / (std::floor(k * k * 96.f) + 1.f);   // Decimator's hold
             char what[80];
             snprintf(what, sizeof what, "RUST %.1f: %d changes/s, rate %.0f Hz", k, changes, want);
             check(changes > 0.8f * want && changes < 1.1f * want + 2, what);

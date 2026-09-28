@@ -111,9 +111,10 @@ struct Rubigo : Module {
     struct CutoffQuantity : ParamQuantity {
         std::string getDisplayValueString() override { return hzString(rubigo::cutoffHz(getValue())); }
     };
+    // The cutoff envelope adds to CUTOFF's own travel before the law maps it.
     struct CutoffAmountQuantity : ParamQuantity {
         std::string getDisplayValueString() override {
-            return string::f("+%.1f oct", getValue() * rubigo::kCutoffEnvOct);
+            return string::f("+%.0f%% of cutoff", getValue() * 100.f);
         }
     };
     // Hz on the internal clock, the ratio under an external one.
