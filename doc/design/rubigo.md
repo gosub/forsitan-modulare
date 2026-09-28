@@ -199,6 +199,12 @@ A table of 32 slots, each holding two uniform random numbers: `skip` and
   sweeping it moves triggers in and out one slot at a time.
 - The step's mod value is `mod * STEP MOD`, read live, so turning the
   amount rescales a locked loop without changing its shape.
+- **A skipped step holds the previous step's mod value.** The manual never
+  says so directly, but its CLOCK -> TRIGGER self-patch depends on it: the
+  voice then fires on every step, and the manual says skips turn into "step
+  repetitions" and that SKIPS decides "when the modulation changes vs. when
+  it repeats". That only works if a skipped step leaves the value alone.
+  STEPMOD out follows the held value too.
 
 Step-mod targets, all **inferred** in scale:
 
@@ -281,9 +287,55 @@ The final layout is done in the panel editor and checked with
   recipes as the items: kick from the pitch envelope, the resonant melody,
   the drone, the processor, the audio-rate clock self-patch.
 
-## Presets
+## Presets, and the reasoned random
 
-Preset Book #1's twelve settings are knob drawings by the manufacturer.
-Like Skrewell's snapshots they are someone else's content, so they are not
-converted into `presets/rubigo/` without asking first. Our own presets,
-written from the manual's recipes, are fine.
+Preset Book #1's twelve settings are the manufacturer's content and are not
+copied: no preset reproduces one of them. They were read (knob angles
+measured off the page images) for the **principles** they share, and both
+our factory presets and a "reasoned random" are built on those.
+
+What the twelve agree on:
+
+- Always playing. STEPS is OFF, 8 or 16; never 2, 4, 10 or 32.
+- PITCH is low, 0..0.2 of its travel. Pitch comes from the envelope or the
+  step mod, not the knob.
+- The pitch envelope is either **off** (DECAY and AMOUNT at zero) or
+  **kick-shaped** (DECAY 0.2..0.35, AMOUNT 0.5..0.8). Nothing in between.
+- The cutoff envelope is also off or on as a pair; when on, DECAY and
+  AMOUNT both sit in the upper half more often than not.
+- NOISE is 0, 0.5 or 1. Never a trace of noise.
+- RESONANCE is zero unless the filter is the voice (HP, or an acid line),
+  and then it is 0.5..1.
+- In LP, CUTOFF is low (up to 0.3) unless the sound is noise; HP sits at
+  mid travel.
+- VOLUME is 0.66..0.8: higher with CORROSION, lower with RUST.
+- The effect amount is 0 or at least half; RUST always at least half.
+- TEMPO 0.2..0.36 for rhythms. Fast TEMPO with a long volume DECAY is the
+  drone and wall recipe.
+- SKIPS is zero for continuous material and 0.3..0.8 for rhythms.
+- STEP MOD 0.27..1, never a hint. CUTOFF as destination goes with RUST.
+- Three of the twelve are self-patched: CLOCK -> TRIGGER, CLOCK -> NOISE,
+  and CLOCK -> TRIGGER with STEPMOD -> CUTOFF.
+
+The **reasoned random** is a context menu entry, and also what Rack's own
+Randomize (Ctrl-R) does on this module. The uniform randomize lands mostly
+on silences and mush: half the knobs have one or two useful regions and
+the rest of their travel is the space between them. It first picks an
+archetype, then draws every control from that archetype's ranges and
+couplings:
+
+| archetype | from the book's |
+|---|---|
+| KICK | pitch envelope on, low cutoff, short volume decay, skips |
+| BASS | pitch step mod, LP with some resonance, 8 or 16 steps |
+| NOISE | noise at 0.5..1, cutoff or noise step mod, RUST |
+| RESONANT | HP or LP near self-oscillation, cutoff step mod, cutoff envelope |
+| DRONE | fast tempo, long volume decay, no skips, STEPS OFF |
+
+The menu offers "any" and each archetype by name. It changes the knobs and
+switches and leaves the context menu and the locked sequence alone:
+re-rolling the sound over a loop you like is the point.
+
+The factory presets in `presets/rubigo/` are written by
+`tools/presets/gen_rubigo_presets.py` from the same archetypes, with our
+own names and values.
