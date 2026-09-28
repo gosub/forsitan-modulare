@@ -10,7 +10,7 @@ LDFLAGS += -L$(RACK_DIR) -lRack -Wl,-rpath,$(RACK_DIR)
 SMOKE_MODULES = draen rete ululo tabes lustro bulla perge vorax textor imber sylla \
                 guttur vespae quadrare vestigia antrum caligo raucus tundo \
                 cartilago scrupea viginti gradus materiae aether vates artifex \
-                radix olim nodi
+                radix olim nodi rubigo
 SMOKE_BINS = $(addprefix smoke_,$(SMOKE_MODULES))
 
 # Cross-module harnesses, run by `check` alongside the per-module ones.
@@ -185,6 +185,7 @@ smoke_aether: ../src/aether_dsp.hpp $(wildcard ../src/guttur/*.hpp)
 smoke_radix: ../src/radix/radix.hpp
 smoke_olim: ../src/olim/olim.hpp ../src/imber/imber_worker.hpp
 smoke_nodi: ../src/nodi/nodi.hpp ../src/nodi/shapes.hpp ../src/position_switch.hpp
+smoke_rubigo: ../src/rubigo/rubigo.hpp ../src/rubigo/reasoned.hpp ../src/position_switch.hpp
 
 # Run every smoke test, printing one CSV header for the lot.
 # Fails if any binary does.

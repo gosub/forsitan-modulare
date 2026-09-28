@@ -447,6 +447,20 @@
         "Hardware clone",
         "Polyphonic"
       ]
+    },
+    {
+      "slug": "rubigo",
+      "name": "rubigo",
+      "description": "Digital percussion voice with a locking random sequencer. A Metal Fetishist clone.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.16.3/doc/rubigo.md",
+      "tags": [
+        "Drum",
+        "Synth voice",
+        "Sequencer",
+        "Random",
+        "Digital",
+        "Hardware clone"
+      ]
     }
   ]
 }
