@@ -52,9 +52,13 @@ struct Caligo;
 
 // The time knob means three different things depending on the patch: a free
 // delay time, a clock ratio, or (at an extreme sample rate) a time the buffer
-// cannot hold. Report whichever one is actually in force.
+// cannot hold. Report whichever one is actually in force. Free, it is a plain
+// number with " ms" in the label, as Rack shows any quantity; the other two
+// are text, so they drop the unit and read their own text back.
 struct TimeQuantity : ParamQuantity {
     std::string getDisplayValueString() override;
+    std::string getUnit() override;
+    void setDisplayValueString(std::string s) override;
 };
 
 struct Caligo : Module {
@@ -474,20 +478,49 @@ struct Caligo : Module {
     }
 };
 
+// Which of the three the knob is showing: 0 free, 1 clocked, 2 at the
+// buffer's limit.
+static int timeState(Caligo* m) {
+    if (!m || m->sr <= 0.f) return 0;
+    if (m->timeSynced) return 1;
+    float ceiling = m->engine.maxTimeSec();
+    if (m->effTimeSec >= ceiling - 1e-4f && ceiling < caligo_dsp::kMaxTimeSec - 0.01f) return 2;
+    return 0;
+}
+
 std::string TimeQuantity::getDisplayValueString() {
     Caligo* m = dynamic_cast<Caligo*>(module);
-    if (!m || m->sr <= 0.f)
-        return ParamQuantity::getDisplayValueString();
-    if (m->timeSynced)
-        return string::f("%s of clock (%.0f ms)", kSyncNames[m->appliedRatio],
-                         m->effTimeSec * 1000.f);
-    float ceiling = m->engine.maxTimeSec();
-    if (m->effTimeSec >= ceiling - 1e-4f && ceiling < caligo_dsp::kMaxTimeSec - 0.01f)
-        return string::f("%.2f s (buffer limit at %.0f kHz)", m->effTimeSec,
-                         m->sr * 0.001f);
-    if (m->effTimeSec >= 1.f)
-        return string::f("%.2f s", m->effTimeSec);
-    return string::f("%.0f ms", m->effTimeSec * 1000.f);
+    switch (timeState(m)) {
+        case 1:
+            return string::f("%s of clock (%.0f ms)", kSyncNames[m->appliedRatio], m->effTimeSec * 1000.f);
+        case 2:
+            return string::f("%.0f ms (buffer limit at %.0f kHz)", m->effTimeSec * 1000.f, m->sr * 0.001f);
+        default:
+            return ParamQuantity::getDisplayValueString();
+    }
+}
+
+std::string TimeQuantity::getUnit() {
+    return timeState(dynamic_cast<Caligo*>(module)) == 0 ? ParamQuantity::getUnit() : "";
+}
+
+// Clocked, a ratio name ("1/4", "3/2", "2"); otherwise milliseconds, the
+// leading number of whatever is typed, so the text the field opens with
+// ("250", or "2000 ms (buffer limit ...)") reads back as itself.
+void TimeQuantity::setDisplayValueString(std::string s) {
+    Caligo* m = dynamic_cast<Caligo*>(module);
+    if (timeState(m) == 1) {
+        std::string word = s.substr(0, s.find_first_of(" \t"));
+        for (int i = 0; i < 15; i++)
+            if (word == kSyncNames[i] || (word == "1" && i == 7)) {
+                setValue(i / 14.f);
+                return;
+            }
+        return;
+    }
+    char* end = nullptr;
+    float ms = std::strtof(s.c_str(), &end);
+    if (end != s.c_str() && std::isfinite(ms)) setDisplayValue(ms);
 }
 
 struct CaligoWidget : ModuleWidget {
