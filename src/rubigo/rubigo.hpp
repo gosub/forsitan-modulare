@@ -17,10 +17,9 @@
 //
 // Every modulation adds to its knob, as on the hardware: PITCH is the lowest
 // pitch, CUTOFF the lowest cutoff, and the envelopes and the step value push
-// up from there. The cutoff is summed in knob space (knob + envelope + step
-// + CV, 0..1) and mapped once, so every source moves it by the same law.
-// Cutoff modulation always raises the cutoff, so it opens the filter in LP
-// and closes it in HP, which is what the manual says the envelope does.
+// up from there, in hertz.
+// The envelope and step value raise the cutoff in LP and lower it in HP,
+// which is what the hardware does, measured on its resonant kick.
 //
 // The sequencer keeps a table of 32 slots, each a pair of uniform random
 // numbers: one compared against SKIPS to decide whether the step fires, one
@@ -48,14 +47,30 @@ const float kPi = 3.14159265358979f;
 const float kPitchMin = 30.f;             // Hz, PITCH knob (fmap LOG)
 const float kPitchMax = 1500.f;
 const float kPitchEnvMax = 600.f;         // Hz, pitch DECAY AMOUNT at full
-const float kStepPitchMax = 1500.f;       // Hz, step value 1 on PITCH
 const float kDecayMin = 0.001f;           // s, the three DECAY knobs (fmap EXP)
 const float kDecayMax = 3.f;
 const float kAttack = 0.001f;             // s, every envelope
 const float kCutoffMin = 20.f;            // Hz, CUTOFF knob (fmap EXP)
 const float kCutoffMax = 16000.f;         // the Svf's own ceiling at 48 kHz
-const float kEnvCurve = -8.f;             // AdEnv curve: -60 dB at 83% of DECAY
+// AdEnv's curves, one per envelope as the firmware can set them, each fitted
+// to the Preset Book video. Volume: tau near 0.14 s at DECAY 0.36 and 0.87 s
+// at 0.99, so tau = DECAY / 3.5. Pitch: the kick's sweep from pitch DECAY
+// 0.27 is at 125 Hz after 50 ms and 60 Hz after 100 ms, a curve near -6.
+// Cutoff: the resonant kick's HP sweep and the bassline's closing both need
+// a curve near -10; the filter moves much faster than the volume.
+const float kVolumeCurve = -3.5f;
+const float kPitchCurve = -6.f;
+const float kCutoffCurve = -10.f;
 const float kFilterDrive = 2.0f;           // Svf::SetDrive, fixed
+// The cutoff envelope adds hertz, AMOUNT x 5 kHz at its peak, as the pitch
+// envelope does (the manual's "+600 Hz"); the step value adds up to 5 kHz x
+// STEP MOD's law. A knob-space sum cannot fit the hardware: its acid peaks
+// near 5 kHz from CUTOFF 0.28 at AMOUNT 0.81, its bassline near 2 kHz from
+// CUTOFF 0.01 at AMOUNT 0.33 (Preset Book video).
+const float kCutoffEnvHz = 5000.f;
+// TEMPO's law: 0.4 + 79.6 k^2.4 Hz, the manual's ends through the step
+// rates measured off the Preset Book video (4.1 Hz at 0.27, 6.2 at 0.355).
+const float kTempoCurve = 2.4f;
 const float kTempoMin = 0.4f;             // Hz
 const float kTempoMax = 80.f;
 const float kLfoMin = 0.05f;              // Hz, alternative effects' knob
@@ -91,10 +106,21 @@ inline float expLaw(float knob, float lo, float hi) { return daisy::fmap(knob, l
 inline float pitchHz(float knob) { return daisy::fmap(knob, kPitchMin, kPitchMax, daisy::LOG); }
 inline float decaySeconds(float knob) { return daisy::fmap(knob, kDecayMin, kDecayMax, daisy::EXP); }
 inline float cutoffHz(float knob) { return daisy::fmap(knob, kCutoffMin, kCutoffMax, daisy::EXP); }
-inline float tempoHz(float knob) { return daisy::fmap(knob, kTempoMin, kTempoMax, daisy::LOG); }
+inline float tempoHz(float knob) {
+    return kTempoMin + (kTempoMax - kTempoMin) * std::pow(clamp01(knob), kTempoCurve);
+}
+// The TEMPO position for a rate, the inverse of tempoHz.
+inline float tempoKnob(float hz) {
+    return std::pow(clamp01((hz - kTempoMin) / (kTempoMax - kTempoMin)), 1.f / kTempoCurve);
+}
+// The AMOUNT knobs and STEP MOD, on fmap's quadratic EXP law.
+inline float amountLaw(float knob) { return daisy::fmap(knob, 0.f, 1.f, daisy::EXP); }
 inline float lfoHz(float knob) { return daisy::fmap(knob, kLfoMin, kLfoMax, daisy::LOG); }
-// The Overdrive's drive: 0.2 is close to clean at unity, 1 is the most.
-inline float overdriveAmount(float knob) { return daisy::fmap(knob, 0.2f, 1.f); }
+// The Overdrive's drive, 0.25 (clean, unity) to 0.5 (a pre-gain of 24).
+// Past 0.5 its gain runs into the hundreds: the hardware's explosions, at
+// EFFECT 0.66 on CORROSION, is a dark filtered noise, which a pre-gain of
+// 300 would clip into a bright wash.
+inline float overdriveAmount(float knob) { return daisy::fmap(knob, 0.25f, 0.5f); }
 
 // TEMPO as a ratio against an external clock.
 inline int tempoRatio(float knob) {
@@ -133,7 +159,7 @@ struct Controls {
     float mix = 1.f;              // the dry/wet
     // sequencer
     bool play = true;
-    float tempo = 0.3f;
+    float tempo = 0.2f;              // 2 Hz
     float skips = 0.f;
     float stepMod = 0.f;
     int dest = DEST_PITCH;
@@ -354,7 +380,9 @@ struct Engine {
     int lastLength = -1;
 
     Engine() {
-        pitchEnv.curve = cutoffEnv.curve = volumeEnv.curve = kEnvCurve;
+        pitchEnv.curve = kPitchCurve;
+        cutoffEnv.curve = kCutoffCurve;
+        volumeEnv.curve = kVolumeCurve;
         filter.setDrive(kFilterDrive);
     }
 
@@ -365,7 +393,12 @@ struct Engine {
 
     // The current step value after STEP MOD and its CV, 0..1.
     float stepValue(const Controls& c) const {
-        return seq.held * clamp01(c.stepMod + c.stepModCv * 0.1f);
+        return seq.held * amountLaw(c.stepMod + c.stepModCv * 0.1f);
+    }
+
+    // STEP MOD's own knob and CV, 0..1, before any law.
+    float stepModKnob(const Controls& c) const {
+        return clamp01(c.stepMod + c.stepModCv * 0.1f);
     }
 
     Output process(const Controls& c, const Events& e, float sampleRate) {
@@ -388,6 +421,8 @@ struct Engine {
                 resetPending = false;
             }
             out.clock = true;
+            // SKIPS is linear, a percentage as the manual says: the
+            // hardware's time-bomb at 0.66 fires one step in three.
             float skips = clamp01(c.skips + c.skipsCv * 0.1f);
             if (seq.step(skips, rng)) fire = true;
         }
@@ -409,7 +444,11 @@ struct Engine {
         // ---- modulation
         float m = stepValue(c);
         out.stepMod = 10.f * m;
-        float mPitch = c.dest == DEST_PITCH ? m : 0.f;
+        // On PITCH, STEP MOD sets the highest note on PITCH's own scale: the
+        // step adds up to pitchHz(STEP MOD) - 30 Hz, so at full it spans
+        // the manual's 1500 Hz, and at 0.42 (the book's acid) about 125 Hz.
+        float mPitchHz = c.dest == DEST_PITCH
+            ? seq.held * (pitchHz(stepModKnob(c)) - kPitchMin) * (stepModKnob(c) > 0.f ? 1.f : 0.f) : 0.f;
         float mNoise = c.dest == DEST_NOISE ? m : 0.f;
         float mAssign = c.dest == DEST_CUTOFF ? m : 0.f;
         // The CUTOFF input goes where the Mod assign menu sends it: +/-5 V
@@ -420,7 +459,7 @@ struct Engine {
         float cutoffAmount = c.cutoffAmount, volume = c.volume, effect = c.effect;
         float cutMod = 0.f;
         switch (c.assign) {
-            case ASSIGN_CUTOFF: cutMod = mAssign + cv; break;
+            case ASSIGN_CUTOFF: cutMod = mAssign * kCutoffEnvHz; break;
             case ASSIGN_VOL_DECAY: volumeDecay = pushUp(volumeDecay, mAssign + cv); break;
             case ASSIGN_PITCH_AMOUNT: pitchAmount = pushUp(pitchAmount, mAssign + cv); break;
             case ASSIGN_CUTOFF_AMOUNT: cutoffAmount = pushUp(cutoffAmount, mAssign + cv); break;
@@ -437,7 +476,7 @@ struct Engine {
         // ---- sources
         bool saw = c.wave == SAW;
         float freq = pitchHz(c.pitch) * std::pow(2.f, std::min(std::max(c.pitchCv, -10.f), 10.f))
-                   + ep * pitchAmount * kPitchEnvMax + mPitch * kStepPitchMax;
+                   + ep * amountLaw(pitchAmount) * kPitchEnvMax + mPitchHz;
         freq = std::min(std::max(freq, 1.f), 0.45f * sampleRate);
         float x = osc.process(freq, saw, sampleRate);
         if (c.fx == FX_OSC2) {
@@ -453,10 +492,16 @@ struct Engine {
         // enough to start the filter ringing with the sources muted.
         x += 1e-5f * noiseRng.bipolar();
 
-        // ---- filter: knob, envelope, step and CV summed, then mapped
-        float kc = clamp01(c.cutoff + ec * cutoffAmount + cutMod);
+        // ---- filter: the knob and CV mapped, the envelope and the step value
+        // added in hertz. They push the cutoff up in LP and pull it down in
+        // HP: on the hardware's resonant kick the HP sweep starts low
+        // at the hit and rises back to the knob. The CV is an offset either
+        // way.
+        float mod = ec * clamp01(cutoffAmount) * kCutoffEnvHz + cutMod;
+        float base = cutoffHz(c.cutoff + (c.assign == ASSIGN_CUTOFF ? cv : 0.f));
+        float fc = std::min(std::max(base + (c.highpass ? -mod : mod), kCutoffMin), kCutoffMax);
         filter.setSampleRate(sampleRate);
-        filter.setFreq(cutoffHz(kc));
+        filter.setFreq(fc);
         filter.setRes(clamp01(c.resonance));
         filter.process(x);
         x = c.highpass ? filter.outHigh : filter.outLow;
@@ -468,7 +513,10 @@ struct Engine {
                 overdrive.setDrive(overdriveAmount(effect));
                 wet = overdrive.process(x);
                 // RUST: the Decimator after it, with no anti-aliasing.
-                if (c.rust) wet = decimator.process(wet, effect, sampleRate);
+                // The factor 0.5 k^3 puts the hold rate at 6.9 kHz at 0.8 and
+                // 1.9 kHz at full, as the book's noise wall and 8-bit noise
+                // measure on the hardware.
+                if (c.rust) wet = decimator.process(wet, 0.5f * effect * effect * effect, sampleRate);
                 break;
             case FX_OSC2:
                 break;

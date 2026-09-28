@@ -29,7 +29,7 @@ struct Counter {
     }
 };
 
-// Out of the box: a kick at TEMPO 0.3 (1.97 Hz), every step firing.
+// Out of the box: a kick at TEMPO 0.2 (2 Hz), every step firing.
 static void testDefaults() {
     Rubigo m; long fr = 0;
     Stats s;
@@ -324,7 +324,10 @@ static void testPresets() {
     for (size_t a = 0; a < heard.size(); a++)
         for (size_t b = a + 1; b < heard.size(); b++)
             if (std::fabs(heard[a].first / heard[b].first - 1.f) < 0.03f &&
-                std::fabs(heard[a].second / heard[b].second - 1.f) < 0.03f) same++;
+                std::fabs(heard[a].second / heard[b].second - 1.f) < 0.03f) {
+                printf("# alike: %s %s\n", files[a].c_str(), files[b].c_str());
+                same++;
+            }
     report("rubigo", "presets_found", files.size(), files.size() >= 10);
     report("rubigo", "presets_audible_finite_in_swing", files.size() - bad, bad == 0);
     report("rubigo", "presets_all_distinct", same, same == 0);

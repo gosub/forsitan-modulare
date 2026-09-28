@@ -174,7 +174,7 @@ static int cmdClock() {
     {
         Rig g;
         g.c.play = true;
-        g.c.tempo = knobFor(4.f, kTempoMin, kTempoMax);
+        g.c.tempo = tempoKnob(4.f);
         long t = 0;
         int n = countSteps(g, 5.f, 0, t);
         printf("    internal 4 Hz: %d steps in 5 s\n", n);
@@ -200,7 +200,7 @@ static int cmdClock() {
         Rig g;
         g.c.play = true;
         g.c.clockConnected = true;
-        g.c.tempo = knobFor(4.f, kTempoMin, kTempoMax);
+        g.c.tempo = tempoKnob(4.f);
         long t = 0;
         countSteps(g, 1.f, 4800, t);
         int during = countSteps(g, 1.9f, 0, t);             // edges stop
@@ -336,7 +336,7 @@ static int cmdVoice() {
         g.c.volumeDecay = 1.f;
         g.c.volume = 0.5f;
         g.c.play = true;
-        g.c.tempo = knobFor(4.f, kTempoMin, kTempoMax);
+        g.c.tempo = tempoKnob(4.f);
         std::vector<float> y = render(g, 3.f);
         float m = 0.f, rms = 0.f;
         for (size_t i = SR * 2; i < y.size(); i++) {
@@ -375,7 +375,8 @@ static int cmdVoice() {
                 changes += g.e.decimator.held != prev;
                 prev = g.e.decimator.held;
             }
-            float want = SR / (std::floor(k * k * 96.f) + 1.f);   // Decimator's hold
+            float f = 0.5f * k * k * k;                          // the factor rubigo gives it
+            float want = SR / (std::floor(f * f * 96.f) + 1.f);  // Decimator's hold
             char what[80];
             snprintf(what, sizeof what, "RUST %.1f: %d changes/s, rate %.0f Hz", k, changes, want);
             check(changes > 0.8f * want && changes < 1.1f * want + 2, what);

@@ -154,7 +154,7 @@ struct Rubigo : Module {
 
         // One literal call a control, which is what tools/audition/modspec.py
         // reads the ranges, defaults and switch labels from. The defaults are
-        // a four-on-the-floor kick.
+        // a four-on-the-floor kick at 120 BPM.
         configParam<PitchQuantity>(PITCH_PARAM, 0.f, 1.f, 0.05f, "Pitch");
         configSwitch(WAVE_PARAM, 0.f, 1.f, 0.f, "Waveform", {"Square", "Saw"});
         configParam<DecayQuantity>(PITCH_DECAY_PARAM, 0.f, 1.f, 0.25f, "Pitch decay");
@@ -176,7 +176,7 @@ struct Rubigo : Module {
         configParam(SKIPS_PARAM, 0.f, 1.f, 0.f, "Random skips", "%", 0.f, 100.f);
         configParam(STEPMOD_PARAM, 0.f, 1.f, 0.f, "Random step mod", "%", 0.f, 100.f);
         configSwitch(DEST_PARAM, 0.f, 2.f, 2.f, "Step mod destination", {"Cutoff", "Noise", "Pitch"});
-        configParam<TempoQuantity>(TEMPO_PARAM, 0.f, 1.f, 0.3f, "Tempo");
+        configParam<TempoQuantity>(TEMPO_PARAM, 0.f, 1.f, 0.2f, "Tempo");   // 2 Hz
         configSwitch(RUN_PARAM, 0.f, 1.f, 1.f, "Sequencer", {"Stop", "Run"});
         configButton(TRIGGER_PARAM, "Trigger");
 
