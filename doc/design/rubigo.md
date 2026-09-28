@@ -1,6 +1,8 @@
 # rubigo - design doc
 
-Status: design, 2026-09-28. Nothing built yet.
+Status: built 2026-09-28, audition pending. The module follows this doc;
+`doc/rubigo.md` is the manual. Where building it changed a decision, the doc
+says what was decided and why (see "Decided while building" at the end).
 
 A digital percussion voice played by its own generative sequencer. One
 oscillator and a noise source (or external audio) go through a driven LP/HP
@@ -339,3 +341,39 @@ re-rolling the sound over a loop you like is the point.
 The factory presets in `presets/rubigo/` are written by
 `tools/presets/gen_rubigo_presets.py` from the same archetypes, with our
 own names and values.
+
+
+## Decided while building
+
+- **The loop is saved in the patch** (`sequence` in the module's JSON: the
+  32 slots, the length, the position, the held value). The hardware cannot
+  keep a sequence, but in Rack a patch that loses its loop on reload would
+  be worse than the difference. A preset does not carry a loop, so loading
+  one keeps the current loop.
+- **A load is not a switch to RUN.** The first sample after the module is
+  added or loaded plays a step if the sequencer runs, but does not apply
+  "restart on run", and with a clock patched it waits for the clock instead
+  of playing off the grid. Found by the JSON round-trip check in
+  `smoke_rubigo`, which saw the reloaded loop start one or two steps early.
+- **The default TEMPO (0.3) is in the /2 zone** under an external clock,
+  as the hardware's would be. Kept: the default is chosen for the internal
+  clock (1.97 Hz, a four-on-the-floor kick), and the tooltip says "/2
+  external" when a clock is patched.
+- **MIX is on the panel** as a trimpot, one value for every effect,
+  default 100%. For the 2nd oscillator it is the second oscillator's level,
+  full = the manual's 50/50.
+- **The TRIGGER button is a lit bezel** in the accent yellow; its light is
+  the hardware's trigger LED. The clock LED sits at TEMPO's corner.
+- **Self-oscillation level**: the filter's state limit is 4, which puts full
+  RESONANCE with the sources muted at about 0.8 V rms at VOLUME 0.5; 1.5
+  gave 0.3 V, too quiet next to a kick.
+- **The panel** is 20 HP: four rows of knobs and switches on six columns,
+  nine inputs in one row, four output badges either side of the logo. The
+  switches' positions are labelled above and below, and the destination
+  switch **pit / nse / cut** on three sides, since which way is up is the
+  whole of its meaning.
+- **Measured**: of 200 uniform draws of every control, 43 are inaudible
+  (peak under 0.5 V over 4 s); of 200 reasoned randoms, 1
+  (`rubigo_probe random`). CPU is 130 to 180 ns a sample, 0.6 to 0.9% of a
+  core, depending on the effect (`rubigo_probe cpu`).
+
