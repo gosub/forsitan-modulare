@@ -127,12 +127,12 @@ struct Nodi : Module {
         }
     };
 
+    // Gate length in ms, the unit in the label, read back through the law.
     struct DurQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
-            float s = nodi::gateSeconds(getValue());
-            if (s < 0.001f) return string::f("%.3g us", s * 1e6f);
-            if (s < 1.f) return string::f("%.3g ms", s * 1e3f);
-            return string::f("%.3g s", s);
+        float getDisplayValue() override { return nodi::gateSeconds(getValue()) * 1000.f; }
+        void setDisplayValue(float ms) override {
+            float s = clamp(ms * 0.001f, nodi::kGateMin, nodi::kGateMax);
+            setValue(clamp(std::log(s / nodi::kGateMin) / std::log(nodi::kGateMax / nodi::kGateMin), 0.f, 1.f));
         }
     };
 
@@ -181,7 +181,7 @@ struct Nodi : Module {
                      {"Length: relative lengths", "Posit.: positions"});
         configSwitch(RANGE_PARAM, 0.f, 2.f, 0.f, "f(X) range",
                      {"0 to 2.5 V", "0 to 5 V", "-5 to +5 V"});
-        configParam<DurQuantity>(DUR_PARAM, 0.f, 1.f, 0.6f, "Gate length");
+        configParam<DurQuantity>(DUR_PARAM, 0.f, 1.f, 0.6f, "Gate length", " ms");
         // One literal call a control, which is what tools/audition/modspec.py
         // reads the ranges, defaults and switch labels from.
         configParam<ValueQuantity>(VALUE1_PARAM, 0.f, 1.f, 0.f, "Stage 1 f(X)");
