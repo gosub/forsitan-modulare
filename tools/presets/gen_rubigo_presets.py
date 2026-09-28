@@ -47,14 +47,14 @@ PRESETS = [
     # large amount, square. A little step mod on the pitch keeps it moving.
     ("kick", {
         PITCH: 0.0, PITCH_DECAY: 0.24, PITCH_AMOUNT: 0.72, CUTOFF: 0.3, RES: 0.05,
-        VOLUME: 0.78, VOLUME_DECAY: 0.4, EFFECT: 0.55,
+        VOLUME: 0.78, VOLUME_DECAY: 0.4, EFFECT: 0.0,
         STEPS: S16, SKIPS: 0.35, STEPMOD: 0.15, DEST: TO_PITCH, TEMPO: 0.31,
     }, {}),
     # "A changing sequence of kick and noise steps": NOISE at zero, the step
     # mod at full on NOISE.
     ("clatter", {
         PITCH: 0.05, PITCH_DECAY: 0.22, PITCH_AMOUNT: 0.7, CUTOFF: 0.55,
-        VOLUME_DECAY: 0.38, EFFECT: 0.6,
+        VOLUME_DECAY: 0.38, EFFECT: 0.2,
         STEPS: S8, SKIPS: 0.2, STEPMOD: 1.0, DEST: TO_NOISE, TEMPO: 0.33,
     }, {}),
     # The resonant melody: cutoff and its envelope at zero, resonance full,
@@ -72,7 +72,7 @@ PRESETS = [
     # Bass: resonant low-pass, a plucked cutoff envelope, pitch step mod.
     ("acid", {
         WAVE: SAW, PITCH: 0.1, CUTOFF: 0.2, RES: 0.85, CUTOFF_DECAY: 0.38,
-        CUTOFF_AMOUNT: 0.7, VOLUME: 0.76, VOLUME_DECAY: 0.55, EFFECT: 0.5,
+        CUTOFF_AMOUNT: 0.7, VOLUME: 0.76, VOLUME_DECAY: 0.55, EFFECT: 0.15,
         STEPS: S16, SKIPS: 0.4, STEPMOD: 0.4, DEST: TO_PITCH, TEMPO: 0.37,
     }, {}),
     # Noise through a high-pass and a heavy downsampler, the cutoff stepped.
@@ -99,9 +99,9 @@ PRESETS = [
     # Mod assign on volume decay: every step its own length, through a
     # subtle chorus.
     ("swell", {
-        WAVE: SAW, PITCH: 0.08, PITCH_DECAY: 0.3, PITCH_AMOUNT: 0.4, CUTOFF: 0.4,
-        RES: 0.3, VOLUME: 0.74, VOLUME_DECAY: 0.2, EFFECT: 0.25,
-        STEPS: S16, SKIPS: 0.3, STEPMOD: 0.8, DEST: TO_CUTOFF, TEMPO: 0.32,
+        WAVE: SAW, PITCH: 0.12, PITCH_DECAY: 0.3, PITCH_AMOUNT: 0.4, CUTOFF: 0.3,
+        RES: 0.4, VOLUME: 0.72, VOLUME_DECAY: 0.35, EFFECT: 0.2,
+        STEPS: S16, SKIPS: 0.25, STEPMOD: 0.9, DEST: TO_CUTOFF, TEMPO: 0.22,
     }, {"effect": CHORUS, "assign": A_VOL_DECAY}),
     # The second oscillator an octave down under a stepped bass line.
     ("sub", {
