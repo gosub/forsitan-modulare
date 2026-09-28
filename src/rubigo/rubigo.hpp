@@ -34,7 +34,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <cstdint>
+#include <cstdlib>
+#include <string>
 
 #include "daisy.hpp"
 
@@ -109,12 +112,19 @@ inline float cutoffHz(float knob) { return daisy::fmap(knob, kCutoffMin, kCutoff
 inline float tempoHz(float knob) {
     return kTempoMin + (kTempoMax - kTempoMin) * std::pow(clamp01(knob), kTempoCurve);
 }
+// The knob positions for values, the inverses of the laws above, for typed
+// entry.
+inline float pitchKnob(float hz) { return clamp01(std::log(std::max(hz, 1e-3f) / kPitchMin) / std::log(kPitchMax / kPitchMin)); }
+inline float decayKnob(float s) { return std::sqrt(clamp01((s - kDecayMin) / (kDecayMax - kDecayMin))); }
+inline float cutoffKnob(float hz) { return std::sqrt(clamp01((hz - kCutoffMin) / (kCutoffMax - kCutoffMin))); }
+inline float lfoKnob(float hz) { return clamp01(std::log(std::max(hz, 1e-6f) / kLfoMin) / std::log(kLfoMax / kLfoMin)); }
 // The TEMPO position for a rate, the inverse of tempoHz.
 inline float tempoKnob(float hz) {
     return std::pow(clamp01((hz - kTempoMin) / (kTempoMax - kTempoMin)), 1.f / kTempoCurve);
 }
 // The AMOUNT knobs and STEP MOD, on fmap's quadratic EXP law.
 inline float amountLaw(float knob) { return daisy::fmap(knob, 0.f, 1.f, daisy::EXP); }
+inline float amountKnob(float law) { return std::sqrt(clamp01(law)); }
 inline float lfoHz(float knob) { return daisy::fmap(knob, kLfoMin, kLfoMax, daisy::LOG); }
 // The Overdrive's drive, 0.25 (clean, unity) to 0.5 (a pre-gain of 24).
 // Past 0.5 its gain runs into the hundreds: the hardware's explosions, at
@@ -132,6 +142,31 @@ inline int tempoRatio(float knob) {
 inline int stepsLength(int detent, bool alt) {
     detent = std::min(std::max(detent, 0), kLengths - 1);
     return alt ? kAltLengthTable[detent] : kLengthTable[detent];
+}
+
+// The STEPS detent whose loop length is nearest to n (0 = off).
+inline int stepsDetent(float n, bool alt) {
+    int best = 0;
+    for (int d = 1; d < kLengths; d++)
+        if (std::fabs(stepsLength(d, alt) - n) < std::fabs(stepsLength(best, alt) - n)) best = d;
+    return best;
+}
+
+// The middle of the TEMPO zone for a typed ratio, "x2", "2x", "/4" or
+// "1/4", or -1 if it is none of the seven.
+inline float ratioZoneKnob(const std::string& text) {
+    std::string t;
+    for (char c : text)
+        if (!std::isspace((unsigned char)c)) t += (char)std::tolower((unsigned char)c);
+    int r = 0;
+    size_t slash = t.find('/');
+    if (slash != std::string::npos) r = -std::atoi(t.c_str() + slash + 1);
+    else if (!t.empty() && t[0] == 'x') r = std::atoi(t.c_str() + 1);
+    else if (t.find('x') != std::string::npos) r = std::atoi(t.c_str());
+    if (r == -1) r = 1;
+    for (int i = 0; i < 7; i++)
+        if (kRatioTable[i] == r) return (i + 0.5f) / 7.f;
+    return -1.f;
 }
 
 // A knob pushed towards 1 by a modulation m (0..1): the Mod assign law,

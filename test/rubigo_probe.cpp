@@ -11,6 +11,8 @@
 //   ./rubigo_probe voice     silence untriggered, the three decay times,
 //                            PITCH, the resonance ringing with the sources
 //                            muted, the RUST rate, peak level per effect
+//   ./rubigo_probe laws      each knob law and the inverse a typed value
+//                            goes through, round trips and typed examples
 //   ./rubigo_probe random    the reasoned random against a uniform draw:
 //                            how many come out inaudible or clipped flat,
 //                            level and brightness (RMS frequency) per archetype
@@ -412,6 +414,38 @@ static int cmdVoice() {
     return failures ? 1 : 0;
 }
 
+// ---------------------------------------------------------------- laws
+
+// The module shows every control as a number in its unit and reads a typed
+// number back through the law's inverse: each pair must round-trip, and a
+// few typed values must land where they say.
+static int cmdLaws() {
+    printf("laws\n");
+    float worst = 0.f;
+    for (int i = 0; i <= 100; i++) {
+        float k = i / 100.f;
+        worst = std::max(worst, std::fabs(pitchKnob(pitchHz(k)) - k));
+        worst = std::max(worst, std::fabs(decayKnob(decaySeconds(k)) - k));
+        worst = std::max(worst, std::fabs(cutoffKnob(cutoffHz(k)) - k));
+        worst = std::max(worst, std::fabs(tempoKnob(tempoHz(k)) - k));
+        worst = std::max(worst, std::fabs(lfoKnob(lfoHz(k)) - k));
+        worst = std::max(worst, std::fabs(amountKnob(amountLaw(k)) - k));
+    }
+    char what[96];
+    snprintf(what, sizeof what, "every law and its inverse round-trip (worst %.2g)", worst);
+    check(worst < 1e-4f, what);
+    check(std::fabs(pitchHz(pitchKnob(440.f)) - 440.f) < 0.01f, "PITCH 440 Hz typed reads 440 Hz");
+    check(std::fabs(cutoffHz(cutoffKnob(1000.f)) - 1000.f) < 0.1f, "CUTOFF 1000 Hz typed reads 1000 Hz");
+    check(std::fabs(decaySeconds(decayKnob(0.25f)) - 0.25f) < 1e-4f, "DECAY 250 ms typed reads 250 ms");
+    check(std::fabs(tempoHz(tempoKnob(4.f)) - 4.f) < 1e-3f, "TEMPO 4 Hz typed reads 4 Hz");
+    check(stepsLength(stepsDetent(16.f, false), false) == 16 && stepsDetent(0.f, false) == 0 &&
+          stepsLength(stepsDetent(14.f, false), false) == 16, "STEPS snaps a typed length to the nearest detent");
+    check(tempoRatio(ratioZoneKnob("x2")) == 2 && tempoRatio(ratioZoneKnob("/4")) == -4 &&
+          tempoRatio(ratioZoneKnob("1/8")) == -8 && tempoRatio(ratioZoneKnob("x1")) == 1 &&
+          ratioZoneKnob("x3") < 0.f, "TEMPO ratios typed under an external clock");
+    return failures ? 1 : 0;
+}
+
 // ---------------------------------------------------------------- fuzz
 
 static int cmdFuzz() {
@@ -626,10 +660,11 @@ int main(int argc, char** argv) {
     if (cmd == "seq") return cmdSeq();
     if (cmd == "clock") return cmdClock();
     if (cmd == "voice") return cmdVoice();
+    if (cmd == "laws") return cmdLaws();
     if (cmd == "random") return cmdRandom();
     if (cmd == "fuzz") return cmdFuzz();
     if (cmd == "cpu") return cmdCpu();
     if (cmd == "wav" && argc > 2) return cmdWav(argv[2]);
-    fprintf(stderr, "usage: rubigo_probe seq|clock|voice|random|fuzz|cpu|wav <dir>\n");
+    fprintf(stderr, "usage: rubigo_probe seq|clock|voice|laws|random|fuzz|cpu|wav <dir>\n");
     return 2;
 }

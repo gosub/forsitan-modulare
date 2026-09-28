@@ -36,16 +36,6 @@ const int kLightDivision = 32;            // samples between light updates
 // A non-finite voltage reads as zero.
 float finite(float v) { return std::isfinite(v) ? v : 0.f; }
 
-std::string hzString(float hz) {
-    if (hz >= 1000.f) return string::f("%.3g kHz", hz / 1000.f);
-    return string::f("%.3g Hz", hz);
-}
-
-std::string secondsString(float s) {
-    if (s < 1.f) return string::f("%.3g ms", s * 1000.f);
-    return string::f("%.3g s", s);
-}
-
 const char* kEffectNames[rubigo::FX_LEN] = {
     "Distortion (default)", "2nd oscillator", "Phaser", "Flanger", "Chorus"};
 const char* kAssignNames[rubigo::ASSIGN_LEN] = {
@@ -97,56 +87,81 @@ struct Rubigo : Module {
 
     bool alternativeEffect() const { return effect >= rubigo::FX_PHASER; }
 
+    // Each control shows a plain number and puts its unit in the label, as
+    // Rack's own quantities do: the law lives in getDisplayValue and its
+    // inverse in setDisplayValue, so typing "440" into PITCH means 440 Hz.
+    // The laws and their inverses are in rubigo.hpp, where rubigo_probe
+    // checks that they round-trip.
     struct PitchQuantity : ParamQuantity {
-        std::string getDisplayValueString() override { return hzString(rubigo::pitchHz(getValue())); }
+        float getDisplayValue() override { return rubigo::pitchHz(getValue()); }
+        void setDisplayValue(float hz) override { setValue(rubigo::pitchKnob(hz)); }
     };
     struct DecayQuantity : ParamQuantity {
-        std::string getDisplayValueString() override { return secondsString(rubigo::decaySeconds(getValue())); }
+        float getDisplayValue() override { return rubigo::decaySeconds(getValue()) * 1000.f; }
+        void setDisplayValue(float ms) override { setValue(rubigo::decayKnob(ms * 0.001f)); }
     };
     struct PitchAmountQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
-            return string::f("+%.0f Hz", getValue() * rubigo::kPitchEnvMax);
-        }
+        float getDisplayValue() override { return rubigo::amountLaw(getValue()) * rubigo::kPitchEnvMax; }
+        void setDisplayValue(float hz) override { setValue(rubigo::amountKnob(hz / rubigo::kPitchEnvMax)); }
     };
     struct CutoffQuantity : ParamQuantity {
-        std::string getDisplayValueString() override { return hzString(rubigo::cutoffHz(getValue())); }
+        float getDisplayValue() override { return rubigo::cutoffHz(getValue()); }
+        void setDisplayValue(float hz) override { setValue(rubigo::cutoffKnob(hz)); }
     };
-    // The cutoff envelope adds to CUTOFF's own travel before the law maps it.
+    // The cutoff envelope adds hertz at its peak.
     struct CutoffAmountQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
-            return string::f("+%.0f%% of cutoff", getValue() * 100.f);
-        }
+        float getDisplayValue() override { return getValue() * rubigo::kCutoffEnvHz; }
+        void setDisplayValue(float hz) override { setValue(clamp(hz / rubigo::kCutoffEnvHz, 0.f, 1.f)); }
     };
-    // Hz on the internal clock, the ratio under an external one.
+    // Hz on the internal clock. Under an external one TEMPO is a ratio, which
+    // is shown as such ("x2", "/4") and can be typed the same way.
     struct TempoQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
+        bool external() {
             Rubigo* m = dynamic_cast<Rubigo*>(module);
-            if (m && m->engine.clock.external) {
-                int r = rubigo::tempoRatio(getValue());
-                return r > 0 ? string::f("x%d external", r) : string::f("/%d external", -r);
-            }
-            return hzString(rubigo::tempoHz(getValue()));
+            return m && m->engine.clock.external;
+        }
+        float getDisplayValue() override { return rubigo::tempoHz(getValue()); }
+        void setDisplayValue(float hz) override { setValue(rubigo::tempoKnob(hz)); }
+        std::string getUnit() override { return external() ? "" : " Hz"; }
+        std::string getDisplayValueString() override {
+            if (!external()) return ParamQuantity::getDisplayValueString();
+            int r = rubigo::tempoRatio(getValue());
+            return r > 0 ? string::f("x%d external", r) : string::f("/%d external", -r);
+        }
+        void setDisplayValueString(std::string s) override {
+            if (!external()) return ParamQuantity::setDisplayValueString(s);
+            float z = rubigo::ratioZoneKnob(s);
+            if (z >= 0.f) setValue(z);
         }
     };
+    // The loop length, 0 for off; a typed length snaps to the nearest detent.
     struct StepsQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
+        bool alt() {
             Rubigo* m = dynamic_cast<Rubigo*>(module);
-            int n = rubigo::stepsLength((int)std::round(getValue()), m && m->altLengths);
-            return n ? string::f("%d steps", n) : "Off (free)";
+            return m && m->altLengths;
         }
+        float getDisplayValue() override { return (float)rubigo::stepsLength((int)std::round(getValue()), alt()); }
+        void setDisplayValue(float n) override { setValue((float)rubigo::stepsDetent(n, alt())); }
+        std::string getUnit() override { return getDisplayValue() > 0.f ? " steps" : " (off)"; }
     };
-    // What the knob does depends on the effect chosen in the menu.
+    // What the knob does depends on the effect chosen in the menu, and so
+    // does its unit.
     struct EffectQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
-            Rubigo* m = dynamic_cast<Rubigo*>(module);
-            if (m && m->effect == rubigo::FX_OSC2) {
-                bool up = m->params[RUST_PARAM].getValue() > 0.5f;
-                float semis = 12.f * (up ? getValue() : getValue() - 1.f);
-                return string::f("%+.1f semitones", semis);
-            }
-            if (m && m->alternativeEffect()) return string::f("LFO %s", hzString(rubigo::lfoHz(getValue())).c_str());
-            return string::f("%.0f%%", getValue() * 100.f);
+        Rubigo* rubigoModule() { return dynamic_cast<Rubigo*>(module); }
+        bool osc2() { return rubigoModule() && rubigoModule()->effect == rubigo::FX_OSC2; }
+        bool lfo() { return rubigoModule() && rubigoModule()->alternativeEffect(); }
+        bool up() { return rubigoModule() && rubigoModule()->params[RUST_PARAM].getValue() > 0.5f; }
+        float getDisplayValue() override {
+            if (osc2()) return 12.f * (up() ? getValue() : getValue() - 1.f);
+            if (lfo()) return rubigo::lfoHz(getValue());
+            return getValue() * 100.f;
         }
+        void setDisplayValue(float d) override {
+            if (osc2()) setValue(clamp(up() ? d / 12.f : d / 12.f + 1.f, 0.f, 1.f));
+            else if (lfo()) setValue(rubigo::lfoKnob(d));
+            else setValue(clamp(d * 0.01f, 0.f, 1.f));
+        }
+        std::string getUnit() override { return osc2() ? " semitones" : lfo() ? " Hz LFO" : "%"; }
     };
 
     Rubigo() {
@@ -155,18 +170,18 @@ struct Rubigo : Module {
         // One literal call a control, which is what tools/audition/modspec.py
         // reads the ranges, defaults and switch labels from. The defaults are
         // a four-on-the-floor kick at 120 BPM.
-        configParam<PitchQuantity>(PITCH_PARAM, 0.f, 1.f, 0.05f, "Pitch");
+        configParam<PitchQuantity>(PITCH_PARAM, 0.f, 1.f, 0.05f, "Pitch", " Hz");
         configSwitch(WAVE_PARAM, 0.f, 1.f, 0.f, "Waveform", {"Square", "Saw"});
-        configParam<DecayQuantity>(PITCH_DECAY_PARAM, 0.f, 1.f, 0.25f, "Pitch decay");
-        configParam<PitchAmountQuantity>(PITCH_AMOUNT_PARAM, 0.f, 1.f, 0.7f, "Pitch decay amount");
+        configParam<DecayQuantity>(PITCH_DECAY_PARAM, 0.f, 1.f, 0.25f, "Pitch decay", " ms");
+        configParam<PitchAmountQuantity>(PITCH_AMOUNT_PARAM, 0.f, 1.f, 0.7f, "Pitch decay amount", " Hz");
         configParam(NOISE_PARAM, 0.f, 1.f, 0.f, "Noise (or the input)", "%", 0.f, 100.f);
-        configParam<CutoffQuantity>(CUTOFF_PARAM, 0.f, 1.f, 0.35f, "Cutoff");
+        configParam<CutoffQuantity>(CUTOFF_PARAM, 0.f, 1.f, 0.35f, "Cutoff", " Hz");
         configParam(RES_PARAM, 0.f, 1.f, 0.1f, "Resonance", "%", 0.f, 100.f);
         configSwitch(FILTER_PARAM, 0.f, 1.f, 0.f, "Filter", {"Low-pass", "High-pass"});
-        configParam<DecayQuantity>(CUTOFF_DECAY_PARAM, 0.f, 1.f, 0.25f, "Cutoff decay");
-        configParam<CutoffAmountQuantity>(CUTOFF_AMOUNT_PARAM, 0.f, 1.f, 0.f, "Cutoff decay amount");
+        configParam<DecayQuantity>(CUTOFF_DECAY_PARAM, 0.f, 1.f, 0.25f, "Cutoff decay", " ms");
+        configParam<CutoffAmountQuantity>(CUTOFF_AMOUNT_PARAM, 0.f, 1.f, 0.f, "Cutoff decay amount", " Hz");
         configParam(VOLUME_PARAM, 0.f, 1.f, 0.75f, "Volume", "%", 0.f, 100.f);
-        configParam<DecayQuantity>(VOLUME_DECAY_PARAM, 0.f, 1.f, 0.42f, "Volume decay");
+        configParam<DecayQuantity>(VOLUME_DECAY_PARAM, 0.f, 1.f, 0.42f, "Volume decay", " ms");
         configParam<EffectQuantity>(EFFECT_PARAM, 0.f, 1.f, 0.f, "Effect");
         configSwitch(RUST_PARAM, 0.f, 1.f, 0.f, "Effect mode",
                      {"Corrosion (subtle, or 2nd osc down)", "Rust (intense, or 2nd osc up)"});
