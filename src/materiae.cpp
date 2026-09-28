@@ -55,14 +55,80 @@ struct Materiae;
 namespace {
 
 // The ratio knob reads as a table index; show what it actually selects.
+// Each knob shows a plain number with its unit in the label, the way Rack's
+// own quantities read, and takes a typed number back through the inverse of
+// its law. The stepped ones that have names (RATIO, RELATION, DIV) show the
+// name and take either the name or a number.
+
+// A leading number, and the rest of the text lowercased.
+static bool leadingNumber(const std::string& s, float& v, std::string& rest) {
+    const char* p = s.c_str();
+    while (*p == ' ' || *p == '/') p++;
+    char* end = nullptr;
+    v = std::strtof(p, &end);
+    if (end == p || !std::isfinite(v)) return false;
+    rest.clear();
+    for (; *end; end++) rest += (char)std::tolower((unsigned char)*end);
+    return true;
+}
+
+static std::string lowered(const std::string& s) {
+    std::string t;
+    for (char c : s) t += (char)std::tolower((unsigned char)c);
+    return t;
+}
+
 // Defined out of line below, because it has to ask the module which mode the
-// knob is in.
+// knob is in. Stepped: the ratio's name, and a name or a number (the nearest
+// ratio) typed back. Free: a plain number, "x" in the label.
 struct RatioQuantity : ParamQuantity {
-    std::string getDisplayValueString() override;
+    bool free();
+    float getDisplayValue() override {
+        float t = clamp(getValue() / (float)(kNumRatios - 1), 0.f, 1.f);
+        return free() ? 0.25f * std::pow(2.f, t * 4.f) : kRatios[clamp((int)std::lround(getValue()), 0, kNumRatios - 1)];
+    }
+    void setDisplayValue(float r) override {
+        if (free()) {
+            float t = std::log2(clamp(r, 0.25f, 4.f) / 0.25f) / 4.f;
+            setValue(t * (float)(kNumRatios - 1));
+            return;
+        }
+        int best = 0;
+        for (int i = 1; i < kNumRatios; i++)
+            if (std::fabs(kRatios[i] - r) < std::fabs(kRatios[best] - r)) best = i;
+        setValue((float)best);
+    }
+    std::string getUnit() override { return free() ? "x" : ""; }
+    std::string getDisplayValueString() override {
+        if (free()) return ParamQuantity::getDisplayValueString();
+        return kRatioNames[clamp((int)std::lround(getValue()), 0, kNumRatios - 1)];
+    }
+    void setDisplayValueString(std::string s) override {
+        std::string t = lowered(s);
+        while (!t.empty() && t.back() == ' ') t.pop_back();
+        if (!free())
+            for (int i = 0; i < kNumRatios; i++)
+                if (t == kRatioNames[i]) {
+                    setValue((float)i);
+                    return;
+                }
+        // "3:2" or "3/2" as a fraction, else a plain number.
+        size_t sep = t.find_first_of(":/");
+        float v;
+        std::string rest;
+        if (sep != std::string::npos) {
+            float num = std::strtof(t.c_str(), nullptr), den = std::strtof(t.c_str() + sep + 1, nullptr);
+            if (num > 0.f && den > 0.f) setDisplayValue(num / den);
+            return;
+        }
+        if (leadingNumber(t, v, rest)) setDisplayValue(v);
+    }
 };
 
 // RELATION sits between operators as often as on one, and the crossfade is
-// the point, so the tooltip names the pair and how far across it is.
+// the point, so the tooltip names the pair and how far across it is. A
+// typed operator name, or the pair as shown ("and / sum 40%"), reads back;
+// so does a plain position, 0 to 4.
 struct RelationQuantity : ParamQuantity {
     std::string getDisplayValueString() override {
         float v = clamp(getValue(), 0.f, (float)(kNumOps - 1));
@@ -72,49 +138,79 @@ struct RelationQuantity : ParamQuantity {
         if (f > 0.98f) return kOpNames[i + 1];
         return string::f("%s / %s %.0f%%", kOpNames[i], kOpNames[i + 1], f * 100.f);
     }
+    void setDisplayValueString(std::string s) override {
+        std::string t = lowered(s);
+        for (int i = 0; i < kNumOps; i++) {
+            std::string name = kOpNames[i];
+            if (t.compare(0, name.size(), name) != 0) continue;
+            float pct = 0.f;
+            size_t p = t.find_last_of("0123456789");
+            if (t.find('/') != std::string::npos && p != std::string::npos) {
+                size_t q = t.find_last_not_of("0123456789.", p);
+                pct = std::strtof(t.c_str() + (q == std::string::npos ? 0 : q + 1), nullptr);
+            }
+            setValue(clamp((float)i + pct * 0.01f, 0.f, (float)(kNumOps - 1)));
+            return;
+        }
+        ParamQuantity::setDisplayValueString(s);
+    }
 };
 
+// DIV reads "/4"; typing 4 or /4 means divide by 4.
 struct DivQuantity : ParamQuantity {
     std::string getDisplayValueString() override {
         int i = clamp((int)std::lround(getValue()), 0, kNumDiv - 1);
         return string::f("/%d", 1 << i);
     }
+    void setDisplayValueString(std::string s) override {
+        float v;
+        std::string rest;
+        if (!leadingNumber(s, v, rest) || v < 1.f) return;
+        setValue((float)clamp((int)std::lround(std::log2(v)), 0, kNumDiv - 1));
+    }
 };
 
+// GRID in kHz. Above the host rate the unit says how many times clean it is.
 struct GridQuantity : ParamQuantity {
-    std::string getDisplayValueString() override {
-        float sr = APP->engine->getSampleRate();
+    static float sampleRate() { return APP && APP->engine ? APP->engine->getSampleRate() : 48000.f; }
+    static float top() { return std::log2(sampleRate() * kGridMaxMult); }
+    static float bot() { return std::log2(kGridMin); }
+    float getDisplayValue() override {
         float t = clamp(getValue(), 0.f, 1.f);
-        float top = std::log2(sr * kGridMaxMult), bot = std::log2(kGridMin);
-        float hz = std::pow(2.f, top + (bot - top) * t);
-        if (hz >= sr) return string::f("%.1fx clean (%.0f kHz)", hz / sr, hz * 0.001f);
-        return string::f("%.1f kHz", hz * 0.001f);
+        return std::pow(2.f, top() + (bot() - top()) * t) * 0.001f;
+    }
+    void setDisplayValue(float khz) override {
+        float l = std::log2(std::max(khz * 1000.f, 1.f));
+        setValue(clamp((l - top()) / (bot() - top()), 0.f, 1.f));
+    }
+    std::string getUnit() override {
+        float hz = getDisplayValue() * 1000.f;
+        return hz >= sampleRate() ? string::f(" kHz, %.1fx clean", hz / sampleRate()) : " kHz";
     }
 };
 
 // The gain knob is a drive, so it reads in dB: past about half the knob the
 // saturator is doing more than the level is.
 struct GainQuantity : ParamQuantity {
-    std::string getDisplayValueString() override {
-        float k = clamp(getValue(), 0.f, 1.f);
-        return string::f("%+.1f dB", k * 4.f * 6.0206f);
-    }
+    float getDisplayValue() override { return clamp(getValue(), 0.f, 1.f) * 4.f * 6.0206f; }
+    void setDisplayValue(float db) override { setValue(clamp(db / (4.f * 6.0206f), 0.f, 1.f)); }
 };
 
 struct CutoffQuantity : ParamQuantity {
-    std::string getDisplayValueString() override {
-        float t = clamp(getValue(), 0.f, 1.f);
-        return string::f("%.0f Hz",
-                         kMinCut * std::pow(2.f, t * std::log2(kMaxCut / kMinCut)));
+    float getDisplayValue() override {
+        return kMinCut * std::pow(2.f, clamp(getValue(), 0.f, 1.f) * std::log2(kMaxCut / kMinCut));
+    }
+    void setDisplayValue(float hz) override {
+        setValue(clamp(std::log2(std::max(hz, 1e-3f) / kMinCut) / std::log2(kMaxCut / kMinCut), 0.f, 1.f));
     }
 };
 
-// the three time knobs share a shape: exponential over a fixed span
+// the three time knobs share a shape: exponential over a fixed span, in ms
 struct TimeQuantity : ParamQuantity {
     float base = 0.005f, span = 9.6f;
-    std::string getDisplayValueString() override {
-        float s = base * std::pow(2.f, clamp(getValue(), 0.f, 1.f) * span);
-        return s < 1.f ? string::f("%.1f ms", s * 1000.f) : string::f("%.2f s", s);
+    float getDisplayValue() override { return base * std::pow(2.f, clamp(getValue(), 0.f, 1.f) * span) * 1000.f; }
+    void setDisplayValue(float ms) override {
+        setValue(clamp(std::log2(std::max(ms * 0.001f, 1e-9f) / base) / span, 0.f, 1.f));
     }
 };
 
@@ -196,7 +292,7 @@ struct Materiae : Module {
         configParam(PITCH_PARAM, -2.f, 7.f, 1.f, "Pitch", " oct");
         configParam<RatioQuantity>(RATIO_PARAM, 0.f, (float)(kNumRatios - 1), 10.f, "Ratio");
         configParam(SHAPE_PARAM, 0.f, 1.f, 0.5f, "Shape (pulse-width skew)");
-        configParam<GridQuantity>(GRID_PARAM, 0.f, 1.f, 0.f, "Grid (logic-core rate)");
+        configParam<GridQuantity>(GRID_PARAM, 0.f, 1.f, 0.f, "Grid (logic-core rate)", " kHz");
         configParam<DivQuantity>(DIV_PARAM, 0.f, (float)(kNumDiv - 1), 0.f, "Division");
         configParam(XMOD_PARAM, 0.f, 1.f, 0.f, "Cross-modulation", "%", 0.f, 100.f);
         configParam(TILT_PARAM, -1.f, 1.f, 0.f, "Tilt (A->B vs B->A)");
@@ -205,16 +301,16 @@ struct Materiae : Module {
         configParam<RelationQuantity>(RELATION_PARAM, 0.f, (float)(kNumOps - 1), 1.f, "Relation");
         configParam(BLEND_PARAM, 0.f, 1.f, 1.f, "Blend (osc A -> operator)",
                     "%", 0.f, 100.f);
-        configParam<CutoffQuantity>(CUTOFF_PARAM, 0.f, 1.f, 0.65f, "Cutoff");
+        configParam<CutoffQuantity>(CUTOFF_PARAM, 0.f, 1.f, 0.65f, "Cutoff", " Hz");
         configParam(RESO_PARAM, 0.f, 1.f, 0.2f, "Resonance", "%", 0.f, 100.f);
         configSwitch(FILTER_PARAM, 0.f, 1.f, 0.f, "Filter", {"Lowpass", "Bandpass"});
-        configParam<GainQuantity>(GAIN_PARAM, 0.f, 1.f, 0.f, "Gain");
-        { auto* q = configParam<TimeQuantity>(DECAY2_PARAM, 0.f, 1.f, 0.35f, "Decay 2");
+        configParam<GainQuantity>(GAIN_PARAM, 0.f, 1.f, 0.f, "Gain", " dB");
+        { auto* q = configParam<TimeQuantity>(DECAY2_PARAM, 0.f, 1.f, 0.35f, "Decay 2", " ms");
           q->base = 0.003f; q->span = 9.4f; }
         configParam(CURVE2_PARAM, -1.f, 1.f, 0.5f, "Curve 2");
-        { auto* q = configParam<TimeQuantity>(ATTACK_PARAM, 0.f, 1.f, 0.f, "Attack");
+        { auto* q = configParam<TimeQuantity>(ATTACK_PARAM, 0.f, 1.f, 0.f, "Attack", " ms");
           q->base = 0.0002f; q->span = 11.3f; }
-        { auto* q = configParam<TimeQuantity>(DECAY_PARAM, 0.f, 1.f, 0.5f, "Decay");
+        { auto* q = configParam<TimeQuantity>(DECAY_PARAM, 0.f, 1.f, 0.5f, "Decay", " ms");
           q->base = 0.005f; q->span = 9.6f; }
         configParam(CURVE_PARAM, -1.f, 1.f, 0.5f, "Curve");
         configParam(E2PITCH_PARAM, -1.f, 1.f, 0.f, "Env 2 -> pitch");
@@ -470,15 +566,9 @@ struct Materiae : Module {
 // body waits until Materiae is a complete type. Same namespace as its class.
 namespace {
 
-std::string RatioQuantity::getDisplayValueString() {
+bool RatioQuantity::free() {
     Materiae* m = dynamic_cast<Materiae*>(module);
-    float v = getValue();
-    if (m && m->freeRatio) {
-        float t = clamp(v / (float)(kNumRatios - 1), 0.f, 1.f);
-        return string::f("%.3fx", 0.25f * std::pow(2.f, t * 4.f));
-    }
-    int i = clamp((int)std::lround(v), 0, kNumRatios - 1);
-    return kRatioNames[i];
+    return m && m->freeRatio;
 }
 
 }  // namespace
