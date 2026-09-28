@@ -5,11 +5,14 @@
 // module's own checks: that the defaults are a running kick, the panel
 // switches read the right way up, the TRIGGER button, the jacks (clock, trig,
 // the audio input), NaN at every input, other sample rates, the menu and the
-// locked loop surviving a save, the reasoned random, and every effect and
-// Mod assign target running finite.
+// locked loop surviving a save, the reasoned random, every effect and Mod
+// assign target running finite, and the factory presets.
 
 #include "smoke_harness.hpp"
 #include "../src/rubigo.cpp"
+
+#include <dirent.h>
+#include <string>
 
 static void connect(Rubigo& m, int input, float v) {
     m.inputs[input].channels = 1;
@@ -270,5 +273,62 @@ static void testEffects() {
     report("rubigo", "every_effect_and_assign_finite", s.nans, s.nans == 0 && s.peak <= 10.f);
 }
 
+// Every factory preset: finite, audible, inside the swing, and no two the
+// same sound (level and brightness both within 3%). Loaded as Rack loads a
+// .vcvm: the params, then the data.
+static void testPresets() {
+    const std::string dir = "../presets/rubigo/";
+    std::vector<std::string> files;
+    if (DIR* d = opendir(dir.c_str())) {
+        while (dirent* e = readdir(d)) {
+            std::string n = e->d_name;
+            if (n.size() > 5 && n.substr(n.size() - 5) == ".vcvm") files.push_back(n);
+        }
+        closedir(d);
+    }
+    std::vector<std::pair<float, float>> heard;
+    int bad = 0;
+    for (const std::string& f : files) {
+        json_t* root = json_load_file((dir + f).c_str(), 0, nullptr);
+        if (!root) { bad++; continue; }
+        Rubigo m; long fr = 0;
+        m.engine.seed(1234);
+        json_t* ps = json_object_get(root, "params");
+        for (size_t i = 0; i < json_array_size(ps); i++) {
+            json_t* p = json_array_get(ps, i);
+            int id = (int)json_integer_value(json_object_get(p, "id"));
+            if (id >= 0 && id < Rubigo::PARAMS_LEN)
+                m.params[id].setValue((float)json_number_value(json_object_get(p, "value")));
+        }
+        m.dataFromJson(json_object_get(root, "data"));
+        json_decref(root);
+        // Brightness as the RMS frequency, SR / 2pi * sqrt(sum dy^2 / sum y^2):
+        // the silence between hits adds nothing to either sum.
+        Stats s;
+        double e = 0., de = 0.;
+        float prev = 0.f;
+        for (long i = 0; i < (long)(6.f * SR); i++) {
+            m.process(makeArgs(fr++));
+            float y = m.outputs[Rubigo::AUDIO_OUTPUT].getVoltage();
+            s.add(y);
+            e += (double)y * y;
+            de += (double)(y - prev) * (y - prev);
+            prev = y;
+        }
+        float bright = e > 0. ? SR / (2.f * (float)M_PI) * (float)std::sqrt(de / e) : 0.f;
+        printf("# %-18s rms %.2f V, peak %.2f V, %5.0f Hz\n", f.c_str(), s.rms(), s.peak, bright);
+        if (s.nans || s.peak < 1.f || s.peak > 10.f) bad++;
+        heard.push_back(std::make_pair((float)s.rms(), bright));
+    }
+    int same = 0;
+    for (size_t a = 0; a < heard.size(); a++)
+        for (size_t b = a + 1; b < heard.size(); b++)
+            if (std::fabs(heard[a].first / heard[b].first - 1.f) < 0.03f &&
+                std::fabs(heard[a].second / heard[b].second - 1.f) < 0.03f) same++;
+    report("rubigo", "presets_found", files.size(), files.size() >= 10);
+    report("rubigo", "presets_audible_finite_in_swing", files.size() - bad, bad == 0);
+    report("rubigo", "presets_all_distinct", same, same == 0);
+}
+
 SMOKE_MAIN(testDefaults, testSwitches, testButton, testJacks, testNan, testSampleRates,
-           testJson, testReasoned, testEffects)
+           testJson, testReasoned, testEffects, testPresets)
