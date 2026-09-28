@@ -46,6 +46,10 @@ const float kHigh = 5.f;                  // the ramp, and the default ABOVE
 // far over the top, both in no time: a threshold at either end always fires.
 const float kOvershoot = 0.02f;           // volts
 const float kHysteresis = 0.005f;         // volts past a threshold to re-arm
+// Thresholds keep this far inside the space, so a signal that reaches the rail
+// and no further (an LFO at exactly -5 V) still crosses one at the end, and
+// re-arms it: twice the hysteresis.
+const float kEdgeInset = 0.01f;           // volts
 
 const float kSlowMin = 1.f / 240.f;       // Hz, 4 minutes per cycle
 const float kSlowMax = 9.f;
@@ -150,7 +154,12 @@ inline void thresholds(const Controls& c, float below, float above,
     } else {
         for (int k = 0; k < kStages; k++) th[k] = below + span * c.threshold[k];
     }
-    for (int k = 0; k < kStages; k++) th[k] += groupOffset[c.group[k]];
+    // Inside the space by kEdgeInset (a quarter of a very narrow one), before
+    // the group CV, which can still push a threshold off the end.
+    float lo = std::min(below, above), hi = std::max(below, above);
+    float inset = std::min(kEdgeInset, 0.25f * (hi - lo));
+    for (int k = 0; k < kStages; k++)
+        th[k] = std::min(std::max(th[k], lo + inset), hi - inset) + groupOffset[c.group[k]];
 }
 
 // ---------------------------------------------------------------- path

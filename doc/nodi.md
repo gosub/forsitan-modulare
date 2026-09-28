@@ -59,7 +59,7 @@ The reset is a falling sweep through the whole space, so every **fall** stage
 fires on it, top to bottom, and the lowest is left active. That is why the
 default sets stage 1 to **fall**: in **len** its threshold is at the bottom,
 and the step plays on the reset. A **rise** stage at the very bottom plays
-just after, since the reset dips a hair under -5 V.
+just after, 1/1000 of a cycle in (see the thresholds, below).
 
 ## Thresholds
 
@@ -68,6 +68,11 @@ just after, since the reset dips a hair under -5 V.
 | **pos / len** | **pos**: each lower slider places its threshold, anywhere, in any order. **len**: stage 1 sits at the bottom and each slider is the *relative* length of the interval above its threshold, so the eight always fill the space and only their ratios matter |
 | **hi**, **lo** | the top and bottom of the space, +5 V and -5 V unpatched. Per channel with a poly cable |
 | **thr a / b / c** | CV added to the thresholds of that group's stages, in volts, through the attenuator, in either mode: steps move against each other, and one pushed past the end of the ramp never fires |
+
+No threshold goes closer than 10 mV to either end of the space, so a signal
+that reaches -5 V or +5 V and no further, as an LFO or a VCO does, still
+crosses the stages at the ends, both ways. **thr** CV is added after, and can
+still push one off the end.
 
 In **len**, an **off** stage keeps its length (the step before it lasts
 longer); a slider at zero removes its stage. With every slider at zero all
@@ -163,4 +168,7 @@ Each item is one undo step.
 - **Hysteresis**: a stage fires exactly at its threshold and re-arms after X
   has been 5 mV past it the other way, so a noisy X on a threshold fires it
   once; a jump that lands 5 mV or more past it always fires.
+- **The ends of the space**: thresholds stay 10 mV inside it. In Rack a
+  signal reaching exactly +-5 V is the norm, and it would never cross a
+  threshold sitting on the rail, which in **len** stage 1 always does.
 - **Polyphony** and the context menu are nodi's own.

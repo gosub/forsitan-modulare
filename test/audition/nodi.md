@@ -69,22 +69,22 @@ def graphic_vco():
 
 ## 1. The sequencer
 
-- [ ] 1.1. Defaults: a major scale climbs, two notes a second, and starts
+- [x] 1.1. Defaults: a major scale climbs, two notes a second, and starts
       again on the root. The top lights step along; the lower sliders light
       one by one as the ramp passes them, and all go dark at the reset.
-- [ ] 1.2. Raise stage 4's lower slider to the top: note 4 lasts twice as
+- [x] 1.2. Raise stage 4's lower slider to the top: note 4 lasts twice as
       long and the notes after it are squeezed, the phrase no longer.
       `n.set(thresh4=1)`
-- [ ] 1.3. Switch stage 5 to OFF: note 4 carries on through where 5 was.
+- [x] 1.3. Switch stage 5 to OFF: note 4 carries on through where 5 was.
       `n.set(dir5="Off")`
-- [ ] 1.4. POS, lower sliders on a diagonal. Drag slider 3 above slider 5:
+- [x] 1.4. POS, lower sliders on a diagonal. Drag slider 3 above slider 5:
       note 3 now plays after 5, and nothing else moves.
       ```python
       n.set(mode=1,   # POS
             thresh1=0, thresh2=0.125, thresh3=0.25, thresh4=0.375,
             thresh5=0.5, thresh6=0.625, thresh7=0.75, thresh8=0.875)
       ```
-- [ ] 1.5. ONCE: the scale plays up once and stops on note 8. Press TRIG:
+- [x] 1.5. ONCE: the scale plays up once and stops on note 8. Press TRIG:
       once more. Switch back to LOOP: it starts again at once.
       `n.set(loop="Once")`
 
@@ -97,11 +97,10 @@ lfo = vcv.module("LFO", frequency=vcv.hz(0.25, "LFO"), offset=0)   # +-5 V
 voice(lfo["triangle"])
 ```
 
-- [ ] 2.1. A slow triangle at X: notes 2 to 8 climb with it and 8 holds
-      all the way down. Note 1 sits at -5 V, the triangle's very turn, and
-      may not sound. Not a fault.
+- [x] 2.1. A slow triangle at X: note 1 at the bottom turn, notes 2 to 8
+      climb with it, and 8 holds all the way down.
 - [ ] 2.2. Menu, Direction switches, All fall: now the scale plays on the
-      way down, and the way up is silent.
+      way down, 8 to 1, note 1 at the turn; the way up is silent.
 - [ ] 2.3. Menu, Setups, Quantizer, random steps at X: C, E, G and the C
       above in any order, jumping either way, never another note.
       `voice(vcv.module("Random")["stepped"])`

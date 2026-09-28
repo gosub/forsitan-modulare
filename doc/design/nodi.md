@@ -141,11 +141,20 @@ nothing, so no stage is active until it does, as on the hardware.
 
 ### Where it has to differ from the hardware
 
+- **The ends of the space.** Thresholds are kept 10 mV (twice the
+  hysteresis) inside BELOW..ABOVE, before the THR CV is added. In LENGTH
+  stage 1 sits on the bottom rail, and a Rack signal reaching exactly
+  -5 V (the Fundamental LFO, any VCO) touched it without crossing, so
+  stage 1 never played from anything but the internal ramp (found in the
+  audition, item 2.2). The cost is 1/1000 of the span at each end: a RISE
+  stage at the bottom fires that far into the ramp rather than on the
+  reset, and in a sixteen-step chain the handover step is 48 samples
+  longer, in a 48000-sample cycle.
 - **The ramp's overshoot** is a tiny fixed undershoot of the reset jump,
-  so a RISE threshold at the bottom always fires, a few hundred nanoseconds
-  after a FALL one there. ONCE parks just above +5 V, as the hardware does.
-  There is **no dead zone at the top**: a threshold at exactly +5 V fires.
-  The hardware's dead zone is an analog imperfection, not a behaviour.
+  so every FALL threshold fires on the reset. ONCE parks just above +5 V,
+  as the hardware does. There is **no dead zone at the top**: a threshold
+  at the top fires. The hardware's dead zone is an analog imperfection,
+  not a behaviour.
 - **EXT lockout.** Every Rack cable is one sample of delay and every nodi
   output one more (see Aliasing), so the GATE -> EXT round trip between two
   modules is four samples, not a few microseconds. The lockout is therefore

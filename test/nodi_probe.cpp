@@ -116,11 +116,12 @@ static int cmdCross() {
         firstFires(r, 48000 - 100, first);
         bool ok = true;
         for (int k = 0; k < kStages; k++) {
-            int want = (int)(r.c.threshold[k] * SR);
+            // the bottom one sits kEdgeInset up, 1/1000 of the cycle
+            int want = (int)(std::max(r.c.threshold[k], kEdgeInset / 10.f) * SR);
             ok = ok && std::abs(first[k] - want) <= 1;
         }
         check(ok, mirror ? "POSIT., mirrored diagonal: stage 8 first, stage 1 last"
-                         : "POSIT., diagonal, all RISE: the bottom stage fires on the reset");
+                         : "POSIT., diagonal, all RISE: the bottom stage fires 10 mV into the ramp");
     }
 
     // The reset is a falling sweep: every FALL stage fires in it, top to
@@ -149,8 +150,8 @@ static int cmdCross() {
         check(count == kStages && activeAfter == 3, what);
     }
 
-    // A RISE stage at the bottom fires after a FALL stage there, on the same
-    // reset: the undershoot.
+    // A RISE stage at the bottom fires just after a FALL stage there fires on
+    // the reset: both sit kEdgeInset up.
     {
         Rig r;
         r.c.rate = knobFor(1.f, false);
@@ -164,7 +165,31 @@ static int cmdCross() {
         r.c.threshold[1] = 0.f;
         r.c.direction[1] = FALL;
         for (int n = 0; n < 48000 + 5; n++) r.run();
-        check(r.active() == 0, "RISE and FALL at the bottom: both fire on the reset, RISE last");
+        bool fallFirst = r.active() == 1;
+        for (int n = 0; n < 50; n++) r.run();
+        check(fallFirst && r.active() == 0,
+              "RISE and FALL at the bottom: FALL fires on the reset, RISE 48 samples later");
+    }
+
+    // A signal that reaches the rails and no further, as an LFO does, still
+    // crosses the stages at the ends of the space, both ways, every cycle.
+    {
+        Rig r;
+        r.internal = false;
+        for (int k = 0; k < kStages; k++) r.c.direction[k] = OFF;
+        r.c.direction[0] = FALL;                      // LENGTH: at the bottom
+        r.c.direction[7] = RISE;
+        r.c.threshold[7] = 0.f;                       // stage 8 up to the top
+        int fires[kStages] = {0};
+        for (int n = 0; n < 48000; n++) {
+            float ph = (float)(n % 4800) / 4800.f;    // 10 Hz, exactly +-5 V
+            r.in[0].x = ph < 0.5f ? -5.f + 20.f * ph : 15.f - 20.f * ph;
+            r.run();
+            for (int k = 0; k < kStages; k++) fires[k] += r.fired(k);
+        }
+        snprintf(what, sizeof what, "a +-5 V triangle, 10 cycles: FALL at the bottom fires %d, "
+                 "RISE at +5 V (zero-length stage 8) %d (10, 10)", fires[0], fires[7]);
+        check(fires[0] == 10 && fires[7] == 10, what);
     }
 
     // A threshold swept down under a still X fires the RISE stage once, when
@@ -312,15 +337,16 @@ static int cmdLength() {
     Controls c;
     thresholds(c, kLow, kHigh, zero, th);
     bool ok = true;
-    for (int k = 0; k < kStages; k++) ok = ok && std::fabs(th[k] - (-5.f + 1.25f * k)) < 1e-5f;
-    check(ok, "even lengths: -5, -3.75 ... +3.75 V");
+    for (int k = 0; k < kStages; k++)
+        ok = ok && std::fabs(th[k] - std::max(-5.f + 1.25f * k, kLow + kEdgeInset)) < 1e-5f;
+    check(ok, "even lengths: -4.99 (10 mV inside the space), -3.75 ... +3.75 V");
 
     for (int k = 0; k < kStages; k++) c.threshold[k] = 0.1f * (k + 1);
     thresholds(c, kLow, kHigh, zero, th);
     float sum = 3.6f, cum = 0.f;
     ok = true;
     for (int k = 0; k < kStages; k++) {
-        ok = ok && std::fabs(th[k] - (-5.f + 10.f * cum / sum)) < 1e-4f;
+        ok = ok && std::fabs(th[k] - std::max(-5.f + 10.f * cum / sum, kLow + kEdgeInset)) < 1e-4f;
         cum += 0.1f * (k + 1);
     }
     check(ok, "lengths 0.1 .. 0.8: proportional, first at the bottom, the last reaching the top");
@@ -333,7 +359,8 @@ static int cmdLength() {
 
     Controls d;
     thresholds(d, 0.f, 10.f, zero, th);
-    check(th[0] == 0.f && std::fabs(th[7] - 8.75f) < 1e-5f, "BELOW 0, ABOVE 10: 0 .. 8.75 V");
+    check(std::fabs(th[0] - kEdgeInset) < 1e-6f && std::fabs(th[7] - 8.75f) < 1e-5f,
+          "BELOW 0, ABOVE 10: 0.01 .. 8.75 V");
 
     const float off[kGroups] = {1.f, -2.f, 0.5f};
     d.groupAmount[1] = 0.5f;
@@ -341,7 +368,7 @@ static int cmdLength() {
     thresholds(d, kLow, kHigh, offs, th);
     ok = true;
     for (int k = 0; k < kStages; k++) {
-        float want = -5.f + 1.25f * k + offs[d.group[k]];
+        float want = std::max(-5.f + 1.25f * k, kLow + kEdgeInset) + offs[d.group[k]];
         ok = ok && std::fabs(th[k] - want) < 1e-5f;
     }
     check(ok, "group offsets add to their stages' thresholds, in volts, after the mode");
@@ -521,7 +548,9 @@ static int cmdExt() {
         snprintf(what, sizeof what, "the handovers overlap %d time(s) per cycle (1..2), for %d samples (<= 4)",
                  overlaps, longestOverlap);
         check(overlaps >= 1 && overlaps <= 2 && longestOverlap <= 4, what);
-        check(shortest >= 2990 && longest <= 3010, "and the sixteen steps are even, +-10 samples");
+        // B's stage 1 sits 10 mV over A's top, 1/1000 of the 48000-sample cycle
+        check(shortest >= 2940 && longest <= 3060,
+              "and the sixteen steps are even, +-60 samples (the 10 mV inset is 48)");
     }
 
     printf("%s\n", failures ? "FAILED" : "all passed");
