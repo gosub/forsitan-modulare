@@ -19,7 +19,7 @@ RUST / CORROSION, and the sound is proudly the decay of a digital signal.
 
 rubigo is a clone of Body Synths' **Metal Fetishist** (Xavi Badosa, 2024),
 firmware **v2.0** (2025). The firmware is closed, so everything below is
-written from the manual:
+written from these:
 
 - *Metal Fetishist Reference Manual, firmware v2.0*
   (bodysynths.com/resources/mf/manual)
@@ -27,6 +27,11 @@ written from the manual:
   (s3.amazonaws.com/files.bodysynths.com/mf/BodySynths_MetalFetishist_SettingsReference.pdf)
 - *Preset Book #1* (bodysynths.com/resources/mf/presetbook1): twelve
   knob-position drawings, no sequences ("sequences cannot be saved").
+- The Preset Book's companion video (youtube.com/watch?v=qyCb7s0LCc0),
+  which plays the twelve settings on the hardware: the reference every knob
+  law was measured against.
+- DaisySP (github.com/electro-smith/DaisySP, MIT), the DSP library of the
+  hardware's Daisy platform, whose blocks match the manual's descriptions.
 
 Where the manual is silent the choice is ours and marked **inferred**.
 `doc/rubigo.md` credits the Metal Fetishist and Body Synths by name.
@@ -129,22 +134,22 @@ The hardware's jacks run 0-5 V, PITCH / NOISE / CUTOFF -5..+5 V.
 
 The hardware's, one for one:
 
-| control | range |
+| control | range (the laws are the measured ones, see "The voice") |
 |---|---|
 | PITCH | 30..1500 Hz, exponential |
 | wave switch | SAW / SQUARE |
-| pitch DECAY, AMOUNT | 1 ms..3 s, 0..+600 Hz |
+| pitch DECAY, AMOUNT | 1 ms..3 s quadratic; 0..+600 Hz quadratic |
 | NOISE | 0..1 crossfade |
-| CUTOFF, RESONANCE | 20 Hz..20 kHz exponential; 0..self-oscillation |
+| CUTOFF, RESONANCE | 20 Hz..16 kHz quadratic; 0..self-oscillation |
 | LP / HP switch | |
-| cutoff DECAY, AMOUNT | 1 ms..3 s; 0..full range (inferred: +/- 8 octaves) |
-| VOLUME, volume DECAY | 0..1 with clipping; 1 ms..3 s |
+| cutoff DECAY, AMOUNT | 1 ms..3 s quadratic; 0..+5 kHz linear |
+| VOLUME, volume DECAY | 0..1 with clipping; 1 ms..3 s quadratic |
 | RUST / CORROSION switch, amount knob | |
 | MIX trimpot | the hidden dry/wet, on the panel (default 100%) |
 | STEPS | big knob, 7 detents: OFF 2 4 8 10 16 32 (or the alternative set) |
-| RANDOM SKIPS | 0..100% |
-| RANDOM STEP MOD, destination switch | 0..1; PITCH / NOISE / CUTOFF |
-| TEMPO | 0.4..80 Hz exponential; seven zones /8..x8 under external clock |
+| RANDOM SKIPS | 0..100%, linear |
+| RANDOM STEP MOD, destination switch | 0..1 quadratic; PITCH / NOISE / CUTOFF |
+| TEMPO | 0.4 + 79.6 k^2.4 Hz; seven zones /8..x8 under external clock |
 | play / stop switch, TRIGGER button | |
 
 The dry/wet becomes a trimpot rather than a hold-and-turn gesture, which
@@ -199,7 +204,7 @@ A table of 32 slots, each holding two uniform random numbers: `skip` and
   wraps it at once.
 - A step fires if `skip >= SKIPS`, so SKIPS = 0 fires everything and
   sweeping it moves triggers in and out one slot at a time.
-- The step's mod value is `mod * STEP MOD`, read live, so turning the
+- The step's mod value is `mod * law(STEP MOD)`, read live, so turning the
   amount rescales a locked loop without changing its shape.
 - **A skipped step holds the previous step's mod value.** The manual never
   says so directly, but its CLOCK -> TRIGGER self-patch depends on it: the
@@ -208,13 +213,14 @@ A table of 32 slots, each holding two uniform random numbers: `skip` and
   it repeats". That only works if a skipped step leaves the value alone.
   STEPMOD out follows the held value too.
 
-Step-mod targets, all **inferred** in scale:
+Step-mod targets, scaled as measured (see "The voice"):
 
-- PITCH: adds `mod * amount * 1500 Hz`, linear in Hz, as everything else on
-  the pitch is. Microtonal by construction.
-- NOISE: adds `mod * amount` to the crossfade.
-- CUTOFF: adds `mod * amount * 8` octaves (towards open in LP, towards
-  closed in HP, as the envelope).
+- PITCH: STEP MOD sets the top note on PITCH's own scale, so the step adds
+  up to `pitchHz(STEP MOD) - 30 Hz`: the manual's "PITCH defines the
+  lowest, RANDOM STEP MOD the highest". Microtonal by construction.
+- NOISE: adds `mod * law(STEP MOD)` to the crossfade.
+- CUTOFF: adds `mod * law(STEP MOD) * 5 kHz`, up in LP, down in HP, as the
+  envelope.
 
 ### Clock (inferred where marked)
 
@@ -228,35 +234,72 @@ Step-mod targets, all **inferred** in scale:
 - CLOCK out fires on every step, fired or skipped. TRIGGER out fires only
   when the voice fires, from any source.
 
-### Voice DSP (all inferred, the manual gives only the ranges)
+### The voice: DaisySP's blocks, and laws measured on the hardware
 
-- **Oscillator**: polyBLEP saw / square. `f = PITCH * 2^Vpitch + env +
-  stepmod`: V/oct scales the knob, and the Hz modulations add on top, so a
-  kick keeps its sweep when played from a keyboard.
-- **Envelopes**: 1 ms linear attack, then `exp(-t / tau)` with tau such
-  that the curve reaches -60 dB at the DECAY time. Retrigger restarts from
-  the current value, not zero, so fast steps do not click.
-- **Noise**: white, from the module's own xorshift.
-- **Filter**: ZDF state-variable filter with a tanh stage before it
-  (fixed drive, about +6 dB) and a soft limit inside the resonance loop,
-  so full RESONANCE rings with no input and stays bounded.
-- **CORROSION**: gain 1..40 into an asymmetric clipper, with level
-  compensation part of the way ("increases the perceived volume").
-- **RUST**: the same, then sample-and-hold from the engine rate down to
-  about 400 Hz, exponential on the knob, with no anti-aliasing: the
-  aliasing is the point.
-- **Volume**: `VOLUME` drives an asymmetric soft clipper whose drive grows
-  with the knob, then the envelope multiplies.
-- **Effects**: phaser (6 allpass stages), flanger (0.5..5 ms with
-  feedback), chorus (two taps 10..25 ms), each with a subtle and an intense
-  preset of depth / feedback; the knob sets the LFO from 0.05 to 8 Hz. 2nd
-  oscillator: the same waveform, at `2^(-1..0)` or `2^(0..1)` times the
-  first.
+The first build used generic DSP and knob laws guessed from the manual's
+ranges, and it sounded nothing like the hardware: an exponential decay law
+put the Preset Book kick's volume decay (0.43) at 29 ms, a click. Two
+things fixed it.
 
-Oversampling: none by default. The hardware is a 48 kHz Daisy with an
-audible digital edge, and RUST throws away more than any oversampling
-would keep. If the CORROSION stage measures ugly at 44.1 kHz without RUST,
-a 2x menu option is the fallback, as on raucus.
+**The blocks.** The Metal Fetishist runs on an Electrosmith Daisy, and each
+block the manual describes matches one in DaisySP, the MIT library that
+platform ships with: `Svf`, whose fixed drive scales with the resonance
+("a fixed Drive stage that affects the response of the resonance");
+`Overdrive`, whose post-gain makes it louder as it drives ("increases the
+perceived volume"); `Decimator` for the downsampler; `AdEnv`, which
+retriggers from its current value; polyBLEP `Oscillator`; `Phaser`,
+`Flanger`, `Chorus`. `src/rubigo/daisy.hpp` ports them, with DaisySP's
+notice. That the firmware uses them is inference.
+
+**The laws.** The Preset Book's companion video
+(youtube.com/watch?v=qyCb7s0LCc0, one chapter per setting) plays the
+book's twelve settings on the hardware, and the knob positions were read
+off the book's pages. Rendering the same settings through rubigo and
+comparing spectrograms, envelopes and step rates gave:
+
+| law | measured | chosen |
+|---|---|---|
+| TEMPO | 4.1 Hz at 0.27, 6.2 Hz at 0.355, 2.4 Hz at 0.2 | 0.4 + 79.6 k^2.4 Hz (keeps the manual's ends) |
+| DECAYs | quadratic time fits with one curve per envelope | fmap EXP, 1 ms..3 s |
+| volume curve | tau 0.14 s at DECAY 0.36, 0.87 s at 0.99 | AdEnv curve -3.5 |
+| pitch curve | kick at 125 Hz after 50 ms, 60 Hz after 100 ms | -6 |
+| cutoff curve | resonant kick's HP sweep, bassline's closing | -10 |
+| pitch AMOUNT | kick starts near 260..350 Hz at 0.81 | quadratic x 600 Hz |
+| cutoff envelope | acid peaks near 5 kHz (CUTOFF 0.28, AMOUNT 0.81); bassline near 2 kHz (0.01, 0.33) | adds AMOUNT x 5 kHz, linear |
+| HP direction | the resonant kick sweeps up after each hit | envelope and step pull the cutoff down in HP |
+| CUTOFF | kick & noise's noise is heard at 0.28 | fmap EXP 20 Hz..16 kHz |
+| SKIPS | time-bomb at 0.66 fires one step in three | linear |
+| STEP MOD | acid's notes stay under ~200 Hz at 0.42 | quadratic; on PITCH the top note on PITCH's scale |
+| RUST | hold rate 6.95 kHz at 0.8, 1.93 kHz at 0.98 | Decimator factor 0.5 k^3 |
+| CORROSION | explosions at 0.66 stays dark | Overdrive drive 0.25..0.5 |
+| PITCH | 55.6 Hz at 0.2 | exponential 30..1500 Hz |
+
+The book's knob drawings sit on tick marks and the video's player may
+touch a knob after the chapter starts, so each figure is good to maybe
+10-20%; where two laws fit, the one keeping the manual's ranges won.
+**electric failure** does not match: the hardware's HP at CUTOFF 0.28
+passes low tones that rubigo's removes, and no single change fits it
+without breaking the others. It is left as a known difference.
+
+Other voice details:
+
+- `f = PITCH * 2^Vpitch + env + step`: V/oct scales the knob, and the Hz
+  modulations add on top, so a kick keeps its sweep from a keyboard. A hit
+  out of silence restarts the oscillator's phase, so every kick has the
+  same attack; one landing on a sounding note does not, which would click.
+- The Svf's damping reaches zero at full resonance, a lossless loop that
+  rings only if something rings it; the hardware's rings with the input
+  dead. Over the last 5% of RES the damping goes slightly negative (0.2 at
+  the top) and the drive (2, of DaisySP's 0..10) sets the level: about
+  0.8 V rms at VOLUME 0.5.
+- VOLUME: the VCA, then an asymmetric soft clip driven up to x2.5.
+- Effects: phaser 4 poles / depth 0.5 / feedback 0.2 (subtle) or 8 / 0.9 /
+  0.7 (intense); flanger delay 0.3 / depth 0.5 / feedback 0.3 or 0.75 /
+  0.9 / 0.85; chorus two engines at LFO x1 and x1.37. The knob sets the LFO
+  from 0.05 to 8 Hz. These presets are ours; the manual names only
+  "subtle" and "intense".
+- No oversampling: the hardware is a 48 kHz Daisy and RUST is aliasing on
+  purpose.
 
 ### Panel
 
@@ -283,8 +326,8 @@ The final layout is done in the panel editor and checked with
   counts; auto-return after the timeout; RESET lands on step one; no NaN
   under every switch and menu combination at extreme knobs; full
   RESONANCE with the sources muted stays bounded.
-- `test/rubigo_probe measure`: envelope times, pitch sweep, the filter's
-  self-oscillation pitch against CUTOFF, the RUST rate against its knob.
+- `test/rubigo_probe`: the sequencer, the clock, envelope times, PITCH, the
+  filter's self-oscillation, the RUST rate, the reasoned random, a fuzz.
 - Audition in `test/audition/rubigo.md`, with the manual's own "try this"
   recipes as the items: kick from the pitch envelope, the resonant melody,
   the drone, the processor, the audio-rate clock self-patch.
@@ -355,25 +398,22 @@ own names and values.
   "restart on run", and with a clock patched it waits for the clock instead
   of playing off the grid. Found by the JSON round-trip check in
   `smoke_rubigo`, which saw the reloaded loop start one or two steps early.
-- **The default TEMPO (0.3) is in the /2 zone** under an external clock,
-  as the hardware's would be. Kept: the default is chosen for the internal
-  clock (1.97 Hz, a four-on-the-floor kick), and the tooltip says "/2
+- **The default TEMPO (0.2) is in the /4 zone** under an external clock,
+  as the hardware's would be. The default is chosen for the internal clock
+  (2 Hz, a four-on-the-floor kick at 120 BPM), and the tooltip says "/4
   external" when a clock is patched.
 - **MIX is on the panel** as a trimpot, one value for every effect,
   default 100%. For the 2nd oscillator it is the second oscillator's level,
   full = the manual's 50/50.
 - **The TRIGGER button is a lit bezel** in the accent yellow; its light is
   the hardware's trigger LED. The clock LED sits at TEMPO's corner.
-- **Self-oscillation level**: the filter's state limit is 4, which puts full
-  RESONANCE with the sources muted at about 0.8 V rms at VOLUME 0.5; 1.5
-  gave 0.3 V, too quiet next to a kick.
 - **The panel** is 20 HP: four rows of knobs and switches on six columns,
   nine inputs in one row, four output badges either side of the logo. The
   switches' positions are labelled above and below, and the destination
   switch **pit / nse / cut** on three sides, since which way is up is the
   whole of its meaning.
-- **Measured**: of 200 uniform draws of every control, 43 are inaudible
-  (peak under 0.5 V over 4 s); of 200 reasoned randoms, 1
-  (`rubigo_probe random`). CPU is 130 to 180 ns a sample, 0.6 to 0.9% of a
+- **Measured**: of 200 uniform draws of every control, 31 are inaudible
+  (peak under 0.5 V over 4 s); of 200 reasoned randoms, none
+  (`rubigo_probe random`). CPU is 105 to 155 ns a sample, 0.5 to 0.75% of a
   core, depending on the effect (`rubigo_probe cpu`).
 

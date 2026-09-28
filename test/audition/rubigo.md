@@ -99,9 +99,9 @@ r.set(tempo=0.5)                       # x1 on the display
       x2, x4, x8; to the left /2, /4, /8, as the tooltip says.
 - [ ] 3.2. Pull the cable out of CLK: two seconds of silence, then the
       internal clock takes over. The pause is intended, not a fault.
-- [ ] 3.3. **Decide -** the default TEMPO (0.3) sits on /2 under an external
-      clock, as on the hardware. Keep, or move the default to the x1 zone
-      (0.5, 4.5 Hz on the internal clock)?
+- [ ] 3.3. **Decide -** the default TEMPO (0.2, 2 Hz) sits on /4 under an
+      external clock, as on the hardware. Keep, or move the default to the
+      x1 zone (0.5, 11 Hz on the internal clock)?
 
 ## 4. Processing and the menu
 

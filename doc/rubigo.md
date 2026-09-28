@@ -42,11 +42,11 @@ from there.
 |---|---|
 | **pitch** | 30 Hz to 1500 Hz. Modulation takes it higher |
 | **saw / sqr** | the oscillator's waveform |
-| **decay**, **amount** (left pair) | the pitch envelope: a 1 ms jump up by **amount** (up to +600 Hz), then an exponential fall back to **pitch** over **decay** (1 ms to 3 s) |
+| **decay**, **amount** (left pair) | the pitch envelope: a 1 ms jump up by **amount** (up to +600 Hz), then an exponential fall back to **pitch** that ends at **decay** (1 ms to 3 s) |
 | **noise** | crossfades the oscillator (left) into white noise (right). A cable in **in** replaces the noise |
-| **hp / lp**, **cutoff**, **res** | a state-variable filter, 20 Hz to 20 kHz, with a fixed drive in front, so nothing passes it clean. At full **res** it rings on its own |
-| **decay**, **amount** (right pair) | the cutoff envelope, up to 8 octaves. It raises the cutoff, which opens the filter in **lp** and closes it in **hp** |
-| **effect**, **rust / corr** | **corr** (corrosion) is a digital overdrive; **rust** is the same overdrive followed by a downsampler whose rate falls from the engine's rate to 400 Hz as the knob turns up. No anti-aliasing: the aliasing is the sound |
+| **hp / lp**, **cutoff**, **res** | a state-variable filter, 20 Hz to 16 kHz, whose fixed drive saturates the resonance. At full **res** it rings on its own |
+| **decay**, **amount** (right pair) | the cutoff envelope, adding up to **amount** x 5 kHz. In **lp** it opens the filter at the hit; in **hp** it pulls the cutoff down at the hit and lets it rise back, the sweep up of the resonant kick |
+| **effect**, **rust / corr** | **corr** (corrosion) is a digital overdrive; **rust** is the same overdrive followed by a downsampler, gentle over most of the knob and falling to about 1.9 kHz at the top. No anti-aliasing: the aliasing is the sound |
 | **mix** | dry / wet of the effect. The hardware hides this under a held button |
 | **volume**, **decay** | the level, with asymmetric clipping that grows as **volume** rises, and the volume envelope, 1 ms to 3 s. Nothing sounds until it is triggered |
 | **trigger** | fires all three envelopes, with the sequencer running or not. It lights on every hit |
@@ -62,9 +62,9 @@ For a click at the start of a sound: **cutoff** low in **lp**, the cutoff
 | control | function |
 |---|---|
 | **run / stop** | starts and stops the sequencer. **trigger** and **trig** in work either way |
-| **tempo** | the internal clock, 0.4 Hz to 80 Hz, which is audio rate. With a clock at **clk**, a ratio instead: /8, /4, /2, x1, x2, x4, x8 across its travel. The default sits on /2 |
+| **tempo** | the internal clock, 0.4 Hz to 80 Hz, which is audio rate: 2 Hz at the default 0.2, 4 Hz near 0.27, 6 Hz near 0.35. With a clock at **clk**, a ratio instead: /8, /4, /2, x1, x2, x4, x8 across its travel; the default sits on /4 |
 | **skips** | the share of steps that do not fire, 0% to 100% |
-| **step mod**, **pit / nse / cut** | how far each step's random value moves the destination. On **pit** it adds up to 1500 Hz, so **pitch** sets the lowest note and **step mod** the highest; the notes are microtonal |
+| **step mod**, **pit / nse / cut** | how far each step's random value moves the destination. On **pit**, **pitch** sets the lowest note and **step mod** the highest, read on the same scale as **pitch** (up to 1500 Hz at full); the notes are microtonal. On **cut** it adds up to 5 kHz |
 | **steps** | **off**, 2, 4, 8, 10, 16 or 32 |
 
 Each step holds two random numbers. One is compared with **skips**: the
@@ -97,7 +97,7 @@ it is still there.
 | **skp**, **mod** in | added to **skips** and **step mod**: 0 to 10 V covers each knob's travel |
 | **v/o** in | 1 V/octave on **pitch**. The envelope and the step value still add their hertz on top, so a kick keeps its sweep when played from a keyboard |
 | **nse** in | added to **noise**: +-5 V covers the travel either way |
-| **cut** in | added to **cutoff**, 2 octaves a volt. Or to the **Mod assign** target |
+| **cut** in | added to **cutoff**: +-5 V covers its travel either way. Or to the **Mod assign** target |
 | **in** | audio, replacing the noise |
 | **trig** out | 10 V, 1 ms, every time the voice fires, whatever fired it |
 | **clk** out | 10 V, 1 ms, every step, fired or skipped |
@@ -133,8 +133,8 @@ draws each control from that archetype's ranges:
 The ranges come from the principles the Metal Fetishist's own preset book
 follows: the pitch envelope is either off or kick-shaped, never in between;
 noise is none, half or all; resonance is zero unless the filter is the
-voice; **steps** is off, 8 or 16. Of 200 uniform draws, 43 are inaudible;
-of 200 reasoned ones, 1.
+voice; **steps** is off, 8 or 16. Of 200 uniform draws, 31 are inaudible;
+of 200 reasoned ones, none.
 
 ## Presets
 
@@ -182,7 +182,19 @@ These are from the hardware manual.
   manual does not say which steps it locks.
 - **A clocked module waits for its clock** after a load. Unclocked, it plays
   its first step at once.
-- The voice's curves are ours. The manual gives ranges, not circuits: an
-  exponential decay reaching -60 dB at the **decay** time, a zero-delay
-  state-variable filter with a limited resonance loop, a biased tanh for the
-  overdrive, sample-and-hold for the downsampler, polyBLEP oscillators.
+- **How it was made to sound like the hardware.** The Metal Fetishist runs
+  on an Electrosmith Daisy, and every block its manual describes matches
+  one in DaisySP, the library that platform ships with: the filter, the
+  overdrive, the downsampler, the envelopes, the oscillators and the three
+  effects. rubigo is built from ports of those. The knob laws were then
+  measured against the hardware itself: the Preset Book's companion video
+  plays the book's twelve settings, and each law (tempo, decays, envelope
+  amounts, the downsampler, the overdrive) was fitted to what the hardware
+  does at those knob positions. The firmware is closed, so this is
+  inference, checked by ear against the video.
+- **The filter self-oscillates** at the top of **res** without an input. On
+  the hardware the converter's own noise starts it; here the damping goes
+  slightly negative over the last 5% of the knob.
+- **electric failure**, one of the book's twelve settings, does not match:
+  on the hardware its high-pass lets low tones through that rubigo's
+  removes.
