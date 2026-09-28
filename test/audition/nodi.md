@@ -99,9 +99,9 @@ voice(lfo["triangle"])
 
 - [x] 2.1. A slow triangle at X: note 1 at the bottom turn, notes 2 to 8
       climb with it, and 8 holds all the way down.
-- [ ] 2.2. Menu, Direction switches, All fall: now the scale plays on the
+- [x] 2.2. Menu, Direction switches, All fall: now the scale plays on the
       way down, 8 to 1, note 1 at the turn; the way up is silent.
-- [ ] 2.3. Menu, Setups, Quantizer, random steps at X: C, E, G and the C
+- [x] 2.3. Menu, Setups, Quantizer, random steps at X: C, E, G and the C
       above in any order, jumping either way, never another note.
       `voice(vcv.module("Random")["stepped"])`
 
@@ -113,17 +113,17 @@ voice(lfo["triangle"])
 graphic_vco()
 ```
 
-- [ ] 3.1. A steady 110 Hz tone with a stepped, reedy edge. Drag any top
+- [x] 3.1. A steady 110 Hz tone with a stepped, reedy edge. Drag any top
       slider: the timbre changes as you draw, the pitch does not.
-- [ ] 3.2. Open the VCA to about 30%: the pitch sweeps three octaves up and
+- [x] 3.2. Open the VCA to about 30%: the pitch sweeps three octaves up and
       back, and stays clean. Menu, Anti-aliasing, Off: a whistle of wrong
       pitches rides the top of the sweep. Back to Auto, and it goes.
       `vcv.modulate(n["voct"], rate=0.1)   # 0..10 V, one octave a volt`
-- [ ] 3.3. Menu, Setups, Waveshaper / bitcrusher, a 110 Hz sine at X: four
+- [x] 3.3. Menu, Setups, Waveshaper / bitcrusher, a 110 Hz sine at X: four
       levels, a hard square-ish crunch. Pull top sliders 2 and 7 down: it
       folds.
       `voice(vcv.module("VCO", frequency=vcv.hz(110))["sine"])`
-- [ ] 3.4. **Decide -** Auto rounds only the steps closer than 2 ms, so with
+- [x] 3.4. **Decide -** Auto rounds only the steps closer than 2 ms, so with
       eight stages it hands over at 62.5 Hz. Sweep **Rate** slowly through
       40..100 Hz: is the handover inaudible, as it should be?
 
@@ -131,14 +131,14 @@ graphic_vco()
 
 ## 4. Groups, the switch and EXT
 
-- [ ] 4.1. Gate A into the envelope instead of GATE: only notes 1, 4 and 7
+- [x] 4.1. Gate A into the envelope instead of GATE: only notes 1, 4 and 7
       sound, the rest are silent steps.
       `n["gate a"] >> env["gate"]`
-- [ ] 4.2. Open the VCA on THR A: notes 1, 4 and 7 lean early and late
+- [x] 4.2. Open the VCA on THR A: notes 1, 4 and 7 lean early and late
       against the others; pushed off the end of the ramp, 7 drops out. Not a
       fault.
       `vcv.modulate(n["thr a"], rate=0.2, offset=False)   # +-5 V`
-- [ ] 4.3. Menu, Setups, Temporal mixer. A saw, a square and a sine at
+- [x] 4.3. Menu, Setups, Temporal mixer. A saw, a square and a sine at
       three pitches into A, B, C, COM to the output: all three at once, with
       a buzz at 110 Hz. Lower sliders 1 to 3 act as their faders.
       ```python
@@ -148,7 +148,7 @@ graphic_vco()
       mix[2]["sine"] >> n["sw c"]
       n["com"] >> out["output 1"] + out["output 2"]
       ```
-- [ ] 4.4. **Decide -** Two nodi as one sixteen-step sequencer, the manual's
+- [x] 4.4. **Decide -** Two nodi as one sixteen-step sequencer, the manual's
       patch: this one over -5..0 V, the second over 0..+5 V. Each handover
       has both active for 4 samples (`nodi_probe ext`): heard as a click in
       the pitch, or not at all?
@@ -171,10 +171,10 @@ graphic_vco()
 
 ## 5. Menus and lights
 
-- [ ] 5.1. Menu, f(X) sliders, any preset, then Ctrl+Z once: all eight top
+- [x] 5.1. Menu, f(X) sliders, any preset, then Ctrl+Z once: all eight top
       sliders go back together, and nothing else moved.
-- [ ] 5.2. Menu, Threshold sliders, Swing (2:1), then Convert to positions:
+- [x] 5.2. Menu, Threshold sliders, Swing (2:1), then Convert to positions:
       the rhythm does not change, the switch flips to POS and the lower
       sliders become a staircase.
-- [ ] 5.3. **Decide -** The lower sliders glow faintly while X is above them
+- [x] 5.3. **Decide -** The lower sliders glow faintly while X is above them
       and flash as they fire. Legible as a picture of X, or noise?

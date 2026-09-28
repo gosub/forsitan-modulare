@@ -1,6 +1,9 @@
 # nodi - design doc
 
-Status: built, 2026-09-26. The module follows this doc; `doc/nodi.md` is
+Status: built 2026-09-26, audition passed 2026-09-28 (all 19 items; the
+three Decide items kept as built: the 2 ms Auto rule's handover at 62.5 Hz
+is inaudible, so is the four-sample overlap in a sixteen-step chain, and
+the threshold lights read as a picture of X). The module follows this doc; `doc/nodi.md` is
 the manual. Where building it changed a decision, the doc says what was
 decided and why.
 
@@ -327,7 +330,7 @@ It fits at **24 HP** with `panel_audit.py` clean; the labels are short
   - `cpu`, and `wav <dir>` for listening.
 - `test/smoke_nodi`: construction, NaN and silence, poly channel counts,
   the RAMP -> X normal, the defaults being a running sequencer.
-- `test/audition/nodi.md`, 18 items.
+- `test/audition/nodi.md`, 19 items.
 
 CPU (`nodi_probe cpu`): 62 ns a sample mono, 0.30% of a 48 kHz sample; 690
 ns at 16 channels, 3.3%. About 40 ns of it is per channel.
