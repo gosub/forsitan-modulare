@@ -252,6 +252,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | radix | chaotic 8-bit source (integer machine on its own clock; SRC x LAW x TABLE = 150 programs on stepped knobs with CV, BITS, GRIT, rungler CV out; label-free tilted panel with generated art, in the family of the Radical22) | 60.96mm (12HP) |
 | olim | eight-head stereo delay (Time Machine clone: TIME/SPREAD/FEEDBACK, heads refade at 5 Hz, inverted loop normalised by the slider sum, nine lit sliders with the VCA expander built in, clock in power-of-two steps, Memory 20/60/150 s) | 121.92mm (24HP) |
 | nodi | continuous-time sequencer (Discrete Map clone: eight RISE/OFF/FALL thresholds on X pick a stage, POS/LEN sliders, internal ramp normalled to X, crossings found inside the sample, polyBLEP steps with one sample of latency, poly X; A/B/C expander built in: group gates, threshold CV, sequential switch; setups, presets and transforms in the menu) | 121.92mm (24HP) |
+| rubigo | digital percussion voice + generative sequencer (Metal Fetishist clone: osc + noise/ext into driven LP/HP SVF, corrosion/rust, clipping VCA, three decay envelopes; SKIPS + STEP MOD random generators locked by STEPS, skipped steps hold the value; external clock ratios; effect / Mod assign menus; reasoned random from five archetypes, also on Ctrl-R) | 101.6mm (20HP) |
 
 ## limen module
 
@@ -497,7 +498,9 @@ global pip install):
     plugin must be built from a tree that has it.
 - `tools/presets/` - `gen_presets.py` writes `presets/scrupea/*.vcvm`,
   `gen_gradus_presets.py` writes `presets/gradus/*.vcvm` (stated in volts,
-  converted through the square-law knob), and
+  converted through the square-law knob), `gen_rubigo_presets.py` writes
+  `presets/rubigo/*.vcvm` (the manual's recipes; none is a Preset Book
+  setting, those are Body Synths' content), and
   `skrewell_to_scrupea.py` converts the snapshots in a Reaktor ensemble **the
   user supplies** into the same format. No snapshot data is checked in: the
   factory snapshots are Native Instruments' content, names included, so the
