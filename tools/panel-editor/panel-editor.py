@@ -188,10 +188,13 @@ def cpp_line(el, module):
     ref = f'module, {module}::{eid}'
     if kind == 'param':
         if el.get('light'):
-            # A lit slider is a template on its light's colour, and the
-            # house colour is the accent yellow (olim, nodi).
+            # A lit slider or bezel button is a template on its light's
+            # colour, and the house colour is the accent yellow (olim, nodi,
+            # rubigo).
             if ctype == 'VCVLightSlider':
                 ctype = 'VCVLightSlider<YellowLight>'
+            elif ctype == 'VCVLightBezel':
+                ctype = 'VCVLightBezel<YellowLight>'
             return (f'        addParam(createLightParamCentered<{ctype}>'
                     f'({vec}, {ref}, {module}::{el["light"]}));')
         return f'        addParam(createParamCentered<{ctype}>({vec}, {ref}));'
