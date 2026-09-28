@@ -247,6 +247,8 @@ struct OlimTimeQuantity : ParamQuantity {
         setValue(std::sqrt(clamp(v, 0.f, olim::kTimeMax) / olim::kTimeMax));
     }
     std::string getDisplayValueString() override;
+    std::string getUnit() override;
+    void setDisplayValueString(std::string s) override;
 };
 
 // FEEDBACK reads as the loop gain it sets: 1 across the arc.
@@ -558,6 +560,34 @@ std::string OlimTimeQuantity::getDisplayValueString() {
                             : string::f("1/%g clock", std::round(1.f / ratio));
     }
     return ParamQuantity::getDisplayValueString();
+}
+
+// Clocked, TIME is text, so the label's " s" would be appended to it.
+std::string OlimTimeQuantity::getUnit() {
+    Olim* m = dynamic_cast<Olim*>(module);
+    return m && m->engine.clocked() ? "" : ParamQuantity::getUnit();
+}
+
+// Clocked, a multiple of the clock: "2", "2 clocks", "1/4". The knob steps
+// in factors of two, period x 2^(N/2 - step) with step = (1 - knob) N, so a
+// multiple m sits at knob 0.5 + log2(m) / N. Free, seconds as Rack parses.
+void OlimTimeQuantity::setDisplayValueString(std::string s) {
+    Olim* m = dynamic_cast<Olim*>(module);
+    if (!(m && m->engine.clocked())) return ParamQuantity::setDisplayValueString(s);
+    const char* p = s.c_str();
+    while (*p == ' ') p++;
+    char* end = nullptr;
+    float a = std::strtof(p, &end);
+    if (end == p || !(a > 0.f)) return;
+    float multiple = a;
+    const char* slash = std::strchr(end, '/');
+    if (slash) {
+        float b = std::strtof(slash + 1, nullptr);
+        if (!(b > 0.f)) return;
+        multiple = a / b;
+    }
+    float n = (float)olim::kClockKnobSteps;
+    setValue(clamp(0.5f + std::log2(multiple) / n, 0.f, 1.f));
 }
 
 namespace {
