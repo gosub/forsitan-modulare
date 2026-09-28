@@ -503,7 +503,7 @@ struct RubigoWidget : ModuleWidget {
         addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(50.80f, 21.00f)), module, Rubigo::STEPS_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.20f, 20.00f)), module, Rubigo::SKIPS_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(93.10f, 20.00f)), module, Rubigo::TEMPO_PARAM));
-        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(97.60f, 15.50f)), module, Rubigo::CLOCK_LIGHT));
+        addChild(createLightCentered<SmallLight<GreenLight>>(mm2px(Vec(98.30f, 14.80f)), module, Rubigo::CLOCK_LIGHT));
         addParam(createParamCentered<CKSS>(mm2px(Vec(8.50f, 42.00f)), module, Rubigo::RUST_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 42.00f)), module, Rubigo::EFFECT_PARAM));
         addParam(createParamCentered<Trimpot>(mm2px(Vec(42.30f, 42.00f)), module, Rubigo::MIX_PARAM));
