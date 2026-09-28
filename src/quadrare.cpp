@@ -182,24 +182,40 @@ struct Quadrare : Module {
 
     // KEEP maps exponentially, so the musically interesting low counts are not
     // squeezed into the first few percent of travel at n=256.
+    // Shown as a plain count with "of n" in the label, and a typed count is
+    // read back through the inverse of the law.
     struct KeepQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
+        int size() {
             Quadrare* m = dynamic_cast<Quadrare*>(module);
-            const int n = m ? m->size : kMinSize;
-            const int k = keepCount(getValue(), n);
-            return string::f("%d of %d", k, n);
+            return m ? m->size : kMinSize;
         }
+        float getDisplayValue() override { return (float) keepCount(getValue(), size()); }
+        void setDisplayValue(float k) override {
+            const float n = (float) size();
+            setValue(math::clamp(std::log(math::clamp(k, 1.f, n)) / std::log(n), 0.f, 1.f));
+        }
+        std::string getUnit() override { return string::f(" of %d", size()); }
     };
     static int keepCount(float v, int n) {
         return math::clamp((int) std::round(std::pow((float) n, v)), 1, n);
     }
 
+    // A plain number of levels, " levels" in the label; 0 is off, and typing
+    // 0 turns it off.
     struct QuantQuantity : ParamQuantity {
-        std::string getDisplayValueString() override {
+        float getDisplayValue() override {
             const float v = getValue();
-            if (v <= 0.001f) return "off";
-            return string::f("%.0f levels", quantLevels(v));
+            return v <= 0.001f ? 0.f : std::round(quantLevels(v));
         }
+        void setDisplayValue(float levels) override {
+            if (levels < 1.f) {
+                setValue(0.f);
+                return;
+            }
+            const float l = math::clamp(std::log2(levels), 1.f, 12.f);
+            setValue(math::rescale(l, 12.f, 1.f, 0.f, 1.f));
+        }
+        std::string getUnit() override { return getDisplayValue() > 0.f ? " levels" : " (off)"; }
     };
     static float quantLevels(float v) {
         return std::pow(2.f, math::rescale(v, 0.f, 1.f, 12.f, 1.f));
