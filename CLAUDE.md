@@ -253,6 +253,7 @@ chain. Each module is a self-contained `src/<name>.cpp`:
 | olim | eight-head stereo delay (Time Machine clone: TIME/SPREAD/FEEDBACK, heads refade at 5 Hz, inverted loop normalised by the slider sum, nine lit sliders with the VCA expander built in, clock in power-of-two steps, Memory 20/60/150 s) | 121.92mm (24HP) |
 | nodi | continuous-time sequencer (Discrete Map clone: eight RISE/OFF/FALL thresholds on X pick a stage, POS/LEN sliders, internal ramp normalled to X, crossings found inside the sample, polyBLEP steps with one sample of latency, poly X; A/B/C expander built in: group gates, threshold CV, sequential switch; setups, presets and transforms in the menu) | 121.92mm (24HP) |
 | rubigo | digital percussion voice + generative sequencer (Metal Fetishist clone built from DaisySP blocks, knob laws measured against the hardware's Preset Book video: osc + noise/ext into LP/HP Svf, overdrive/decimator, clipping VCA, three AdEnv decays; SKIPS + STEP MOD random generators locked by STEPS, skipped steps hold the value; external clock ratios; effect / Mod assign menus; reasoned random from five archetypes, also on Ctrl-R) | 101.6mm (20HP) |
+| spira | looper of grains (circles loop off the input line while it plays on; SPIRAL scales each lap, TAPE by speed or by cutting, FADE/TONE per first-lap length so inward spirals end in a pitch; laps are grains: SHAPE, SOFT, fwd/ping-pong/rev, JITTER; RATE/BIRTH, REACH, HOLD loops the last LINE s; 8 circles; TURN + V/oct outs) | 132.08mm (26HP) |
 
 ## limen module
 

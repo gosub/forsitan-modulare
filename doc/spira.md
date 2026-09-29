@@ -1,0 +1,104 @@
+# spira
+
+![spira](../img/spira.png)
+
+**A looper of grains, or a granulator of loops. Circles grow off the input
+and turn into spirals.**
+
+*spira* is Latin for "coil, spiral".
+
+The input is a **line**: it plays on, and spira keeps the last 48 seconds of
+it. A **circle** is a short window of the line that loops on itself while the
+line goes on. Each turn of a circle is a **lap**, and between laps the
+circle can change: shorter or longer, faster or slower, quieter, darker,
+thinner. A circle that changes turn by turn is a spiral.
+
+Inward, every lap shorter than the last: the laps add up to a known length,
+so the spiral ends. On the way the repeats get so short that they stop
+being repeats and become a pitch. Outward, every lap longer: the circle
+slows down and drops until it is a smear.
+
+Plain repeats are a stutter effect. What keeps spira from being one is that
+each lap is a grain rather than a cut: it has its own envelope (**shape**,
+**soft**), a direction (forward, ping-pong, reverse), a place that can
+wander (**jitter**), and a filter that moves turn by turn (**tone**). Many
+circles sound at once, each at a different stage of its spiral.
+
+## The panel
+
+| row | contents |
+|---|---|
+| top | **size**, **tape**, the **spiral** knob, **fade**, **rate** |
+| second | **pitch**, **tone**, **anchor**, **jitter**, **reach**, **line** |
+| third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **mix**, **birth**, **hold** |
+| jacks | inputs **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold**, **in l**, **in r**; outputs **turn**, **v/oct**, **L**, **R** |
+
+## The spiral
+
+| control | function |
+|---|---|
+| **size** | the first lap, 10 ms to 4 s. It is a length of time, so **pitch** does not change the rhythm |
+| **spiral** | the next lap's length over this one's. In the middle, x1: a circle. Left, down to x0.5: each lap shorter, and the circle converges. Right, up to x2: each lap longer. Near the middle the knob is fine-grained: at 0.2 it is x1.03, at 0.5 x1.19 |
+| **tape** | how a lap gets shorter or longer. At 100% it plays the same window faster or slower, and the pitch follows, as on tape. At 0% it cuts the window, or opens it wider, at the same speed. Speed stops at two octaves up and four down; past that the window is cut instead |
+| **fade** | the level change per turn, -24 dB to +3 dB. It is measured on the first lap's length, so a lap half as long fades half as much. A converging spiral therefore arrives with some level left, and the tone at its end can be heard. Above 0 dB the circle swells, up to +12 dB |
+| **tone** | a filter that moves per turn, on the same time scale as **fade**. Below 0 a low-pass closes by that many octaves per turn, down to 80 Hz. Above 0 a high-pass opens instead, up to 8 kHz |
+| **anchor** | when **tape** cuts, which end of the window stays: the start (0%), the end (100%), or in between |
+
+A converging circle ends once its laps reach 1 ms, fading over its last
+laps. Its whole life is **size** / (1 - ratio): at **spiral** 0.84x and
+**size** 250 ms, about 1.6 seconds. An unwinding circle grows until its
+laps are 16 s long and then turns at that length.
+
+## The lap
+
+| control | function |
+|---|---|
+| **pitch** | the circle's speed at birth, -24 to +24 semitones, plus **v/oct** |
+| **shape** | an envelope on every lap. Left, each lap decays: repeats become plucks. Right, each lap swells and stops: backwards-sounding repeats. In the middle, flat |
+| **soft** | the crossfade between one lap and the next, from 1 ms (a clean cut) to half the lap (laps that are all crossfade, like overlapping grains) |
+| **fwd / p-p / rev** | the direction. In ping-pong the laps alternate forward and backward, and with **spread** they also alternate left and right |
+| **jitter** | each lap's place and length move at random, by up to half a window and a quarter of an octave. It also loosens **rate** |
+
+## The line
+
+| control | function |
+|---|---|
+| **rate** | circles per second, 0.05 to 20. At the bottom, off: circles are born only by **birth** |
+| **birth** | a circle now, from the button or a trigger at the jack. **turn** lights the button |
+| **reach** | where a circle is born. At 0 it is born just behind the playhead, on the last **size** of the line. Turned up, it is born up to **reach** x **line** further back |
+| **line** | 1 to 30 seconds: how far back **reach** can go, and the loop's length under **hold** |
+| **hold** | the button latches, and the jack holds while high. The line stops recording and loops its last **line** seconds, or less if less has been recorded since the module started. Circles born under hold come from the held loop |
+| **spread** | each circle gets its own place in the stereo field, up to hard left or right |
+| **mix** | the line against the circles. In the middle both are at unity, so spira works as an insert. At 0 only the line, at 100% only the circles |
+
+Up to eight circles sound at once. A ninth takes the place of the oldest,
+which fades out over 5 ms. The circles are summed at unity and soft-limited
+to 10 V, so many loud ones overlapping will saturate gently.
+
+## Jacks
+
+| jack | function |
+|---|---|
+| **in l**, **in r** | the line. **in r** is normalled from **in l** |
+| **v/oct** in | added to **pitch** |
+| **size** in | 1 V/oct on **size**: +1 V doubles the first lap |
+| **spir**, **shape** in | added to their knobs: +-5 V covers the travel |
+| **reach** in | added to **reach**: 0 to 10 V covers the travel |
+| **rate** in | 1 V/oct on **rate**; it does not turn an off **rate** on |
+| **birth** in | a trigger: a circle now |
+| **hold** in | a gate: hold while high |
+| **turn** out | 10 V, 1 ms, at the birth and each lap of the newest circle |
+| **v/oct** out | the newest circle's speed, 0 V at the speed of the line. With **tape** on a converging spiral it climbs an octave each time the laps halve: patch it into an oscillator and the oscillator follows the spiral |
+| **L**, **R** | the line and the circles |
+
+## Context menu
+
+| item | function |
+|---|---|
+| **Circles keep the settings they were born with** | off (the default), the knobs reach the sounding circles at their next lap, so a single long circle can be played. On, a circle keeps everything it was born with, and moving a knob only shapes the circles to come: modulate **spiral** and every circle gets its own |
+
+## Levels
+
+The line passes at its own level. A circle starts at the level of what it
+loops, and changes by **fade** per turn. The buffer holds 48 seconds of
+stereo at the host's sample rate: about 18 MB at 48 kHz, 74 MB at 192 kHz.

@@ -50,6 +50,7 @@ A collection of VCV Rack modules.
 | [olim](doc/olim.md) | Eight-head stereo delay over up to 150 s of memory: TIME places the last head, SPREAD crowds the rest toward now or then, nine lit sliders with a VCA each, feedback from sound on sound to a howl (Time Machine clone, VCA expander built in) | [doc/olim.md](doc/olim.md) |
 | [nodi](doc/nodi.md) | Continuous-time sequencer: eight rising or falling thresholds on a moving voltage X pick one of eight stages, so the lower sliders place steps in time, map a melody onto an LFO or quantize a random voltage; a graphic VCO or waveshaper at audio rate (Discrete Map clone, A / B / C Expander built in) | [doc/nodi.md](doc/nodi.md) |
 | [rubigo](doc/rubigo.md) | Digital percussion voice played by its own random sequencer: two generators decide which steps fire and what each one carries, and one knob locks what you hear into a loop and regenerates it piece by piece (Metal Fetishist clone) | [doc/rubigo.md](doc/rubigo.md) |
+| [spira](doc/spira.md) | Looper of grains: short circles loop off the input while it plays on, and each turn can shrink or grow, speed up or slow down, fade, darken, pluck or swell, so a circle becomes a spiral; inward spirals end in a pitch | [doc/spira.md](doc/spira.md) |
 
 ## Tools
 
@@ -120,6 +121,7 @@ Being Italian, giving the modules English names felt off, but Italian names woul
 | **olim** | once upon a time, and also someday - the same word points both ways, which is what eight heads over one memory do |
 | **nodi** | knots, nodes - Hegel's nodal lines, where a quantity changing smoothly turns into a different quality; eight thresholds, eight such knots |
 | **rubigo** | rust - the hardware's RUST / CORROSION switch, and a sound built on digital decay |
+| **spira** | a coil, a spiral - circles off a line that change as they turn |
 
 ## Author
 
