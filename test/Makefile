@@ -25,7 +25,7 @@ all: draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
      caligo_probe raucus_probe tundo_probe cartilago_probe textor_probe \
      scrupea_probe viginti_probe materiae_probe materiae_presets materiae_random \
      aether_probe vates_probe artifex_probe radix_probe olim_probe nodi_probe \
-     rubigo_probe \
+     rubigo_probe spira_probe \
      $(SMOKE_BINS) $(CROSS_BINS)
 
 # Every one of the 150 programs at the defaults: level, DC, centroid, CV OUT
@@ -40,6 +40,14 @@ radix_probe: radix_probe.cpp ../src/radix/radix.hpp
 # Drives the engine header alone; every command but `cpu` and `wav <dir>`
 # exits nonzero on a failed check.
 rubigo_probe: rubigo_probe.cpp ../src/rubigo/rubigo.hpp ../src/rubigo/reasoned.hpp
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
+
+# One circle's laps (each SPIRAL times the last, the converging one ending at
+# the sum of its laps, TAPE's speed), FADE per first-lap length, the #22
+# click measure over every lap mode, HOLD's loop, RATE and REACH, a fuzz, and
+# `wav <in.wav> <dir>` to listen. Drives the engine header alone; every
+# command but `cpu` and `wav` exits nonzero on a failed check.
+spira_probe: spira_probe.cpp ../src/spira/spira.hpp
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS)
 
 # Head positions, the loop's level per pass, the #22 click measure under
@@ -225,7 +233,7 @@ clean:
 	rm -f draen_sweep perge_render guttur_probe vespae_probe antrum_probe \
 	      caligo_probe raucus_probe tundo_probe cartilago_probe \
 	      textor_probe scrupea_probe viginti_probe aether_probe nodi_probe \
-	      rubigo_probe \
+	      rubigo_probe spira_probe \
 	      $(SMOKE_BINS) $(CROSS_BINS)
 
 .PHONY: all check clean
