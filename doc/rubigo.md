@@ -92,7 +92,7 @@ it is still there.
 | jack | function |
 |---|---|
 | **trig** in | fires the voice, like **trigger** |
-| **clk** in | advances the sequencer when it runs; **tempo** becomes the ratio. If the clock stops, the internal clock takes over after two seconds (or four clock periods, if longer) |
+| **clk** in | advances the sequencer when it runs; **tempo** becomes the ratio. If the clock stops, the internal clock takes over after two seconds (or four clock periods, if longer); if the cable is pulled out, at once |
 | **rst** in | the next step is step one |
 | **skp**, **mod** in | added to **skips** and **step mod**: 0 to 10 V covers each knob's travel |
 | **v/o** in | 1 V/octave on **pitch**. The envelope and the step value still add their hertz on top, so a kick keeps its sweep when played from a keyboard |
