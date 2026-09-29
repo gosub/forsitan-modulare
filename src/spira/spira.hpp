@@ -61,7 +61,8 @@ const float kToneLpStart = 20000.f;  // the lap filters' first cutoffs, Hz
 const float kToneHpStart = 20.f;
 const float kToneLpFloor = 80.f;
 const float kToneHpCeiling = 8000.f;
-const float kWetCeiling = 10.f;      // the circles' sum is soft-limited here, volts
+const float kKnee = 6.f;             // the output passes untouched up to here, volts
+const float kCeiling = 10.f;         // and bends toward this
 const float kPi = 3.14159265358979f;
 
 const int kCircles = 8;              // sounding at once
@@ -112,6 +113,17 @@ inline float rateKnob(float hz) {
 }
 
 inline float dbToGain(float db) { return std::pow(10.f, db / 20.f); }
+
+// Linear to the knee, then a tanh toward the ceiling with a matching slope:
+// a +-5 V line passes untouched, and a pile of loud circles bends instead of
+// hitting the output's clamp.
+inline float softLimit(float x) {
+    float a = std::fabs(x);
+    if (a <= kKnee) return x;
+    float room = kCeiling - kKnee;
+    float y = kKnee + room * std::tanh((a - kKnee) / room);
+    return x < 0.f ? -y : y;
+}
 
 // ---------------------------------------------------------------- the parts
 
@@ -618,8 +630,7 @@ struct Engine {
         float dry = std::min(1.f, 2.f * (1.f - k.mix));
         float wg = std::min(1.f, 2.f * k.mix);
         for (int ch = 0; ch < 2; ch++) {
-            float x = kWetCeiling * std::tanh(wet[ch] / kWetCeiling);
-            float y = dry * line[ch] + wg * x;
+            float y = softLimit(dry * line[ch] + wg * wet[ch]);
             (ch ? o.r : o.l) = y;
         }
         return o;

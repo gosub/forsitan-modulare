@@ -375,6 +375,20 @@ static int cmdLine() {
         check(std::fabs(rms - 1.5) < 0.15, "a circle born under HOLD plays the held loop");
     }
     {
+        // the limiter's knee: a +-5 V line passes bit for bit
+        Rig g;
+        g.c.mix = 0.f;
+        Sine s(220.f, 5.f);
+        float worst = 0.f;
+        for (long i = 0; i < (long)SR; i++) {
+            float x = s.next();
+            worst = std::max(worst, std::fabs(g.tick(x).l - x));
+        }
+        check(worst == 0.f, "a +-5 V line passes untouched");
+        check(std::fabs(softLimit(100.f) - kCeiling) < 1e-3f && softLimit(-6.f) == -6.f,
+              "the output bends above 6 V toward 10 V");
+    }
+    {
         // RATE: 4 per second, births counted by the circles that sound
         Rig g;
         g.c.rate = 4.f;
@@ -456,7 +470,7 @@ static int cmdFuzz() {
     }
     printf("  peak %.2f V\n", peak);
     check(finite, "every output finite");
-    check(peak <= 20.1f, "bounded: line and soft-limited circles");
+    check(peak <= kCeiling, "bounded: under the soft ceiling");
     return failures ? 1 : 0;
 }
 

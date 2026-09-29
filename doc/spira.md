@@ -72,8 +72,10 @@ laps are 16 s long and then turns at that length.
 | **mix** | the line against the circles. In the middle both are at unity, so spira works as an insert. At 0 only the line, at 100% only the circles |
 
 Up to eight circles sound at once. A ninth takes the place of the oldest,
-which fades out over 5 ms. The circles are summed at unity and soft-limited
-to 10 V, so many loud ones overlapping will saturate gently.
+which fades out over 5 ms. The circles are summed at unity with the line,
+and the output bends softly above 6 V toward a ceiling of 10 V: a normal
++-5 V signal passes untouched, and a pile of loud circles saturates gently
+instead of clipping.
 
 ## Jacks
 

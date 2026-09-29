@@ -68,7 +68,8 @@ glide over 3 ms, since a step at every lap measured 0.0097.
 
 ## Levels
 
-Circles sum at unity and are soft-limited (10 tanh(x / 10)). MIX gives both
+Circles sum at unity with the line, and the whole output is linear to 6 V,
+then bends toward 10 V (a tanh with a matching slope). MIX gives both
 the line and the circles unity in the middle, so the module works as an
 insert. With many loud overlapping circles the limiter works; the audition
 asks whether that is right.
