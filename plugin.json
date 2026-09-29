@@ -461,6 +461,19 @@
         "Digital",
         "Hardware clone"
       ]
+    },
+    {
+      "slug": "spira",
+      "name": "spira",
+      "description": "Looper of grains: circles loop off the input and spiral in or out, turn by turn.",
+      "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.16.3/doc/spira.md",
+      "tags": [
+        "Granular",
+        "Sampler",
+        "Recording",
+        "Delay",
+        "Effect"
+      ]
     }
   ]
 }

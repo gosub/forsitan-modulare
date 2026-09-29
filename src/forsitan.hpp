@@ -48,3 +48,4 @@ extern Model* modelRadix;
 extern Model* modelOlim;
 extern Model* modelNodi;
 extern Model* modelRubigo;
+extern Model* modelSpira;

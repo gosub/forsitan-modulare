@@ -1,0 +1,217 @@
+// smoke_spira - offline sanity checks for the spira module.
+// See smoke_harness.hpp for the shared scaffolding and CSV format.
+//
+// The engine is measured by spira_probe, which needs no Rack. These are the
+// module's own checks: that the defaults grow circles off an input, the
+// direction switch reads the right way up, BIRTH and HOLD (buttons, jacks,
+// the latch surviving a save), the right input normalled from the left, the
+// CV scaling, NaN at every input, and the buffer swap after a sample rate
+// change, including a module deleted in the middle of one.
+
+#include "smoke_harness.hpp"
+#include "../src/spira.cpp"
+
+#include <chrono>
+#include <thread>
+
+static void connect(Spira& m, int input, float v) {
+    m.inputs[input].channels = 1;
+    m.inputs[input].setVoltage(v);
+}
+
+struct Counter {
+    bool prev = false;
+    int n = 0;
+    void add(float v) {
+        bool h = v > 5.f;
+        if (h && !prev) n++;
+        prev = h;
+    }
+};
+
+static float sine(long fr, float hz = 220.f) { return 5.f * std::sin(2.f * (float)M_PI * hz * fr / SR); }
+
+static int sounding(Spira& m) {
+    int n = 0;
+    for (const spira::Circle& c : m.engine.circle) n += c.on && !c.dying;
+    return n;
+}
+
+// Out of the box: RATE 0.5 Hz grows a circle every two seconds off the input.
+static void testDefaults() {
+    Spira m; long fr = 0;
+    Stats s;
+    Counter turns;
+    int most = 0;
+    for (long i = 0; i < (long)(6.f * SR); i++) {
+        connect(m, Spira::IN_L_INPUT, sine(fr));
+        m.process(makeArgs(fr++));
+        s.add(m.outputs[Spira::OUT_L_OUTPUT].getVoltage());
+        turns.add(m.outputs[Spira::TURN_OUTPUT].getVoltage());
+        most = std::max(most, sounding(m));
+    }
+    report("spira", "defaults_nans", s.nans, s.nans == 0);
+    report("spira", "defaults_peak_v", s.peak, s.peak > 3.f && s.peak <= 12.f);
+    report("spira", "defaults_circles", most, most >= 2 && most <= spira::kCircles);
+    // four laps of 250 ms a second from the newest circle, plus the births
+    report("spira", "defaults_turns_in_6s", turns.n, turns.n > 12);
+    report("spira", "defaults_buffer", (double)m.live.n,
+           m.live.n == spira::Engine::bufferSamples(SR) && !m.swapFailed);
+}
+
+// Up is forward, as the panel labels it; the widget numbers from the bottom.
+static void testDirection() {
+    Spira m; long fr = 0;
+    m.params[Spira::DIRECTION_PARAM].setValue(2.f);
+    m.process(makeArgs(fr++));
+    bool top = m.ctl.direction == spira::DIR_FORWARD;
+    m.params[Spira::DIRECTION_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    bool mid = m.ctl.direction == spira::DIR_PINGPONG;
+    m.params[Spira::DIRECTION_PARAM].setValue(0.f);
+    m.process(makeArgs(fr++));
+    bool bottom = m.ctl.direction == spira::DIR_REVERSE;
+    report("spira", "direction_switch_reads_up_as_forward", top && mid && bottom, top && mid && bottom);
+}
+
+// BIRTH, with RATE off: the button and the jack each grow one circle.
+static void testBirth() {
+    Spira m; long fr = 0;
+    m.params[Spira::RATE_PARAM].setValue(0.f);
+    for (long i = 0; i < (long)SR; i++) {
+        connect(m, Spira::IN_L_INPUT, sine(fr));
+        m.process(makeArgs(fr++));
+    }
+    report("spira", "rate_off_no_circles", sounding(m), sounding(m) == 0);
+    m.params[Spira::BIRTH_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    m.params[Spira::BIRTH_PARAM].setValue(0.f);
+    m.process(makeArgs(fr++));
+    report("spira", "birth_button", sounding(m), sounding(m) == 1);
+    // a trigger at the jack, offset: a SchmittTrigger starts high
+    connect(m, Spira::BIRTH_INPUT, 0.f);
+    for (int i = 0; i < 10; i++) m.process(makeArgs(fr++));
+    connect(m, Spira::BIRTH_INPUT, 10.f);
+    m.process(makeArgs(fr++));
+    report("spira", "birth_jack", sounding(m), sounding(m) == 2);
+}
+
+// HOLD: the button latches, the gate holds while high, the latch is saved.
+static void testHold() {
+    Spira m; long fr = 0;
+    m.process(makeArgs(fr++));   // a BooleanTrigger starts high
+    auto press = [&]() {
+        m.params[Spira::HOLD_PARAM].setValue(1.f);
+        m.process(makeArgs(fr++));
+        m.params[Spira::HOLD_PARAM].setValue(0.f);
+        m.process(makeArgs(fr++));
+    };
+    press();
+    bool on = m.holdLatched && m.engine.held;
+    press();
+    bool off = !m.holdLatched && !m.engine.held;
+    report("spira", "hold_button_latches", on && off, on && off);
+    connect(m, Spira::HOLD_INPUT, 10.f);
+    m.process(makeArgs(fr++));
+    bool gate = m.engine.held;
+    connect(m, Spira::HOLD_INPUT, 0.f);
+    m.process(makeArgs(fr++));
+    report("spira", "hold_gate", gate && !m.engine.held, gate && !m.engine.held);
+
+    press();
+    m.keepBirth = true;
+    json_t* j = m.dataToJson();
+    Spira n;
+    n.dataFromJson(j);
+    json_decref(j);
+    report("spira", "json_hold_and_menu", n.holdLatched && n.keepBirth, n.holdLatched && n.keepBirth);
+}
+
+// The right input follows the left until patched: centred circles and the
+// line come out the same on both sides.
+static void testNormal() {
+    Spira m; long fr = 0;
+    m.params[Spira::SPREAD_PARAM].setValue(0.f);
+    float worst = 0.f;
+    for (long i = 0; i < (long)(3.f * SR); i++) {
+        connect(m, Spira::IN_L_INPUT, sine(fr));
+        m.process(makeArgs(fr++));
+        worst = std::max(worst, std::fabs(m.outputs[Spira::OUT_L_OUTPUT].getVoltage()
+                                          - m.outputs[Spira::OUT_R_OUTPUT].getVoltage()));
+    }
+    report("spira", "right_normalled_from_left", worst, worst < 1e-4f);
+}
+
+// CV: SIZE and RATE 1 V/oct, SPIRAL and SHAPE +-5 V over the knob, V/OCT.
+static void testCv() {
+    Spira m; long fr = 0;
+    m.params[Spira::SIZE_PARAM].setValue(spira::sizeKnob(0.25f));
+    connect(m, Spira::SIZE_INPUT, 1.f);
+    connect(m, Spira::RATE_INPUT, 1.f);
+    connect(m, Spira::SPIRAL_INPUT, -5.f);
+    connect(m, Spira::VOCT_INPUT, 1.f);
+    m.process(makeArgs(fr++));
+    report("spira", "size_cv_doubles", m.ctl.size, std::fabs(m.ctl.size - 0.5f) < 1e-3f);
+    report("spira", "rate_cv_doubles", m.ctl.rate, std::fabs(m.ctl.rate - 1.f) < 1e-3f);
+    report("spira", "spiral_cv_covers_knob", m.ctl.spiral, std::fabs(m.ctl.spiral - 0.5f) < 1e-5f);
+    report("spira", "voct_is_12_semitones", m.ctl.pitch, std::fabs(m.ctl.pitch - 12.f) < 1e-4f);
+    m.params[Spira::RATE_PARAM].setValue(0.f);
+    m.process(makeArgs(fr++));
+    report("spira", "rate_cv_leaves_off_off", m.ctl.rate, m.ctl.rate == 0.f);
+}
+
+// NaN at every input, with circles sounding: every output stays finite.
+static void testNan() {
+    Spira m; long fr = 0;
+    m.params[Spira::RATE_PARAM].setValue(1.f);
+    for (long i = 0; i < (long)SR; i++) {
+        connect(m, Spira::IN_L_INPUT, sine(fr));
+        m.process(makeArgs(fr++));
+    }
+    for (int in = 0; in < Spira::INPUTS_LEN; in++) connect(m, in, NAN);
+    Stats s;
+    for (long i = 0; i < (long)SR; i++) {
+        m.process(makeArgs(fr++));
+        for (int o = 0; o < Spira::OUTPUTS_LEN; o++) s.add(m.outputs[o].getVoltage());
+    }
+    report("spira", "nan_inputs", s.nans, s.nans == 0);
+}
+
+static void settleSwap(Spira& m, long& fr) {
+    for (int i = 0; i < 4000 && (m.job || m.swapGain < 1.f); i++) {
+        m.process(makeArgs(fr++));
+        if (m.job) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+// A sample rate change swaps the buffer for one of the new size, faded.
+static void testSampleRate() {
+    Spira m; long fr = 0;
+    m.engine.setSampleRate(96000.f);
+    float lowest = 10.f;
+    for (int i = 0; i < 960; i++) {
+        connect(m, Spira::IN_L_INPUT, 1.f);
+        m.process(makeArgs(fr++));
+        lowest = std::min(lowest, std::fabs(m.outputs[Spira::OUT_L_OUTPUT].getVoltage()));
+    }
+    settleSwap(m, fr);
+    report("spira", "rate_change_buffer", (double)m.live.n,
+           m.live.n == spira::Engine::bufferSamples(96000.f) && !m.swapFailed);
+    report("spira", "rate_change_fades", lowest, lowest < 0.05f);
+    report("spira", "rate_change_back_in", m.swapGain, m.swapGain == 1.f);
+}
+
+// Deleted while the worker is still allocating: the job outlives the module.
+static void testDeleteMidSwap() {
+    for (int k = 0; k < 10; k++) {
+        Spira* m = new Spira; long fr = 0;
+        m->engine.setSampleRate(k % 2 ? 96000.f : 44100.f);
+        while (!m->job) m->process(makeArgs(fr++));
+        delete m;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    report("spira", "delete_mid_swap", 0, true);
+}
+
+SMOKE_MAIN(testDefaults, testDirection, testBirth, testHold, testNormal, testCv, testNan,
+           testSampleRate, testDeleteMidSwap)
