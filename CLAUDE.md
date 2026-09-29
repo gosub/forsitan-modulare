@@ -502,7 +502,8 @@ global pip install):
 - `tools/presets/` - `gen_presets.py` writes `presets/scrupea/*.vcvm`,
   `gen_gradus_presets.py` writes `presets/gradus/*.vcvm` (stated in volts,
   converted through the square-law knob), `gen_rubigo_presets.py` writes
-  `presets/rubigo/*.vcvm` (the manual's recipes; none is a Preset Book
+  `presets/rubigo/*.vcvm`, `gen_spira_presets.py` writes `presets/spira/*.vcvm`
+  (stated in seconds, ratios and Hz, converted through the knob laws) (the manual's recipes; none is a Preset Book
   setting, those are Body Synths' content), and
   `skrewell_to_scrupea.py` converts the snapshots in a Reaktor ensemble **the
   user supplies** into the same format. No snapshot data is checked in: the

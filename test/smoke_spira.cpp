@@ -12,7 +12,10 @@
 #include "../src/spira.cpp"
 
 #include <chrono>
+#include <dirent.h>
+#include <string>
 #include <thread>
+#include <vector>
 
 static void connect(Spira& m, int input, float v) {
     m.inputs[input].channels = 1;
@@ -213,5 +216,46 @@ static void testDeleteMidSwap() {
     report("spira", "delete_mid_swap", 0, true);
 }
 
+// Every factory preset loads, grows circles off a sine and stays finite and
+// under the limiter.
+static void testPresets() {
+    const std::string dir = "../presets/spira/";
+    std::vector<std::string> files;
+    if (DIR* d = opendir(dir.c_str())) {
+        while (dirent* e = readdir(d)) {
+            std::string n = e->d_name;
+            if (n.size() > 5 && n.substr(n.size() - 5) == ".vcvm") files.push_back(n);
+        }
+        closedir(d);
+    }
+    int bad = 0;
+    for (const std::string& f : files) {
+        json_t* root = json_load_file((dir + f).c_str(), 0, nullptr);
+        if (!root) { bad++; continue; }
+        Spira m; long fr = 0;
+        json_t* ps = json_object_get(root, "params");
+        for (size_t i = 0; i < json_array_size(ps); i++) {
+            json_t* p = json_array_get(ps, i);
+            int id = (int)json_integer_value(json_object_get(p, "id"));
+            if (id >= 0 && id < Spira::PARAMS_LEN)
+                m.params[id].setValue((float)json_number_value(json_object_get(p, "value")));
+        }
+        m.dataFromJson(json_object_get(root, "data"));
+        json_decref(root);
+        Stats s;
+        int most = 0;
+        for (long i = 0; i < (long)(8.f * SR); i++) {
+            connect(m, Spira::IN_L_INPUT, sine(fr, 110.f + 50.f * (i / 24000)));
+            m.process(makeArgs(fr++));
+            s.add(m.outputs[Spira::OUT_L_OUTPUT].getVoltage());
+            most = std::max(most, sounding(m));
+        }
+        printf("# %-14s rms %.2f V, peak %.2f V, up to %d circles\n", f.c_str(), s.rms(), s.peak, most);
+        if (s.nans || s.peak > 12.f || most == 0) bad++;
+    }
+    report("spira", "presets_found", files.size(), files.size() == 8);
+    report("spira", "presets_run", bad, bad == 0);
+}
+
 SMOKE_MAIN(testDefaults, testDirection, testBirth, testHold, testNormal, testCv, testNan,
-           testSampleRate, testDeleteMidSwap)
+           testSampleRate, testDeleteMidSwap, testPresets)

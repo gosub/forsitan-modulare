@@ -1,0 +1,82 @@
+{
+  "plugin": "forsitan",
+  "model": "spira",
+  "version": "2.16.3",
+  "params": [
+    {
+      "value": 0.615689,
+      "id": 0
+    },
+    {
+      "value": -0.298776,
+      "id": 1
+    },
+    {
+      "value": 1.0,
+      "id": 2
+    },
+    {
+      "value": 0.0,
+      "id": 3
+    },
+    {
+      "value": 0.360126,
+      "id": 4
+    },
+    {
+      "value": 0.0,
+      "id": 5
+    },
+    {
+      "value": 0.0,
+      "id": 6
+    },
+    {
+      "value": 0.0,
+      "id": 7
+    },
+    {
+      "value": 0.0,
+      "id": 8
+    },
+    {
+      "value": 0.0,
+      "id": 9
+    },
+    {
+      "value": 0.611385,
+      "id": 10
+    },
+    {
+      "value": 0.0,
+      "id": 11
+    },
+    {
+      "value": 0.3,
+      "id": 12
+    },
+    {
+      "value": 2.0,
+      "id": 13
+    },
+    {
+      "value": 0.6,
+      "id": 14
+    },
+    {
+      "value": 0.5,
+      "id": 15
+    },
+    {
+      "value": 0.0,
+      "id": 16
+    },
+    {
+      "value": 0.0,
+      "id": 17
+    }
+  ],
+  "data": {
+    "keepBirth": false
+  }
+}

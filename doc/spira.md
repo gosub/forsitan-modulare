@@ -99,6 +99,17 @@ instead of clipping.
 |---|---|
 | **Circles keep the settings they were born with** | off (the default), the knobs reach the sounding circles at their next lap, so a single long circle can be played. On, a circle keeps everything it was born with, and moving a knob only shapes the circles to come: modulate **spiral** and every circle gets its own |
 
+## Presets
+
+Eight, in the preset browser, each a way past the plain stutter: **zip**
+(inward on tape, rising into a pitch), **roll** (inward by cutting),
+**unwind** (outward, slower, lower and darker), **brake** (a tape stop),
+**cloud** (short soft laps, twelve circles a second), **plucks** (decaying
+laps in ping-pong), **swells** (reversed laps a fifth up, thinner every
+turn) and **scatter** (circles from anywhere on the last four seconds: press
+**hold** and they wander a frozen loop). A preset sets every knob and the
+menu; it leaves **hold** as it is.
+
 ## Levels
 
 The line passes at its own level. A circle starts at the level of what it

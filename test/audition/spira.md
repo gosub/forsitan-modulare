@@ -22,7 +22,7 @@ of taste resting on numbers the harness prints.
 
 Anything that yields a number is not here. `./test/smoke_spira` checks the
 defaults, the direction switch, BIRTH and HOLD, the normalled input, the CV
-scaling, NaN and the buffer swap. `./test/spira_probe spiral` measures the
+scaling, NaN, the buffer swap and every preset. `./test/spira_probe spiral` measures the
 lap geometry and FADE, `clicks` the seams in every lap mode, `line` HOLD,
 RATE and REACH.
 
@@ -104,3 +104,6 @@ d["left", "right"] >> s["in l", "in r"]
       the sounding circle follows at its next lap. Menu, keep the settings
       they were born with, and again: it does not, only the next BIRTH.
       `s.set(rate=0, size=0.8843, fade=0)   # 2 s`
+- [ ] 4.2. The preset browser: eight presets, each different at once, none
+      of them the plain stutter of 1.1. **scatter** with HOLD pressed wanders
+      a frozen loop.
