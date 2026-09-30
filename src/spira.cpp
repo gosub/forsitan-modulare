@@ -409,10 +409,8 @@ struct SpiraWidget : ModuleWidget {
 // @elem LABEL_REV label 0.0 label "rev" 0.0 56.04 82.50
 // @elem LABEL_SPREAD label 0.0 label "spread" 0.0 76.04 82.50
 // @elem LABEL_SKIPS label 0.0 label "skips" 0.0 96.04 82.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 13.00 118.50
-// @elem LABEL_MIX_IN label 0.0 label "cv" 0.0 25.00 118.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 39.00 118.50
-// @elem LABEL_LEVEL_IN label 0.0 label "cv" 0.0 51.00 118.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 19.00 118.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 45.00 118.50
 // @elem LABEL_BIRTH label 0.0 label "birth" 0.0 109.00 81.00
 // @elem LABEL_HOLD label 0.0 label "hold" 0.0 123.00 81.00
 // @elem LABEL_IN_L label 0.0 label "in L" 0.0 10.92 101.50

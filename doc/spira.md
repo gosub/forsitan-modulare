@@ -32,7 +32,7 @@ circles sound at once, each at a different stage of its spiral.
 | second | **pitch**, **tone**, **anchor**, **jitter**, **reach**, **line** |
 | third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **skips**, **birth**, **hold** |
 | jacks | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold** |
-| bottom | **mix** and **level**, each with its **cv** jack; the logo; outputs **turn**, **v/oct**, **L**, **R** |
+| bottom | **mix** and **level**, each a knob and its CV jack under one label; the logo; outputs **turn**, **v/oct**, **L**, **R** |
 
 ## The spiral
 
@@ -105,8 +105,8 @@ instead of clipping.
 | **rate** in | 1 V/oct on **rate**; it does not turn an off **rate** on |
 | **birth** in | a trigger: a circle now |
 | **hold** in | a gate: hold while high |
-| **mix** cv | added to **mix**: 0 to 10 V covers the travel |
-| **level** cv | added to **level** at 2.4 dB/V, so 10 V covers the knob; it can go on below it, down to -72 dB, so an envelope here can silence the circles |
+| **mix** jack | added to **mix**: 0 to 10 V covers the travel |
+| **level** jack | added to **level** at 2.4 dB/V, so 10 V covers the knob; it can go on below it, down to -72 dB, so an envelope here can silence the circles |
 | **turn** out | 10 V, 1 ms, at the birth and each lap of the newest circle |
 | **v/oct** out | the newest circle's speed, 0 V at the speed of the line. With **tape** on a converging spiral it climbs an octave each time the laps halve: patch it into an oscillator and the oscillator follows the spiral |
 | **L**, **R** | the line and the circles |
