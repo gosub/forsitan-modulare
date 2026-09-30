@@ -447,9 +447,9 @@ struct RubigoWidget : ModuleWidget {
 // @elem CLOCK_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem STEPMOD_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_PIT label 0.0 label "pitch" 0.0 30.30 13.50 size=2
-// @elem LABEL_NSE label 0.0 label "noise" 0.0 30.30 21.00 size=2
-// @elem LABEL_CUT label 0.0 label "cutoff" 0.0 31.32 28.50 size=2
+// @elem LABEL_PIT label 0.0 label "pitch" 0.0 31.90 13.50 size=2
+// @elem LABEL_NSE label 0.0 label "noise" 0.0 31.90 21.00 size=2
+// @elem LABEL_CUT label 0.0 label "cutoff" 0.0 32.92 28.50 size=2
 // @elem LABEL_STEPMOD label 0.0 label "step mod" 0.0 10.00 28.50
 // @elem LABEL_STEPS label 0.0 label "steps" 0.0 50.80 34.50
 // @elem LABEL_SKIPS label 0.0 label "skips" 0.0 76.20 28.50
