@@ -218,7 +218,7 @@ struct Events {
 
 struct Output {
     float l = 0.f, r = 0.f;
-    bool turn = false;         // the newest circle began a lap
+    bool turn = false;         // the newest circle began a lap (or was born)
     bool born = false;         // a circle was born
     float speedOct = 0.f;      // the newest circle's speed, octaves (V/oct)
     int circles = 0;           // sounding now
@@ -227,6 +227,12 @@ struct Output {
     // measured) and its spiral, log2 of the ratio, -1 inward .. 1 outward.
     float ring[kCircles] = {};
     float ringSpiral[kCircles] = {};
+    // The same places for the poly outputs: a lap (or the birth) began, and
+    // the speed in octaves. A place with no circle keeps no speed here; the
+    // module holds the last one.
+    bool ringTurn[kCircles] = {};
+    bool ringOn[kCircles] = {};
+    float ringSpeed[kCircles] = {};
 };
 
 // The crossfade between laps, 0..1 in. Equal power, since the two laps read
@@ -609,13 +615,17 @@ struct Engine {
         // births: BIRTH, and RATE's own clock
         if (ev.press && birth(k)) o.turn = o.born = true;
         else if (ev.birth && !skipped(k) && birth(k)) o.turn = o.born = true;
+        if (o.born) o.ringTurn[circle[lead].ring] = true;
         if (k.rate > 0.f) {
             double period = sr / k.rate;
             if (!rateWasOn) timer = 0.;
             timer = std::min(timer, 2. * period);
             timer -= 1.;
             if (timer <= 0.) {
-                if (!skipped(k) && birth(k)) o.turn = o.born = true;
+                if (!skipped(k) && birth(k)) {
+                    o.turn = o.born = true;
+                    o.ringTurn[circle[lead].ring] = true;
+                }
                 double j = k.jitter > 0.f ? std::exp2(k.jitter * 2.f * (rng.uniform() - 0.5f)) : 1.f;
                 timer += period * j;
             }
@@ -654,6 +664,7 @@ struct Engine {
                     c.tail = c.cur;
                     c.cur = c.dying ? Lap() : nextLap(c, c.tail, k);
                     if (c.cur.on && i == lead) o.turn = true;
+                    if (c.cur.on && !c.dying) o.ringTurn[c.ring] = true;
                 }
             }
             if (c.dying) {
@@ -668,6 +679,10 @@ struct Engine {
                 continue;
             }
             float g = c.kill * c.kill * (3.f - 2.f * c.kill);
+            if (!c.dying) {
+                o.ringOn[c.ring] = true;
+                o.ringSpeed[c.ring] = (float)std::log2(c.cur.on ? c.cur.v : c.tail.v);
+            }
             // a stolen circle and the one taking its place share a light
             if (level * g >= o.ring[c.ring]) {
                 o.ring[c.ring] = level * g;

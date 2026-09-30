@@ -534,7 +534,7 @@ static int cmdRing() {
         }
         Output o = g.tick(s.next());
         if (n >= 0 && n < 10) {
-            born = born && o.born;
+            born = born && o.born && o.ringTurn[n % kCircles];
             const Circle& c = g.e.circle[g.e.lead];
             places = places && c.ring == n % kCircles;
         }
@@ -546,7 +546,7 @@ static int cmdRing() {
             colours = colours && std::fabs(o.ringSpiral[n2 % kCircles] - want) < 1e-4f;
         }
     }
-    check(born, "every birth is flagged for the BIRTH light");
+    check(born, "every birth is flagged, for the BIRTH light and its own TURN channel");
     check(places, "births take the ring's places in turn, the ninth back at the first");
     check(lit, "each circle's light is up after its birth");
     check(colours, "each light carries its own circle's spiral");
