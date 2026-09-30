@@ -203,7 +203,11 @@ def cpp_line(el, module):
     if kind == 'output':
         return f'        addOutput(createOutputCentered<{ctype}>({vec}, {ref}));'
     if kind == 'light':
-        return f'        addChild(createLightCentered<{ctype}<GreenLight>>({vec}, {ref}));'
+        # A light is green unless its type names its own colour, as
+        # `SmallLight<RedGreenBlueLight>` does (spira's ring).
+        if '<' not in ctype:
+            ctype = f'{ctype}<GreenLight>'
+        return f'        addChild(createLightCentered<{ctype}>({vec}, {ref}));'
     return f'        // @unknown kind={kind} id={eid}'
 
 
