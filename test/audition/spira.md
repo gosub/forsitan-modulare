@@ -22,7 +22,8 @@ of taste resting on numbers the harness prints.
 
 Anything that yields a number is not here. `./test/smoke_spira` checks the
 defaults, the direction switch, BIRTH and HOLD, the normalled input, the CV
-scaling, NaN, the buffer swap and every preset. `./test/spira_probe spiral` measures the
+scaling, NaN, the buffer swap, SKIPS against the button, the lights and
+every preset. `./test/spira_probe spiral` measures the
 lap geometry and FADE, `clicks` the seams in every lap mode, `line` HOLD,
 RATE and REACH.
 
@@ -52,11 +53,10 @@ d["left", "right"] >> s["in l", "in r"]
 - [ ] 1.5. ANCHOR on the roll of 1.3, from 0 to full: the roll closes in on
       the start of the window, then on its end.
       `s.set(spiral=-0.5, fade=0, tape=0, anchor=1)`
-- [ ] 1.6. **Decide -** circles sum at unity and a soft limiter holds them
-      under 10 V. At RATE 2 Hz with FADE 0, eight long circles overlap and
-      the limiter works. Keep unity, or scale the circles down as more of
-      them sound?
-      `s.set(rate=0.6234, fade=0, size=0.8, mix=1)   # 2 Hz, 1.3 s laps`
+- [ ] 1.6. LEVEL up: the circles stand over the break. With eight long
+      circles piling up at +12 dB the output thickens and saturates softly;
+      it never clips hard.
+      `s.set(rate=0.6234, fade=0, size=0.8, level=12)   # 2 Hz, 1.3 s laps`
 
 ## 2. The lap
 
@@ -98,10 +98,18 @@ d["left", "right"] >> s["in l", "in r"]
       s.set(spiral=-0.5, fade=0, rate=0.3)
       ```
 
-- [ ] 3.5. The ring over SPIRAL: each birth lights the next light round,
+- [ ] 3.5. A clock into BIRTH, RATE off, SKIPS half way: circles land on
+      the clock's grid with holes in it, different every bar. The button
+      still grows a circle every press.
+      ```python
+      clk = vcv.module("LFO", frequency=1)   # 2 Hz square
+      clk["square"] >> s["birth"]
+      s.set(rate=0, skips=0.5, size=0.299)   # 60 ms laps
+      ```
+- [ ] 3.6. The ring over SPIRAL: each birth lights the next light round,
       left to right, and a light dims with its circle's fade.
       `s.set(rate=0.51, fade=-4)   # 1 Hz`
-- [ ] 3.6. SPIRAL left: the lights run orange-red. Right: blue. Centre:
+- [ ] 3.7. SPIRAL left: the lights run orange-red. Right: blue. Centre:
       yellow.
       `s.set(rate=0.51, fade=-2, spiral=-0.6)`
 

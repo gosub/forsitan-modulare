@@ -30,8 +30,8 @@ circles sound at once, each at a different stage of its spiral.
 |---|---|
 | top | **size**, **tape**, the **spiral** knob under its ring of eight lights, **fade**, **rate** |
 | second | **pitch**, **tone**, **anchor**, **jitter**, **reach**, **line** |
-| third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **mix**, **birth**, **hold** |
-| jacks | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold**; outputs **turn**, **v/oct**, **L**, **R** |
+| third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **skips**, **birth**, **hold** |
+| bottom | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold**; outputs **turn**, **v/oct**, then **mix** and **level**, then **L**, **R** |
 
 ## The spiral
 
@@ -77,12 +77,14 @@ they were born with" on, each circle keeps its own colour, and a modulated
 | control | function |
 |---|---|
 | **rate** | circles per second, 0.05 to 20. At the bottom, off: circles are born only by **birth** |
+| **skips** | the share of births skipped, from **rate** and from the **birth** jack, never from the button. The timing stays, so a clock into **birth** keeps its grid and gets holes in it, where **jitter** would move the births off it. A skipped birth leaves no trace: no flash, no **turn**, and the ring does not move on |
 | **birth** | a circle now, from the button or a trigger at the jack. The button flashes at every birth, whatever caused it |
 | **reach** | where a circle is born. At 0 it is born just behind the playhead, on the last **size** of the line. Turned up, it is born up to **reach** x **line** further back |
 | **line** | 1 to 30 seconds: how far back **reach** can go, and the loop's length under **hold** |
 | **hold** | the button latches, and the jack holds while high. The line stops recording and loops its last **line** seconds, or less if less has been recorded since the module started. Circles born under hold come from the held loop |
-| **spread** | each circle gets its own place in the stereo field, up to hard left or right |
+| **spread** | each circle gets its own place in the stereo field, up to hard left or right. It is a balance, not a pan: a circle is already stereo, so in the centre it is at unity and turning only takes from one side |
 | **mix** | the line against the circles. In the middle both are at unity, so spira works as an insert. At 0 only the line, at 100% only the circles |
+| **level** | the circles' level, -12 to +12 dB, before **mix**. **mix** only trades one against the other; this is how the circles get louder than what they loop |
 
 Up to eight circles sound at once. A ninth takes the place of the oldest,
 which fades out over 5 ms. The circles are summed at unity with the line,
@@ -126,5 +128,8 @@ menu; it leaves **hold** as it is.
 ## Levels
 
 The line passes at its own level. A circle starts at the level of what it
-loops, and changes by **fade** per turn. The buffer holds 48 seconds of
+loops, then **level**, and changes by **fade** per turn. At the defaults a
+circle's first lap matches the line, and averaged over their lives the
+circles sit about 5 dB under it (they are fading); **level** at +5 dB
+evens them out. The buffer holds 48 seconds of
 stereo at the host's sample rate: about 18 MB at 48 kHz, 74 MB at 192 kHz.

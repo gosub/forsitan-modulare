@@ -71,8 +71,21 @@ glide over 3 ms, since a step at every lap measured 0.0097.
 Circles sum at unity with the line, and the whole output is linear to 6 V,
 then bends toward 10 V (a tanh with a matching slope). MIX gives both
 the line and the circles unity in the middle, so the module works as an
-insert. With many loud overlapping circles the limiter works; the audition
-asks whether that is right.
+insert.
+
+The first build had the circles 9 dB under the line on a drum loop, for two
+reasons. SPREAD was an equal-power pan, which puts a centred source at
+-3 dB; but a circle reads the stereo line, so SPREAD is a balance now, unity
+in the centre. And the default FADE of -3 dB per 250 ms lap is -12 dB a
+second, so a circle spent most of its life quiet; the default is -1.5 dB.
+That left 5 dB, which is the circles fading, as they should. LEVEL (-12 to
++12 dB, before MIX) is the control MIX could not be: MIX only trades one
+against the other. The open question of scaling circles down as more of
+them sound was answered no: unity, LEVEL to trim, the limiter as the net.
+
+SKIPS skips a share of the births from RATE and the BIRTH jack, never the
+button's: a press is a deliberate now. Unlike JITTER it keeps the timing,
+so clocked births keep their grid and get holes in it.
 
 ## The ring
 
