@@ -49,11 +49,15 @@ d["left", "right"] >> s["in l", "in r"]
       `s.set(spiral=-0.5, fade=0, tape=0)`
 - [ ] 1.4. SPIRAL right: every repeat longer, slower and lower, until the
       circle is a slow dark smear.
-      `s.set(spiral=0.5, fade=-1, tone=-0.7)   # x1.19 a lap`
+      `s.set(spiral=0.5, fade=-0.1291, tone=-0.7)   # x1.19 a lap, -1 dB`
 - [ ] 1.5. ANCHOR on the roll of 1.3, from 0 to full: the roll closes in on
       the start of the window, then on its end.
       `s.set(spiral=-0.5, fade=0, tape=0, anchor=1)`
-- [ ] 1.6. LEVEL up: the circles stand over the break. With eight long
+- [ ] 1.6. FADE full left: each circle is one lap and gone, a slice rather
+      than a repeat. Full right: each circle swells turn by turn and then
+      holds, loud, until it is replaced.
+      `s.set(fade=-1)   # -60 dB a turn; fade=1 is +6 dB`
+- [ ] 1.7. LEVEL up: the circles stand over the break. With eight long
       circles piling up at +12 dB the output thickens and saturates softly;
       it never clips hard.
       `s.set(rate=0.6234, fade=0, size=0.8, level=12)   # 2 Hz, 1.3 s laps`
@@ -62,7 +66,7 @@ d["left", "right"] >> s["in l", "in r"]
 
 - [ ] 2.1. SHAPE left: every repeat has an attack and a decay, so the
       repeats are plucked notes rather than a stutter.
-      `s.set(shape=-0.7, spiral=-0.2, fade=-1)`
+      `s.set(shape=-0.7, spiral=-0.2, fade=-0.1291)   # -1 dB`
 - [ ] 2.2. SHAPE right, reversed: every repeat swells backwards and stops.
       `s.set(shape=0.6, soft=0.6, direction="Reverse")`
 - [ ] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
@@ -72,10 +76,10 @@ d["left", "right"] >> s["in l", "in r"]
       repeat is recognisable.
       ```python
       s.set(size=0.299, soft=1, rate=0.9164, jitter=0.6, reach=0.3,
-            spread=1, fade=-6)   # 60 ms laps, 12 circles a second
+            spread=1, fade=-0.3162)   # 60 ms laps, 12 a second, -6 dB
       ```
 - [ ] 2.5. TONE left: each turn darker. Right: each turn thinner.
-      `s.set(tone=-1.5, fade=-1)`
+      `s.set(tone=-1.5, fade=-0.1291)   # -1 dB`
 
 ## 3. The line
 
@@ -108,10 +112,10 @@ d["left", "right"] >> s["in l", "in r"]
       ```
 - [ ] 3.6. The ring over SPIRAL: each birth lights the next light round,
       left to right, and a light dims with its circle's fade.
-      `s.set(rate=0.51, fade=-4)   # 1 Hz`
+      `s.set(rate=0.51, fade=-0.2582)   # 1 Hz, -4 dB`
 - [ ] 3.7. SPIRAL left: the lights run orange-red. Right: blue. Centre:
       yellow.
-      `s.set(rate=0.51, fade=-2, spiral=-0.6)`
+      `s.set(rate=0.51, fade=-0.1826, spiral=-0.6)   # -2 dB`
 
 ## 4. The menu
 

@@ -83,6 +83,12 @@ That left 5 dB, which is the circles fading, as they should. LEVEL (-12 to
 against the other. The open question of scaling circles down as more of
 them sound was answered no: unity, LEVEL to trim, the limiter as the net.
 
+FADE was -24 to +3 dB, which put 0 dB (a circle that loops unchanged) at
+89% of the knob and left the useful -6 to 0 dB in under a quarter of it,
+while never reaching one lap and gone. It is bipolar now, 0 dB in the
+centre, square law to -60 dB left and +6 dB right, as SPIRAL is square law
+around its own no-change centre.
+
 SKIPS skips a share of the births from RATE and the BIRTH jack, never the
 button's: a press is a deliberate now. Unlike JITTER it keeps the timing,
 so clocked births keep their grid and get holes in it.
