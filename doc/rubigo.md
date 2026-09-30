@@ -26,7 +26,7 @@ write them.
 
 | row | contents |
 |---|---|
-| top | the destination switch **pit / nse / cut**, **step mod**, **steps**, **skips**, **tempo** with the clock light |
+| top | **step mod** and its destination switch **pitch / noise / cutoff**, **steps**, **skips**, **tempo** with the clock light |
 | second | **rust / corr**, the **effect** knob, **mix**, the volume **decay**, **volume**, **run / stop** |
 | third | **saw / sqr**, **pitch**, **noise**, **hp / lp**, **cutoff**, **res** |
 | fourth | the pitch envelope's **decay** and **amount**, **trigger**, the cutoff envelope's **decay** and **amount** |
@@ -64,7 +64,7 @@ For a click at the start of a sound: **cutoff** low in **lp**, the cutoff
 | **run / stop** | starts and stops the sequencer. **trigger** and **trig** in work either way |
 | **tempo** | the internal clock, 0.4 Hz to 80 Hz, which is audio rate: 2 Hz at the default 0.2, 4 Hz near 0.27, 6 Hz near 0.35. With a clock at **clk**, a ratio instead: /8, /4, /2, x1, x2, x4, x8 across its travel; the default sits on /4 |
 | **skips** | the share of steps that do not fire, 0% to 100% |
-| **step mod**, **pit / nse / cut** | how far each step's random value moves the destination. On **pit**, **pitch** sets the lowest note and **step mod** the highest, read on the same scale as **pitch** (up to 1500 Hz at full); the notes are microtonal. On **cut** it adds up to 5 kHz |
+| **step mod**, **pitch / noise / cutoff** | how far each step's random value moves the destination. With the switch on pitch, the **pitch** knob sets the lowest note and **step mod** the highest, read on the same scale as **pitch** (up to 1500 Hz at full); the notes are microtonal. On cutoff it adds up to 5 kHz |
 | **steps** | **off**, 2, 4, 8, 10, 16 or 32 |
 
 Each step holds two random numbers. One is compared with **skips**: the
@@ -109,7 +109,7 @@ it is still there.
 | item | function |
 |---|---|
 | **Effect** | replaces the distortion. **2nd oscillator**: a second oscillator mixed at up to 50% (by **mix**), **corr** ranging an octave down to unison, **rust** unison to an octave up, set by the **effect** knob. **Phaser**, **flanger**, **chorus**: **corr** subtle, **rust** intense, the knob sets the LFO from 0.05 Hz to 8 Hz |
-| **Mod assign** | sends the step value on **cut**, and the **cut** jack, somewhere other than the cutoff: volume decay, pitch decay amount, cutoff decay amount or the effect knob (the knob is the minimum, the modulation pushes it up), or volume (the knob is the maximum, the modulation pulls it down) |
+| **Mod assign** | sends the step value on cutoff, and the **cut** jack, somewhere other than the cutoff: volume decay, pitch decay amount, cutoff decay amount or the effect knob (the knob is the minimum, the modulation pushes it up), or volume (the knob is the maximum, the modulation pulls it down) |
 | **Step lengths** | 3 5 7 12 18 24 instead of 2 4 8 10 16 32 |
 | **Restart the sequence on run** | switching to **run** starts from step one |
 | **Internal clock returns when the external stops** | on by default. Off, the sequencer waits until **run / stop** is switched again |
@@ -140,7 +140,7 @@ of 200 reasoned ones, none.
 
 Eleven, in the preset browser. Most are the hardware manual's own "try
 this" recipes: **kick**, **clatter** (kick and noise from the step mod on
-**nse**), **melody** (the filter's resonance playing the steps), **drone**,
+noise), **melody** (the filter's resonance playing the steps), **drone**,
 **wireless** (the sound-effect setting: patch something into **in**),
 **ticks** (the cutoff click). The rest use the menu: **swell** (Mod assign
 on the volume decay), **sub** (the 2nd oscillator an octave down),
@@ -164,7 +164,7 @@ These are from the hardware manual.
   out into **in**, and **noise** crossfades between the oscillator and the
   clock's pulse wave.
 - **Just the resonance**: an unconnected cable in **in**, **noise** full,
-  **res** full, **step mod** on **cut**. The filter plays alone.
+  **res** full, **step mod** on cutoff. The filter plays alone.
 - **Rhythmic processing**: a radio, tape hiss or a drone into **in**,
   **noise** up. With **tempo**, the volume **decay** and **noise** all at
   full, rubigo is an effect.

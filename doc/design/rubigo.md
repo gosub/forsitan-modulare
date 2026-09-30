@@ -409,9 +409,11 @@ own names and values.
   the hardware's trigger LED. The clock LED sits at TEMPO's corner.
 - **The panel** is 20 HP: four rows of knobs and switches on six columns,
   nine inputs in one row, four output badges either side of the logo. The
-  two-way switches' positions are labelled above and below; the
-  destination switch **pit / nse / cut** has its three in a small column on
-  its right, one level with each position, as on spira.
+  two-way switches' positions are labelled above and below. The
+  destination switch sits right of **step mod**, where there is room to
+  spell its positions out: **pitch / noise / cutoff** in a column on its
+  right, the middle one level with it and the ends reached by leaders from
+  the switch's ends (drawn by `tools/panels/gen_rubigo_panel.py`).
 - **Measured**: of 200 uniform draws of every control, 31 are inaudible
   (peak under 0.5 V over 4 s); of 200 reasoned randoms, none
   (`rubigo_probe random`). CPU is 105 to 155 ns a sample, 0.5 to 0.75% of a
