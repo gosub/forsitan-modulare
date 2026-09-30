@@ -103,9 +103,10 @@ PRESETS = [
         RES: 0.4, VOLUME: 0.72, VOLUME_DECAY: 0.35, EFFECT: 0.2,
         STEPS: S16, SKIPS: 0.25, STEPMOD: 0.9, DEST: TO_CUTOFF, TEMPO: 0.22,
     }, {"effect": CHORUS, "assign": A_VOL_DECAY}),
-    # The second oscillator an octave down under a stepped bass line.
+    # The second oscillator an octave down under a stepped bass line, from
+    # 97 Hz: lower, the octave under it falls below hearing.
     ("sub", {
-        WAVE: SAW, PITCH: 0.15, CUTOFF: 0.3, RES: 0.5, CUTOFF_DECAY: 0.3,
+        WAVE: SAW, PITCH: 0.3, CUTOFF: 0.3, RES: 0.5, CUTOFF_DECAY: 0.3,
         CUTOFF_AMOUNT: 0.4, VOLUME: 0.74, VOLUME_DECAY: 0.5, EFFECT: 0.0,
         STEPS: S16, SKIPS: 0.3, STEPMOD: 0.3, DEST: TO_PITCH, TEMPO: 0.36,
     }, {"effect": OSC2}),
