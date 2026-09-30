@@ -44,11 +44,11 @@ SEPTUM_BOW = 0.35       # radians: how far a septum's middle bows back toward th
 MIN_SEPTUM = 2.5        # mm: no septa smaller than this, near the apex
 SIPHUNCLE = 0.45        # where the siphuncle runs, from the inner whorl (0) to the outer (1)
 
-# The shell is fitted to the panel by its bounding box: this tall, centred
-# here, turned so the aperture opens downward.
-HEIGHT = 112.0          # mm
+# The shell is fitted to the panel by its bounding box: this long on its
+# longer side, centred here, turned so the aperture opens to the left.
+SPAN = 112.0            # mm
 CENTRE = (66.04, 64.0)  # mm
-ROTATE = 0.35           # turns
+ROTATE = 0.10           # turns
 STEP = 0.02             # radians between points
 
 
@@ -82,7 +82,7 @@ class Shell:
 def placed():
     probe = Shell(1.0, 0.0, 0.0)
     xs, ys = zip(*probe.outline())
-    k = HEIGHT / (max(ys) - min(ys))
+    k = SPAN / max(max(xs) - min(xs), max(ys) - min(ys))
     cx = CENTRE[0] - k * 0.5 * (max(xs) + min(xs))
     cy = CENTRE[1] - k * 0.5 * (max(ys) + min(ys))
     return Shell(k, cx, cy)
