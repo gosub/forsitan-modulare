@@ -87,6 +87,7 @@ static int cmdLaws() {
         if (k >= kRateOff) worst = std::max(worst, std::fabs(rateKnob(rateHz(k)) - k));
         float s = 2.f * k - 1.f;
         worst = std::max(worst, std::fabs(spiralKnob(spiralRatio(s)) - s));
+        worst = std::max(worst, std::fabs(fadeKnob(fadeDb(s)) - s));
     }
     printf("  worst round trip %.2e\n", worst);
     check(worst < 1e-4f, "every law round-trips through its inverse");
@@ -98,6 +99,10 @@ static int cmdLaws() {
     check(std::fabs(spiralRatio(1.f) - 2.f) < 1e-5f && std::fabs(spiralRatio(-1.f) - 0.5f) < 1e-6f,
           "SPIRAL ends are x2 and x0.5");
     check(std::fabs(spiralRatio(0.5f) - std::exp2(0.25f)) < 1e-5f, "SPIRAL is square-law: 0.5 is x1.19");
+    check(fadeDb(0.f) == 0.f && std::fabs(fadeDb(-1.f) + 60.f) < 1e-4f && std::fabs(fadeDb(1.f) - 6.f) < 1e-5f,
+          "FADE: 0 dB in the centre, -60 and +6 dB at the ends");
+    check(std::fabs(fadeDb(-0.5f) + 15.f) < 1e-4f && std::fabs(fadeDb(fadeKnob(-1.5f)) + 1.5f) < 1e-4f,
+          "FADE is square-law: -0.5 is -15 dB, and -1.5 dB types back"); 
     check(std::fabs(sizeKnob(0.25f) - sizeKnob(sizeSeconds(sizeKnob(0.25f)))) < 1e-6f
           && std::fabs(sizeSeconds(sizeKnob(0.25f)) - 0.25f) < 1e-5f, "typing 250 ms into SIZE is 250 ms");
     return failures ? 1 : 0;
@@ -550,7 +555,7 @@ static int cmdFuzz() {
                 c.spiral = spiralRatio(2.f * u() - 1.f);
                 c.tape = u();
                 c.pitch = 48.f * u() - 24.f;
-                c.fadeDb = -24.f + 27.f * u();
+                c.fadeDb = fadeDb(2.f * u() - 1.f);
                 c.shape = 2.f * u() - 1.f;
                 c.soft = u();
                 c.tone = 4.f * u() - 2.f;

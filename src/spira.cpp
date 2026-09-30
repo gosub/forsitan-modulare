@@ -111,6 +111,10 @@ struct Spira : Module {
         float getDisplayValue() override { return spira::spiralRatio(getValue()); }
         void setDisplayValue(float r) override { setValue(spira::spiralKnob(r)); }
     };
+    struct FadeQuantity : ParamQuantity {
+        float getDisplayValue() override { return spira::fadeDb(getValue()); }
+        void setDisplayValue(float db) override { setValue(spira::fadeKnob(db)); }
+    };
     struct RateQuantity : ParamQuantity {
         float getDisplayValue() override { return spira::rateHz(getValue()); }
         void setDisplayValue(float hz) override { setValue(spira::rateKnob(hz)); }
@@ -128,7 +132,7 @@ struct Spira : Module {
         configParam(SIZE_PARAM, 0.f, 1.f, 0.5372f, "Size (the first lap)", " ms", 400.f, 10.f);   // 250 ms
         configParam<SpiralQuantity>(SPIRAL_PARAM, -1.f, 1.f, 0.f, "Spiral (next lap / this lap)", "x");
         configParam(TAPE_PARAM, 0.f, 1.f, 1.f, "Tape (0% cuts the window, 100% changes the speed)", "%", 0.f, 100.f);
-        configParam(FADE_PARAM, -24.f, 3.f, -1.5f, "Fade per turn (per first-lap length)", " dB");
+        configParam<FadeQuantity>(FADE_PARAM, -1.f, 1.f, -0.1581f, "Fade per turn (per first-lap length; 0 loops unchanged)", " dB");   // -1.5 dB
         configParam<RateQuantity>(RATE_PARAM, 0.f, 1.f, 0.3966f, "Rate (circles per second)");   // 0.5 Hz
         configParam(PITCH_PARAM, -24.f, 24.f, 0.f, "Pitch", " semitones");
         configParam(TONE_PARAM, -2.f, 2.f, 0.f, "Tone per turn (below 0 darker, above thinner)", " oct");
@@ -271,7 +275,7 @@ struct Spira : Module {
         float spiral = params[SPIRAL_PARAM].getValue() + finite(inputs[SPIRAL_INPUT].getVoltage()) / 5.f;
         ctl.spiral = spira::spiralRatio(clamp(spiral, -1.f, 1.f));
         ctl.tape = params[TAPE_PARAM].getValue();
-        ctl.fadeDb = params[FADE_PARAM].getValue();
+        ctl.fadeDb = spira::fadeDb(params[FADE_PARAM].getValue());
         float rate = spira::rateHz(params[RATE_PARAM].getValue());
         if (rate > 0.f) rate = clamp(rate * std::exp2(finite(inputs[RATE_INPUT].getVoltage())),
                                      spira::kRateMin, spira::kRateMax);

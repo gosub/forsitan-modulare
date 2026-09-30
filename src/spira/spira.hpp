@@ -112,6 +112,21 @@ inline float rateKnob(float hz) {
     return kRateOff + (1.f - kRateOff) * std::log(hz / kRateMin) / std::log(kRateMax / kRateMin);
 }
 
+// FADE, dB per first-lap length. The centre is 0 dB, a circle that loops
+// unchanged; left fades down to -60 dB, one lap and gone; right swells up to
+// +6 dB a turn. Square law either side, so the fine values near the centre
+// get most of the travel: -0.16 is -1.5 dB, -0.3 -5.4, -0.5 -15.
+const float kFadeMin = -60.f;
+const float kFadeMax = 6.f;
+inline float fadeDb(float k) {
+    k = std::max(-1.f, std::min(1.f, k));
+    return k < 0.f ? kFadeMin * k * k : kFadeMax * k * k;
+}
+inline float fadeKnob(float db) {
+    db = std::max(kFadeMin, std::min(kFadeMax, db));
+    return db < 0.f ? -std::sqrt(db / kFadeMin) : std::sqrt(db / kFadeMax);
+}
+
 inline float dbToGain(float db) { return std::pow(10.f, db / 20.f); }
 
 // Linear to the knee, then a tanh toward the ceiling with a matching slope:
