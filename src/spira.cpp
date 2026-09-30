@@ -17,8 +17,8 @@
 //                each with a CV jack beside it
 //   In         : IN L, IN R (normalled from L), V/OCT, SIZE (1 V/oct), SPIRAL,
 //                SHAPE, REACH, RATE (1 V/oct) CV, BIRTH, HOLD
-//   Out        : TURN (a lap of the newest circle), V/OCT (its speed),
-//                OUT L, OUT R
+//   Out        : TURN and V/OCT, eight channels, one per circle in the
+//                ring's order (a trigger per lap, the speed), OUT L, OUT R
 //   Menu       : circles keep the settings they were born with
 
 #include "forsitan.hpp"
@@ -94,7 +94,8 @@ struct Spira : Module {
 
     dsp::SchmittTrigger birthIn;
     dsp::BooleanTrigger birthButton, holdButton;
-    dsp::PulseGenerator turnPulse;
+    dsp::PulseGenerator turnPulse[spira::kCircles];
+    float speed[spira::kCircles] = {};         // V/OCT holds a place's last speed
     dsp::ClockDivider lightDivider;
     float birthFlash = 0.f;
     float ringPeak[spira::kCircles] = {};      // loudest since the last light update
@@ -163,8 +164,8 @@ struct Spira : Module {
         configInput(SKIPS_INPUT, "Skips CV (0..10 V covers the knob)");
         configInput(MIX_INPUT, "Mix CV (0..10 V covers the knob)");
         configInput(LEVEL_INPUT, "Level CV (2.4 dB/V: 10 V covers the knob, and below it down to -72 dB)");
-        configOutput(TURN_OUTPUT, "Turn (each lap of the newest circle)");
-        configOutput(VOCT_OUTPUT, "Speed of the newest circle, V/oct");
+        configOutput(TURN_OUTPUT, "Turn: a trigger at each circle's birth and laps, one channel per circle");
+        configOutput(VOCT_OUTPUT, "Speed, V/oct, one channel per circle (held when it ends)");
         configOutput(OUT_L_OUTPUT, "Left");
         configOutput(OUT_R_OUTPUT, "Right");
         configLight(BIRTH_LIGHT, "Birth");
@@ -316,14 +317,22 @@ struct Spira : Module {
         float inR = inputs[IN_R_INPUT].isConnected() ? finite(inputs[IN_R_INPUT].getVoltage()) : inL;
         spira::Output o = engine.process(ctl, ev, inL, inR);
 
-        if (o.turn) turnPulse.trigger(kPulse);
+        for (int i = 0; i < spira::kCircles; i++) {
+            if (o.ringTurn[i]) turnPulse[i].trigger(kPulse);
+            if (o.ringOn[i]) speed[i] = o.ringSpeed[i];
+        }
         if (o.born) birthFlash = kLightFlash;
         for (int i = 0; i < spira::kCircles; i++) {
             if (o.ring[i] >= ringPeak[i]) ringSpiral[i] = o.ringSpiral[i];
             ringPeak[i] = std::max(ringPeak[i], o.ring[i]);
         }
-        outputs[TURN_OUTPUT].setVoltage(turnPulse.process(args.sampleTime) ? 10.f : 0.f);
-        outputs[VOCT_OUTPUT].setVoltage(o.speedOct);
+        // one channel per circle, in the ring's order
+        outputs[TURN_OUTPUT].setChannels(spira::kCircles);
+        outputs[VOCT_OUTPUT].setChannels(spira::kCircles);
+        for (int i = 0; i < spira::kCircles; i++) {
+            outputs[TURN_OUTPUT].setVoltage(turnPulse[i].process(args.sampleTime) ? 10.f : 0.f, i);
+            outputs[VOCT_OUTPUT].setVoltage(speed[i], i);
+        }
         outputs[OUT_L_OUTPUT].setVoltage(clamp(o.l * swapGain, -12.f, 12.f));
         outputs[OUT_R_OUTPUT].setVoltage(clamp(o.r * swapGain, -12.f, 12.f));
 
@@ -406,30 +415,28 @@ struct SpiraWidget : ModuleWidget {
 // @elem LABEL_TONE label 0.0 label "tone" 0.0 36.04 61.50
 // @elem LABEL_ANCHOR label 0.0 label "anchor" 0.0 56.04 61.50
 // @elem LABEL_JITTER label 0.0 label "jitter" 0.0 76.04 61.50
-// @elem LABEL_REACH label 0.0 label "reach" 0.0 96.04 61.50
-// @elem LABEL_LINE label 0.0 label "line" 0.0 116.04 61.50
-// @elem LABEL_SHAPE label 0.0 label "shape" 0.0 16.04 82.50
-// @elem LABEL_SOFT label 0.0 label "soft" 0.0 36.04 82.50
-// @elem LABEL_FWD label 0.0 label "fwd" 0.0 58.66 71.30 size=2
-// @elem LABEL_PP label 0.0 label "p-p" 0.0 58.66 75.00 size=2
-// @elem LABEL_REV label 0.0 label "rev" 0.0 58.66 78.70 size=2
-// @elem LABEL_SPREAD label 0.0 label "spread" 0.0 76.04 82.50
-// @elem LABEL_SKIPS label 0.0 label "skips" 0.0 96.04 82.50
+// @elem LABEL_REACH label 0.0 label "reach" 0.0 53.08 82.50
+// @elem LABEL_LINE label 0.0 label "line" 0.0 79.00 82.50
+// @elem LABEL_SHAPE label 0.0 label "shape" 0.0 16.50 82.50
+// @elem LABEL_SOFT label 0.0 label "soft" 0.0 35.50 82.50
+// @elem LABEL_FWD label 0.0 label "fwd" 0.0 68.66 70.80 size=2
+// @elem LABEL_PP label 0.0 label "p-p" 0.0 68.66 75.00 size=2
+// @elem LABEL_REV label 0.0 label "rev" 0.0 68.66 79.20 size=2
+// @elem LABEL_SPREAD label 0.0 label "spread" 0.0 96.04 61.50
+// @elem LABEL_SKIPS label 0.0 label "skips" 0.0 116.04 61.50
 // @elem LABEL_MIX label 0.0 label "mix" 0.0 19.00 118.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 45.00 118.50
-// @elem LABEL_BIRTH label 0.0 label "birth" 0.0 109.00 81.00
-// @elem LABEL_HOLD label 0.0 label "hold" 0.0 123.00 81.00
-// @elem LABEL_IN_L label 0.0 label "in L" 0.0 8.79 101.50
-// @elem LABEL_IN_R label 0.0 label "in R" 0.0 20.24 101.50
-// @elem LABEL_VOCT_IN label 0.0 label "v/oct" 0.0 31.69 101.50
-// @elem LABEL_SIZE_IN label 0.0 label "size" 0.0 43.14 101.50
+// @elem LABEL_BIRTH label 0.0 label "birth" 0.0 96.60 82.50
+// @elem LABEL_HOLD label 0.0 label "hold" 0.0 115.60 82.50
+// @elem LABEL_IN_L label 0.0 label "in L" 0.0 14.04 101.50
+// @elem LABEL_IN_R label 0.0 label "in R" 0.0 27.04 101.50
+// @elem LABEL_VOCT_IN label 0.0 label "v/oct" 0.0 40.04 101.50
+// @elem LABEL_SIZE_IN label 0.0 label "size" 0.0 53.04 101.50
 // @elem LABEL_SPIRAL_IN label 0.0 label "spir" 0.0 66.04 101.50
-// @elem LABEL_SHAPE_IN label 0.0 label "shape" 0.0 54.59 101.50
-// @elem LABEL_REACH_IN label 0.0 label "reach" 0.0 77.49 101.50
-// @elem LABEL_RATE_IN label 0.0 label "rate" 0.0 88.94 101.50
-// @elem LABEL_BIRTH_IN label 0.0 label "birth" 0.0 123.29 101.50
-// @elem LABEL_SKIPS_IN label 0.0 label "skips" 0.0 100.39 101.50
-// @elem LABEL_HOLD_IN label 0.0 label "hold" 0.0 111.84 101.50
+// @elem LABEL_SHAPE_IN label 0.0 label "shape" 0.0 79.04 101.50
+// @elem LABEL_REACH_IN label 0.0 label "reach" 0.0 92.04 101.50
+// @elem LABEL_RATE_IN label 0.0 label "rate" 0.0 105.04 101.50
+// @elem LABEL_SKIPS_IN label 0.0 label "skips" 0.0 118.04 101.50
 // @elem BOX_CV_OUT panel_box 7.0 box "" 0.0 87.25 112.75 box=24.5x13.5
 // @elem LABEL_TURN_OUT label 0.0 label "turn" 0.0 81.00 118.50
 // @elem LABEL_VOCT_OUT label 0.0 label "v/oct" 0.0 93.00 118.50
@@ -459,30 +466,30 @@ struct SpiraWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.04f, 53.00f)), module, Spira::TONE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.04f, 53.00f)), module, Spira::ANCHOR_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.04f, 53.00f)), module, Spira::JITTER_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 53.00f)), module, Spira::REACH_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(116.04f, 53.00f)), module, Spira::LINE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.04f, 74.00f)), module, Spira::SHAPE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.04f, 74.00f)), module, Spira::SOFT_PARAM));
-        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(52.40f, 74.00f)), module, Spira::DIRECTION_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.04f, 74.00f)), module, Spira::SPREAD_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 74.00f)), module, Spira::SKIPS_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.08f, 74.00f)), module, Spira::REACH_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(79.00f, 74.00f)), module, Spira::LINE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.50f, 74.00f)), module, Spira::SHAPE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.50f, 74.00f)), module, Spira::SOFT_PARAM));
+        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(62.40f, 74.00f)), module, Spira::DIRECTION_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 53.00f)), module, Spira::SPREAD_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(116.04f, 53.00f)), module, Spira::SKIPS_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 110.00f)), module, Spira::MIX_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(39.00f, 110.00f)), module, Spira::LEVEL_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 110.00f)), module, Spira::MIX_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.00f, 110.00f)), module, Spira::LEVEL_INPUT));
-        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(109.00f, 74.00f)), module, Spira::BIRTH_PARAM, Spira::BIRTH_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(123.00f, 74.00f)), module, Spira::HOLD_PARAM, Spira::HOLD_LIGHT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(8.79f, 94.00f)), module, Spira::IN_L_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(20.24f, 94.00f)), module, Spira::IN_R_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(31.69f, 94.00f)), module, Spira::VOCT_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(43.14f, 94.00f)), module, Spira::SIZE_INPUT));
+        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(92.00f, 74.00f)), module, Spira::BIRTH_PARAM, Spira::BIRTH_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(111.00f, 74.00f)), module, Spira::HOLD_PARAM, Spira::HOLD_LIGHT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.04f, 94.00f)), module, Spira::IN_L_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(27.04f, 94.00f)), module, Spira::IN_R_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.04f, 94.00f)), module, Spira::VOCT_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(53.04f, 94.00f)), module, Spira::SIZE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(66.04f, 94.00f)), module, Spira::SPIRAL_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(54.59f, 94.00f)), module, Spira::SHAPE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(77.49f, 94.00f)), module, Spira::REACH_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(88.94f, 94.00f)), module, Spira::RATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(123.29f, 94.00f)), module, Spira::BIRTH_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(111.84f, 94.00f)), module, Spira::HOLD_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(100.39f, 94.00f)), module, Spira::SKIPS_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(79.04f, 94.00f)), module, Spira::SHAPE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(92.04f, 94.00f)), module, Spira::REACH_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(105.04f, 94.00f)), module, Spira::RATE_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(101.20f, 74.00f)), module, Spira::BIRTH_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.20f, 74.00f)), module, Spira::HOLD_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(118.04f, 94.00f)), module, Spira::SKIPS_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(81.00f, 111.00f)), module, Spira::TURN_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(93.00f, 111.00f)), module, Spira::VOCT_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(107.50f, 111.00f)), module, Spira::OUT_L_OUTPUT));

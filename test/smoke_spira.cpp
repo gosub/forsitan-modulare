@@ -43,21 +43,30 @@ static int sounding(Spira& m) {
 // Out of the box: RATE 0.5 Hz grows a circle every two seconds off the input.
 static void testDefaults() {
     Spira m; long fr = 0;
+    // patched, as a cable would: Rack sets no channel count on an empty jack
+    m.outputs[Spira::TURN_OUTPUT].channels = 1;
+    m.outputs[Spira::VOCT_OUTPUT].channels = 1;
     Stats s;
-    Counter turns;
+    Counter turns[spira::kCircles];
     int most = 0;
     for (long i = 0; i < (long)(6.f * SR); i++) {
         connect(m, Spira::IN_L_INPUT, sine(fr));
         m.process(makeArgs(fr++));
         s.add(m.outputs[Spira::OUT_L_OUTPUT].getVoltage());
-        turns.add(m.outputs[Spira::TURN_OUTPUT].getVoltage());
+        for (int c = 0; c < spira::kCircles; c++) turns[c].add(m.outputs[Spira::TURN_OUTPUT].getVoltage(c));
         most = std::max(most, sounding(m));
     }
     report("spira", "defaults_nans", s.nans, s.nans == 0);
     report("spira", "defaults_peak_v", s.peak, s.peak > 3.f && s.peak <= 12.f);
     report("spira", "defaults_circles", most, most >= 2 && most <= spira::kCircles);
-    // four laps of 250 ms a second from the newest circle, plus the births
-    report("spira", "defaults_turns_in_6s", turns.n, turns.n > 12);
+    // three circles, born 2 s apart, each on its own channel: the first turns
+    // four times a second for its whole life
+    int total = 0;
+    for (const Counter& c : turns) total += c.n;
+    report("spira", "defaults_turns_on_channel_1", turns[0].n, turns[0].n > 16);
+    report("spira", "defaults_turns_all_channels", total, total > turns[0].n + 12);
+    report("spira", "turn_voct_eight_channels", m.outputs[Spira::TURN_OUTPUT].getChannels(),
+           m.outputs[Spira::TURN_OUTPUT].getChannels() == 8 && m.outputs[Spira::VOCT_OUTPUT].getChannels() == 8);
     report("spira", "defaults_buffer", (double)m.live.n,
            m.live.n == spira::Engine::bufferSamples(SR) && !m.swapFailed);
 }
@@ -157,6 +166,15 @@ static void testLights() {
     red = m.lights[Spira::RING2_LIGHT].getBrightness();
     green = m.lights[Spira::RING2_LIGHT_G].getBrightness();
     report("spira", "ring_inward_orange_red", green / std::max(red, 1e-6f), red > 0.3f && green < 0.35f * red);
+    // V/OCT: a short inward circle, on channel 3 as the third birth, climbs
+    // an octave a lap (x0.5 on tape)
+    m.params[Spira::SIZE_PARAM].setValue(spira::sizeKnob(0.1f));
+    m.params[Spira::BIRTH_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    m.params[Spira::BIRTH_PARAM].setValue(0.f);
+    run(0.12f, b, r);
+    float v3 = m.outputs[Spira::VOCT_OUTPUT].getVoltage(2);
+    report("spira", "voct_per_circle", v3, std::fabs(v3 - 1.f) < 1e-3f);
 }
 
 // HOLD: the button latches, the gate holds while high, the latch is saved.
