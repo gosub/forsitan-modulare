@@ -13,7 +13,8 @@
 //   The lap    : PITCH, SHAPE, SOFT, direction (forward, ping-pong, reverse),
 //                JITTER
 //   The line   : RATE, SKIPS, REACH, LINE, BIRTH, HOLD, SPREAD
-//   Out level  : MIX (line .. circles), LEVEL (the circles, -12..+12 dB)
+//   Out level  : MIX (line .. circles), LEVEL (the circles, -12..+12 dB),
+//                each with a CV jack beside it
 //   In         : IN L, IN R (normalled from L), V/OCT, SIZE (1 V/oct), SPIRAL,
 //                SHAPE, REACH, RATE (1 V/oct) CV, BIRTH, HOLD
 //   Out        : TURN (a lap of the newest circle), V/OCT (its speed),
@@ -63,7 +64,7 @@ struct Spira : Module {
     };
     enum InputId {
         IN_L_INPUT, IN_R_INPUT, VOCT_INPUT, SIZE_INPUT, SPIRAL_INPUT, SHAPE_INPUT,
-        REACH_INPUT, RATE_INPUT, BIRTH_INPUT, HOLD_INPUT,
+        REACH_INPUT, RATE_INPUT, BIRTH_INPUT, HOLD_INPUT, MIX_INPUT, LEVEL_INPUT,
         INPUTS_LEN
     };
     enum OutputId {
@@ -155,6 +156,8 @@ struct Spira : Module {
         configInput(RATE_INPUT, "Rate CV (1 V/oct)");
         configInput(BIRTH_INPUT, "Birth trigger");
         configInput(HOLD_INPUT, "Hold gate");
+        configInput(MIX_INPUT, "Mix CV (0..10 V covers the knob)");
+        configInput(LEVEL_INPUT, "Level CV (2.4 dB/V: 10 V covers the knob, and below it down to -72 dB)");
         configOutput(TURN_OUTPUT, "Turn (each lap of the newest circle)");
         configOutput(VOCT_OUTPUT, "Speed of the newest circle, V/oct");
         configOutput(OUT_L_OUTPUT, "Left");
@@ -283,8 +286,10 @@ struct Spira : Module {
         ctl.soft = params[SOFT_PARAM].getValue();
         ctl.direction = 2 - clamp((int)std::round(params[DIRECTION_PARAM].getValue()), 0, 2);
         ctl.spread = params[SPREAD_PARAM].getValue();
-        ctl.mix = params[MIX_PARAM].getValue();
-        ctl.level = params[LEVEL_PARAM].getValue();
+        ctl.mix = clamp(params[MIX_PARAM].getValue() + finite(inputs[MIX_INPUT].getVoltage()) / 10.f, 0.f, 1.f);
+        // the CV can take the circles below the knob's range, to silence
+        ctl.level = clamp(params[LEVEL_PARAM].getValue() + 2.4f * finite(inputs[LEVEL_INPUT].getVoltage()),
+                          -72.f, 12.f);
         ctl.skips = params[SKIPS_PARAM].getValue();
         ctl.keepBirth = keepBirth;
     }
@@ -368,6 +373,8 @@ struct SpiraWidget : ModuleWidget {
 // @elem SKIPS_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem MIX_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem MIX_INPUT PJ301MPort 4.01 input "" 0.0
+// @elem LEVEL_INPUT PJ301MPort 4.01 input "" 0.0
 // @elem BIRTH_PARAM VCVLightBezel 3.6 param "" 0.0 light=BIRTH_LIGHT
 // @elem HOLD_PARAM VCVLightBezel 3.6 param "" 0.0 light=HOLD_LIGHT
 // @elem IN_L_INPUT PJ301MPort 4.01 input "" 0.0
@@ -402,8 +409,10 @@ struct SpiraWidget : ModuleWidget {
 // @elem LABEL_REV label 0.0 label "rev" 0.0 56.04 82.50
 // @elem LABEL_SPREAD label 0.0 label "spread" 0.0 76.04 82.50
 // @elem LABEL_SKIPS label 0.0 label "skips" 0.0 96.04 82.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 58.00 118.50
-// @elem LABEL_LEVEL label 0.0 label "level" 0.0 74.08 118.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 13.00 118.50
+// @elem LABEL_MIX_IN label 0.0 label "cv" 0.0 25.00 118.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 39.00 118.50
+// @elem LABEL_LEVEL_IN label 0.0 label "cv" 0.0 51.00 118.50
 // @elem LABEL_BIRTH label 0.0 label "birth" 0.0 109.00 81.00
 // @elem LABEL_HOLD label 0.0 label "hold" 0.0 123.00 81.00
 // @elem LABEL_IN_L label 0.0 label "in L" 0.0 10.92 101.50
@@ -416,14 +425,12 @@ struct SpiraWidget : ModuleWidget {
 // @elem LABEL_RATE_IN label 0.0 label "rate" 0.0 96.67 101.50
 // @elem LABEL_BIRTH_IN label 0.0 label "birth" 0.0 108.92 101.50
 // @elem LABEL_HOLD_IN label 0.0 label "hold" 0.0 121.17 101.50
-// @elem BOX_TURN panel_box 7.0 box "" 0.0 28.00 113.00
-// @elem LABEL_TURN_OUT label 0.0 label "turn" 0.0 28.00 118.50
-// @elem BOX_VOCT panel_box 7.0 box "" 0.0 44.00 113.00
-// @elem LABEL_VOCT_OUT label 0.0 label "v/oct" 0.0 44.00 118.50
-// @elem BOX_L panel_box 7.0 box "" 0.0 88.08 113.00
-// @elem LABEL_L_OUT label 0.0 label "L" 0.0 88.08 118.50
-// @elem BOX_R panel_box 7.0 box "" 0.0 104.08 113.00
-// @elem LABEL_R_OUT label 0.0 label "R" 0.0 104.08 118.50
+// @elem BOX_CV_OUT panel_box 7.0 box "" 0.0 87.25 112.75 box=24.5x13.5
+// @elem LABEL_TURN_OUT label 0.0 label "turn" 0.0 81.00 118.50
+// @elem LABEL_VOCT_OUT label 0.0 label "v/oct" 0.0 93.00 118.50
+// @elem BOX_AUDIO_OUT panel_box 7.0 box "" 0.0 113.50 112.75 box=24x13.5
+// @elem LABEL_L_OUT label 0.0 label "L" 0.0 107.50 118.50
+// @elem LABEL_R_OUT label 0.0 label "R" 0.0 119.50 118.50
 // @elem LOGO forsitan_logo 0.0 logo "" 0.0 66.04 122.50
 
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 0.00f)))); // SCREW_TL
@@ -454,8 +461,10 @@ struct SpiraWidget : ModuleWidget {
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(56.04f, 74.00f)), module, Spira::DIRECTION_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.04f, 74.00f)), module, Spira::SPREAD_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 74.00f)), module, Spira::SKIPS_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(58.00f, 110.00f)), module, Spira::MIX_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(74.08f, 110.00f)), module, Spira::LEVEL_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 110.00f)), module, Spira::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(39.00f, 110.00f)), module, Spira::LEVEL_PARAM));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 110.00f)), module, Spira::MIX_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.00f, 110.00f)), module, Spira::LEVEL_INPUT));
         addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(109.00f, 74.00f)), module, Spira::BIRTH_PARAM, Spira::BIRTH_LIGHT));
         addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(123.00f, 74.00f)), module, Spira::HOLD_PARAM, Spira::HOLD_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.92f, 94.00f)), module, Spira::IN_L_INPUT));
@@ -468,10 +477,10 @@ struct SpiraWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(96.67f, 94.00f)), module, Spira::RATE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(108.92f, 94.00f)), module, Spira::BIRTH_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(121.17f, 94.00f)), module, Spira::HOLD_INPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(28.00f, 111.00f)), module, Spira::TURN_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(44.00f, 111.00f)), module, Spira::VOCT_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(88.08f, 111.00f)), module, Spira::OUT_L_OUTPUT));
-        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(104.08f, 111.00f)), module, Spira::OUT_R_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(81.00f, 111.00f)), module, Spira::TURN_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(93.00f, 111.00f)), module, Spira::VOCT_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(107.50f, 111.00f)), module, Spira::OUT_L_OUTPUT));
+        addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(119.50f, 111.00f)), module, Spira::OUT_R_OUTPUT));
         // @layout:end
     }
 

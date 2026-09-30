@@ -205,7 +205,8 @@ static void testNormal() {
     report("spira", "right_normalled_from_left", worst, worst < 1e-4f);
 }
 
-// CV: SIZE and RATE 1 V/oct, SPIRAL and SHAPE +-5 V over the knob, V/OCT.
+// CV: SIZE and RATE 1 V/oct, SPIRAL and SHAPE +-5 V over the knob, V/OCT,
+// MIX and LEVEL.
 static void testCv() {
     Spira m; long fr = 0;
     m.params[Spira::SIZE_PARAM].setValue(spira::sizeKnob(0.25f));
@@ -221,6 +222,16 @@ static void testCv() {
     m.params[Spira::RATE_PARAM].setValue(0.f);
     m.process(makeArgs(fr++));
     report("spira", "rate_cv_leaves_off_off", m.ctl.rate, m.ctl.rate == 0.f);
+    // MIX: 0..10 V over the knob; LEVEL: 2.4 dB/V, below the knob to -72 dB
+    connect(m, Spira::MIX_INPUT, 5.f);
+    connect(m, Spira::LEVEL_INPUT, -5.f);
+    m.process(makeArgs(fr++));
+    report("spira", "mix_cv_5v_adds_half", m.ctl.mix, std::fabs(m.ctl.mix - 1.f) < 1e-5f);
+    report("spira", "level_cv_minus_5v_is_minus_12db", m.ctl.level, std::fabs(m.ctl.level + 12.f) < 1e-4f);
+    connect(m, Spira::LEVEL_INPUT, -10.f);
+    m.params[Spira::LEVEL_PARAM].setValue(-12.f);
+    m.process(makeArgs(fr++));
+    report("spira", "level_cv_below_the_knob", m.ctl.level, std::fabs(m.ctl.level + 36.f) < 1e-4f);
 }
 
 // NaN at every input, with circles sounding: every output stays finite.
