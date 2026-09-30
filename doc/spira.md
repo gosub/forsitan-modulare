@@ -31,7 +31,7 @@ circles sound at once, each at a different stage of its spiral.
 | top | **size**, **tape**, the **spiral** knob under its ring of eight lights, **fade**, **rate** |
 | second | **pitch**, **tone**, **anchor**, **jitter**, **reach**, **line** |
 | third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **skips**, **birth**, **hold** |
-| jacks | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold** |
+| jacks | inputs **in L**, **in R**, **v/oct**, **size**, **shape**, **spir**, **reach**, **rate**, **skips**, **hold**, **birth** |
 | bottom | **mix** and **level**, each a knob and its CV jack under one label; the logo; outputs **turn**, **v/oct**, **L**, **R** |
 
 ## The spiral
@@ -68,8 +68,8 @@ they were born with" on, each circle keeps its own colour, and a modulated
 | control | function |
 |---|---|
 | **pitch** | the circle's speed at birth, -24 to +24 semitones, plus **v/oct** |
-| **shape** | an envelope on every lap. Left, each lap decays: repeats become plucks. Right, each lap swells and stops: backwards-sounding repeats. In the middle, flat |
-| **soft** | the crossfade between one lap and the next, from 1 ms (a clean cut) to half the lap (laps that are all crossfade, like overlapping grains) |
+| **shape** | an envelope on every lap. Left, each lap decays: repeats become plucks, with a sharp attack whatever **soft** says. Right, each lap swells and stops sharply: backwards-sounding repeats. In the middle, flat. A pluck keeps only what falls near the start of its window, which on a drum loop is not much, so most of the level the envelope takes is given back: fully plucked or swelling circles sit within about 3 dB of flat ones |
+| **soft** | how one lap turns into the next. At 0 the loop jumps back to its start in 1 ms: a clean cut, and every repeat begins with a clear attack, like a stutter. Turned up, the end of each lap fades out while the next one fades in over it, for up to half a lap: the seam disappears, the repeats blur into each other, and at full the circle is a smooth, overlapping texture rather than a sequence of repeats. With **size** short and **soft** full, circles become grains |
 | **fwd / p-p / rev** | the direction. In ping-pong the laps alternate forward and backward, and with **spread** they also alternate left and right |
 | **jitter** | each lap's place and length move at random, by up to half a window and a quarter of an octave. It also loosens **rate** |
 
@@ -101,7 +101,7 @@ instead of clipping.
 | **v/oct** in | added to **pitch** |
 | **size** in | 1 V/oct on **size**: +1 V doubles the first lap |
 | **spir**, **shape** in | added to their knobs: +-5 V covers the travel |
-| **reach** in | added to **reach**: 0 to 10 V covers the travel |
+| **reach**, **skips** in | added to their knobs: 0 to 10 V covers the travel |
 | **rate** in | 1 V/oct on **rate**; it does not turn an off **rate** on |
 | **birth** in | a trigger: a circle now |
 | **hold** in | a gate: hold while high |

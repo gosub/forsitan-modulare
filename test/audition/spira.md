@@ -65,20 +65,25 @@ d["left", "right"] >> s["in l", "in r"]
 ## 2. The lap
 
 - [ ] 2.1. SHAPE left: every repeat has an attack and a decay, so the
-      repeats are plucked notes rather than a stutter.
+      repeats are plucked notes rather than a stutter, about as loud as
+      flat ones.
       `s.set(shape=-0.7, spiral=-0.2, fade=-0.1291)   # -1 dB`
 - [ ] 2.2. SHAPE right, reversed: every repeat swells backwards and stops.
       `s.set(shape=0.6, soft=0.6, direction="Reverse")`
 - [ ] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
       trade sides, with no click at the turnarounds.
       `s.set(direction="Ping-pong", spread=1, size=0.6157)   # 400 ms`
-- [ ] 2.4. A cloud: short soft laps, many circles, scattered. No single
+- [ ] 2.4. SOFT from 0 to full on long circles: from a clean cut, each
+      repeat starting on a clear attack, to repeats blurred into one
+      another with no seam to hear.
+      `s.set(size=0.6157, fade=0, soft=0)   # 400 ms; then turn SOFT up`
+- [ ] 2.5. A cloud: short soft laps, many circles, scattered. No single
       repeat is recognisable.
       ```python
       s.set(size=0.299, soft=1, rate=0.9164, jitter=0.6, reach=0.3,
             spread=1, fade=-0.3162)   # 60 ms laps, 12 a second, -6 dB
       ```
-- [ ] 2.5. TONE left: each turn darker. Right: each turn thinner.
+- [ ] 2.6. TONE left: each turn darker. Right: each turn thinner.
       `s.set(tone=-1.5, fade=-0.1291)   # -1 dB`
 
 ## 3. The line

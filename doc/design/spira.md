@@ -83,6 +83,15 @@ That left 5 dB, which is the circles fading, as they should. LEVEL (-12 to
 against the other. The open question of scaling circles down as more of
 them sound was answered no: unity, LEVEL to trim, the limiter as the net.
 
+SHAPE left made circles close to inaudible: 13 dB under flat laps on a drum
+loop. A decaying lap keeps only what falls near the start of its window,
+and SOFT's fade-in ate the attack besides. Now a decaying lap's fade-in
+shortens toward 1 ms as SHAPE goes left (a swelling lap's fade-out the same
+way), and three quarters of the envelope's average loss, in dB, is given
+back. All of it kept the average level but pushed plucks to four times the
+source, into the limiter; three quarters leaves them about 2.5 dB under flat
+on the drum loop, peaking near 9 V.
+
 FADE was -24 to +3 dB, which put 0 dB (a circle that loops unchanged) at
 89% of the knob and left the useful -6 to 0 dB in under a quarter of it,
 while never reaching one lap and gone. It is bipolar now, 0 dB in the
