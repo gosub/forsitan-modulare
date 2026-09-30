@@ -447,9 +447,9 @@ struct RubigoWidget : ModuleWidget {
 // @elem CLOCK_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem STEPMOD_OUTPUT PJ301MPort 4.01 output "" 0.0
 // @elem AUDIO_OUTPUT PJ301MPort 4.01 output "" 0.0
-// @elem LABEL_PIT label 0.0 label "pit" 0.0 8.50 13.20
-// @elem LABEL_NSE label 0.0 label "nse" 0.0 15.00 21.00
-// @elem LABEL_CUT label 0.0 label "cut" 0.0 8.50 28.50
+// @elem LABEL_PIT label 0.0 label "pit" 0.0 12.00 16.80 size=2
+// @elem LABEL_NSE label 0.0 label "nse" 0.0 12.00 21.00 size=2
+// @elem LABEL_CUT label 0.0 label "cut" 0.0 12.00 25.20 size=2
 // @elem LABEL_STEPMOD label 0.0 label "step mod" 0.0 25.40 28.50
 // @elem LABEL_STEPS label 0.0 label "steps" 0.0 50.80 34.50
 // @elem LABEL_SKIPS label 0.0 label "skips" 0.0 76.20 28.50
@@ -498,7 +498,7 @@ struct RubigoWidget : ModuleWidget {
         addChild(createWidget<ScrewSilver>(mm2px(Vec(93.98f, 0.00f)))); // SCREW_TR
         addChild(createWidget<ScrewSilver>(mm2px(Vec(2.54f, 123.42f)))); // SCREW_BL
         addChild(createWidget<ScrewSilver>(mm2px(Vec(93.98f, 123.42f)))); // SCREW_BR
-        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(8.50f, 20.00f)), module, Rubigo::DEST_PARAM));
+        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(5.50f, 20.00f)), module, Rubigo::DEST_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(25.40f, 20.00f)), module, Rubigo::STEPMOD_PARAM));
         addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(50.80f, 21.00f)), module, Rubigo::STEPS_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.20f, 20.00f)), module, Rubigo::SKIPS_PARAM));

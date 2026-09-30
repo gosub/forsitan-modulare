@@ -409,9 +409,9 @@ own names and values.
   the hardware's trigger LED. The clock LED sits at TEMPO's corner.
 - **The panel** is 20 HP: four rows of knobs and switches on six columns,
   nine inputs in one row, four output badges either side of the logo. The
-  switches' positions are labelled above and below, and the destination
-  switch **pit / nse / cut** on three sides, since which way is up is the
-  whole of its meaning.
+  two-way switches' positions are labelled above and below; the
+  destination switch **pit / nse / cut** has its three in a small column on
+  its right, one level with each position, as on spira.
 - **Measured**: of 200 uniform draws of every control, 31 are inaudible
   (peak under 0.5 V over 4 s); of 200 reasoned randoms, none
   (`rubigo_probe random`). CPU is 105 to 155 ns a sample, 0.5 to 0.75% of a
