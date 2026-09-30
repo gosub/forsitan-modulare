@@ -115,7 +115,7 @@ r.set(tempo=0.5)                       # x1 on the display
       r.set(noise=1, tempo=0.275, volume_decay=1, stepmod=0.2,   # 4 Hz
             dest="Cutoff", res=0.5, cutoff=0)
       ```
-- [ ] 4.2. A dead cable in IN, NOISE and RES full: only the filter's own
+- [x] 4.2. A dead cable in IN, NOISE and RES full: only the filter's own
       ringing, stepped to a melody by the step mod on CUTOFF.
       ```python
       dead = vcv.module("VCA-1")
@@ -123,19 +123,21 @@ r.set(tempo=0.5)                       # x1 on the display
       r.set(noise=1, res=1, cutoff=0.3, pitch_amount=0, stepmod=0.5,
             dest="Cutoff", steps=5)
       ```
-- [ ] 4.3. **Decide -** is that ringing loud enough next to a kick? It is
+- [x] 4.3. **Decide -** is that ringing loud enough next to a kick? It is
       about 0.8 V rms at VOLUME 0.5 (`rubigo_probe voice`).
-- [ ] 4.4. Menu, Effect, Flanger, on the rust side: the kicks swoosh. On
+- [x] 4.4. Menu, Effect, Flanger, on the rust side: the kicks swoosh. On
       corr: the same, subtler. The EFFECT knob sets the sweep speed.
       ```python
       r.menu(effect=3)   # Flanger
       r.set(rust=1, effect=0.3)
       ```
-- [ ] 4.5. Menu, Effect, 2nd oscillator, EFFECT at 0 on corr: an octave
-      below doubles the kick, fuller and lower.
+- [ ] 4.5. Menu, Effect, 2nd oscillator, EFFECT at 0 on corr, on a bass
+      note: an octave below doubles it, fuller and lower. Turn EFFECT up:
+      the second voice rises to unison.
       ```python
       r.menu(effect=1)   # 2nd oscillator
-      r.set(effect=0, rust=0, wave="Saw")
+      r.set(effect=0, rust=0, wave="Saw", pitch=0.35, pitch_amount=0,
+            volume_decay=0.6)   # 118 Hz, the octave below 59 Hz
       ```
 - [ ] 4.6. Ctrl+R a few times: each press a different playing sound, kick,
       bass, noise, a resonant line or a drone, never silence.
