@@ -141,5 +141,5 @@ r.set(tempo=0.5)                       # x1 on the display
       ```
 - [x] 4.6. Ctrl+R a few times: each press a different playing sound, kick,
       bass, noise, a resonant line or a drone, never silence.
-- [ ] 4.7. The preset browser: eleven presets, each playing at once and
+- [x] 4.7. The preset browser: eleven presets, each playing at once and
       different from the others. Loading one keeps the loop you had.
