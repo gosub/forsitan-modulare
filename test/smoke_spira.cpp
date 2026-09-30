@@ -99,6 +99,52 @@ static void testBirth() {
     report("spira", "birth_jack", sounding(m), sounding(m) == 2);
 }
 
+// The BIRTH light flashes for births only, not for every lap; the ring
+// lights the new circle's place, in yellow for a plain circle and orange-red
+// for an inward spiral.
+static void testLights() {
+    Spira m; long fr = 0;
+    m.params[Spira::RATE_PARAM].setValue(0.f);
+    m.params[Spira::SIZE_PARAM].setValue(spira::sizeKnob(0.1f));
+    m.params[Spira::FADE_PARAM].setValue(0.f);
+    auto run = [&](float seconds, float& birthMax, float& ringMax) {
+        birthMax = ringMax = 0.f;
+        for (long i = 0; i < (long)(seconds * SR); i++) {
+            connect(m, Spira::IN_L_INPUT, sine(fr));
+            m.process(makeArgs(fr++));
+            birthMax = std::max(birthMax, m.lights[Spira::BIRTH_LIGHT].getBrightness());
+            ringMax = std::max(ringMax, m.lights[Spira::RING1_LIGHT].getBrightness());
+        }
+    };
+    float b, r;
+    run(1.f, b, r);
+    m.params[Spira::BIRTH_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    m.params[Spira::BIRTH_PARAM].setValue(0.f);
+    run(0.1f, b, r);
+    report("spira", "birth_light_on_birth", b, b > 0.5f);
+    report("spira", "ring_light_up", r, r > 0.3f);
+    // ten more laps of 100 ms: the circle turns, the BIRTH light stays dark
+    run(1.f, b, r);
+    report("spira", "birth_light_not_on_laps", b, b == 0.f);
+    float red = m.lights[Spira::RING1_LIGHT].getBrightness();
+    float green = m.lights[Spira::RING1_LIGHT_G].getBrightness();
+    float blue = m.lights[Spira::RING1_LIGHT_B].getBrightness();
+    report("spira", "ring_plain_circle_yellow", green / std::max(red, 1e-6f),
+           red > 0.3f && green > 0.6f * red && blue < 0.05f * red);
+
+    // an inward spiral heats toward orange-red, on the next place round
+    m.params[Spira::SPIRAL_PARAM].setValue(-1.f);
+    m.params[Spira::SIZE_PARAM].setValue(spira::sizeKnob(2.f));
+    m.params[Spira::BIRTH_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    m.params[Spira::BIRTH_PARAM].setValue(0.f);
+    run(0.3f, b, r);
+    red = m.lights[Spira::RING2_LIGHT].getBrightness();
+    green = m.lights[Spira::RING2_LIGHT_G].getBrightness();
+    report("spira", "ring_inward_orange_red", green / std::max(red, 1e-6f), red > 0.3f && green < 0.35f * red);
+}
+
 // HOLD: the button latches, the gate holds while high, the latch is saved.
 static void testHold() {
     Spira m; long fr = 0;
@@ -257,5 +303,5 @@ static void testPresets() {
     report("spira", "presets_run", bad, bad == 0);
 }
 
-SMOKE_MAIN(testDefaults, testDirection, testBirth, testHold, testNormal, testCv, testNan,
+SMOKE_MAIN(testDefaults, testDirection, testBirth, testLights, testHold, testNormal, testCv, testNan,
            testSampleRate, testDeleteMidSwap, testPresets)

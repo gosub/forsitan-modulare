@@ -71,6 +71,15 @@ struct Spira : Module {
     };
     enum LightId {
         BIRTH_LIGHT, HOLD_LIGHT,
+        // the ring around SPIRAL, one red-green-blue light per circle
+        RING1_LIGHT, RING1_LIGHT_G, RING1_LIGHT_B,
+        RING2_LIGHT, RING2_LIGHT_G, RING2_LIGHT_B,
+        RING3_LIGHT, RING3_LIGHT_G, RING3_LIGHT_B,
+        RING4_LIGHT, RING4_LIGHT_G, RING4_LIGHT_B,
+        RING5_LIGHT, RING5_LIGHT_G, RING5_LIGHT_B,
+        RING6_LIGHT, RING6_LIGHT_G, RING6_LIGHT_B,
+        RING7_LIGHT, RING7_LIGHT_G, RING7_LIGHT_B,
+        RING8_LIGHT, RING8_LIGHT_G, RING8_LIGHT_B,
         LIGHTS_LEN
     };
 
@@ -85,7 +94,9 @@ struct Spira : Module {
     dsp::BooleanTrigger birthButton, holdButton;
     dsp::PulseGenerator turnPulse;
     dsp::ClockDivider lightDivider;
-    float turnFlash = 0.f;
+    float birthFlash = 0.f;
+    float ringPeak[spira::kCircles] = {};      // loudest since the last light update
+    float ringSpiral[spira::kCircles] = {};
     bool holdLatched = false;
 
     // menu
@@ -145,7 +156,9 @@ struct Spira : Module {
         configOutput(VOCT_OUTPUT, "Speed of the newest circle, V/oct");
         configOutput(OUT_L_OUTPUT, "Left");
         configOutput(OUT_R_OUTPUT, "Right");
-        configLight(BIRTH_LIGHT, "Turn");
+        configLight(BIRTH_LIGHT, "Birth");
+        for (int i = 0; i < spira::kCircles; i++)
+            configLight(RING1_LIGHT + 3 * i, string::f("Circle %d (brightness its level, colour its spiral)", i + 1));
         configLight(HOLD_LIGHT, "Hold");
         configBypass(IN_L_INPUT, OUT_L_OUTPUT);
         configBypass(IN_R_INPUT, OUT_R_OUTPUT);
@@ -229,6 +242,22 @@ struct Spira : Module {
         job = j;
     }
 
+    // A circle's light: brightness its level in dB, -48..0 dB over the
+    // light's travel, since a circle 20 dB down is still plainly heard; colour
+    // its spiral, the house yellow for a circle, heating to orange-red as it
+    // winds in and cooling to blue as it unwinds. The colour follows the
+    // SPIRAL knob's travel rather than the ratio, so a slight spiral already
+    // shows.
+    static void ringColour(float level, float spiral, float rgb[3]) {
+        static const float yellow[3] = {1.f, 0.835f, 0.f};
+        static const float hot[3] = {1.f, 0.2f, 0.f};
+        static const float cold[3] = {0.1f, 0.3f, 1.f};
+        float b = level > 1e-6f ? clamp((20.f * std::log10(level) + 48.f) / 48.f, 0.f, 1.f) : 0.f;
+        float u = clamp(std::sqrt(std::fabs(spiral)), 0.f, 1.f);
+        const float* to = spiral < 0.f ? hot : cold;
+        for (int c = 0; c < 3; c++) rgb[c] = b * (yellow[c] + u * (to[c] - yellow[c]));
+    }
+
     void readControls() {
         float sizeCv = finite(inputs[SIZE_INPUT].getVoltage());
         ctl.size = clamp(spira::sizeSeconds(params[SIZE_PARAM].getValue()) * std::exp2(sizeCv),
@@ -271,9 +300,11 @@ struct Spira : Module {
         float inR = inputs[IN_R_INPUT].isConnected() ? finite(inputs[IN_R_INPUT].getVoltage()) : inL;
         spira::Output o = engine.process(ctl, ev, inL, inR);
 
-        if (o.turn) {
-            turnPulse.trigger(kPulse);
-            turnFlash = kLightFlash;
+        if (o.turn) turnPulse.trigger(kPulse);
+        if (o.born) birthFlash = kLightFlash;
+        for (int i = 0; i < spira::kCircles; i++) {
+            if (o.ring[i] >= ringPeak[i]) ringSpiral[i] = o.ringSpiral[i];
+            ringPeak[i] = std::max(ringPeak[i], o.ring[i]);
         }
         outputs[TURN_OUTPUT].setVoltage(turnPulse.process(args.sampleTime) ? 10.f : 0.f);
         outputs[VOCT_OUTPUT].setVoltage(o.speedOct);
@@ -281,9 +312,16 @@ struct Spira : Module {
         outputs[OUT_R_OUTPUT].setVoltage(clamp(o.r * swapGain, -12.f, 12.f));
 
         if (lightDivider.process()) {
-            lights[BIRTH_LIGHT].setBrightness(turnFlash > 0.f ? 1.f : 0.f);
+            float dt = args.sampleTime * kLightDivision;
+            lights[BIRTH_LIGHT].setBrightness(birthFlash > 0.f ? 1.f : 0.f);
             lights[HOLD_LIGHT].setBrightness(ctl.hold ? 1.f : 0.f);
-            turnFlash -= args.sampleTime * kLightDivision;
+            birthFlash -= dt;
+            for (int i = 0; i < spira::kCircles; i++) {
+                float rgb[3];
+                ringColour(ringPeak[i], ringSpiral[i], rgb);
+                for (int c = 0; c < 3; c++) lights[RING1_LIGHT + 3 * i + c].setBrightnessSmooth(rgb[c], dt);
+                ringPeak[i] = 0.f;
+            }
         }
     }
 };
@@ -301,6 +339,14 @@ struct SpiraWidget : ModuleWidget {
 // @elem SIZE_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem TAPE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem SPIRAL_PARAM RoundHugeBlackKnob 9.12 param "" 0.0
+// @elem RING1_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING2_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING3_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING4_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING5_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING6_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING7_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
+// @elem RING8_LIGHT SmallLight<RedGreenBlueLight> 1.0 light "" 0.0
 // @elem FADE_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem RATE_PARAM RoundBigBlackKnob 7.62 param "" 0.0
 // @elem PITCH_PARAM RoundBlackKnob 4.8 param "" 0.0
@@ -377,6 +423,14 @@ struct SpiraWidget : ModuleWidget {
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(16.04f, 27.00f)), module, Spira::SIZE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.04f, 23.00f)), module, Spira::TAPE_PARAM));
         addParam(createParamCentered<RoundHugeBlackKnob>(mm2px(Vec(66.04f, 27.00f)), module, Spira::SPIRAL_PARAM));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(55.21f, 20.75f)), module, Spira::RING1_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(57.54f, 17.84f)), module, Spira::RING2_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(60.62f, 15.74f)), module, Spira::RING3_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(64.18f, 14.64f)), module, Spira::RING4_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(67.90f, 14.64f)), module, Spira::RING5_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(71.46f, 15.74f)), module, Spira::RING6_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(74.54f, 17.84f)), module, Spira::RING7_LIGHT));
+        addChild(createLightCentered<SmallLight<RedGreenBlueLight>>(mm2px(Vec(76.87f, 20.75f)), module, Spira::RING8_LIGHT));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 23.00f)), module, Spira::FADE_PARAM));
         addParam(createParamCentered<RoundBigBlackKnob>(mm2px(Vec(116.04f, 27.00f)), module, Spira::RATE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.04f, 53.00f)), module, Spira::PITCH_PARAM));
