@@ -86,8 +86,8 @@ d["left", "right"] >> s["in l", "in r"]
 - [ ] 3.2. HOLD with REACH full: circles are born anywhere on the held loop,
       not just behind the playhead.
       `s.set(reach=1, rate=0.6234, jitter=0.4)   # 2 Hz`
-- [ ] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle, and
-      the button flashes on each of its laps.
+- [ ] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle and
+      one flash of the button; the laps that follow do not flash it.
       `s.set(rate=0, spiral=-0.3, fade=0)`
 - [ ] 3.4. V/OCT out into a sine: the sine climbs with each converging
       circle, an octave each time the laps halve, and stops two octaves up.
@@ -98,11 +98,19 @@ d["left", "right"] >> s["in l", "in r"]
       s.set(spiral=-0.5, fade=0, rate=0.3)
       ```
 
+- [ ] 3.5. The ring over SPIRAL: each birth lights the next light round,
+      left to right, and a light dims with its circle's fade.
+      `s.set(rate=0.51, fade=-4)   # 1 Hz`
+- [ ] 3.6. SPIRAL left: the lights run orange-red. Right: blue. Centre:
+      yellow.
+      `s.set(rate=0.51, fade=-2, spiral=-0.6)`
+
 ## 4. The menu
 
 - [ ] 4.1. One long circle (RATE off, SIZE 2 s, FADE 0), then turn SPIRAL:
       the sounding circle follows at its next lap. Menu, keep the settings
       they were born with, and again: it does not, only the next BIRTH.
+      With the menu on and SPIRAL swept, the ring shows several colours.
       `s.set(rate=0, size=0.8843, fade=0)   # 2 s`
 - [ ] 4.2. The preset browser: eight presets, each different at once, none
       of them the plain stutter of 1.1. **scatter** with HOLD pressed wanders

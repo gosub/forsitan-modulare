@@ -28,7 +28,7 @@ circles sound at once, each at a different stage of its spiral.
 
 | row | contents |
 |---|---|
-| top | **size**, **tape**, the **spiral** knob, **fade**, **rate** |
+| top | **size**, **tape**, the **spiral** knob under its ring of eight lights, **fade**, **rate** |
 | second | **pitch**, **tone**, **anchor**, **jitter**, **reach**, **line** |
 | third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **mix**, **birth**, **hold** |
 | jacks | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold**; outputs **turn**, **v/oct**, **L**, **R** |
@@ -49,6 +49,19 @@ laps. Its whole life is **size** / (1 - ratio): at **spiral** 0.84x and
 **size** 250 ms, about 1.6 seconds. An unwinding circle grows until its
 laps are 16 s long and then turns at that length.
 
+### The ring
+
+The eight lights over **spiral** are the eight circles. Each new circle takes
+the next light round, left to right and back to the first, so births walk
+round the arc; a ninth circle takes the light of the oldest, which is the one
+it replaces. A light's **brightness** is its circle's level: the lap's
+envelope, its fade, its end, read from the engine, not measured, over 48 dB,
+so a circle you can still hear is still visibly lit. Its **colour** is the
+circle's spiral: yellow for a plain circle, heating to orange-red as it winds
+inward, cooling to blue as it unwinds. With the menu's "keep the settings
+they were born with" on, each circle keeps its own colour, and a modulated
+**spiral** paints the ring.
+
 ## The lap
 
 | control | function |
@@ -64,7 +77,7 @@ laps are 16 s long and then turns at that length.
 | control | function |
 |---|---|
 | **rate** | circles per second, 0.05 to 20. At the bottom, off: circles are born only by **birth** |
-| **birth** | a circle now, from the button or a trigger at the jack. **turn** lights the button |
+| **birth** | a circle now, from the button or a trigger at the jack. The button flashes at every birth, whatever caused it |
 | **reach** | where a circle is born. At 0 it is born just behind the playhead, on the last **size** of the line. Turned up, it is born up to **reach** x **line** further back |
 | **line** | 1 to 30 seconds: how far back **reach** can go, and the loop's length under **hold** |
 | **hold** | the button latches, and the jack holds while high. The line stops recording and loops its last **line** seconds, or less if less has been recorded since the module started. Circles born under hold come from the held loop |

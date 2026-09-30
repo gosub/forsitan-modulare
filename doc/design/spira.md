@@ -74,9 +74,21 @@ the line and the circles unity in the middle, so the module works as an
 insert. With many loud overlapping circles the limiter works; the audition
 asks whether that is right.
 
+## The ring
+
+Eight red-green-blue lights on an arc over SPIRAL, one per circle, taken in
+turn at birth, so the light a ninth circle takes is always the oldest's, the
+one it replaces. Brightness is the circle's level from the engine (the larger
+of its two laps' envelopes, times the steal fade), mapped over 48 dB rather
+than linearly, where a circle 20 dB down would look off. Colour is the
+circle's spiral along the knob's own travel (the square root of |log2 r|),
+yellow to orange-red inward (heating) and to blue outward (cooling). The
+BIRTH button's light flashes on births only: it followed TURN at first, and
+the laps of the newest circle buried the press.
+
 ## Deliberately left out of v1
 
-- A display of the line and its circles.
+- A display of the line itself.
 - A send/return per circle (effects accumulating turn by turn, as in tabes).
   The V/OCT and TURN outputs are the hooks for outside effects instead.
 - Clock-synced SIZE. The converging spiral's total length is known
