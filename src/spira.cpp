@@ -293,7 +293,7 @@ struct SpiraWidget : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/spira.svg")));
 
-        // @layout:begin spira 132.08 128.5
+        // @layout:begin spira 132.08 128.5 svg=tools/panels/gen_spira_panel.py
 // @elem SCREW_TL ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_TR ScrewSilver 3.5 screw "" 0.0
 // @elem SCREW_BL ScrewSilver 3.5 screw "" 0.0
