@@ -455,7 +455,9 @@ global pip install):
 - `tools/panels/` - `gen_radix_panel.py`, generates `res/radix.svg` (the
   label-free panel: branching art from a fixed seed, discs under the
   controls, read from the `@layout` block; its `svg=` header makes the panel
-  editor rerun it on save), and `gen_pellicula_panel.py`, generates `res/pellicula.svg`
+  editor rerun it on save), `gen_rubigo_panel.py`, the standard panel plus
+  two leaders from the destination switch's ends to its end labels (same
+  `svg=` hook), and `gen_pellicula_panel.py`, generates `res/pellicula.svg`
   (background art for the matrix panel; widgets are placed in code).
 - `tools/release/` - `sync_version.py`, repoints every `manualUrl` /
   `changelogUrl` in `plugin.json` at the current `"version"` tag and checks it
