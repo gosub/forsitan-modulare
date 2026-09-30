@@ -13,6 +13,9 @@
 //   ./spira_probe line       HOLD loops the last LINE seconds, never more
 //                            than was written; circles born under HOLD read
 //                            the held loop; REACH stays on the line; RATE
+//   ./spira_probe ring       the ring of lights: births take its places in
+//                            turn, each light up with its circle, in its
+//                            circle's spiral, and dark once it has ended
 //   ./spira_probe fuzz       random controls and events: finite and bounded
 //   ./spira_probe cpu        ns per sample with every circle sounding
 //   ./spira_probe wav <in.wav> <dir>   scenes to listen to, from a file
@@ -428,6 +431,56 @@ static int cmdLine() {
     return failures ? 1 : 0;
 }
 
+// ---------------------------------------------------------------- ring
+
+static int cmdRing() {
+    printf("ring\n");
+    Rig g;
+    g.c.size = 1.f;
+    g.c.fadeDb = 0.f;
+    g.c.soft = 0.f;      // a 1 ms fade in, so the light is up at once
+    g.c.keepBirth = true;
+    Sine s;
+    bool places = true, lit = true, colours = true, born = true;
+    for (long i = 0; i < (long)(3 * SR); i++) {
+        long t = i - (long)SR;
+        int n = t >= 0 && t % 4800 == 0 ? (int)(t / 4800) : -1;    // ten births, 0.1 s apart
+        if (n >= 0 && n < 10) {
+            // alternate inward and outward, so the colours can be told apart
+            g.c.spiral = n % 2 ? 1.5f : 0.75f;
+            g.ev.birth = true;
+        }
+        Output o = g.tick(s.next());
+        if (n >= 0 && n < 10) {
+            born = born && o.born;
+            const Circle& c = g.e.circle[g.e.lead];
+            places = places && c.ring == n % kCircles;
+        }
+        // a few ms after each birth its light is up, in its circle's colour
+        if (t >= 0 && t % 4800 == 480 && t / 4800 < 10) {
+            int n2 = (int)(t / 4800);
+            lit = lit && o.ring[n2 % kCircles] > 0.1f;
+            float want = std::log2(n2 % 2 ? 1.5f : 0.75f);
+            colours = colours && std::fabs(o.ringSpiral[n2 % kCircles] - want) < 1e-4f;
+        }
+    }
+    check(born, "every birth is flagged for the BIRTH light");
+    check(places, "births take the ring's places in turn, the ninth back at the first");
+    check(lit, "each circle's light is up after its birth");
+    check(colours, "each light carries its own circle's spiral");
+    // with every circle gone, every light is dark
+    g.c.fadeDb = -24.f;
+    g.c.keepBirth = false;
+    for (Circle& c : g.e.circle) c.birth.fadeDb = -24.f;
+    float left = 0.f;
+    for (long i = 0; i < (long)(40 * SR); i++) {
+        Output o = g.tick(s.next());
+        if (i > (long)(39 * SR)) for (float v : o.ring) left = std::max(left, v);
+    }
+    check(left == 0.f, "and dark once its circle has ended");
+    return failures ? 1 : 0;
+}
+
 // ---------------------------------------------------------------- fuzz
 
 static int cmdFuzz() {
@@ -641,9 +694,10 @@ int main(int argc, char** argv) {
     if (cmd == "spiral") return cmdSpiral();
     if (cmd == "clicks") return cmdClicks();
     if (cmd == "line") return cmdLine();
+    if (cmd == "ring") return cmdRing();
     if (cmd == "fuzz") return cmdFuzz();
     if (cmd == "cpu") return cmdCpu();
     if (cmd == "wav" && argc > 3) return cmdWav(argv[2], argv[3]);
-    fprintf(stderr, "usage: spira_probe laws|spiral|clicks|line|fuzz|cpu|wav <in.wav> <dir>\n");
+    fprintf(stderr, "usage: spira_probe laws|spiral|clicks|line|ring|fuzz|cpu|wav <in.wav> <dir>\n");
     return 2;
 }

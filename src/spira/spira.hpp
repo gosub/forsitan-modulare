@@ -200,8 +200,14 @@ struct Events {
 struct Output {
     float l = 0.f, r = 0.f;
     bool turn = false;         // the newest circle began a lap
+    bool born = false;         // a circle was born
     float speedOct = 0.f;      // the newest circle's speed, octaves (V/oct)
     int circles = 0;           // sounding now
+    // The ring of lights, one place per circle, taken in turn at birth: the
+    // level each circle is at (its lap envelope, fade and end, not
+    // measured) and its spiral, log2 of the ratio, -1 inward .. 1 outward.
+    float ring[kCircles] = {};
+    float ringSpiral[kCircles] = {};
 };
 
 // The crossfade between laps, 0..1 in. Equal power, since the two laps read
@@ -286,6 +292,7 @@ struct Circle {
     float pan = 0.f;
     Tone tone;
     Controls birth;            // the settings it was born with
+    int ring = 0;              // its place on the ring of lights
 };
 
 // ---------------------------------------------------------------- the engine
@@ -472,6 +479,7 @@ struct Engine {
 
         c.on = true;
         c.born = ++births;
+        c.ring = (int)((births - 1) % kCircles);
         c.T0 = T;
         c.pan = k.spread * (2.f * rng.uniform() - 1.f);
         c.tone.set(sr);
@@ -557,14 +565,14 @@ struct Engine {
         }
 
         // births: BIRTH, and RATE's own clock
-        if (ev.birth && birth(k)) o.turn = true;
+        if (ev.birth && birth(k)) o.turn = o.born = true;
         if (k.rate > 0.f) {
             double period = sr / k.rate;
             if (!rateWasOn) timer = 0.;
             timer = std::min(timer, 2. * period);
             timer -= 1.;
             if (timer <= 0.) {
-                if (birth(k)) o.turn = true;
+                if (birth(k)) o.turn = o.born = true;
                 double j = k.jitter > 0.f ? std::exp2(k.jitter * 2.f * (rng.uniform() - 0.5f)) : 1.f;
                 timer += period * j;
             }
@@ -578,10 +586,12 @@ struct Engine {
             Circle& c = circle[i];
             if (!c.on) continue;
             float s[2] = {0.f, 0.f};
+            float level = 0.f;
             for (int which = 0; which < 2; which++) {
                 Lap& l = which ? c.tail : c.cur;
                 if (!l.on) continue;
                 float e = l.envelope();
+                level = std::max(level, e);
                 double p = l.position();
                 float gl = std::sqrt(0.5f * (1.f - l.pan)), gr = std::sqrt(0.5f * (1.f + l.pan));
                 float x0 = read(0, p), x1 = read(1, p);
@@ -613,6 +623,11 @@ struct Engine {
                 continue;
             }
             float g = c.kill * c.kill * (3.f - 2.f * c.kill);
+            // a stolen circle and the one taking its place share a light
+            if (level * g >= o.ring[c.ring]) {
+                o.ring[c.ring] = level * g;
+                o.ringSpiral[c.ring] = std::log2(settings(c, k).spiral);
+            }
             c.tone.tick();
             for (int ch = 0; ch < 2; ch++) wet[ch] += g * c.tone.process(ch, s[ch]);
         }
