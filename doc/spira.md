@@ -30,7 +30,7 @@ circles sound at once, each at a different stage of its spiral.
 |---|---|
 | top | **size**, **tape**, the **spiral** knob under its ring of eight lights, **fade**, **rate** |
 | second | **pitch**, **tone**, **anchor**, **jitter**, **spread**, **skips** |
-| third | **shape**, **soft**, **reach**, the direction switch **fwd / p-p / rev** in the centre, **line**, then **birth** and **hold**, each button with its jack beside it under one label |
+| third | **shape**, **soft**, **reach**, **line** in the centre, then the direction switch **fwd / p-p / rev**, **birth** and **hold**, each button over its jack, one label under both |
 | jacks | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **skips** |
 | bottom | **mix** and **level**, each a knob and its CV jack under one label; the logo; outputs **turn**, **v/oct**, **L**, **R** |
 
@@ -103,8 +103,8 @@ instead of clipping.
 | **spir**, **shape** in | added to their knobs: +-5 V covers the travel |
 | **reach**, **skips** in | added to their knobs: 0 to 10 V covers the travel |
 | **rate** in | 1 V/oct on **rate**; it does not turn an off **rate** on |
-| **birth** jack | beside its button: a trigger, a circle now |
-| **hold** jack | beside its button: a gate, hold while high |
+| **birth** jack | under its button: a trigger, a circle now |
+| **hold** jack | under its button: a gate, hold while high |
 | **mix** jack | added to **mix**: 0 to 10 V covers the travel |
 | **level** jack | added to **level** at 2.4 dB/V, so 10 V covers the knob; it can go on below it, down to -72 dB, so an envelope here can silence the circles |
 | **turn** out | eight channels, one per circle in the ring's order: 10 V, 1 ms, at the circle's birth and at each of its laps. A mono input reads the first channel only |

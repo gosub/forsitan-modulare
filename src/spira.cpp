@@ -415,19 +415,19 @@ struct SpiraWidget : ModuleWidget {
 // @elem LABEL_TONE label 0.0 label "tone" 0.0 36.04 61.50
 // @elem LABEL_ANCHOR label 0.0 label "anchor" 0.0 56.04 61.50
 // @elem LABEL_JITTER label 0.0 label "jitter" 0.0 76.04 61.50
-// @elem LABEL_REACH label 0.0 label "reach" 0.0 53.08 82.50
-// @elem LABEL_LINE label 0.0 label "line" 0.0 79.00 82.50
-// @elem LABEL_SHAPE label 0.0 label "shape" 0.0 16.50 82.50
-// @elem LABEL_SOFT label 0.0 label "soft" 0.0 35.50 82.50
-// @elem LABEL_FWD label 0.0 label "fwd" 0.0 68.66 70.80 size=2
-// @elem LABEL_PP label 0.0 label "p-p" 0.0 68.66 75.00 size=2
-// @elem LABEL_REV label 0.0 label "rev" 0.0 68.66 79.20 size=2
+// @elem LABEL_REACH label 0.0 label "reach" 0.0 47.50 82.50
+// @elem LABEL_LINE label 0.0 label "line" 0.0 66.04 82.50
+// @elem LABEL_SHAPE label 0.0 label "shape" 0.0 12.50 82.50
+// @elem LABEL_SOFT label 0.0 label "soft" 0.0 30.00 82.50
+// @elem LABEL_FWD label 0.0 label "fwd" 0.0 86.76 70.80 size=2
+// @elem LABEL_PP label 0.0 label "p-p" 0.0 86.76 75.00 size=2
+// @elem LABEL_REV label 0.0 label "rev" 0.0 86.76 79.20 size=2
 // @elem LABEL_SPREAD label 0.0 label "spread" 0.0 96.04 61.50
 // @elem LABEL_SKIPS label 0.0 label "skips" 0.0 116.04 61.50
 // @elem LABEL_MIX label 0.0 label "mix" 0.0 19.00 118.50
 // @elem LABEL_LEVEL label 0.0 label "level" 0.0 45.00 118.50
-// @elem LABEL_BIRTH label 0.0 label "birth" 0.0 96.60 82.50
-// @elem LABEL_HOLD label 0.0 label "hold" 0.0 115.60 82.50
+// @elem LABEL_BIRTH label 0.0 label "birth" 0.0 102.00 85.50
+// @elem LABEL_HOLD label 0.0 label "hold" 0.0 120.00 85.50
 // @elem LABEL_IN_L label 0.0 label "in L" 0.0 14.04 101.50
 // @elem LABEL_IN_R label 0.0 label "in R" 0.0 27.04 101.50
 // @elem LABEL_VOCT_IN label 0.0 label "v/oct" 0.0 40.04 101.50
@@ -466,19 +466,19 @@ struct SpiraWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.04f, 53.00f)), module, Spira::TONE_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(56.04f, 53.00f)), module, Spira::ANCHOR_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.04f, 53.00f)), module, Spira::JITTER_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(53.08f, 74.00f)), module, Spira::REACH_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(79.00f, 74.00f)), module, Spira::LINE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(16.50f, 74.00f)), module, Spira::SHAPE_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(35.50f, 74.00f)), module, Spira::SOFT_PARAM));
-        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(62.40f, 74.00f)), module, Spira::DIRECTION_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(47.50f, 74.00f)), module, Spira::REACH_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(66.04f, 74.00f)), module, Spira::LINE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(12.50f, 74.00f)), module, Spira::SHAPE_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(30.00f, 74.00f)), module, Spira::SOFT_PARAM));
+        addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(80.50f, 74.00f)), module, Spira::DIRECTION_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 53.00f)), module, Spira::SPREAD_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(116.04f, 53.00f)), module, Spira::SKIPS_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(13.00f, 110.00f)), module, Spira::MIX_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(39.00f, 110.00f)), module, Spira::LEVEL_PARAM));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(25.00f, 110.00f)), module, Spira::MIX_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(51.00f, 110.00f)), module, Spira::LEVEL_INPUT));
-        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(92.00f, 74.00f)), module, Spira::BIRTH_PARAM, Spira::BIRTH_LIGHT));
-        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(111.00f, 74.00f)), module, Spira::HOLD_PARAM, Spira::HOLD_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(102.00f, 68.40f)), module, Spira::BIRTH_PARAM, Spira::BIRTH_LIGHT));
+        addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(120.00f, 68.40f)), module, Spira::HOLD_PARAM, Spira::HOLD_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(14.04f, 94.00f)), module, Spira::IN_L_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(27.04f, 94.00f)), module, Spira::IN_R_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(40.04f, 94.00f)), module, Spira::VOCT_INPUT));
@@ -487,8 +487,8 @@ struct SpiraWidget : ModuleWidget {
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(79.04f, 94.00f)), module, Spira::SHAPE_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(92.04f, 94.00f)), module, Spira::REACH_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(105.04f, 94.00f)), module, Spira::RATE_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(101.20f, 74.00f)), module, Spira::BIRTH_INPUT));
-        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.20f, 74.00f)), module, Spira::HOLD_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(102.00f, 77.60f)), module, Spira::BIRTH_INPUT));
+        addInput(createInputCentered<PJ301MPort>(mm2px(Vec(120.00f, 77.60f)), module, Spira::HOLD_INPUT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(118.04f, 94.00f)), module, Spira::SKIPS_INPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(81.00f, 111.00f)), module, Spira::TURN_OUTPUT));
         addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(93.00f, 111.00f)), module, Spira::VOCT_OUTPUT));
