@@ -65,9 +65,9 @@ PRESETS = [
     }, {}),
     # "You just got a drone synth": volume decay and TEMPO full, no skips.
     ("drone", {
-        WAVE: SAW, PITCH: 0.12, CUTOFF: 0.35, RES: 0.6, VOLUME: 0.64,
+        WAVE: SAW, PITCH: 0.3321, CUTOFF: 0.0, RES: 0.6, VOLUME: 0.6,   # 110 Hz, 20 Hz
         VOLUME_DECAY: 1.0, EFFECT: 0.7, RUST: RUSTED,
-        STEPS: OFF, SKIPS: 0.0, STEPMOD: 0.45, DEST: TO_CUTOFF, TEMPO: 1.0,
+        STEPS: OFF, SKIPS: 0.0, STEPMOD: 0.2, DEST: TO_CUTOFF, TEMPO: 1.0,
     }, {}),
     # Bass: resonant low-pass, a plucked cutoff envelope, pitch step mod.
     ("acid", {
