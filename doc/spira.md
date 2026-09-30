@@ -31,7 +31,7 @@ circles sound at once, each at a different stage of its spiral.
 | top | **size**, **tape**, the **spiral** knob, **fade**, **rate** |
 | second | **pitch**, **tone**, **anchor**, **jitter**, **reach**, **line** |
 | third | **shape**, **soft**, the direction switch **fwd / p-p / rev**, **spread**, **mix**, **birth**, **hold** |
-| jacks | inputs **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold**, **in l**, **in r**; outputs **turn**, **v/oct**, **L**, **R** |
+| jacks | inputs **in L**, **in R**, **v/oct**, **size**, **spir**, **shape**, **reach**, **rate**, **birth**, **hold**; outputs **turn**, **v/oct**, **L**, **R** |
 
 ## The spiral
 
@@ -81,7 +81,7 @@ instead of clipping.
 
 | jack | function |
 |---|---|
-| **in l**, **in r** | the line. **in r** is normalled from **in l** |
+| **in L**, **in R** | the line. **in R** is normalled from **in L** |
 | **v/oct** in | added to **pitch** |
 | **size** in | 1 V/oct on **size**: +1 V doubles the first lap |
 | **spir**, **shape** in | added to their knobs: +-5 V covers the travel |
