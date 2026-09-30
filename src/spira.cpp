@@ -12,7 +12,8 @@
 //                TAPE (by speed, or by cutting), FADE, TONE, ANCHOR
 //   The lap    : PITCH, SHAPE, SOFT, direction (forward, ping-pong, reverse),
 //                JITTER
-//   The line   : RATE, REACH, LINE, BIRTH, HOLD, SPREAD, MIX
+//   The line   : RATE, SKIPS, REACH, LINE, BIRTH, HOLD, SPREAD
+//   Out level  : MIX (line .. circles), LEVEL (the circles, -12..+12 dB)
 //   In         : IN L, IN R (normalled from L), V/OCT, SIZE (1 V/oct), SPIRAL,
 //                SHAPE, REACH, RATE (1 V/oct) CV, BIRTH, HOLD
 //   Out        : TURN (a lap of the newest circle), V/OCT (its speed),
@@ -57,7 +58,7 @@ struct Spira : Module {
         SIZE_PARAM, SPIRAL_PARAM, TAPE_PARAM, FADE_PARAM, RATE_PARAM,
         PITCH_PARAM, TONE_PARAM, ANCHOR_PARAM, JITTER_PARAM, REACH_PARAM, LINE_PARAM,
         SHAPE_PARAM, SOFT_PARAM, DIRECTION_PARAM, SPREAD_PARAM, MIX_PARAM,
-        BIRTH_PARAM, HOLD_PARAM,
+        BIRTH_PARAM, HOLD_PARAM, SKIPS_PARAM, LEVEL_PARAM,
         PARAMS_LEN
     };
     enum InputId {
@@ -126,7 +127,7 @@ struct Spira : Module {
         configParam(SIZE_PARAM, 0.f, 1.f, 0.5372f, "Size (the first lap)", " ms", 400.f, 10.f);   // 250 ms
         configParam<SpiralQuantity>(SPIRAL_PARAM, -1.f, 1.f, 0.f, "Spiral (next lap / this lap)", "x");
         configParam(TAPE_PARAM, 0.f, 1.f, 1.f, "Tape (0% cuts the window, 100% changes the speed)", "%", 0.f, 100.f);
-        configParam(FADE_PARAM, -24.f, 3.f, -3.f, "Fade per turn (per first-lap length)", " dB");
+        configParam(FADE_PARAM, -24.f, 3.f, -1.5f, "Fade per turn (per first-lap length)", " dB");
         configParam<RateQuantity>(RATE_PARAM, 0.f, 1.f, 0.3966f, "Rate (circles per second)");   // 0.5 Hz
         configParam(PITCH_PARAM, -24.f, 24.f, 0.f, "Pitch", " semitones");
         configParam(TONE_PARAM, -2.f, 2.f, 0.f, "Tone per turn (below 0 darker, above thinner)", " oct");
@@ -141,6 +142,8 @@ struct Spira : Module {
         configParam(MIX_PARAM, 0.f, 1.f, 0.5f, "Mix (line .. circles, both at unity in the middle)", "%", 0.f, 100.f);
         configButton(BIRTH_PARAM, "Birth (a circle now)");
         configButton(HOLD_PARAM, "Hold (loop the line)");
+        configParam(SKIPS_PARAM, 0.f, 1.f, 0.f, "Skips (births skipped, never the button's)", "%", 0.f, 100.f);
+        configParam(LEVEL_PARAM, -12.f, 12.f, 0.f, "Circles level", " dB");
 
         configInput(IN_L_INPUT, "Left");
         configInput(IN_R_INPUT, "Right (normalled from left)");
@@ -281,6 +284,8 @@ struct Spira : Module {
         ctl.direction = 2 - clamp((int)std::round(params[DIRECTION_PARAM].getValue()), 0, 2);
         ctl.spread = params[SPREAD_PARAM].getValue();
         ctl.mix = params[MIX_PARAM].getValue();
+        ctl.level = params[LEVEL_PARAM].getValue();
+        ctl.skips = params[SKIPS_PARAM].getValue();
         ctl.keepBirth = keepBirth;
     }
 
@@ -294,7 +299,8 @@ struct Spira : Module {
         spira::Events ev;
         bool trig = birthIn.process(finite(inputs[BIRTH_INPUT].getVoltage()), 0.1f, 1.f);
         bool pressed = birthButton.process(params[BIRTH_PARAM].getValue() > 0.5f);
-        ev.birth = trig || pressed;
+        ev.birth = trig;
+        ev.press = pressed;
 
         float inL = finite(inputs[IN_L_INPUT].getVoltage());
         float inR = inputs[IN_R_INPUT].isConnected() ? finite(inputs[IN_R_INPUT].getVoltage()) : inL;
@@ -359,7 +365,9 @@ struct SpiraWidget : ModuleWidget {
 // @elem SOFT_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem DIRECTION_PARAM CKSSThreePos 2.3 param "" 0.0
 // @elem SPREAD_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem SKIPS_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem MIX_PARAM RoundBlackKnob 4.8 param "" 0.0
+// @elem LEVEL_PARAM RoundBlackKnob 4.8 param "" 0.0
 // @elem BIRTH_PARAM VCVLightBezel 3.6 param "" 0.0 light=BIRTH_LIGHT
 // @elem HOLD_PARAM VCVLightBezel 3.6 param "" 0.0 light=HOLD_LIGHT
 // @elem IN_L_INPUT PJ301MPort 4.01 input "" 0.0
@@ -393,7 +401,9 @@ struct SpiraWidget : ModuleWidget {
 // @elem LABEL_PP label 0.0 label "p-p" 0.0 62.60 75.00
 // @elem LABEL_REV label 0.0 label "rev" 0.0 56.04 82.50
 // @elem LABEL_SPREAD label 0.0 label "spread" 0.0 76.04 82.50
-// @elem LABEL_MIX label 0.0 label "mix" 0.0 96.04 82.50
+// @elem LABEL_SKIPS label 0.0 label "skips" 0.0 96.04 82.50
+// @elem LABEL_MIX label 0.0 label "mix" 0.0 58.00 118.50
+// @elem LABEL_LEVEL label 0.0 label "level" 0.0 74.08 118.50
 // @elem LABEL_BIRTH label 0.0 label "birth" 0.0 109.00 81.00
 // @elem LABEL_HOLD label 0.0 label "hold" 0.0 123.00 81.00
 // @elem LABEL_IN_L label 0.0 label "in L" 0.0 10.92 101.50
@@ -443,7 +453,9 @@ struct SpiraWidget : ModuleWidget {
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(36.04f, 74.00f)), module, Spira::SOFT_PARAM));
         addParam(createParamCentered<CKSSThreePos>(mm2px(Vec(56.04f, 74.00f)), module, Spira::DIRECTION_PARAM));
         addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(76.04f, 74.00f)), module, Spira::SPREAD_PARAM));
-        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 74.00f)), module, Spira::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(96.04f, 74.00f)), module, Spira::SKIPS_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(58.00f, 110.00f)), module, Spira::MIX_PARAM));
+        addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(74.08f, 110.00f)), module, Spira::LEVEL_PARAM));
         addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(109.00f, 74.00f)), module, Spira::BIRTH_PARAM, Spira::BIRTH_LIGHT));
         addParam(createLightParamCentered<VCVLightBezel<YellowLight>>(mm2px(Vec(123.00f, 74.00f)), module, Spira::HOLD_PARAM, Spira::HOLD_LIGHT));
         addInput(createInputCentered<PJ301MPort>(mm2px(Vec(10.92f, 94.00f)), module, Spira::IN_L_INPUT));

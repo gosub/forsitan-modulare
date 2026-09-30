@@ -97,6 +97,20 @@ static void testBirth() {
     connect(m, Spira::BIRTH_INPUT, 10.f);
     m.process(makeArgs(fr++));
     report("spira", "birth_jack", sounding(m), sounding(m) == 2);
+    // SKIPS full: the jack's births are all skipped, the button's never
+    m.params[Spira::SKIPS_PARAM].setValue(1.f);
+    for (int k = 0; k < 5; k++) {
+        connect(m, Spira::BIRTH_INPUT, 0.f);
+        for (int i = 0; i < 10; i++) m.process(makeArgs(fr++));
+        connect(m, Spira::BIRTH_INPUT, 10.f);
+        m.process(makeArgs(fr++));
+    }
+    int before = sounding(m);
+    m.params[Spira::BIRTH_PARAM].setValue(1.f);
+    m.process(makeArgs(fr++));
+    m.params[Spira::BIRTH_PARAM].setValue(0.f);
+    m.process(makeArgs(fr++));
+    report("spira", "skips_jack_not_button", before * 10 + sounding(m), before == 2 && sounding(m) == 3);
 }
 
 // The BIRTH light flashes for births only, not for every lap; the ring

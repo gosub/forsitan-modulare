@@ -16,8 +16,8 @@ import os
 
 # param ids, from src/spira.cpp
 (SIZE, SPIRAL, TAPE, FADE, RATE, PITCH, TONE, ANCHOR, JITTER, REACH, LINE,
- SHAPE, SOFT, DIRECTION, SPREAD, MIX, BIRTH, HOLD) = range(18)
-NPARAM = 18
+ SHAPE, SOFT, DIRECTION, SPREAD, MIX, BIRTH, HOLD, SKIPS, LEVEL) = range(20)
+NPARAM = 20
 
 REVERSE, PINGPONG, FORWARD = 0.0, 1.0, 2.0     # the switch counts from the bottom
 
@@ -47,10 +47,10 @@ def rate(hz):
 
 
 DEFAULTS = {
-    SIZE: size(0.25), SPIRAL: 0.0, TAPE: 1.0, FADE: -3.0, RATE: rate(0.5),
+    SIZE: size(0.25), SPIRAL: 0.0, TAPE: 1.0, FADE: -1.5, RATE: rate(0.5),
     PITCH: 0.0, TONE: 0.0, ANCHOR: 0.0, JITTER: 0.0, REACH: 0.0, LINE: line(8),
     SHAPE: 0.0, SOFT: 0.25, DIRECTION: FORWARD, SPREAD: 0.5, MIX: 0.5,
-    BIRTH: 0.0, HOLD: 0.0,
+    BIRTH: 0.0, HOLD: 0.0, SKIPS: 0.0, LEVEL: 0.0,
 }
 
 PRESETS = [
@@ -82,10 +82,11 @@ PRESETS = [
         SIZE: size(0.07), SPIRAL: spiral(0.98), SOFT: 1.0, RATE: rate(12), REACH: 0.3,
         JITTER: 0.6, SPREAD: 1.0, FADE: -6.0, LINE: line(6),
     }, {}),
-    # Plucked laps trading sides, closing in.
+    # Plucked laps trading sides, closing in, born on a 2 Hz grid with holes
+    # in it.
     ("plucks", {
         SIZE: size(0.25), SHAPE: -0.6, DIRECTION: PINGPONG, SPIRAL: spiral(0.97),
-        FADE: -1.0, RATE: rate(0.8), SPREAD: 0.8, TAPE: 0.5,
+        FADE: -1.0, RATE: rate(2), SKIPS: 0.6, SPREAD: 0.8, TAPE: 0.5,
     }, {}),
     # Reversed laps that swell and stop, a fifth up, thinner every turn.
     ("swells", {
