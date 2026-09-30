@@ -131,7 +131,7 @@ r.set(tempo=0.5)                       # x1 on the display
       r.menu(effect=3)   # Flanger
       r.set(rust=1, effect=0.3)
       ```
-- [ ] 4.5. Menu, Effect, 2nd oscillator, EFFECT at 0 on corr, on a bass
+- [x] 4.5. Menu, Effect, 2nd oscillator, EFFECT at 0 on corr, on a bass
       note: an octave below doubles it, fuller and lower. Turn EFFECT up:
       the second voice rises to unison.
       ```python
@@ -139,7 +139,7 @@ r.set(tempo=0.5)                       # x1 on the display
       r.set(effect=0, rust=0, wave="Saw", pitch=0.35, pitch_amount=0,
             volume_decay=0.6)   # 118 Hz, the octave below 59 Hz
       ```
-- [ ] 4.6. Ctrl+R a few times: each press a different playing sound, kick,
+- [x] 4.6. Ctrl+R a few times: each press a different playing sound, kick,
       bass, noise, a resonant line or a drone, never silence.
 - [ ] 4.7. The preset browser: eleven presets, each playing at once and
       different from the others. Loading one keeps the loop you had.
