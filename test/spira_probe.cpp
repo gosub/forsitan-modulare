@@ -372,10 +372,10 @@ static int cmdLine() {
                 count++;
             }
         }
-        // the sine's RMS at the centre pan: 3 / sqrt 2 x sqrt 0.5 = 1.5
+        // the sine's RMS, at unity in the centre: 3 / sqrt 2 = 2.12
         double rms = std::sqrt(e / count);
-        printf("  circle under HOLD: %.3f V RMS (the held sine 1.5, the input 0)\n", rms);
-        check(std::fabs(rms - 1.5) < 0.15, "a circle born under HOLD plays the held loop");
+        printf("  circle under HOLD: %.3f V RMS (the held sine 2.12, the input 0)\n", rms);
+        check(std::fabs(rms - 2.12) < 0.2, "a circle born under HOLD plays the held loop");
     }
     {
         // the limiter's knee: a +-5 V line passes bit for bit
@@ -406,6 +406,56 @@ static int cmdLine() {
         }
         printf("  RATE 4 Hz: %d births in 5 s\n", births);
         check(births >= 19 && births <= 21, "RATE 4: twenty circles in five seconds");
+    }
+    {
+        // SKIPS 0.5: about half of RATE's births; the button is never skipped
+        Rig g;
+        g.c.rate = 10.f;
+        g.c.size = 0.02f;
+        g.c.fadeDb = -24.f;
+        g.c.skips = 0.5f;
+        int births = 0;
+        Sine s;
+        for (long i = 0; i < (long)(20 * SR); i++) births += g.tick(s.next()).born;
+        printf("  SKIPS 0.5 at RATE 10 Hz: %d births in 20 s of 200\n", births);
+        check(births > 80 && births < 120, "SKIPS 0.5: about half the births");
+        g.c.rate = 0.f;
+        g.c.skips = 1.f;
+        int pressed = 0, jack = 0;
+        for (int n = 0; n < 20; n++) {
+            g.ev.press = true;
+            pressed += g.tick(s.next()).born;
+            g.ev.birth = true;
+            jack += g.tick(s.next()).born;
+        }
+        check(pressed == 20 && jack == 0, "SKIPS 1: the jack is always skipped, the button never");
+    }
+    {
+        // LEVEL: +6 dB on the circles, and a centred circle at unity (RMS,
+        // since the seam's equal-power crossfade lifts a sine for a moment)
+        float rms[2];
+        for (int k = 0; k < 2; k++) {
+            Rig g;
+            g.c.level = k ? 6.f : 0.f;
+            g.c.size = 0.2f;
+            g.c.fadeDb = 0.f;
+            g.c.soft = 0.f;
+            Sine s(220.f, 1.f);
+            double e = 0.;
+            long n = 0;
+            for (long i = 0; i < (long)(2 * SR); i++) {
+                if (i == (long)SR) g.ev.birth = true;
+                Output o = g.tick(s.next());
+                if (i > (long)(1.1f * SR)) {
+                    e += (double)o.l * o.l;
+                    n++;
+                }
+            }
+            rms[k] = (float)std::sqrt(e / n);
+        }
+        printf("  circle RMS: %.3f V, %.3f V with LEVEL +6 dB (the sine 0.707)\n", rms[0], rms[1]);
+        check(std::fabs(rms[0] - 0.707f) < 0.02f, "SPREAD is a balance: a centred circle at unity");
+        check(std::fabs(rms[1] / rms[0] - 2.f) < 0.03f, "LEVEL +6 dB doubles the circles");
     }
     {
         // REACH: circles born at most REACH x LINE behind the playhead

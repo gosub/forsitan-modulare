@@ -177,7 +177,7 @@ struct Controls {
     float spiral = 1.f;        // ratio, next lap over this one
     float tape = 1.f;          // 0 cut the window .. 1 change the speed
     float pitch = 0.f;         // semitones, the circle's speed at birth
-    float fadeDb = -3.f;       // dB per first-lap length
+    float fadeDb = -1.5f;      // dB per first-lap length
     float shape = 0.f;         // -1 each lap decays .. 0 flat .. 1 each lap swells
     float soft = 0.25f;        // 0 a 1 ms seam .. 1 laps that are all crossfade
     float tone = 0.f;          // octaves per first-lap length: < 0 darker, > 0 thinner
@@ -187,6 +187,8 @@ struct Controls {
     float anchor = 0.f;        // which end of the window stays when TAPE cuts
     float line = 8.f;          // s, how far back REACH goes; the loop under HOLD
     float mix = 0.5f;          // 0 line .. 0.5 both at unity .. 1 circles
+    float level = 0.f;         // dB on the circles, before MIX
+    float skips = 0.f;         // 0..1, the share of RATE and BIRTH-jack births skipped
     float spread = 0.5f;       // 0 centred .. 1 hard left or right
     int direction = DIR_FORWARD;
     bool hold = false;
@@ -194,7 +196,8 @@ struct Controls {
 };
 
 struct Events {
-    bool birth = false;
+    bool birth = false;        // a trigger at the jack: SKIPS may skip it
+    bool press = false;        // the button: never skipped
 };
 
 struct Output {
@@ -234,7 +237,7 @@ struct Lap {
     float gain = 1.f;          // the lap's level
     float endFade = 1.f;       // a converging circle fades over its last laps
     float shape = 0.f;
-    float pan = 0.f;           // -1..1
+    float pan = 0.f;           // -1..1, a balance: the circle reads the stereo line
 
     // Where in the buffer the lap is now: past its end while it fades out.
     double position() const { return dir > 0 ? a + v * x : a + len - v * x; }
@@ -500,6 +503,10 @@ struct Engine {
         return true;
     }
 
+    // SKIPS: this birth is skipped, as rubigo's SKIPS skips a step. The
+    // timing stays; the grid thins.
+    bool skipped(const Controls& k) { return k.skips > 0.f && rng.uniform() < k.skips; }
+
     // ------------------------------------------------------------ the line
 
     // LINE, or less: what the buffer holds, and what has been written.
@@ -565,14 +572,15 @@ struct Engine {
         }
 
         // births: BIRTH, and RATE's own clock
-        if (ev.birth && birth(k)) o.turn = o.born = true;
+        if (ev.press && birth(k)) o.turn = o.born = true;
+        else if (ev.birth && !skipped(k) && birth(k)) o.turn = o.born = true;
         if (k.rate > 0.f) {
             double period = sr / k.rate;
             if (!rateWasOn) timer = 0.;
             timer = std::min(timer, 2. * period);
             timer -= 1.;
             if (timer <= 0.) {
-                if (birth(k)) o.turn = o.born = true;
+                if (!skipped(k) && birth(k)) o.turn = o.born = true;
                 double j = k.jitter > 0.f ? std::exp2(k.jitter * 2.f * (rng.uniform() - 0.5f)) : 1.f;
                 timer += period * j;
             }
@@ -593,7 +601,9 @@ struct Engine {
                 float e = l.envelope();
                 level = std::max(level, e);
                 double p = l.position();
-                float gl = std::sqrt(0.5f * (1.f - l.pan)), gr = std::sqrt(0.5f * (1.f + l.pan));
+                // a balance, not a pan: the circle is already stereo, so the
+                // centre is unity and turning only takes from one side
+                float gl = std::min(1.f, 1.f - l.pan), gr = std::min(1.f, 1.f + l.pan);
                 float x0 = read(0, p), x1 = read(1, p);
                 s[0] += e * gl * x0;
                 s[1] += e * gr * x1;
@@ -643,7 +653,7 @@ struct Engine {
 
         // line and circles: both at unity in the middle of MIX
         float dry = std::min(1.f, 2.f * (1.f - k.mix));
-        float wg = std::min(1.f, 2.f * k.mix);
+        float wg = std::min(1.f, 2.f * k.mix) * dbToGain(k.level);
         for (int ch = 0; ch < 2; ch++) {
             float y = softLimit(dry * line[ch] + wg * wet[ch]);
             (ch ? o.r : o.l) = y;
