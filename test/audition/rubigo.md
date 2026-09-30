@@ -101,19 +101,19 @@ r.set(tempo=0.5)                       # x1 on the display
       once, with no gap.
 - [x] 3.3. Turn the LFO's FREQUENCY to its minimum instead: two seconds of
       silence, then the internal clock takes over. The pause is intended.
-- [ ] 3.4. **Decide -** the default TEMPO (0.2, 2 Hz) sits on /4 under an
+- [x] 3.4. **Decide -** the default TEMPO (0.2, 2 Hz) sits on /4 under an
       external clock, as on the hardware. Keep, or move the default to the
       x1 zone (0.5, 11 Hz on the internal clock)?
 
 ## 4. Processing and the menu
 
-- [ ] 4.1. A saw into IN, NOISE full, TEMPO and the volume decay full: the
-      saw comes through filtered and stepped, a sound-effect device.
+- [x] 4.1. A saw into IN, NOISE and the volume decay full, CUTOFF closed:
+      the saw comes through filtered and stepped, a sound-effect device.
       ```python
       vco = vcv.module("VCO", frequency=-12)
       vco["sawtooth"] >> r["audio"]
-      r.set(noise=1, tempo=1, volume_decay=1, stepmod=0.6,
-            dest="Cutoff", res=0.5)
+      r.set(noise=1, tempo=0.275, volume_decay=1, stepmod=0.2,   # 4 Hz
+            dest="Cutoff", res=0.5, cutoff=0)
       ```
 - [ ] 4.2. A dead cable in IN, NOISE and RES full: only the filter's own
       ringing, stepped to a melody by the step mod on CUTOFF.
