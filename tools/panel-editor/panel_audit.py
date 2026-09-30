@@ -58,9 +58,10 @@ def bbox(el):
     x, y = el['x'], el['y']
     k = el['kind']
     if k == 'label':
-        w = text_w(el['label'], 2.2)
-        desc = 0.7 if any(c in DESCENDERS for c in el['label']) else 0.0
-        return (x - w/2, y - 2.2, x + w/2, y + desc)
+        cap = el.get('size', 2.2)
+        w = text_w(el['label'], cap)
+        desc = 0.7 * cap / 2.2 if any(c in DESCENDERS for c in el['label']) else 0.0
+        return (x - w/2, y - cap, x + w/2, y + desc)
     if k == 'box':
         hw, hh = el.get('box_w', 14.0) / 2, el.get('box_h', 14.0) / 2
         return (x - hw, y - hh, x + hw, y + hh)

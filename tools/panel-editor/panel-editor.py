@@ -76,11 +76,14 @@ LAYOUT_HEAD_RE = re.compile(
 # @elem ID TYPE RADIUS KIND "LABEL" LDY [X Y]  - X Y optional for SVG-only kinds
 # A box may carry `box=WxH` to override the default 14x14 badge, for panels
 # whose output row is too wide to wrap each jack in its own badge (quadrare).
+# A label may carry `size=` for a cap height other than 2.2 mm, down to the
+# 2.0 mm floor: spira's switch labels, set in a column beside the switch.
 ELEM_RE = re.compile(
     r'//\s*@elem\s+(\S+)\s+(\S+)\s+([\d.]+)\s+(\w+)\s+"([^"]*)"\s*([-\d.]+)'
     r'(?:\s+([\d.]+)\s+([\d.]+))?'
     r'(?:\s+light=(\w+))?'
-    r'(?:\s+box=([\d.]+)x([\d.]+))?')
+    r'(?:\s+box=([\d.]+)x([\d.]+))?'
+    r'(?:\s+size=([\d.]+))?')
 VEC_RE      = re.compile(r'mm2px\(Vec\(([\d.]+)f?,\s*([\d.]+)f?\)')
 ID_RE       = re.compile(r'(\w+)::(\w+)[,)]')
 SCREW_ID_RE = re.compile(r'createWidget.*mm2px.*Vec.*//\s*(\w+)')
@@ -128,6 +131,8 @@ def parse_cpp(path):
             'box_w': float(g[9]) if g[9] else 14.0,
             'box_h': float(g[10]) if g[10] else 14.0,
         }
+        if g[11]:
+            elem_defs[eid]['size'] = float(g[11])
         elem_order.append(eid)
 
     # Extract positions from C++ lines (skip SVG-only kinds). The enum's
@@ -231,6 +236,8 @@ def generate_block(layout):
         if e['kind'] in SVG_ONLY:
             size = (e.get('box_w', 14.0), e.get('box_h', 14.0))
             tail = f' box={size[0]:g}x{size[1]:g}' if e['kind'] == 'box' and size != (14.0, 14.0) else ''
+            if e['kind'] == 'label' and e.get('size'):
+                tail += f' size={e["size"]:g}'
             lines.append(
                 f'// @elem {e["id"]} {e["cpp_type"]} {e["radius"]} '
                 f'{e["kind"]} "{e["label"]}" {e["label_dy"]} {e["x"]:.2f} {e["y"]:.2f}{tail}')
