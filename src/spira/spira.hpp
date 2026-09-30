@@ -57,6 +57,7 @@ const float kHoldSeam = 0.01f;       // crossfades in and out of HOLD, and the h
 const float kGainMax = 4.f;          // +12 dB: a swelling circle stops here
 const float kGainFloor = 1e-4f;      // -80 dB: a fading one ends here
 const float kShapeDepth = 8.f;       // SHAPE at full: exp(-8), -70 dB across a lap
+const float kShapeMakeup = 0.75f;    // the share of the envelope's average loss given back, in dB: all of it pushes plucks into the limiter
 const float kToneLpStart = 20000.f;  // the lap filters' first cutoffs, Hz
 const float kToneHpStart = 20.f;
 const float kToneLpFloor = 80.f;
@@ -247,11 +248,13 @@ struct Lap {
     double v = 1.;             // speed, source samples per output sample
     double T = 0.;             // lap length, output samples
     double x = 0.;             // output samples since the lap began
-    double F = 0.;             // seam crossfade, output samples
+    double F = 0.;             // seam crossfade, output samples: the longest either end
+    double Fin = 0., Fout = 0.;  // the fade in and out, shorter at a pluck's attack and a swell's end
     int dir = 1;
     float gain = 1.f;          // the lap's level
     float endFade = 1.f;       // a converging circle fades over its last laps
     float shape = 0.f;
+    float makeup = 1.f;        // the level SHAPE's envelope takes away on average, given back
     float pan = 0.f;           // -1..1, a balance: the circle reads the stereo line
 
     // Where in the buffer the lap is now: past its end while it fades out.
@@ -259,14 +262,33 @@ struct Lap {
 
     float envelope() const {
         float e = 1.f;
-        if (x < F) e = seamIn((float)(x / F));
-        else if (x > T) e = seamIn(1.f - (float)std::min(1., (x - T) / F));
+        if (x < Fin) e = seamIn((float)(x / Fin));
+        else if (x > T) e = seamIn(1.f - (float)std::min(1., (x - T) / Fout));
         if (shape != 0.f) {
             float u = (float)std::min(1., x / T);
             e *= shape < 0.f ? std::exp(shape * kShapeDepth * u)
                              : std::exp(-shape * kShapeDepth * (1.f - u));
         }
-        return e * gain * endFade;
+        return e * gain * endFade * makeup;
+    }
+
+    // SHAPE and the seam together. A decaying lap is a pluck, so its fade in
+    // shortens toward the 1 ms floor as SHAPE goes left, or SOFT would eat
+    // the attack; a swelling lap's fade out shortens the same way. The
+    // envelope's average loss, the RMS of exp(-a u) over the lap, is given
+    // back, so SHAPE changes what the circles sound like and not how loud
+    // they are: on a drum loop the hits fall anywhere in the window, and a
+    // pluck keeps only those near its start.
+    void setShape(float s, double seamF, double floorF) {
+        shape = s;
+        F = seamF;
+        double in = s < 0.f ? (1. + s) * (1. + s) : 1.;
+        double out = s > 0.f ? (1. - s) * (1. - s) : 1.;
+        Fin = std::min(seamF, std::max(floorF, seamF * in));
+        Fout = std::min(seamF, std::max(floorF, seamF * out));
+        float a = std::fabs(s) * kShapeDepth;
+        float rms = a > 1e-4f ? std::sqrt((1.f - std::exp(-2.f * a)) / (2.f * a)) : 1.f;
+        makeup = std::pow(rms, -kShapeMakeup);
     }
 };
 
@@ -436,10 +458,9 @@ struct Engine {
         q.len = len;
         q.v = v;
         q.T = T;
-        q.F = F;
+        q.setShape(k.shape, F, std::min(F, (double)kSeamMin * sr));
         q.x = p.x - p.T;
         q.endFade = (float)std::max(0., std::min(1., (T / lapMin - 1.) / 3.));
-        q.shape = k.shape;
         if (k.direction == DIR_PINGPONG) {
             q.dir = -p.dir;
             q.pan = -p.pan;
@@ -508,10 +529,9 @@ struct Engine {
         l.len = len;
         l.v = v;
         l.T = T;
-        l.F = F;
+        l.setShape(k.shape, F, std::min(F, (double)kSeamMin * sr));
         l.x = 0.;
         l.dir = k.direction == DIR_REVERSE ? -1 : 1;
-        l.shape = k.shape;
         l.pan = c.pan;
         l.endFade = 1.f;
         lead = free;
@@ -626,7 +646,7 @@ struct Engine {
             // advance: a finished lap becomes the tail, and the next one starts
             if (c.tail.on) {
                 c.tail.x += 1.;
-                if (c.tail.x >= c.tail.T + c.tail.F) c.tail.on = false;
+                if (c.tail.x >= c.tail.T + c.tail.Fout) c.tail.on = false;
             }
             if (c.cur.on) {
                 c.cur.x += 1.;

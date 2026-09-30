@@ -241,6 +241,33 @@ static int cmdSpiral() {
         check(ok && std::fabs(d1 + 6.f) < 0.3f && std::fabs(d2 + 3.f) < 0.3f,
               "FADE: -6 dB after the first lap, -3 after one half as long");
     }
+    {
+        // SHAPE: a plucked or swelling lap is not much quieter than a flat
+        // one, on a steady sine where only the envelope differs
+        float rms[3];
+        float shapes[3] = {0.f, -1.f, 1.f};
+        for (int k = 0; k < 3; k++) {
+            Rig g;
+            g.c.size = 0.2f;
+            g.c.fadeDb = 0.f;
+            g.c.shape = shapes[k];
+            Sine s(220.f, 1.f);
+            double e = 0.;
+            long n = 0;
+            for (long i = 0; i < (long)(3 * SR); i++) {
+                if (i == (long)SR) g.ev.birth = true;
+                Output o = g.tick(s.next());
+                if (i > (long)(1.2f * SR)) {
+                    e += (double)o.l * o.l;
+                    n++;
+                }
+            }
+            rms[k] = 10.f * (float)std::log10(e / n);
+        }
+        printf("  lap levels: flat %.1f, plucked %.1f, swelling %.1f dB\n", rms[0], rms[1], rms[2]);
+        check(rms[1] > rms[0] - 4.f && rms[2] > rms[0] - 4.f,
+              "SHAPE full either way: within 4 dB of a flat lap");
+    }
     return failures ? 1 : 0;
 }
 
