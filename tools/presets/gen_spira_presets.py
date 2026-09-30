@@ -80,11 +80,12 @@ PRESETS = [
         SIZE: size(0.3), SPIRAL: spiral(1.56), TAPE: 1.0, FADE: fade(-2.0), RATE: rate(0.25),
         SOFT: 0.4, SPREAD: 0.4,
     }, {}),
-    # Short soft laps, twelve new circles a second, scattered over the last
-    # couple of seconds: a granular cloud drifting slowly inward.
+    # Short soft laps, twelve new circles a second less a fifth skipped,
+    # scattered over the last couple of seconds: a granular cloud drifting
+    # slowly inward, with gaps in it.
     ("cloud", {
         SIZE: size(0.07), SPIRAL: spiral(0.98), SOFT: 1.0, RATE: rate(12), REACH: 0.3,
-        JITTER: 0.6, SPREAD: 1.0, FADE: fade(-6.0), LINE: line(6),
+        JITTER: 0.6, SKIPS: 0.2, SPREAD: 1.0, FADE: fade(-6.0), LINE: line(6),
     }, {}),
     # Plucked laps trading sides, closing in, born on a 2 Hz grid with holes
     # in it.

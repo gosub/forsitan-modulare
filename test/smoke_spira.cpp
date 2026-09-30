@@ -232,6 +232,9 @@ static void testCv() {
     m.params[Spira::LEVEL_PARAM].setValue(-12.f);
     m.process(makeArgs(fr++));
     report("spira", "level_cv_below_the_knob", m.ctl.level, std::fabs(m.ctl.level + 36.f) < 1e-4f);
+    connect(m, Spira::SKIPS_INPUT, 2.5f);
+    m.process(makeArgs(fr++));
+    report("spira", "skips_cv_2v5_is_quarter", m.ctl.skips, std::fabs(m.ctl.skips - 0.25f) < 1e-5f);
 }
 
 // NaN at every input, with circles sounding: every output stays finite.
