@@ -114,6 +114,14 @@ yellow to orange-red inward (heating) and to blue outward (cooling). The
 BIRTH button's light flashes on births only: it followed TURN at first, and
 the laps of the newest circle buried the press.
 
+## The poly outputs
+
+TURN and V/OCT carry eight channels, one per circle, in the ring's order:
+a trigger at the birth and at each lap, and the speed in octaves, held when
+the circle ends so an oscillator on it does not drop to 0 V. They followed
+the newest circle alone at first; one channel per circle lets a poly patch
+follow every spiral at once.
+
 ## Deliberately left out of v1
 
 - A display of the line itself.

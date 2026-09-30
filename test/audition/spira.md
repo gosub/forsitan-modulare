@@ -98,8 +98,10 @@ d["left", "right"] >> s["in l", "in r"]
 - [ ] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle and
       one flash of the button; the laps that follow do not flash it.
       `s.set(rate=0, spiral=-0.3, fade=0)`
-- [ ] 3.4. V/OCT out into a sine: the sine climbs with each converging
-      circle, an octave each time the laps halve, and stops two octaves up.
+- [ ] 3.4. V/OCT out into a sine, which becomes eight voices, one per
+      circle: each voice climbs with its own converging circle, an octave
+      each time the laps halve, stopping two octaves up; voices overlap as
+      circles do.
       ```python
       vco = vcv.module("VCO", freq=vcv.hz(110))
       s["voct"] >> vco["1v/octave pitch"]
