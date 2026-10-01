@@ -50,20 +50,20 @@ d["left", "right"] >> s["in l", "in r"]
 - [x] 1.4. SPIRAL right: every repeat longer, slower and lower, until the
       circle is a slow dark smear.
       `s.set(spiral=0.5, fade=-0.1291, tone=-0.7)   # x1.19 a lap, -1 dB`
-- [ ] 1.5. ANCHOR, on a roll cut from a 1 s window. Press HOLD, then BIRTH
+- [x] 1.5. ANCHOR, on a roll cut from a 1 s window. Press HOLD, then BIRTH
       with ANCHOR at 0: the roll closes in on the first hit of the window.
       ANCHOR full and BIRTH again: on the window's end, another sound.
       ```python
       s.set(spiral=-0.5, fade=0, tape=0, anchor=0, rate=0, mix=0.85,
             size=0.7687)   # 1 s; RATE off, circles by the button only
       ```
-- [ ] 1.6. FADE full left: each circle is one lap and gone, a slice rather
+- [x] 1.6. FADE full left: each circle is one lap and gone, a slice rather
       than a repeat. Full right: each circle swells turn by turn and then
       holds, loud, until it is replaced.
       `s.set(fade=-1)   # -60 dB a turn; fade=1 is +6 dB`
-- [ ] 1.7. LEVEL up: the circles stand over the break. With eight long
-      circles piling up at +12 dB the output thickens and saturates softly;
-      it never clips hard.
+- [ ] 1.7. LEVEL up, eight long circles piling up: the circles stand over
+      the break, the output stays clean and the meter under 0 dB.
+      Menu, Output, Saturate: the same pile thickens into grit.
       `s.set(rate=0.6234, fade=0, size=0.8, level=12)   # 2 Hz, 1.3 s laps`
 
 ## 2. The lap

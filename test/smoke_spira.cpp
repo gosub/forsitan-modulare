@@ -5,8 +5,9 @@
 // module's own checks: that the defaults grow circles off an input, the
 // direction switch reads the right way up, BIRTH and HOLD (buttons, jacks,
 // the latch surviving a save), the right input normalled from the left, the
-// CV scaling, NaN at every input, and the buffer swap after a sample rate
-// change, including a module deleted in the middle of one.
+// CV scaling, NaN at every input, the buffer swap after a sample rate
+// change, including a module deleted in the middle of one, and the output
+// stage, LIMIT or SATURATE.
 
 #include "smoke_harness.hpp"
 #include "../src/spira.cpp"
@@ -349,5 +350,49 @@ static void testPresets() {
     report("spira", "presets_run", bad, bad == 0);
 }
 
+// The output stage. LIMIT (the default) holds a pile of loud circles at 8 V
+// and leaves a 7 V line alone; SATURATE bends the same pile toward 10 V. The
+// menu survives a save, and a patch from before it loads as LIMIT.
+static float outputPeak(bool saturate, float levelDb, float amp, float mix, float* rms = nullptr) {
+    Spira m; long fr = 0;
+    m.saturate = saturate;
+    m.params[Spira::RATE_PARAM].setValue(spira::rateKnob(2.f));
+    m.params[Spira::FADE_PARAM].setValue(0.f);
+    m.params[Spira::SIZE_PARAM].setValue(spira::sizeKnob(1.3f));
+    m.params[Spira::LEVEL_PARAM].setValue(levelDb);
+    m.params[Spira::MIX_PARAM].setValue(mix);
+    Stats st;
+    for (long i = 0; i < (long)(6.f * SR); i++) {
+        connect(m, Spira::IN_L_INPUT, amp / 5.f * sine(fr, 110.f));
+        m.process(makeArgs(fr++));
+        if (i > (long)SR) st.add(m.outputs[Spira::OUT_L_OUTPUT].getVoltage());
+    }
+    if (rms) *rms = st.rms();
+    return st.peak;
+}
+
+static void testOutput() {
+    float lim = outputPeak(false, 12.f, 5.f, 0.5f);
+    float sat = outputPeak(true, 12.f, 5.f, 0.5f);
+    float line = outputPeak(false, 0.f, 7.f, 0.f);
+    printf("# a pile at +12 dB: limit peak %.3f V, saturate peak %.3f V; a 7 V line: %.4f V\n", lim, sat, line);
+    report("spira", "limit_holds_8v", lim, lim <= 8.001f && lim > 7.9f);
+    report("spira", "saturate_bends_past_8v", sat, sat > 9.f && sat <= 10.f);
+    report("spira", "limit_leaves_a_7v_line", line, std::fabs(line - 7.f) < 0.01f);
+
+    Spira m;
+    m.saturate = true;
+    json_t* j = m.dataToJson();
+    Spira n;
+    n.dataFromJson(j);
+    json_decref(j);
+    json_t* old = json_pack("{s:b, s:b}", "hold", 0, "keepBirth", 0);
+    Spira o;
+    o.saturate = true;
+    o.dataFromJson(old);
+    json_decref(old);
+    report("spira", "json_output_stage", n.saturate && !o.saturate, n.saturate && !o.saturate);
+}
+
 SMOKE_MAIN(testDefaults, testDirection, testBirth, testLights, testHold, testNormal, testCv, testNan,
-           testSampleRate, testDeleteMidSwap, testPresets)
+           testSampleRate, testDeleteMidSwap, testPresets, testOutput)

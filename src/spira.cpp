@@ -104,6 +104,7 @@ struct Spira : Module {
 
     // menu
     bool keepBirth = false;
+    bool saturate = false;     // the output stage: LIMIT, or SATURATE
 
     // The laws that Rack's own display arguments cannot say. Each shows a
     // plain number with its unit in the label, and reads a typed one back
@@ -196,12 +197,14 @@ struct Spira : Module {
         Module::onReset(e);
         holdLatched = false;
         keepBirth = false;
+        saturate = false;
     }
 
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "hold", json_boolean(holdLatched));
         json_object_set_new(root, "keepBirth", json_boolean(keepBirth));
+        json_object_set_new(root, "saturate", json_boolean(saturate));
         return root;
     }
 
@@ -209,6 +212,9 @@ struct Spira : Module {
         json_t* j;
         if ((j = json_object_get(root, "hold"))) holdLatched = json_boolean_value(j);
         if ((j = json_object_get(root, "keepBirth"))) keepBirth = json_boolean_value(j);
+        // a patch from before the option was limited by a curve; it loads as
+        // LIMIT, the cleaner of the two
+        saturate = (j = json_object_get(root, "saturate")) && json_boolean_value(j);
     }
 
     // Keeps the buffer the size the sample rate asks for: fade out, hand the
@@ -298,6 +304,7 @@ struct Spira : Module {
                           -72.f, 12.f);
         ctl.skips = clamp(params[SKIPS_PARAM].getValue() + finite(inputs[SKIPS_INPUT].getVoltage()) / 10.f, 0.f, 1.f);
         ctl.keepBirth = keepBirth;
+        ctl.saturate = saturate;
     }
 
     void process(const ProcessArgs& args) override {
@@ -502,6 +509,9 @@ struct SpiraWidget : ModuleWidget {
         if (!m) return;
         menu->addChild(new MenuSeparator);
         menu->addChild(createBoolPtrMenuItem("Circles keep the settings they were born with", "", &m->keepBirth));
+        menu->addChild(createIndexSubmenuItem("Output", {"Limit", "Saturate"},
+            [=]() { return m->saturate ? 1 : 0; },
+            [=](int i) { m->saturate = i == 1; }));
         if (m->swapFailed)
             menu->addChild(createMenuLabel("Out of memory for the line: passing the input only"));
     }

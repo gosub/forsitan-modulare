@@ -6,8 +6,8 @@
 Each preset is one way of getting past the plain stutter: a spiral, a lap
 shape, a cloud. Values are stated in the units the panel shows (seconds,
 ratios, Hz) and converted through the knob laws of src/spira/spira.hpp, so
-they say what they do. A preset states every control and the menu's one
-setting; HOLD is a performance state and is left as it is.
+they say what they do. A preset states every control and both menu
+settings; HOLD is a performance state and is left as it is.
 """
 
 import json
@@ -120,7 +120,7 @@ def main():
     out = os.path.join(repo, "presets", "spira")
     os.makedirs(out, exist_ok=True)
     for n, (name, knobs, menu) in enumerate(PRESETS, start=1):
-        data = {"keepBirth": False}
+        data = {"keepBirth": False, "saturate": False}
         data.update(menu)
         preset = {
             "plugin": "forsitan",

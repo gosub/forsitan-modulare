@@ -89,9 +89,11 @@ they were born with" on, each circle keeps its own colour, and a modulated
 
 Up to eight circles sound at once. A ninth takes the place of the oldest,
 which fades out over 5 ms. The circles are summed at unity with the line,
-and the output bends softly above 6 V toward a ceiling of 10 V: a normal
-+-5 V signal passes untouched, and a pile of loud circles saturates gently
-instead of clipping.
+and a pile of loud circles can go well past what a module should send. The
+menu's **Output** decides what happens then: **Limit** turns the whole
+output down so its peaks stay at 8 V, and a normal +-5 V signal never
+reaches it; **Saturate** bends everything above 6 V toward 10 V, which
+pushed hard is a grit of its own.
 
 ## Jacks
 
@@ -115,6 +117,7 @@ instead of clipping.
 
 | item | function |
 |---|---|
+| **Output** | **Limit** (the default): peaks over 8 V turn the whole output down, quickly, and it comes back over 150 ms; the circles get louder against the line but not louder than 8 V, and nothing distorts. **Saturate**: above 6 V the output bends toward 10 V, more the harder it is pushed |
 | **Circles keep the settings they were born with** | off (the default), the knobs reach the sounding circles at their next lap, so a single long circle can be played. On, a circle keeps everything it was born with, and moving a knob only shapes the circles to come: modulate **spiral** and every circle gets its own |
 
 ## Presets

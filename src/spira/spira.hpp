@@ -62,8 +62,11 @@ const float kToneLpStart = 20000.f;  // the lap filters' first cutoffs, Hz
 const float kToneHpStart = 20.f;
 const float kToneLpFloor = 80.f;
 const float kToneHpCeiling = 8000.f;
-const float kKnee = 6.f;             // the output passes untouched up to here, volts
+const float kKnee = 6.f;             // SATURATE: the output passes untouched up to here, volts
 const float kCeiling = 10.f;         // and bends toward this
+const float kLimit = 8.f;            // LIMIT: peaks are turned down to this, volts
+const float kLimitHold = 0.02f;      // s, the limiter keeps a peak this long
+const float kLimitRelease = 0.15f;   // s, then lets go of it this slowly
 const float kPi = 3.14159265358979f;
 
 const int kCircles = 8;              // sounding at once
@@ -130,16 +133,50 @@ inline float fadeKnob(float db) {
 
 inline float dbToGain(float db) { return std::pow(10.f, db / 20.f); }
 
-// Linear to the knee, then a tanh toward the ceiling with a matching slope:
-// a +-5 V line passes untouched, and a pile of loud circles bends instead of
-// hitting the output's clamp.
-inline float softLimit(float x) {
+// Linear to the knee, then a tanh toward the ceiling with a matching slope.
+// SATURATE is this alone, from 6 V: a +-5 V line passes untouched, and a pile
+// of loud circles bends, the harder the more it is pushed. Under LIMIT it is
+// only a net from 8 V, for a NaN-free guarantee the gain already gives.
+inline float softLimit(float x, float knee = kKnee) {
     float a = std::fabs(x);
-    if (a <= kKnee) return x;
-    float room = kCeiling - kKnee;
-    float y = kKnee + room * std::tanh((a - kKnee) / room);
+    if (a <= knee) return x;
+    float room = kCeiling - knee;
+    float y = knee + room * std::tanh((a - knee) / room);
     return x < 0.f ? -y : y;
 }
+
+// LIMIT: one gain on both sides, from the louder one's peak. The peak is
+// caught at once, held 20 ms and let go over 150 ms, and the gain brings it
+// to 8 V: a pile of circles gets quieter, not distorted. A slower catch lets
+// a drum's attack through to the net, which is the distortion this is here
+// to avoid; the hold keeps the gain still between the peaks of a low tone
+// (h3 of a 55 Hz sine at 12 V: -43 dB without it).
+// Below 8 V the gain is 1 and the output is untouched.
+struct Limiter {
+    float env = 0.f;
+    int held = 0;
+    int hold = 960;
+    float rel = 1.f;
+    Limiter() { setSampleRate(48000.f); }
+    void setSampleRate(float sr) {
+        hold = (int)(kLimitHold * sr);
+        rel = 1.f - std::exp(-1.f / (kLimitRelease * sr));
+    }
+    void process(float& l, float& r) {
+        float peak = std::max(std::fabs(l), std::fabs(r));
+        if (peak >= env) {
+            env = peak;
+            held = hold;
+        } else if (held > 0) {
+            held--;
+        } else {
+            env += rel * (peak - env);
+        }
+        float g = env > kLimit ? kLimit / env : 1.f;
+        l = softLimit(l * g, kLimit);
+        r = softLimit(r * g, kLimit);
+    }
+};
 
 // ---------------------------------------------------------------- the parts
 
@@ -209,6 +246,7 @@ struct Controls {
     int direction = DIR_FORWARD;
     bool hold = false;
     bool keepBirth = false;    // circles keep the settings they were born with
+    bool saturate = false;     // the output bends (SATURATE) rather than LIMIT
 };
 
 struct Events {
@@ -361,10 +399,14 @@ struct Engine {
     double timer = 0.;         // samples to the next RATE birth
     bool rateWasOn = false;
     Rng rng;
+    Limiter limiter;
 
     static size_t bufferSamples(float rate) { return (size_t)(kBufferSeconds * rate) + 8; }
 
-    void setSampleRate(float rate) { sr = rate; }
+    void setSampleRate(float rate) {
+        sr = rate;
+        limiter.setSampleRate(rate);
+    }
 
     // Hands the engine its buffers (zeroed, `size` samples each), or none:
     // without them it passes the line only.
@@ -704,9 +746,13 @@ struct Engine {
         // line and circles: both at unity in the middle of MIX
         float dry = std::min(1.f, 2.f * (1.f - k.mix));
         float wg = std::min(1.f, 2.f * k.mix) * dbToGain(k.level);
-        for (int ch = 0; ch < 2; ch++) {
-            float y = softLimit(dry * line[ch] + wg * wet[ch]);
-            (ch ? o.r : o.l) = y;
+        o.l = dry * line[0] + wg * wet[0];
+        o.r = dry * line[1] + wg * wet[1];
+        if (k.saturate) {
+            o.l = softLimit(o.l);
+            o.r = softLimit(o.r);
+        } else {
+            limiter.process(o.l, o.r);
         }
         return o;
     }

@@ -68,10 +68,22 @@ glide over 3 ms, since a step at every lap measured 0.0097.
 
 ## Levels
 
-Circles sum at unity with the line, and the whole output is linear to 6 V,
-then bends toward 10 V (a tanh with a matching slope). MIX gives both
-the line and the circles unity in the middle, so the module works as an
-insert.
+Circles sum at unity with the line. MIX gives both the line and the
+circles unity in the middle, so the module works as an insert.
+
+The output stage is a menu choice. **Limit**, the default, is a stereo-linked
+peak limiter to 8 V: the peak caught at once, held 20 ms, let go over
+150 ms. **Saturate** is the first build's stage: linear to 6 V, then a tanh
+with a matching slope toward 10 V. The first build had only the curve, and
+the audition found it pinned: eight circles at FADE 0 and LEVEL +12 dB spent
+23% of the time above 9 V, flat against the ceiling, which sounds like
+clipping however soft the curve is. A curve distorts more the harder it is
+pushed; a limiter turns the whole signal down instead. The catch is instant
+because 0.5 ms let drum attacks through to the net; the hold keeps the gain
+still between the peaks of a low tone (h3 of a 12 V, 55 Hz sine: -43 dB
+without it, -55 dB with it; -108 dB at 220 Hz). Defaults on a 5 V drum loop
+peak at 6.8 V and never reach it. No "off": the circles' sum has no ceiling
+of its own, and 40 V into the next module is not a sound anyone patched for.
 
 The first build had the circles 9 dB under the line on a drum loop, for two
 reasons. SPREAD was an equal-power pan, which puts a centred source at
