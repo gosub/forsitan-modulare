@@ -108,20 +108,25 @@ d["left", "right"] >> s["in l", "in r"]
       seconds loop, the light on. Press again: the live break returns
       without a click.
       `s.set(mix=0)   # the line alone`
-- [ ] 3.2. HOLD with REACH full: circles are born anywhere on the held loop,
+- [x] 3.2. HOLD with REACH full: circles are born anywhere on the held loop,
       not just behind the playhead.
       `s.set(reach=1, rate=0.6234, jitter=0.4, mix=0.85)   # 2 Hz`
-- [ ] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle and
+- [x] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle and
       one flash of the button; the laps that follow do not flash it.
       `s.set(rate=0, spiral=-0.3, fade=0)`
-- [ ] 3.4. V/OCT out into a sine, which becomes eight voices, one per
-      circle: each voice climbs with its own converging circle, an octave
-      each time the laps halve, stopping two octaves up; voices overlap as
-      circles do.
+- [ ] 3.4. V/OCT out into a sine, TURN plucking it: eight voices, one per
+      circle, a note at every lap, each climbing with its own converging
+      circle, an octave each time the laps halve, up to two octaves.
+      Voices overlap as circles do, and fall silent as theirs end.
       ```python
       vco = vcv.module("VCO", freq=vcv.hz(110))
+      env = vcv.module("ADSR", attack=0, release=0.35)
+      vca = vcv.module("VCA", **{"channel 1 level": 0.3})   # 8 voices summed
       s["voct"] >> vco["1v/octave pitch"]
-      vco["sine"] >> out["output 1"] + out["output 2"]
+      s["turn"] >> env["gate"]
+      vco["sine"] >> vca["channel 1"]
+      env["envelope"] >> vca["channel 1 linear cv"]
+      vca["channel 1"] >> out["output 1"] + out["output 2"]
       s.set(spiral=-0.5, fade=0, rate=0.3)
       ```
 
