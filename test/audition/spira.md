@@ -99,18 +99,18 @@ d["left", "right"] >> s["in l", "in r"]
       s.set(size=0.299, soft=1, rate=0.9164, jitter=0.6, reach=0.3,
             spread=1, fade=-0.3162)   # 60 ms laps, 12 a second, -6 dB
       ```
-- [ ] 2.6. TONE left: each turn darker. Right: each turn thinner.
+- [x] 2.6. TONE left: each turn darker. Right: each turn thinner.
       `s.set(tone=-1.5, fade=-0.1291, mix=0.85)   # -1 dB`
 
 ## 3. The line
 
-- [ ] 3.1. HOLD (the button): the input is cut off and the last eight
+- [x] 3.1. HOLD (the button): the input is cut off and the last eight
       seconds loop, the light on. Press again: the live break returns
       without a click.
       `s.set(mix=0)   # the line alone`
 - [ ] 3.2. HOLD with REACH full: circles are born anywhere on the held loop,
       not just behind the playhead.
-      `s.set(reach=1, rate=0.6234, jitter=0.4)   # 2 Hz`
+      `s.set(reach=1, rate=0.6234, jitter=0.4, mix=0.85)   # 2 Hz`
 - [ ] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle and
       one flash of the button; the laps that follow do not flash it.
       `s.set(rate=0, spiral=-0.3, fade=0)`
