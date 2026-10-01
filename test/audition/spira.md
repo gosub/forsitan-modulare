@@ -39,20 +39,24 @@ d["left", "right"] >> s["in l", "in r"]
 
 ## 1. The spiral
 
-- [ ] 1.1. Defaults: every two seconds a 250 ms piece of the break repeats
+- [x] 1.1. Defaults: every two seconds a 250 ms piece of the break repeats
       and fades, over the break going on. This is the plain stutter.
-- [ ] 1.2. SPIRAL left: every repeat shorter and higher, until within two
+- [x] 1.2. SPIRAL left: every repeat shorter and higher, until within two
       seconds the circle rises into a pitched buzz and is gone.
       `s.set(spiral=-0.5, fade=0)   # x0.84 a lap, 1.6 s a circle`
-- [ ] 1.3. TAPE to 0 on the same: the laps still shrink, but the pitch stays
+- [x] 1.3. TAPE to 0 on the same: the laps still shrink, but the pitch stays
       the break's own; a roll that speeds into a buzz.
       `s.set(spiral=-0.5, fade=0, tape=0)`
-- [ ] 1.4. SPIRAL right: every repeat longer, slower and lower, until the
+- [x] 1.4. SPIRAL right: every repeat longer, slower and lower, until the
       circle is a slow dark smear.
       `s.set(spiral=0.5, fade=-0.1291, tone=-0.7)   # x1.19 a lap, -1 dB`
-- [ ] 1.5. ANCHOR on the roll of 1.3, from 0 to full: the roll closes in on
-      the start of the window, then on its end.
-      `s.set(spiral=-0.5, fade=0, tape=0, anchor=1)`
+- [ ] 1.5. ANCHOR, on a roll cut from a 1 s window. Press HOLD, then BIRTH
+      with ANCHOR at 0: the roll closes in on the first hit of the window.
+      ANCHOR full and BIRTH again: on the window's end, another sound.
+      ```python
+      s.set(spiral=-0.5, fade=0, tape=0, anchor=0, rate=0, mix=0.85,
+            size=0.7687)   # 1 s; RATE off, circles by the button only
+      ```
 - [ ] 1.6. FADE full left: each circle is one lap and gone, a slice rather
       than a repeat. Full right: each circle swells turn by turn and then
       holds, loud, until it is replaced.
