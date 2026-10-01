@@ -61,17 +61,21 @@ d["left", "right"] >> s["in l", "in r"]
       than a repeat. Full right: each circle swells turn by turn and then
       holds, loud, until it is replaced.
       `s.set(fade=-1)   # -60 dB a turn; fade=1 is +6 dB`
-- [ ] 1.7. LEVEL up, eight long circles piling up: the circles stand over
+- [x] 1.7. LEVEL up, eight long circles piling up: the circles stand over
       the break, the output stays clean and the meter under 0 dB.
       Menu, Output, Saturate: the same pile thickens into grit.
       `s.set(rate=0.6234, fade=0, size=0.8, level=12)   # 2 Hz, 1.3 s laps`
 
 ## 2. The lap
 
-- [ ] 2.1. SHAPE left: every repeat has an attack and a decay, so the
-      repeats are plucked notes rather than a stutter, about as loud as
-      flat ones.
-      `s.set(shape=-0.7, spiral=-0.2, fade=-0.1291)   # -1 dB`
+- [ ] 2.1. SHAPE left, on a steady saw, the circles alone: every repeat is a
+      plucked note, rising as the spiral closes. SHAPE back to 0: one
+      continuous tone again, the plucks gone.
+      ```python
+      vco = vcv.module("VCO", freq=vcv.hz(220))
+      vco["saw"] >> s["in l"] + s["in r"]
+      s.set(shape=-0.7, spiral=-0.2, fade=-0.1291, mix=1)   # -1 dB
+      ```
 - [ ] 2.2. SHAPE right, reversed: every repeat swells backwards and stops.
       `s.set(shape=0.6, soft=0.6, direction="Reverse")`
 - [ ] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
