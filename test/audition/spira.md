@@ -114,7 +114,7 @@ d["left", "right"] >> s["in l", "in r"]
 - [x] 3.3. RATE at zero: nothing new. Each BIRTH press grows one circle and
       one flash of the button; the laps that follow do not flash it.
       `s.set(rate=0, spiral=-0.3, fade=0)`
-- [ ] 3.4. V/OCT out into a sine, TURN plucking it: eight voices, one per
+- [x] 3.4. V/OCT out into a sine, TURN plucking it: eight voices, one per
       circle, a note at every lap, each climbing with its own converging
       circle, an octave each time the laps halve, up to two octaves.
       Voices overlap as circles do, and fall silent as theirs end.
@@ -130,7 +130,7 @@ d["left", "right"] >> s["in l", "in r"]
       s.set(spiral=-0.5, fade=0, rate=0.3)
       ```
 
-- [ ] 3.5. A clock into BIRTH, RATE off, SKIPS half way: circles land on
+- [x] 3.5. A clock into BIRTH, RATE off, SKIPS half way: circles land on
       the clock's grid with holes in it, different every bar. The button
       still grows a circle every press.
       ```python
@@ -138,20 +138,20 @@ d["left", "right"] >> s["in l", "in r"]
       clk["square"] >> s["birth"]
       s.set(rate=0, skips=0.5, size=0.299, mix=0.85)   # 60 ms laps
       ```
-- [ ] 3.6. The ring over SPIRAL: each birth lights the next light round,
+- [x] 3.6. The ring over SPIRAL: each birth lights the next light round,
       left to right, and a light dims with its circle's fade.
       `s.set(rate=0.51, fade=-0.2582)   # 1 Hz, -4 dB`
-- [ ] 3.7. SPIRAL left: the lights run orange-red. Right: blue. Centre:
+- [x] 3.7. SPIRAL left: the lights run orange-red. Right: blue. Centre:
       yellow.
       `s.set(rate=0.51, fade=-0.1826, spiral=-0.6)   # -2 dB`
 
 ## 4. The menu
 
-- [ ] 4.1. One long circle (RATE off, SIZE 2 s, FADE 0), then turn SPIRAL:
+- [x] 4.1. One long circle (RATE off, SIZE 2 s, FADE 0), then turn SPIRAL:
       the sounding circle follows at its next lap. Menu, keep the settings
       they were born with, and again: it does not, only the next BIRTH.
       With the menu on and SPIRAL swept, the ring shows several colours.
       `s.set(rate=0, size=0.8843, fade=0)   # 2 s`
-- [ ] 4.2. The preset browser: eight presets, each different at once, none
+- [x] 4.2. The preset browser: eight presets, each different at once, none
       of them the plain stutter of 1.1. **scatter** with HOLD pressed wanders
       a frozen loop.
