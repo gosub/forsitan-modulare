@@ -136,7 +136,7 @@ d["left", "right"] >> s["in l", "in r"]
       ```python
       clk = vcv.module("LFO", frequency=1)   # 2 Hz square
       clk["square"] >> s["birth"]
-      s.set(rate=0, skips=0.5, size=0.299)   # 60 ms laps
+      s.set(rate=0, skips=0.5, size=0.299, mix=0.85)   # 60 ms laps
       ```
 - [ ] 3.6. The ring over SPIRAL: each birth lights the next light round,
       left to right, and a light dims with its circle's fade.
