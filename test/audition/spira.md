@@ -76,12 +76,12 @@ d["left", "right"] >> s["in l", "in r"]
       vco["saw"] >> s["in l"] + s["in r"]
       s.set(shape=-0.7, spiral=-0.2, fade=-0.1291, mix=1)   # -1 dB
       ```
-- [ ] 2.2. SHAPE right, reversed: every repeat swells backwards and stops.
+- [x] 2.2. SHAPE right, reversed: every repeat swells backwards and stops.
       `s.set(shape=0.6, soft=0.6, direction="Reverse")`
-- [ ] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
+- [x] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
       trade sides, with no click at the turnarounds.
       `s.set(direction="Ping-pong", spread=1, size=0.6157, mix=0.85)   # 400 ms`
-- [ ] 2.4. SOFT, on one circle of a saw with vibrato, the circle alone.
+- [x] 2.4. SOFT, on one circle of a saw with vibrato, the circle alone.
       Press BIRTH. At 0: a jump in pitch at every lap, the loop's seam.
       Turn SOFT up: the jumps become glides, and at full the loop is one
       smooth wobble with no seam to hear.
@@ -93,14 +93,14 @@ d["left", "right"] >> s["in l", "in r"]
       vco["saw"] >> s["in l"] + s["in r"]
       s.set(size=0.6157, fade=0, soft=0, rate=0, mix=1)   # 400 ms
       ```
-- [ ] 2.5. A cloud: short soft laps, many circles, scattered. No single
+- [x] 2.5. A cloud: short soft laps, many circles, scattered. No single
       repeat is recognisable.
       ```python
       s.set(size=0.299, soft=1, rate=0.9164, jitter=0.6, reach=0.3,
             spread=1, fade=-0.3162)   # 60 ms laps, 12 a second, -6 dB
       ```
 - [ ] 2.6. TONE left: each turn darker. Right: each turn thinner.
-      `s.set(tone=-1.5, fade=-0.1291)   # -1 dB`
+      `s.set(tone=-1.5, fade=-0.1291, mix=0.85)   # -1 dB`
 
 ## 3. The line
 
