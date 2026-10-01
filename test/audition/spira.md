@@ -81,10 +81,18 @@ d["left", "right"] >> s["in l", "in r"]
 - [ ] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
       trade sides, with no click at the turnarounds.
       `s.set(direction="Ping-pong", spread=1, size=0.6157, mix=0.85)   # 400 ms`
-- [ ] 2.4. SOFT from 0 to full on long circles: from a clean cut, each
-      repeat starting on a clear attack, to repeats blurred into one
-      another with no seam to hear.
-      `s.set(size=0.6157, fade=0, soft=0)   # 400 ms; then turn SOFT up`
+- [ ] 2.4. SOFT, on one circle of a saw with vibrato, the circle alone.
+      Press BIRTH. At 0: a jump in pitch at every lap, the loop's seam.
+      Turn SOFT up: the jumps become glides, and at full the loop is one
+      smooth wobble with no seam to hear.
+      ```python
+      vco = vcv.module("VCO", freq=vcv.hz(220))
+      lfo = vcv.module("LFO", frequency=0.5)   # 1.4 Hz, against 2.5 laps a second
+      lfo["sine"] >> vco["frequency modulation"]
+      vco.set(**{"frequency modulation": 0.15})
+      vco["saw"] >> s["in l"] + s["in r"]
+      s.set(size=0.6157, fade=0, soft=0, rate=0, mix=1)   # 400 ms
+      ```
 - [ ] 2.5. A cloud: short soft laps, many circles, scattered. No single
       repeat is recognisable.
       ```python
