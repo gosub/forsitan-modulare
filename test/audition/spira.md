@@ -68,7 +68,7 @@ d["left", "right"] >> s["in l", "in r"]
 
 ## 2. The lap
 
-- [ ] 2.1. SHAPE left, on a steady saw, the circles alone: every repeat is a
+- [x] 2.1. SHAPE left, on a steady saw, the circles alone: every repeat is a
       plucked note, rising as the spiral closes. SHAPE back to 0: one
       continuous tone again, the plucks gone.
       ```python
@@ -80,7 +80,7 @@ d["left", "right"] >> s["in l", "in r"]
       `s.set(shape=0.6, soft=0.6, direction="Reverse")`
 - [ ] 2.3. Ping-pong with SPREAD full: the laps go forward and back and
       trade sides, with no click at the turnarounds.
-      `s.set(direction="Ping-pong", spread=1, size=0.6157)   # 400 ms`
+      `s.set(direction="Ping-pong", spread=1, size=0.6157, mix=0.85)   # 400 ms`
 - [ ] 2.4. SOFT from 0 to full on long circles: from a clean cut, each
       repeat starting on a clear attack, to repeats blurred into one
       another with no seam to hear.
