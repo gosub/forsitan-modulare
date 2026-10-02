@@ -114,6 +114,10 @@ struct Artifex : Module {
 
 	// ── settings ─────────────────────────────────────────────────────────────
 	bool honourExternalClock = true;
+	// With a cable in clk in, the external clock is the only clock: when it
+	// stops, the module stops, instead of the tempo knob taking over again
+	// after two seconds. Off by default, which is the hardware's behaviour.
+	bool stopWithExternalClock = false;
 	// Which voltage window the pattern inputs read. The hardware's is 0-5 V
 	// logic - below 1.6 V inverts - which in Rack means a gate resting at 0 V
 	// inverts the pattern continuously until it goes high. The default here
@@ -316,6 +320,8 @@ struct Artifex : Module {
 		min.bpm = params[TEMPO_PARAM].getValue();
 		min.clkVoltage = inputs[CLK_INPUT].getVoltage();
 		min.honourExternal = honourExternalClock;
+		min.externalOnly = honourExternalClock && stopWithExternalClock
+		                   && inputs[CLK_INPUT].isConnected();
 		min.patResetVoltage = inputs[PAT_RESET_INPUT].getVoltage();
 		min.rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
 		if (inputs[RHYTHM_INPUT].isConnected())
@@ -453,6 +459,7 @@ struct Artifex : Module {
 	void onReset(const ResetEvent& e) override {
 		Module::onReset(e);
 		honourExternalClock = true;
+		stopWithExternalClock = false;
 		hardwareCvWindow = false;
 		quantizeModeChanges = true;
 		monoInput = false;
@@ -472,6 +479,7 @@ struct Artifex : Module {
 	json_t* dataToJson() override {
 		json_t* root = json_object();
 		json_object_set_new(root, "externalClock", json_boolean(honourExternalClock));
+		json_object_set_new(root, "stopWithExternalClock", json_boolean(stopWithExternalClock));
 		json_object_set_new(root, "hardwareCvWindow", json_boolean(hardwareCvWindow));
 		json_object_set_new(root, "quantizeModeChanges", json_boolean(quantizeModeChanges));
 		json_object_set_new(root, "monoInput", json_boolean(monoInput));
@@ -487,6 +495,8 @@ struct Artifex : Module {
 	void dataFromJson(json_t* root) override {
 		if (json_t* j = json_object_get(root, "externalClock"))
 			honourExternalClock = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "stopWithExternalClock"))
+			stopWithExternalClock = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "hardwareCvWindow"))
 			hardwareCvWindow = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "quantizeModeChanges"))
@@ -800,6 +810,10 @@ struct ArtifexWidget : ModuleWidget {
 		menu->addChild(createBoolPtrMenuItem("Sum the inputs to mono", "", &m->monoInput));
 		menu->addChild(createBoolPtrMenuItem("Honour the external clock", "",
 		                                     &m->honourExternalClock));
+		MenuItem* stopItem = createBoolPtrMenuItem("Stop when the external clock stops", "",
+		                                           &m->stopWithExternalClock);
+		stopItem->disabled = !m->honourExternalClock;
+		menu->addChild(stopItem);
 		menu->addChild(createBoolPtrMenuItem("Pattern inputs use the hardware window", "",
 		                                     &m->hardwareCvWindow));
 	}
