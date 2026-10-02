@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.17.0] - 2026-10-02
+### Added
+  - **radix**, a 12 HP chaotic 8-bit source in the family of the Radical22.
+    An integer machine runs on its own clock, and three stepped knobs with
+    CV choose where its modulator comes from, how it bends the accumulator
+    and how the result is read: 150 programs. **bits** and **grit** shape
+    the output, and a rungler CV comes out beside it. The panel carries no
+    labels, only generated branching art; the manual names every control.
+  - **olim**, a 24 HP eight-head stereo delay after the Time Machine, over
+    up to 150 s of memory (Memory 20, 60 or 150 s). **time** places the
+    last head and **spread** crowds the others toward now or toward then.
+    Nine lit sliders set each head's level and the dry, each with its own
+    VCA input, the expander built in. Feedback runs inverted and is
+    normalised by the sum of the sliders, so it goes from sound on sound to
+    a howl. A clock sets the time in power-of-two steps.
+  - **nodi**, a 24 HP continuous-time sequencer after the Discrete Map.
+    Eight thresholds on a moving voltage X, each rising, off or falling,
+    pick one of eight stages, so the sliders place steps in time, map a
+    melody onto an LFO or quantize a random voltage. X is normalled to an
+    internal ramp. Crossings are found inside the sample and the steps are
+    band-limited, so at audio rate it is a graphic oscillator or
+    waveshaper. The A / B / C expander is built in: group gates, threshold
+    CV and a sequential switch. Setups, presets and transforms are in the
+    context menu.
+  - **rubigo**, a 20 HP digital percussion voice played by its own random
+    sequencer, after the Metal Fetishist, built from DaisySP blocks with
+    knob laws measured against the hardware. An oscillator and noise go
+    through a lowpass or highpass filter, an overdrive or decimator and a
+    clipping VCA. Two generators decide which steps fire and what each one
+    carries, and **steps** locks what you hear into a loop and regenerates
+    it a piece at a time. External clock ratios, and a reasoned random
+    patch on Ctrl-R.
+  - **spira**, a 26 HP looper of grains. Short circles loop off the input
+    while it plays on, and each lap can shrink or grow, speed up or slow
+    down, fade, darken, pluck or swell, so a circle becomes a spiral; an
+    inward one ends in a pitch. Laps are grains, with shape, softness and
+    direction. Eight circles show on a ring of lights, and each has a voice
+    on the 8-channel **turn** and **v/oct** outputs. The output is limited
+    to 8 V, or saturated, from the context menu.
+  - **vates** and **artifex** can stop with an external clock: **Stop when
+    the external clock stops**, in the context menu, off by default. With a
+    cable in **clk** the internal clock never runs, so stopping the clock
+    stops the module, and the delay keeps its tempo through the stop.
+    Pulling the cable gives the tempo knob back. Asked for on the forum.
+
+### Fixed
+  - **caligo**, **materiae** and **quadrare** knobs whose value shows a unit
+    or a name did not read a typed value back: the number set the raw knob
+    position and clamped, and the text the field opened with could not be
+    entered. They now take a number in the knob's own units, or a name where
+    the knob has names; caligo's **time** no longer prints its unit twice.
+
 ## [2.16.3] - 2026-09-25
 ### Fixed
   - **vates** clicked on the delay side of **fx**, and the feedback kept the
