@@ -316,7 +316,10 @@ def main():
 
         # limen is staged where it was; park it too, then everything lands on
         # empty grid and strict placement is exact.
-        limen.call("move_module", id=modules[0]["id"], x=0, y=STAGE_ROW - 1, mode="strict")
+        # Found by slug: after the sort above modules[0] is alea, and parking
+        # that instead left limen at the origin, in the first row's way.
+        limen_id = next(m["id"] for m in modules if m["slug"] == "limen")
+        limen.call("move_module", id=limen_id, x=0, y=STAGE_ROW - 1, mode="strict")
         limen.batch([{"cmd": "move_module", "id": m["id"], "x": m["x"], "y": m["y"],
                       "mode": "strict"} for m in layout])
 
