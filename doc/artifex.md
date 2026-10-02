@@ -616,6 +616,11 @@ can see it change across the room.
   window instead.
 - **Honour the external clock** - off, the module ignores **clk** and stays
   on its own tempo.
+- **Stop when the external clock stops** - off by default. On, a cable in
+  **clk** is the only clock: the pattern and the LFO wait for its first edge
+  and stop when it stops, instead of the **tempo** knob taking over after two
+  seconds. Pulling the cable gives the tempo back. Greyed out while **Honour
+  the external clock** is off.
 - **Feedback safety** - a soft limiter in the loop, on by default. Off, the
   loop can run away, which is a legitimate thing to want.
 - **Ranges** - hardware, or 2.16.2. 2.16.3 moved six modes to the
