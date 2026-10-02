@@ -1922,6 +1922,41 @@ static void testHonourExternalClock() {
 	report("artifex", "external_clock_ignored_when_off", off, off > 13 && off < 19);
 }
 
+// "Stop when the external clock stops", counted at clk out: nothing before
+// the cable clock starts or after it stops, the tempo knob back once the
+// cable is pulled.
+static void testStopWithExternalClock() {
+	Artifex m;
+	long fr = 0;
+	m.stopWithExternalClock = true;
+	m.params[Artifex::TEMPO_PARAM].setValue(60.f);   // 4 Hz in sixteenths
+	m.inputs[Artifex::CLK_INPUT].channels = 1;
+	auto pulses = [&](double seconds, bool clocked) {
+		int n = 0;
+		bool was = false;
+		for (long i = 0; i < (long)(seconds * SR); i++) {
+			double t = (double)i / SR;
+			bool hi = clocked && std::fmod(t, 0.125) < 0.005;
+			m.inputs[Artifex::CLK_INPUT].setVoltage(hi ? 10.f : 0.f);
+			step(m, fr, 0.f, 0.f);
+			bool now = m.outputs[Artifex::CLK_OUTPUT].getVoltage() > 5.f;
+			if (now && !was)
+				n++;
+			was = now;
+		}
+		return n;
+	};
+	int waiting = pulses(2.0, false);
+	report("artifex", "stop_waits_for_the_clock", waiting, waiting == 0);
+	int clocked = pulses(4.0, true);
+	report("artifex", "stop_follows_the_clock", clocked, clocked > 28 && clocked < 36);
+	int stopped = pulses(3.0, false);
+	report("artifex", "stop_stays_stopped", stopped, stopped == 0);
+	m.inputs[Artifex::CLK_INPUT].channels = 0;
+	int unpatched = pulses(4.0, false);
+	report("artifex", "stop_unpatched_runs_internal", unpatched, unpatched > 13 && unpatched < 19);
+}
+
 // An attenuverter at zero disconnects its input, however hot the input is.
 static void testLfoModAttenuverter() {
 	struct Local {
@@ -2908,7 +2943,7 @@ SMOKE_MAIN(testLegacyRanges, testKnobStepsDoNotClick, testModeChangesDoNotClick,
            testReplayer, testReplayerLevel, testReplayerSplice, testReplayerJoin, testReplayerUnlock, testReplayerClicks, testReplayerRetune, testReplayerCrossing, testReplayerLoopLength, testStereo, testTrigDeclick, testFilterPlacement, testFreezerLength, testFreezerFeedbackSettles, testFreezerReentry, testDelayClockSync, testWrapClick,
            testClipContinuity, testDelaySweep, testCrusherRange, testCrusherAmount, testCrusherFeedback,
            testEnvelope,
-           testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock,
+           testModeSelect, testLfoPwm, testPatternReset, testHonourExternalClock, testStopWithExternalClock,
            testLfoModAttenuverter, testSteppedVersusFreeCv, testPatternGateDrivesTrig,
            testFeedbackSafety, testFilterInLoopSafety, testAbuse, testExtremesStaySane,
            testModeCyclingDoesNotPop, testSampleRateInvariance, testBypass,
