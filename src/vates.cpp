@@ -170,6 +170,10 @@ struct Vates : Module {
 	int rootNote = 0;                     // 0-11, C..B
 	int scaleIndex = imber_dsp::kDefaultScale;
 	bool honourExternalClock = true;
+	// With a cable in clk in, the external clock is the only clock: when it
+	// stops, the module stops, instead of the tempo knob taking over again
+	// after two seconds. Off by default, which is the hardware's behaviour.
+	bool stopWithExternalClock = false;
 	// Which voltage window the pattern inputs read. The hardware's is 0-5 V
 	// logic - below 1.6 V inverts - which in Rack means a gate resting at 0 V
 	// inverts the pattern continuously until it goes high. The default here
@@ -784,6 +788,8 @@ struct Vates : Module {
 		min.bpm = params[TEMPO_PARAM].getValue();
 		min.clkVoltage = inputs[CLK_INPUT].getVoltage();
 		min.honourExternal = honourExternalClock;
+		min.externalOnly = honourExternalClock && stopWithExternalClock
+		                   && inputs[CLK_INPUT].isConnected();
 		min.patResetVoltage = inputs[PAT_RESET_INPUT].getVoltage();
 		min.rhythm = (int)std::round(params[RHYTHM_PARAM].getValue());
 		if (inputs[RHYTHM_INPUT].isConnected())
@@ -1238,6 +1244,7 @@ struct Vates : Module {
 		rootNote = 0;
 		scaleIndex = imber_dsp::kDefaultScale;
 		honourExternalClock = true;
+		stopWithExternalClock = false;
 		hardwareCvWindow = false;
 		reverseDecays = false;
 		reverseFromEnd = false;
@@ -1258,6 +1265,7 @@ struct Vates : Module {
 		json_object_set_new(root, "root", json_integer(rootNote));
 		json_object_set_new(root, "scale", json_integer(scaleIndex));
 		json_object_set_new(root, "externalClock", json_boolean(honourExternalClock));
+		json_object_set_new(root, "stopWithExternalClock", json_boolean(stopWithExternalClock));
 		json_object_set_new(root, "samplesPerBank", json_integer(samplesPerBank));
 		json_object_set_new(root, "bank", json_integer(bankBase));
 		json_object_set_new(root, "hardwareCvWindow", json_boolean(hardwareCvWindow));
@@ -1280,6 +1288,8 @@ struct Vates : Module {
 			scaleIndex = clamp((int)json_integer_value(j), 0, imber_dsp::kScaleCount - 1);
 		if (json_t* j = json_object_get(root, "externalClock"))
 			honourExternalClock = json_boolean_value(j);
+		if (json_t* j = json_object_get(root, "stopWithExternalClock"))
+			stopWithExternalClock = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "samplesPerBank"))
 			samplesPerBank = clamp((int)json_integer_value(j), 0, 64);
 		if (json_t* j = json_object_get(root, "bank"))
@@ -1586,6 +1596,10 @@ struct VatesWidget : ModuleWidget {
 		                                     &m->knobTriggersInPlay));
 		menu->addChild(createBoolPtrMenuItem("External clock takes over", "",
 			&m->honourExternalClock));
+		MenuItem* stopItem = createBoolPtrMenuItem("Stop when the external clock stops", "",
+		                                           &m->stopWithExternalClock);
+		stopItem->disabled = !m->honourExternalClock;
+		menu->addChild(stopItem);
 
 		menu->addChild(createIndexSubmenuItem("Ranges",
 			{"Hardware", "2.16.2 (as saved before 2.16.3)"},
