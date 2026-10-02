@@ -508,15 +508,15 @@ vates, so `smoke_vates` exercises the section itself - the 32 rhythms and that
 none repeat, the CV that selects from them, both pattern switches and both
 gate windows, the LFO free and synced, its reset - and `smoke_artifex` checks
 artifex's own wiring of it: the pulse high exactly while the triangle rises at
-every width, pattern reset returning to step one, the external-clock menu
-option, and an LFO attenuverter at zero being genuinely inert.
+every width, pattern reset returning to step one, both external-clock menu
+options, and an LFO attenuverter at zero being genuinely inert.
 
 ```
 ./test/smoke_vates   | grep -E 'rhythm|pattern|lfo|clock|gate|saw'
-./test/smoke_artifex | grep -E 'lfo_|pattern_|external_clock|_cv_'
+./test/smoke_artifex | grep -E 'lfo_|pattern_|external_clock|stop_|_cv_'
 ```
 
-Nothing here needs ears. Two things are worth doing by hand once, because
+Nothing here needs ears. Three things are worth doing by hand once, because
 they are about the module in a rack rather than about the code:
 
 ```python
@@ -539,6 +539,15 @@ fx.set(fxmode="slicer", amt="50%")
       r = vcv.module("Random", internal_trigger_rate=vcv.hz(6, "LFO"),
                      trigger_probability=0.55)
       r["trigger"] >> fx["clk"]
+      scope("clk")
+      ```
+- [ ] 5.3. **Stop when the external clock stops** on, a 4 Hz clock at **clk**
+      through a VCA. Shut the VCA: the slicer stops chopping, **clk out**
+      stays low. Open it: chopping resumes on the next edge. Pull the cable
+      from **clk**: within two seconds the **tempo** knob takes over.
+      ```python
+      fx.menu(stopWithExternalClock=True)
+      vcv.modulate(fx["clk"], depth=1.0, rate=4.0, shape="square")
       scope("clk")
       ```
 
