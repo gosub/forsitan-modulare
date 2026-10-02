@@ -620,6 +620,45 @@ static void testClock() {
 	report("vates", "clock_handback", m.modul.externalClock ? 1 : 0, !m.modul.externalClock);
 }
 
+// "Stop when the external clock stops": with a cable in clk the internal
+// clock never runs, so no cable edge means no gate, before the clock starts
+// and after it stops, and the delay keeps the tempo the clock left behind.
+// Pulling the cable gives the tempo knob back.
+static void testStopWithExternalClock() {
+	Vates m;
+	long fr = 0;
+	m.stopWithExternalClock = true;
+	m.params[Vates::TEMPO_PARAM].setValue(120.f);
+	m.params[Vates::RHYTHM_PARAM].setValue(4.f);    // every step
+	m.params[Vates::GSW_PARAM].setValue(1.f);
+	m.inputs[Vates::CLK_INPUT].channels = 1;
+	long period = (long)(SR / 16.f);
+	auto gates = [&](double seconds, bool clocked) {
+		int n = 0;
+		bool was = false;
+		for (long i = 0; i < (long)(seconds * SR); i++) {
+			m.inputs[Vates::CLK_INPUT].setVoltage(clocked && (i % period) < 40 ? 10.f : 0.f);
+			m.process(makeArgs(fr++));
+			bool g = m.outputs[Vates::GATE_OUTPUT].getVoltage() > 5.f;
+			if (g && !was)
+				n++;
+			was = g;
+		}
+		return n;
+	};
+	int waiting = gates(2.0, false);
+	report("vates", "stop_waits_for_the_clock", waiting, waiting == 0);
+	int clocked = gates(2.0, true);
+	report("vates", "stop_follows_the_clock", clocked, clocked >= 30 && clocked <= 34);
+	int stopped = gates(3.0, false);
+	report("vates", "stop_stays_stopped", stopped, stopped == 0);
+	report("vates", "stop_keeps_the_tempo", m.modul.tempoSeconds,
+	       std::fabs(m.modul.tempoSeconds - 1.f / 16.f) < 1e-3f);
+	m.inputs[Vates::CLK_INPUT].channels = 0;
+	int unpatched = gates(2.0, false);
+	report("vates", "stop_unpatched_runs_internal", unpatched, unpatched >= 14 && unpatched <= 17);
+}
+
 // ── the pattern switches rewrite the sequence ─────────────────────────────────
 static void testPatternSwitches() {
 	Vates m;
@@ -1914,6 +1953,6 @@ static void testLegacyRanges() {
 }
 
 SMOKE_MAIN(testReverseDecays, testDeclick, testFxFeedback, testFxDelayTime, testFxChorusRate, testLfoDivisionsDivideTheCounter, testMinTriggerGap, testPulseWidth, testFilterCrossing, testBanks, testLength, testRetrigger, testPlayCue, testKnobBrowsing,
-           testKnobRange, testCvRange, testDefaults, testUserKits, testClock,
+           testKnobRange, testCvRange, testDefaults, testUserKits, testClock, testStopWithExternalClock,
            testPatternSwitches, testRunglerCoupling, testRhythmTable, testRhythmCv, testPatternInputs, testPitchTracking, testSaw, testLfo, testLfoDirection, testToneAbuse,
            testAbuse, testFamiliesAreDealtEvenly, testReverseStart, testFxChorusEnd, testFxClicks, testLegacyRanges)
