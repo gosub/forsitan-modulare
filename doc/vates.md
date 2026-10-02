@@ -296,7 +296,7 @@ a saw outright. **pwm** is the same tilt as a knob.
 | control | what it does |
 |---------|--------------|
 | **tempo** | internal clock, 30–300 BPM. |
-| **clk in** | external clock. It takes over while it runs; two seconds of silence hands the tempo back to **tempo**. |
+| **clk in** | external clock. It takes over while it runs; two seconds of silence hands the tempo back to **tempo**, unless the menu says to stop with it. |
 | **clk out** | the clock in use, internal or external. Patch it into a second vates or into artifex and both pattern generators and LFOs run as one. |
 | **rhythm** | selects one of 32 built-in 16-step gate patterns, with a CV input beside it: ten volts is the whole list, and it wraps past the end. Selecting a rhythm reloads it, discarding what the switches have written into it. |
 | **gate**, **cv** | the pattern's gate (75% of a step) and its stepped CV, eight levels over 0–10V. |
@@ -397,6 +397,11 @@ tight.
   only.
 - **external clock takes over** - whether **clk in** may take the tempo from
   the **tempo** knob.
+- **stop when the external clock stops** - off by default. On, a cable in
+  **clk in** is the only clock: vates waits for its first edge, stops when it
+  stops, and the **tempo** knob takes over only once the cable is pulled.
+  The delay keeps the tempo the clock left behind. Greyed out while
+  **external clock takes over** is off.
 - **pattern input window** - the voltage window the two pattern jacks read:
   the Rack one (0V neutral) or the hardware's (1.6–3.2V neutral).
 - **ranges** - hardware, or 2.16.2. 2.16.3 moved vates to the hardware's
