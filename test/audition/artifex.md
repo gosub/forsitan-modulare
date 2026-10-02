@@ -541,7 +541,7 @@ fx.set(fxmode="slicer", amt="50%")
       r["trigger"] >> fx["clk"]
       scope("clk")
       ```
-- [ ] 5.3. **Stop when the external clock stops** on, a 4 Hz clock at **clk**
+- [x] 5.3. **Stop when the external clock stops** on, a 4 Hz clock at **clk**
       through a VCA. Shut the VCA: the slicer stops chopping, **clk out**
       stays low. Open it: chopping resumes on the next edge. Pull the cable
       from **clk**: within two seconds the **tempo** knob takes over.

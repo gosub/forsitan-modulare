@@ -214,7 +214,7 @@ v.set(sample=0.35, length=0.6)
 - [x] 6.3. Your own kit: point the kits folder at a folder of wavs from the
       context menu. It loads without interrupting the audio, cuts into banks
       of eight, and the display names them `mykit 1/3`.
-- [ ] 6.4. **stop when the external clock stops** on, a 4 Hz clock at **clk**
+- [x] 6.4. **stop when the external clock stops** on, a 4 Hz clock at **clk**
       through a VCA. Shut the VCA: the pattern stops and stays stopped, the
       delay tail rings out in tempo. Open it: playing resumes on the next
       edge. Pull the cable from **clk**: within two seconds the **tempo**
