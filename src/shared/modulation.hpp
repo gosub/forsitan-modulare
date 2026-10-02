@@ -179,6 +179,11 @@ struct ModIn {
 	float bpm = 120.f;
 	float clkVoltage = 0.f;
 	bool honourExternal = true;
+	// The host sets this when the external clock is the only clock: its menu
+	// asks for it and a cable is in clk in. The internal clock then never
+	// runs, so a stopped external clock stops the module instead of handing
+	// the tempo back to the knob.
+	bool externalOnly = false;
 	float patResetVoltage = 0.f;
 	int rhythm = 0;               // 0..31
 	int gateMode = 1;             // 0 invert, 1 leave alone, 2 randomize
@@ -297,14 +302,18 @@ struct Modulation {
 			if (sinceStep > kClockGuard)
 				stepped = true;
 		}
-		if (externalClock && sinceExternal > 2.f)
+		// Held as external while it is the only clock, so the tempo it last
+		// measured stays the tempo and the delay keeps its time through a stop.
+		if (externalClock && sinceExternal > 2.f && !in.externalOnly)
 			externalClock = false;   // the external clock stopped; take over again
 		if (!externalClock) {
 			stepSeconds = 60.f / std::max(in.bpm, 1.f) / 4.f;   // sixteenths
-			clockPhase += in.dt / stepSeconds;
-			if (clockPhase >= 1.0) {
-				clockPhase -= 1.0;
-				stepped = true;
+			if (!in.externalOnly) {
+				clockPhase += in.dt / stepSeconds;
+				if (clockPhase >= 1.0) {
+					clockPhase -= 1.0;
+					stepped = true;
+				}
 			}
 		}
 		else
