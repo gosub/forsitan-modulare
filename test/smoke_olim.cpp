@@ -325,6 +325,16 @@ static void testSliderRamp() {
     }
 }
 
+// A gain typed into FEEDBACK comes back as typed. Below the arc it came
+// back halved: 0.8 set a knob that gave 0.4.
+static void testFeedbackTyped() {
+    const float gains[] = {0.f, 0.5f, 0.8f, 0.985f, 1.f, 1.5f, 2.f};
+    float worst = 0.f;
+    for (float g : gains)
+        worst = std::max(worst, std::fabs(olim::feedbackGain(olim::feedbackKnob(g), 0.f) - g));
+    report("olim", "feedback_typed_gain_round_trips", worst, worst < 1e-4f);
+}
+
 SMOKE_MAIN(testEcho, testVca, testNormal, testNan, testClock, testMemory, testDeleteMidSwap,
            testPresets, testTransforms, testMutations,
-           testSliderRamp)
+           testSliderRamp, testFeedbackTyped)
