@@ -372,7 +372,7 @@ static float outputPeak(bool saturate, float levelDb, float amp, float mix, floa
 }
 
 static void testOutput() {
-    float lim = outputPeak(false, 12.f, 5.f, 0.5f);
+    float lim = outputPeak(false, 12.f, 10.f, 0.5f);   // hot enough that the pile always overdrives
     float sat = outputPeak(true, 12.f, 5.f, 0.5f);
     float line = outputPeak(false, 0.f, 7.f, 0.f);
     printf("# a pile at +12 dB: limit peak %.3f V, saturate peak %.3f V; a 7 V line: %.4f V\n", lim, sat, line);
