@@ -631,8 +631,13 @@ struct Engine {
         if (n) {
             if (k.hold && !held) {
                 held = true;
-                holdEnd = w;
-                linePos = (double)holdEnd - holdLength(k);
+                // Back on while the last loop is still fading out: pick that
+                // loop up where it is. A new one starting at another place
+                // under the fade is a step.
+                if (holdMix == 0.f) {
+                    holdEnd = w;
+                    linePos = (double)holdEnd - holdLength(k);
+                }
             } else if (!k.hold && held) {
                 held = false;
             }
