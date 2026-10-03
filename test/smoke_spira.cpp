@@ -7,7 +7,7 @@
 // the latch surviving a save), the right input normalled from the left, the
 // CV scaling, NaN at every input, the buffer swap after a sample rate
 // change, including a module deleted in the middle of one, and the output
-// stage, LIMIT or SATURATE.
+// stage, LIMIT or SATURATE, and no click from a MIX step or a quick HOLD.
 
 #include "smoke_harness.hpp"
 #include "../src/spira.cpp"
@@ -394,5 +394,52 @@ static void testOutput() {
     report("spira", "json_output_stage", n.saturate && !o.saturate, n.saturate && !o.saturate);
 }
 
+// A click is a step: the largest second difference of the output in the
+// 30 ms after a change, against the 30 ms before it, on a 220 Hz sine with
+// circles playing. Unsmoothed, a 5 V MIX step measured about 300 times the
+// baseline, and HOLD back on 4 ms after going off about 70 times.
+static float maxD2(Spira& m, long& fr, double sec, float* last) {
+    float worst = 0.f;
+    for (long i = 0; i < (long)(sec * SR); i++) {
+        connect(m, Spira::IN_L_INPUT, sine(fr));
+        m.process(makeArgs(fr++));
+        float y = m.outputs[Spira::OUT_L_OUTPUT].getVoltage();
+        worst = std::max(worst, std::fabs(y - 2.f * last[1] + last[0]));
+        last[0] = last[1];
+        last[1] = y;
+    }
+    return worst;
+}
+
+static void testClicks() {
+    float mixWorst = 0.f, holdWorst = 0.f;
+    for (int t = 0; t < 4; t++) {
+        for (int which = 0; which < 2; which++) {
+            Spira m; long fr = 0;
+            float last[2] = {0.f, 0.f};
+            connect(m, Spira::MIX_INPUT, 0.f);
+            connect(m, Spira::HOLD_INPUT, 0.f);
+            maxD2(m, fr, 5.0 + 0.37 * t, last);
+            float before = std::max(maxD2(m, fr, 0.03, last), 1e-3f);
+            float after;
+            if (which == 0) {
+                connect(m, Spira::MIX_INPUT, 5.f);
+                after = maxD2(m, fr, 0.03, last);
+                mixWorst = std::max(mixWorst, after / before);
+            } else {
+                connect(m, Spira::HOLD_INPUT, 10.f);
+                maxD2(m, fr, 0.2, last);
+                connect(m, Spira::HOLD_INPUT, 0.f);
+                after = maxD2(m, fr, 0.004, last);
+                connect(m, Spira::HOLD_INPUT, 10.f);
+                after = std::max(after, maxD2(m, fr, 0.03, last));
+                holdWorst = std::max(holdWorst, after / before);
+            }
+        }
+    }
+    report("spira", "mix_step_no_click", mixWorst, mixWorst < 3.f);
+    report("spira", "hold_back_on_no_click", holdWorst, holdWorst < 8.f);
+}
+
 SMOKE_MAIN(testDefaults, testDirection, testBirth, testLights, testHold, testNormal, testCv, testNan,
-           testSampleRate, testDeleteMidSwap, testPresets, testOutput)
+           testSampleRate, testDeleteMidSwap, testPresets, testOutput, testClicks)
