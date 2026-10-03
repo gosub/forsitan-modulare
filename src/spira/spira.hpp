@@ -54,6 +54,7 @@ const float kSpeedMax = 4.f;         // and 2 up; past them TAPE cuts instead
 const float kSeamMin = 0.001f;       // the shortest crossfade between laps, seconds
 const float kKillTime = 0.005f;      // a stolen circle fades out over this
 const float kHoldSeam = 0.01f;       // crossfades in and out of HOLD, and the held loop's seam
+const float kGainSmooth = 0.005f;    // s, the time constant on MIX and LEVEL
 const float kGainMax = 4.f;          // +12 dB: a swelling circle stops here
 const float kGainFloor = 1e-4f;      // -80 dB: a fading one ends here
 const float kShapeDepth = 8.f;       // SHAPE at full: exp(-8), -70 dB across a lap
@@ -393,6 +394,12 @@ struct Engine {
     double linePos = 0.;       // the held line's playhead, absolute
     float holdMix = 0.f;       // 0 the live input .. 1 the held loop
 
+    // MIX and LEVEL as gains, smoothed: a CV step on either jumped the
+    // balance in one sample, a click whenever line and circles differ.
+    // Negative until the first sample, which they take as they are.
+    float dryGain = -1.f, wetGain = -1.f;
+    float gainCoef = 0.00416f; // 48 kHz, until setSampleRate
+
     Circle circle[kSlots];
     uint32_t births = 0;
     int lead = -1;             // the newest circle still sounding
@@ -406,6 +413,7 @@ struct Engine {
     void setSampleRate(float rate) {
         sr = rate;
         limiter.setSampleRate(rate);
+        gainCoef = 1.f - std::exp(-1.f / (kGainSmooth * rate));
     }
 
     // Hands the engine its buffers (zeroed, `size` samples each), or none:
@@ -417,6 +425,7 @@ struct Engine {
         w = 0;
         held = false;
         holdMix = 0.f;
+        dryGain = wetGain = -1.f;
         for (Circle& c : circle) c = Circle();
         lead = -1;
     }
@@ -749,8 +758,15 @@ struct Engine {
         if (lead >= 0) o.speedOct = (float)std::log2(circle[lead].cur.on ? circle[lead].cur.v : circle[lead].tail.v);
 
         // line and circles: both at unity in the middle of MIX
-        float dry = std::min(1.f, 2.f * (1.f - k.mix));
-        float wg = std::min(1.f, 2.f * k.mix) * dbToGain(k.level);
+        float dryTo = std::min(1.f, 2.f * (1.f - k.mix));
+        float wetTo = std::min(1.f, 2.f * k.mix) * dbToGain(k.level);
+        if (dryGain < 0.f) {
+            dryGain = dryTo;
+            wetGain = wetTo;
+        }
+        dryGain += gainCoef * (dryTo - dryGain);
+        wetGain += gainCoef * (wetTo - wetGain);
+        float dry = dryGain, wg = wetGain;
         o.l = dry * line[0] + wg * wet[0];
         o.r = dry * line[1] + wg * wet[1];
         if (k.saturate) {
