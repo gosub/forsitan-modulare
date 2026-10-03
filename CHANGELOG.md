@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.17.0] - 2026-10-02
+## [2.17.0] - 2026-10-03
 ### Added
   - **radix**, a 12 HP chaotic 8-bit source in the family of the Radical22.
     An integer machine runs on its own clock, and three stepped knobs with
