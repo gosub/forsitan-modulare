@@ -254,15 +254,7 @@ struct OlimTimeQuantity : ParamQuantity {
 // FEEDBACK reads as the loop gain it sets: 1 across the arc.
 struct OlimFeedbackQuantity : ParamQuantity {
     float getDisplayValue() override { return olim::feedbackGain(getValue(), 0.f); }
-    void setDisplayValue(float v) override {
-        float g = clamp(v, 0.f, 2.f);
-        // invert the twice-flattened knob: below the arc, on it, above it
-        float x;
-        if (g < 1.f) x = g * 0.5f * olim::kArcLow;
-        else if (g == 1.f) x = 0.5f;
-        else x = olim::kArcHigh + (g - 1.f) * (1.f - olim::kArcHigh);
-        setValue(x);
-    }
+    void setDisplayValue(float v) override { setValue(olim::feedbackKnob(v)); }
 };
 
 // SPREAD reads -100% (toward now) .. +100% (toward TIME), 0 across its flat.

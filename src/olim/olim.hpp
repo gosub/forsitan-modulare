@@ -97,6 +97,16 @@ inline float feedbackGain(float knob, float cvVolts) {
     return clamp(2.f * noonFlat2(knob) + cvUnit(cvVolts), 0.f, kFeedbackMax);
 }
 
+// The knob position that sets loop gain g, the inverse of feedbackGain with
+// no CV. Below the arc noonFlat2 is x / 0.81, so the gain is x / kArcLow;
+// above it, 1 + (x - kArcHigh) / (1 - kArcHigh).
+inline float feedbackKnob(float g) {
+    g = clamp(g, 0.f, 2.f);
+    if (g < 1.f) return g * kArcLow;
+    if (g == 1.f) return 0.5f;
+    return kArcHigh + (g - 1.f) * (1.f - kArcHigh);
+}
+
 inline float spreadAmount(float knob, float cvVolts) {
     return noonFlat2(knob) + cvUnit(cvVolts);
 }
