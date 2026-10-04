@@ -6,7 +6,8 @@
 // R normalled from L, NaN at the input, the clock cable, the Memory swap and
 // its fade, TIME clamped to the memory, a module deleted while its buffer
 // is still being allocated, the head presets and transforms, and a slider
-// move riding the next crossfades.
+// move riding the next crossfades, the output limiter in both modes and the
+// input fades.
 
 #include "smoke_harness.hpp"
 #include "../src/olim.cpp"
@@ -35,26 +36,32 @@ static void settleSwap(Olim& m, long& frame) {
 // An impulse into head 1 alone at TIME 2 s comes back 0.25 s later, inverted,
 // as the only thing on the output.
 static void testEcho() {
-    Olim m; long fr = 0;
-    m.params[Olim::DRY_PARAM].setValue(0.f);
-    soloHead(m, 0);
-    connect(m, Olim::IN_L_INPUT, 0.f);
-    // let head 1 fade to its place (from delay 0 at construction)
-    for (int i = 0; i < 24000; i++) m.process(makeArgs(fr++));
-    m.inputs[Olim::IN_L_INPUT].setVoltage(4.f);
-    m.process(makeArgs(fr++));
-    m.inputs[Olim::IN_L_INPUT].setVoltage(0.f);
-    long at = -1; float peak = 0.f, v = 0.f;
-    Stats s;
-    for (long i = 1; i < 24000; i++) {
+    for (int hardware = 0; hardware < 2; hardware++) {
+        Olim m; long fr = 0;
+        m.engine.softLimit = !hardware;
+        m.params[Olim::DRY_PARAM].setValue(0.f);
+        soloHead(m, 0);
+        connect(m, Olim::IN_L_INPUT, 0.f);
+        // let head 1 fade to its place (from delay 0 at construction)
+        for (int i = 0; i < 24000; i++) m.process(makeArgs(fr++));
+        m.inputs[Olim::IN_L_INPUT].setVoltage(4.f);
         m.process(makeArgs(fr++));
-        float y = m.outputs[Olim::OUT_L_OUTPUT].getVoltage();
-        s.add(y);
-        if (std::fabs(y) > peak) { peak = std::fabs(y); at = i; v = y; }
+        m.inputs[Olim::IN_L_INPUT].setVoltage(0.f);
+        long at = -1; float peak = 0.f, v = 0.f;
+        Stats s;
+        for (long i = 1; i < 24000; i++) {
+            m.process(makeArgs(fr++));
+            float y = m.outputs[Olim::OUT_L_OUTPUT].getVoltage();
+            s.add(y);
+            if (std::fabs(y) > peak) { peak = std::fabs(y); at = i; v = y; }
+        }
+        // the soft output limiter runs its look-ahead behind; the hardware's none
+        long want = 12000 + m.engine.outputLatency();
+        const char* tag = hardware ? "hardware_" : "";
+        report("olim", (std::string(tag) + "echo_nans").c_str(), s.nans, s.nans == 0);
+        report("olim", (std::string(tag) + "echo_at_samples").c_str(), at, at == want);
+        report("olim", (std::string(tag) + "echo_inverted").c_str(), v, v < -3.9f);
     }
-    report("olim", "echo_nans", s.nans, s.nans == 0);
-    report("olim", "echo_at_samples", at, at == 12000);
-    report("olim", "echo_inverted", v, v < -3.9f);
 }
 
 // A sine through head 1, level against the head's VCA: unpatched is unity,
@@ -335,6 +342,95 @@ static void testFeedbackTyped() {
     report("olim", "feedback_typed_gain_round_trips", worst, worst < 1e-4f);
 }
 
+// A 5 V sine gliding in pitch, dry plus the last head at unity: the two
+// drift in and out of phase and their sum crosses 5 V again and again. The
+// hardware's instant limiter clips each crossing in one sample, which is a
+// crackle; the soft one glides its gain down over its look-ahead. Largest
+// second difference of the output against the sine's own (0.03 at 440 Hz).
+static void limiterRun(bool hardware, float* worstD2, float* peak) {
+    Olim m; long fr = 0;
+    m.engine.softLimit = !hardware;
+    m.inputs[Olim::IN_L_INPUT].channels = 1;
+    double ph = 0.;
+    float p1 = 0.f, p2 = 0.f;
+    *worstD2 = *peak = 0.f;
+    for (long i = 0; i < (long)(8 * SR); i++) {
+        double t = (double)i / SR;
+        ph += 233.0 * std::pow(2.0, 0.5 * std::sin(2.0 * M_PI * 0.3 * t)) / SR;
+        m.inputs[Olim::IN_L_INPUT].setVoltage(5.f * (float)std::sin(2.0 * M_PI * ph));
+        m.process(makeArgs(fr++));
+        float y = m.outputs[Olim::OUT_L_OUTPUT].getVoltage();
+        if (i > (long)(4 * SR)) {
+            *worstD2 = std::max(*worstD2, std::fabs(y - 2.f * p1 + p2));
+            *peak = std::max(*peak, std::fabs(y));
+        }
+        p2 = p1;
+        p1 = y;
+    }
+}
+
+static void testOutputLimiter() {
+    float softD2, softPeak, hardD2, hardPeak;
+    limiterRun(false, &softD2, &softPeak);
+    limiterRun(true, &hardD2, &hardPeak);
+    printf("# gliding 5 V sine: soft d2 %.4f peak %.3f V, hardware d2 %.4f peak %.3f V\n",
+           softD2, softPeak, hardD2, hardPeak);
+    report("olim", "soft_limiter_no_crackle", softD2, softD2 < 0.02f);
+    report("olim", "soft_limiter_holds_5v", softPeak, softPeak <= 5.001f && softPeak > 4.5f);
+    report("olim", "hardware_limiter_still_clips", hardD2, hardD2 > 0.05f);
+
+    Olim a;
+    a.engine.softLimit = false;
+    a.inputFades = false;
+    json_t* j = a.dataToJson();
+    Olim b;
+    b.dataFromJson(j);
+    json_decref(j);
+    Olim c;    // a patch from before the menu: soft and fading
+    json_t* old = json_pack("{s:f}", "memory", 20.0);
+    c.dataFromJson(old);
+    json_decref(old);
+    bool ok = !b.engine.softLimit && !b.inputFades && c.engine.softLimit && c.inputFades;
+    report("olim", "json_limiter_and_fades", ok, ok);
+}
+
+// A cable plugged into a running 5 V source, then pulled: with the fades the
+// output ramps over 5 ms (5 V / 240 samples, about 0.02 V a sample) instead
+// of stepping 5 V. R takes over from the L normal the same way. Largest
+// sample-to-sample change, dry only.
+static float plugStep(bool fades, int which) {
+    Olim m; long fr = 0;
+    m.inputFades = fades;
+    soloHead(m, -1);
+    m.params[Olim::DRY_PARAM].setValue(1.f);
+    for (int i = 0; i < 4800; i++) m.process(makeArgs(fr++));
+    if (which == 2) { connect(m, Olim::IN_L_INPUT, 4.f); for (int i = 0; i < 4800; i++) m.process(makeArgs(fr++)); }
+    float prev = m.outputs[Olim::OUT_R_OUTPUT].getVoltage(), worst = 0.f;
+    if (which == 0) connect(m, Olim::IN_L_INPUT, 4.f);                  // plug
+    if (which == 1) { connect(m, Olim::IN_L_INPUT, 4.f);
+                      for (int i = 0; i < 4800; i++) m.process(makeArgs(fr++));
+                      prev = m.outputs[Olim::OUT_R_OUTPUT].getVoltage();
+                      m.inputs[Olim::IN_L_INPUT].channels = 0;           // pull
+                      m.inputs[Olim::IN_L_INPUT].setVoltage(0.f); }
+    if (which == 2) connect(m, Olim::IN_R_INPUT, -4.f);                 // R off the normal
+    for (int i = 0; i < 2400; i++) {
+        m.process(makeArgs(fr++));
+        float y = m.outputs[Olim::OUT_R_OUTPUT].getVoltage();
+        worst = std::max(worst, std::fabs(y - prev));
+        prev = y;
+    }
+    return worst;
+}
+
+static void testInputFades() {
+    float plug = plugStep(true, 0), pull = plugStep(true, 1), normal = plugStep(true, 2);
+    float raw = plugStep(false, 0);
+    report("olim", "fade_plug", plug, plug < 0.05f);
+    report("olim", "fade_pull", pull, pull < 0.05f);
+    report("olim", "fade_r_off_the_normal", normal, normal < 0.1f);
+    report("olim", "no_fade_steps", raw, raw > 3.9f);
+}
+
 SMOKE_MAIN(testEcho, testVca, testNormal, testNan, testClock, testMemory, testDeleteMidSwap,
            testPresets, testTransforms, testMutations,
-           testSliderRamp, testFeedbackTyped)
+           testSliderRamp, testFeedbackTyped, testOutputLimiter, testInputFades)
