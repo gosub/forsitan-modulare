@@ -374,6 +374,9 @@ struct Engine {
 
     bool clocked() const { return clock.period() > 0.f; }
 
+    // Samples the output runs behind the input: the soft limiter's window.
+    int outputLatency() const { return softLimit ? ch[0].softOut.n - 1 : 0; }
+
     // Recomputes TIME, the head targets and the gains.
     void update(const Controls& c) {
         float mem = memorySeconds();
