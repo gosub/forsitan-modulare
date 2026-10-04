@@ -23,8 +23,8 @@ of taste resting on numbers the harness prints.
 Anything that yields a number is not here. `./test/smoke_olim` checks where
 an echo lands and that it is inverted, the VCA normalling and clamp, R
 normalled from L, NaN at the input, the clock cable, the Memory swap and
-TIME clamped to it, and that a slider move lands over the next fades, not
-at once. `./test/olim_probe heads` prints the head positions,
+TIME clamped to it, that a slider move lands over the next fades, not
+at once, the output limiter in both modes and the input fades. `./test/olim_probe heads` prints the head positions,
 `loop` the level per pass against **Feedback**, `clicks` the roughness of
 every sweep.
 
@@ -208,3 +208,25 @@ o.set(time=0.75)   # 8 clocks: each head an eighth of TIME
 - [x] 6.3. Tresillo, then each mutation a few times: Mutate keeps the
       rhythm and moves the accents, Mutate pattern moves one echo a step,
       Mutate wide starts to blur it.
+
+---
+
+## 7. Output limiter and cables
+
+A 5 V sine with its pitch swept slowly, dry and the last head at unity: the
+two drift in and out of phase, so their sum keeps crossing 5 V.
+
+```python
+sine = vcv.module("VCO", freq=vcv.hz(233))
+sine["sine"] >> o["in l"]
+o.set(dry=1, head1=0, head2=0, head3=0, head4=0,
+      head5=0, head6=0, head7=0, head8=1, time=0.25)
+vcv.modulate(sine["1v/octave pitch"], depth=0.3, rate=0.3, offset=False)
+```
+
+- [ ] 7.1. Open the VCA: the sum swells and thins as the pitch moves, with
+      no crackle. Menu, Output limiter, Hardware: the swells now crackle at
+      their peaks. That is the hardware's limiter, not a fault.
+- [ ] 7.2. Pull the cable from **in L** and plug it back while the sine
+      plays: no click, and none echoing back from the heads. Menu, untick
+      Fade inputs, and do it again: a click, and its echo after **Time**.
