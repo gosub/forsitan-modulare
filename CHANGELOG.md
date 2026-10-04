@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [2.17.0] - 2026-10-03
+## [2.17.0] - 2026-10-04
 ### Added
   - **radix**, a 12 HP chaotic 8-bit source in the family of the Radical22.
     An integer machine runs on its own clock, and three stepped knobs with
@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     Nine lit sliders set each head's level and the dry, each with its own
     VCA input, the expander built in. Feedback runs inverted and is
     normalised by the sum of the sliders, so it goes from sound on sound to
-    a howl. A clock sets the time in power-of-two steps.
+    a howl. A clock sets the time in power-of-two steps. The output is held
+    at 5 V by a soft look-ahead limiter, with the hardware's instant one in
+    the context menu, and plugging or pulling an input cable fades over 5 ms
+    so the heads have no click to repeat.
   - **nodi**, a 24 HP continuous-time sequencer after the Discrete Map.
     Eight thresholds on a moving voltage X, each rising, off or falling,
     pick one of eight stages, so the sliders place steps in time, map a
