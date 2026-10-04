@@ -60,6 +60,11 @@ constexpr float kLevelTau = 0.0208f;
 constexpr float kDcTau = 2.08f;
 constexpr float kLimiterRelease = 16.f;    // per second
 
+// The soft output limiter's look-ahead: the output is late by this, and the
+// gain glides down over it instead of jumping on the sample that is over.
+constexpr float kLookahead = 0.001f;       // seconds
+constexpr int kLookaheadMax = 512;         // samples, 1 ms up to 512 kHz
+
 // The compressor on the wet signal, keyed on input plus wet.
 constexpr float kCompRatio = 5.f;
 constexpr float kCompAttack = 0.02f;
@@ -216,6 +221,55 @@ struct Head {
     }
 };
 
+// ---------------------------------------------------------- soft limiter
+
+// The output limiter without the hardware's instant attack, which clips a
+// peak in the sample it arrives and crackles on anything that crosses full
+// scale often (a 5 V sine and its echo drifting in and out of phase). The
+// gain each sample needs, 1 / max(1, |x|), is held at its minimum over the
+// look-ahead window, released at the hardware's rate, then averaged over
+// the same window: the gain is down to what a peak needs by the time the
+// peak, delayed by the window, reaches it, and it gets there in a ramp.
+struct SoftLimiter {
+    int n = 48;                    // window, samples
+    int pos = 0;
+    float x[kLookaheadMax] = {};   // the signal, delayed n - 1
+    float need[kLookaheadMax] = {};
+    float held[kLookaheadMax] = {};
+    double sum = 0.;               // of held[], for the average
+    float env = 1.f;
+
+    void setSampleRate(float sr) {
+        n = std::max(1, std::min(kLookaheadMax, (int)std::lround(kLookahead * sr)));
+        reset();
+    }
+    void reset() {
+        pos = 0;
+        for (int i = 0; i < kLookaheadMax; i++) {
+            x[i] = 0.f;
+            need[i] = held[i] = 1.f;
+        }
+        sum = n;
+        env = 1.f;
+    }
+    inline float process(float in, float release) {
+        need[pos] = 1.f / std::max(std::fabs(in), 1.f);
+        float lo = 1.f;
+        for (int i = 0; i < n; i++) lo = std::min(lo, need[i]);
+        env = lo < env ? lo : env + (lo - env) * release;
+        sum += env - held[pos];
+        held[pos] = env;
+        // the oldest sample in the window is n - 1 behind
+        int oldest = pos + 1 >= n ? 0 : pos + 1;
+        float out = x[oldest];
+        x[pos] = in;
+        out = n > 1 ? out : in;
+        pos = oldest;
+        float g = (float)(sum / n);
+        return out * std::min(g, 1.f);
+    }
+};
+
 // ---------------------------------------------------------------- channel
 
 struct Channel {
@@ -229,6 +283,7 @@ struct Channel {
     float dc = 0.f;
     float compEnv = 0.f, compDb = 0.f, compGain = 1.f;
     float limFb = 1.f, limOut = 1.f;
+    SoftLimiter softOut;
     float inLevel = 0.f;
 
     static inline float limit(float x, float& g, float release) {
@@ -256,6 +311,9 @@ struct Engine {
     ClockMeter clock;
     StepHold knobStep, cvStep;
     int tick = 0;
+    // The output limiter: soft (look-ahead, 1 ms late) or the hardware's,
+    // instant. The loop's limiter is the hardware's either way.
+    bool softLimit = true;
 
     // derived per control tick
     float timeSec = 0.f;
@@ -285,6 +343,7 @@ struct Engine {
         compAtk = std::exp(-1.f / (s * kCompAttack));
         compRel = std::exp(-1.f / (s * kCompRelease));
         compAtk2 = std::exp(-2.f / (s * kCompAttack));
+        for (Channel& c : ch) c.softOut.setSampleRate(s);
         tick = 0;
     }
 
@@ -364,7 +423,7 @@ struct Engine {
             h.dry += (dryTarget - h.dry) * cDry;
             h.inLevel += (std::fabs(in[k]) - h.inLevel) * cLevel;
             if (!ready()) {
-                out[k] = Channel::limit(in[k] * h.dry, h.limOut, cLim);
+                out[k] = limitOut(h, in[k] * h.dry);
                 continue;
             }
             h.norm += (normTarget - h.norm) * cNorm;
@@ -381,11 +440,15 @@ struct Engine {
             wet *= compress(h, in[k] + wet);
 
             h.buf[h.w] = -Channel::limit(in[k] + wet * h.fb * h.norm, h.limFb, cLim);
-            out[k] = Channel::limit(wet + in[k] * h.dry, h.limOut, cLim);
+            out[k] = limitOut(h, wet + in[k] * h.dry);
             if (++h.w >= h.size) h.w = 0;
         }
         outL = out[0] * kFullScale;
         outR = out[1] * kFullScale;
+    }
+
+    inline float limitOut(Channel& h, float x) {
+        return softLimit ? h.softOut.process(x, cLim) : Channel::limit(x, h.limOut, cLim);
     }
 
     // Gain for the wet signal from the key: a peak follower, then 5:1 above
