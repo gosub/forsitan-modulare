@@ -34,6 +34,7 @@ const int kNumMemoryChoices = 3;
 const float kDefaultMemory = 150.f;
 // The output fades out before the buffer is replaced and back in after.
 const float kSwapFade = 0.005f;   // seconds
+const float kInputFade = 0.005f;  // seconds, a cable plugged or pulled
 
 }  // namespace
 
@@ -390,9 +391,37 @@ struct Olim : Module {
         engine.setSampleRate(sampleRate());
     }
 
+    // Plugging a cable steps the input from 0 to wherever the signal is, and
+    // pulling it steps back; the buffer keeps the step and every head plays
+    // it again. A change of source crossfades from the last value over
+    // kInputFade instead: from what was there toward the new signal, or from
+    // the last sample held toward silence.
+    struct InputFade {
+        int source = -1;           // 0 none, 1 patched; -1 before the first sample
+        float last = 0.f, from = 0.f, t = 1.f;
+        float process(bool patched, float x, float step) {
+            int src = patched ? 1 : 0;
+            if (source >= 0 && src != source) {
+                from = last;
+                t = 0.f;
+            }
+            source = src;
+            if (t < 1.f) {
+                t = std::min(1.f, t + step);
+                x = from + (x - from) * t;
+            }
+            last = x;
+            return x;
+        }
+    };
+    InputFade fadeL, fadeR;
+    bool inputFades = true;
+
     json_t* dataToJson() override {
         json_t* root = json_object();
         json_object_set_new(root, "memory", json_real(memory));
+        json_object_set_new(root, "outputLimiter", json_string(engine.softLimit ? "soft" : "hardware"));
+        json_object_set_new(root, "inputFades", json_boolean(inputFades));
         return root;
     }
 
@@ -402,10 +431,16 @@ struct Olim : Module {
             for (int i = 0; i < kNumMemoryChoices; i++)
                 if (std::fabs(m - kMemoryChoices[i]) < 0.5f) memory = kMemoryChoices[i];
         }
+        if (json_t* j = json_object_get(root, "outputLimiter"))
+            engine.softLimit = std::string(json_string_value(j) ? json_string_value(j) : "") != "hardware";
+        if (json_t* j = json_object_get(root, "inputFades"))
+            inputFades = json_boolean_value(j);
     }
 
     void onReset() override {
         memory = kDefaultMemory;
+        engine.softLimit = true;
+        inputFades = true;
     }
 
     // Keeps the buffer the size the Memory menu and the sample rate ask for:
@@ -520,10 +555,16 @@ struct Olim : Module {
         }
 
         float inL = inputs[IN_L_INPUT].getVoltage();
-        float inR = inputs[IN_R_INPUT].isConnected() ? inputs[IN_R_INPUT].getVoltage() : inL;
         // a NaN in would live in the buffer for as long as the memory is
         if (!std::isfinite(inL)) inL = 0.f;
+        bool rPatched = inputs[IN_R_INPUT].isConnected();
+        float inR = rPatched ? inputs[IN_R_INPUT].getVoltage() : 0.f;
         if (!std::isfinite(inR)) inR = 0.f;
+        float fadeStep = inputFades ? args.sampleTime / kInputFade : 1.f;
+        inL = fadeL.process(inputs[IN_L_INPUT].isConnected(), inL, fadeStep);
+        // R follows L until it has a cable: the switch between the two fades
+        // too, so plugging R next to a running L does not step either
+        inR = fadeR.process(rPatched, rPatched ? inR : inL, fadeStep);
 
         float outL, outR;
         engine.process(ctl, clockHigh, inL, inR, outL, outR);
@@ -745,6 +786,12 @@ struct OlimWidget : ModuleWidget {
             [=](int i) { m->setMemory(kMemoryChoices[i]); }));
         if (m->swapFailed)
             menu->addChild(createMenuLabel("Not enough memory for that: passing dry only"));
+        menu->addChild(createIndexSubmenuItem("Output limiter",
+            {"Soft (1 ms look-ahead)", "Hardware (instant)"},
+            [=]() { return m->engine.softLimit ? 0 : 1; },
+            [=](int i) { m->engine.softLimit = i == 0; }));
+        menu->addChild(createBoolPtrMenuItem("Fade inputs when a cable is plugged or pulled", "",
+                                             &m->inputFades));
     }
 };
 
