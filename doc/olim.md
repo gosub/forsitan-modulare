@@ -78,7 +78,7 @@ output.
 | **Feedback CV** | +5 V adds 1 to the loop gain, up to 3 in all |
 | **Clk** | rising edges. The period is the mean of the last two intervals; with no edge for two seconds, or the cable pulled, **Time** is free again |
 | **Dry / Head VCA** | linear, 0 to 5 V for silence to unity, clamped. Unpatched is unity; patched, the slider becomes the depth |
-| **Out L / Out R** | audio, limited to +-5 V, as on the hardware. Rack's audio interface reads 10 V as full scale, so a howl at the limit shows as -6 dB there |
+| **Out L / Out R** | audio, limited to +-5 V, as on the hardware (softly, by default: see the context menu). Rack's audio interface reads 10 V as full scale, so a howl at the limit shows as -6 dB there |
 
 ## Context menu
 
@@ -114,6 +114,18 @@ output.
   sized for Rack's sample rate: 150 s at 48 kHz is 58 MB, at 192 kHz 230 MB.
   Changing it fades the output out, empties the buffer and fades back in.
   A **Time** longer than the memory is cut to it.
+- **Output limiter**: soft, the default, or hardware. Both hold the output
+  at 5 V. The hardware's catches a peak in the sample it arrives, which
+  clips it, and anything that crosses 5 V often (a 5 V source and its echo
+  drifting in and out of phase) crackles. The soft one looks 1 ms ahead and
+  lowers its gain in a ramp before the peak arrives; the output, dry
+  included, is 1 ms late for it. The limiter inside the loop is the
+  hardware's either way, so the hiss and the howl are unchanged.
+- **Fade inputs when a cable is plugged or pulled**: on by default. A cable
+  plugged into a running signal steps the input, the buffer keeps the step,
+  and every head plays it again as a click. With this on, a cable plugged
+  or pulled crossfades over 5 ms, and so does **In R** taking over from the
+  **In L** normal.
 
 ## Tips
 
@@ -138,6 +150,10 @@ output.
 - **Clock**: pulling the cable frees **Time** at once, where the hardware
   waits two seconds for a clock that might come back, and the first interval
   after a clock starts is measured rather than guessed.
+- **Output limiter**: soft by default (see the context menu); the
+  hardware's instant one is a menu choice.
+- **Input fades** on plugging and pulling a cable, which the hardware has no
+  way to know about.
 - Controls are read every 8 samples (the hardware's block is 7), and there is
   no calibration and no dead band at the knobs' ends.
 
