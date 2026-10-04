@@ -447,8 +447,12 @@ struct Engine {
         outR = out[1] * kFullScale;
     }
 
+    // Both run all the time, so switching between them from the menu meets
+    // a limiter already in step with the signal rather than a stale one.
     inline float limitOut(Channel& h, float x) {
-        return softLimit ? h.softOut.process(x, cLim) : Channel::limit(x, h.limOut, cLim);
+        float soft = h.softOut.process(x, cLim);
+        float hard = Channel::limit(x, h.limOut, cLim);
+        return softLimit ? soft : hard;
     }
 
     // Gain for the wet signal from the key: a peak follower, then 5:1 above
