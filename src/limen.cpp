@@ -68,6 +68,17 @@ static std::string err_response(const char* msg) {
 	return json_response(false, nullptr, msg);
 }
 
+// "#rrggbb" or "#rrggbbaa": what color::fromHexString reads. It does not
+// report a malformed string, it quietly makes it black, so check first.
+static bool valid_hex_color(const std::string& s) {
+	if ((s.size() != 7 && s.size() != 9) || s[0] != '#')
+		return false;
+	for (size_t i = 1; i < s.size(); i++)
+		if (!std::isxdigit((unsigned char) s[i]))
+			return false;
+	return true;
+}
+
 
 // ── Protocol version ─────────────────────────────────────────────────────────
 // Bump when the wire protocol changes in a way clients must adapt to.
@@ -804,17 +815,23 @@ static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 		json_t* op_j = json_object_get(req, "outputPort");
 		json_t* im_j = json_object_get(req, "inputModule");
 		json_t* ip_j = json_object_get(req, "inputPort");
+		json_t* col_j = json_object_get(req, "color");
+		std::string colorHex;
+		if (col_j && json_is_string(col_j))
+			colorHex = json_string_value(col_j);
 		if (!om_j || !json_is_integer(om_j) ||
 		    !op_j || !json_is_integer(op_j) ||
 		    !im_j || !json_is_integer(im_j) ||
 		    !ip_j || !json_is_integer(ip_j)) {
 			result = err_response("missing outputModule, outputPort, inputModule, or inputPort");
+		} else if (col_j && !valid_hex_color(colorHex)) {
+			result = err_response("color must be a string \"#rrggbb\" or \"#rrggbbaa\"");
 		} else {
 			int64_t outMod  = json_integer_value(om_j);
 			int     outPort = (int)json_integer_value(op_j);
 			int64_t inMod   = json_integer_value(im_j);
 			int     inPort  = (int)json_integer_value(ip_j);
-			result = limen->runOnMainThread([outMod, outPort, inMod, inPort]() -> std::string {
+			result = limen->runOnMainThread([outMod, outPort, inMod, inPort, colorHex]() -> std::string {
 				engine::Module* outM = APP->engine->getModule(outMod);
 				if (!outM) return err_response("output module not found");
 				engine::Module* inM  = APP->engine->getModule(inMod);
@@ -835,7 +852,9 @@ static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 				cw->setCable(cable);
 				// A new CableWidget is transparent black: the plugs draw, the
 				// cable does not. Take the next colour as a dragged cable does.
-				cw->color = APP->scene->rack->getNextCableColor();
+				cw->color = colorHex.empty()
+					? APP->scene->rack->getNextCableColor()
+					: color::fromHexString(colorHex);
 				APP->scene->rack->addCable(cw);
 
 				json_t* obj = json_object();
