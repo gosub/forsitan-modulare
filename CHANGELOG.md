@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.17.1] - 2026-11-01
+### Fixed
+  - **limen**: `add_cable` made cables with no colour, so Rack drew the
+    plugs and an invisible cable
+    ([#24](https://github.com/gosub/forsitan-modulare/issues/24)). They now
+    take the next colour in Rack's rotation, as a dragged cable does.
+### Added
+  - **limen**: `add_cable` takes an optional `color`, `"#rrggbb"` or
+    `"#rrggbbaa"`, so a client can follow a patch's cable colours.
+
 ## [2.17.0] - 2026-10-04
 ### Added
   - **radix**, a 12 HP chaotic 8-bit source in the family of the Radical22.
