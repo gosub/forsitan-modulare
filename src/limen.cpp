@@ -833,6 +833,9 @@ static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 
 				app::CableWidget* cw = new app::CableWidget;
 				cw->setCable(cable);
+				// A new CableWidget is transparent black: the plugs draw, the
+				// cable does not. Take the next colour as a dragged cable does.
+				cw->color = APP->scene->rack->getNextCableColor();
 				APP->scene->rack->addCable(cw);
 
 				json_t* obj = json_object();
