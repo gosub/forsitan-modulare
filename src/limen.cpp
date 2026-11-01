@@ -168,8 +168,14 @@ static const char* place_module(app::ModuleWidget* mw, float x, float y, const s
 		APP->scene->rack->setModulePosNearest(mw, px);
 	else if (mode == "force")
 		APP->scene->rack->setModulePosForce(mw, px);
-	else if (mode == "squeeze")
+	else if (mode == "squeeze") {
+		// Squeezing starts by putting back every module recorded by
+		// updateModuleOldPositions(), so record them now: a stale record
+		// drops modules moved since onto each other, and writes positions
+		// into widgets deleted since. Rack's own callers do the same.
+		APP->scene->rack->updateModuleOldPositions();
 		APP->scene->rack->setModulePosSqueeze(mw, px);
+	}
 	else if (mode == "strict") {
 		if (!APP->scene->rack->requestModulePos(mw, px))
 			return "position occupied";
