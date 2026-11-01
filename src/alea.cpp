@@ -13,19 +13,33 @@
 
 namespace {
 
+// The steps of Rack's own module browser (chooseModel in app/Browser.cpp).
+// addModuleAtMouse squeezes the row by default, and squeezing first puts back
+// every module recorded by updateModuleOldPositions(): skip that call and it
+// replays a stale record, dropping modules moved since onto each other and
+// writing positions into widgets deleted since, which corrupts the heap.
 void CreateModule(Model* model) {
+    history::ComplexAction* h = new history::ComplexAction;
+    h->name = "add random module";
+
     engine::Module* module = model->createModule();
     APP->engine->addModule(module);
     ModuleWidget* moduleWidget = model->createModuleWidget(module);
+
+    APP->scene->rack->deselectAll();
+    APP->scene->rack->updateModuleOldPositions();
     APP->scene->rack->addModuleAtMouse(moduleWidget);
+    h->push(APP->scene->rack->getModuleDragAction());
+
     // Load template preset
     moduleWidget->loadTemplate();
 
     // history::ModuleAdd
-    history::ModuleAdd* h = new history::ModuleAdd;
-    h->name = "create module";
+    history::ModuleAdd* ha = new history::ModuleAdd;
     // This serializes the module so redoing returns to the current state.
-    h->setModule(moduleWidget);
+    ha->setModule(moduleWidget);
+    h->push(ha);
+
     APP->history->push(h);
 }
 
