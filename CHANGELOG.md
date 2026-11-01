@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.17.2] - 2026-11-01
+### Fixed
+  - **alea** could crash Rack and drop modules on top of each other. In
+    Rack's default squeeze mode, placing a module first puts back the
+    module positions saved at the last drag, and alea did not save them
+    first, as Rack's browser does. Modules moved since then jumped back
+    over others, and a module deleted since then had a position written
+    into freed memory, which crashed Rack on a later draw, most often with
+    "Even odds per brand". Each draw is now also one undo step, the moves
+    included.
+  - **limen**: `add_module` and `move_module` with mode `squeeze` had the
+    same fault.
+
 ## [2.17.1] - 2026-11-01
 ### Fixed
   - **limen**: `add_cable` made cables with no colour, so Rack drew the
