@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.17.3] - 2026-11-04
+### Fixed
+  - **limen**: `add_cable` to a port its module declares but has no jack
+    for on the panel (NYSTHI Programmer's input 19) crashed Rack
+    ([#25](https://github.com/gosub/forsitan-modulare/issues/25)). It is
+    now an error, `input port has no jack on the panel` or `output port
+    has no jack on the panel`, and no cable is made. More generally, an
+    exception in any limen command is now an `internal error` reply
+    instead of a crash.
+
 ## [2.17.2] - 2026-11-01
 ### Fixed
   - **alea** could crash Rack and drop modules on top of each other. In
