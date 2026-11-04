@@ -115,7 +115,7 @@ commands return the position it actually landed on.
 | cmd | extra fields | result | description |
 |-----|-------------|--------|-------------|
 | `list_cables` | `"id": <int>` (opt.), `"verbose": true` (opt.) | `[{id, outputModule, outputPort, inputModule, inputPort, …}]` | cables in the patch; filter by module id; verbose adds `outputModuleName`, `outputPortName`, `inputModuleName`, `inputPortName` |
-| `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>`, `"color": "#rrggbb"` (opt., or `#rrggbbaa`) | `{id}` | connect two ports; without `color` the cable takes the next colour in Rack's rotation, as a dragged cable does |
+| `add_cable` | `"outputModule": <int>`, `"outputPort": <int>`, `"inputModule": <int>`, `"inputPort": <int>`, `"color": "#rrggbb"` (opt., or `#rrggbbaa`) | `{id}` | connect two ports; without `color` the cable takes the next colour in Rack's rotation, as a dragged cable does; a port with no jack on the panel is an error |
 | `remove_cable` | `"id": <int>` | `null` | remove a cable from the patch |
 
 #### Batching

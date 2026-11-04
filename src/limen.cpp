@@ -846,6 +846,15 @@ static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 					return err_response("output port out of range");
 				if (inPort < 0 || inPort >= inM->getNumInputs())
 					return err_response("input port out of range");
+				// A module can declare a port its panel has no jack for, and
+				// CableWidget::setCable throws on one, after the engine has
+				// taken the cable. Check the panel before touching either.
+				app::ModuleWidget* outW = APP->scene->rack->getModule(outMod);
+				if (!outW || !outW->getOutput(outPort))
+					return err_response("output port has no jack on the panel");
+				app::ModuleWidget* inW = APP->scene->rack->getModule(inMod);
+				if (!inW || !inW->getInput(inPort))
+					return err_response("input port has no jack on the panel");
 
 				engine::Cable* cable = new engine::Cable;
 				cable->outputModule = outM;
