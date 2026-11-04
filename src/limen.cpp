@@ -1102,7 +1102,17 @@ struct LimenWidget : ModuleWidget {
 			ops.swap(m->pendingOps);
 		}
 		for (auto& op : ops) {
-			op->result = op->fn();
+			// This runs inside Rack's frame: an exception that got past here
+			// would end Rack. Report it to the client instead.
+			try {
+				op->result = op->fn();
+			}
+			catch (std::exception& e) {
+				op->result = err_response((std::string("internal error: ") + e.what()).c_str());
+			}
+			catch (...) {
+				op->result = err_response("internal error");
+			}
 			{
 				std::lock_guard<std::mutex> lk(m->pendingMtx);
 				op->done = true;
