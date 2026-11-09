@@ -295,12 +295,53 @@ static std::string cmd_list_params(int64_t id) {
 	return ok_response(arr);
 }
 
-static std::string cmd_get_param(int64_t id, int paramId) {
+// A param is addressed by its index or by its name, as list_params shows it.
+// A name is matched exactly first, then ignoring case; one that matches
+// several params is refused rather than guessed. Returns the index, or -1
+// with err set.
+static int resolve_param(engine::Module* m, json_t* param_j, std::string& err) {
+	if (json_is_integer(param_j)) {
+		json_int_t i = json_integer_value(param_j);
+		if (i < 0 || i >= m->getNumParams()) {
+			err = "param not found";
+			return -1;
+		}
+		return (int)i;
+	}
+	std::string want = json_string_value(param_j);
+	auto lower = [](std::string t) {
+		for (char& c : t) c = (char)std::tolower((unsigned char)c);
+		return t;
+	};
+	for (int pass = 0; pass < 2; pass++) {
+		std::vector<int> hits;
+		for (int i = 0; i < m->getNumParams(); i++) {
+			engine::ParamQuantity* pq = m->getParamQuantity(i);
+			if (!pq) continue;
+			bool same = pass == 0 ? pq->name == want : lower(pq->name) == lower(want);
+			if (same) hits.push_back(i);
+		}
+		if (hits.size() == 1)
+			return hits[0];
+		if (hits.size() > 1) {
+			err = "param name \"" + want + "\" is ambiguous, it names params";
+			for (int i : hits) err += " " + std::to_string(i);
+			err += "; use the index";
+			return -1;
+		}
+	}
+	err = "param not found: \"" + want + "\"";
+	return -1;
+}
+
+static std::string cmd_get_param(int64_t id, json_t* param_j) {
 	engine::Module* m = APP->engine->getModule(id);
 	if (!m)
 		return err_response("module not found");
-	if (paramId < 0 || paramId >= m->getNumParams())
-		return err_response("param not found");
+	std::string err;
+	int paramId = resolve_param(m, param_j, err);
+	if (paramId < 0)
+		return err_response(err.c_str());
 	json_t* obj = json_object();
 	json_object_set_new(obj, "id", json_integer(paramId));
 	json_object_set_new(obj, "value", json_real(APP->engine->getParamValue(m, paramId)));
@@ -314,14 +355,23 @@ static std::string cmd_get_param(int64_t id, int paramId) {
 	return ok_response(obj);
 }
 
-static std::string cmd_set_param(int64_t id, int paramId, float value) {
+// Clamped to the param's range and rounded if it snaps, as a knob turned
+// by hand would be. The reply is the param as get_param shows it, so a
+// client can see the value that was actually applied.
+static std::string cmd_set_param(int64_t id, json_t* param_j, float value) {
 	engine::Module* m = APP->engine->getModule(id);
 	if (!m)
 		return err_response("module not found");
-	if (paramId < 0 || paramId >= m->getNumParams())
-		return err_response("param not found");
-	APP->engine->setParamValue(m, paramId, value);
-	return ok_response(json_null());
+	std::string err;
+	int paramId = resolve_param(m, param_j, err);
+	if (paramId < 0)
+		return err_response(err.c_str());
+	engine::ParamQuantity* pq = m->getParamQuantity(paramId);
+	if (pq)
+		pq->setImmediateValue(value);
+	else
+		APP->engine->setParamValue(m, paramId, value);
+	return cmd_get_param(id, param_j);
 }
 
 static std::string cmd_list_ports(int64_t id) {
@@ -657,12 +707,10 @@ static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 		json_t* id_j    = json_object_get(req, "id");
 		json_t* param_j = json_object_get(req, "param");
 		if (!id_j || !json_is_integer(id_j) ||
-		    !param_j || !json_is_integer(param_j)) {
-			result = err_response("missing id or param");
+		    !param_j || !(json_is_integer(param_j) || json_is_string(param_j))) {
+			result = err_response("missing id or param (an index or a name)");
 		} else {
-			result = cmd_get_param(
-				json_integer_value(id_j),
-				(int)json_integer_value(param_j));
+			result = cmd_get_param(json_integer_value(id_j), param_j);
 		}
 	}
 	else if (cmd == "set_param") {
@@ -670,13 +718,11 @@ static std::string dispatch_req(json_t* req, Limen* limen, int depth) {
 		json_t* param_j = json_object_get(req, "param");
 		json_t* value_j = json_object_get(req, "value");
 		if (!id_j || !json_is_integer(id_j) ||
-		    !param_j || !json_is_integer(param_j) ||
+		    !param_j || !(json_is_integer(param_j) || json_is_string(param_j)) ||
 		    !value_j || !json_is_number(value_j)) {
-			result = err_response("missing id, param, or value");
+			result = err_response("missing id, param (an index or a name), or value");
 		} else {
-			result = cmd_set_param(
-				json_integer_value(id_j),
-				(int)json_integer_value(param_j),
+			result = cmd_set_param(json_integer_value(id_j), param_j,
 				(float)json_number_value(value_j));
 		}
 	}

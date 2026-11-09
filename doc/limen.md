@@ -81,11 +81,15 @@ reliable feature test for everything else.
 | `get_module_info` | `"id": <int>` | `{id, model: {slug, name, description, tags, manualUrl, modularGridUrl}, plugin: {slug, name, brand, version, license, author, authorUrl, pluginUrl, manualUrl, sourceUrl, donateUrl, changelogUrl}}` | the metadata Rack shows in a module's right-click Info menu |
 | `list_ports` | `"id": <int>` | `{inputs: [{id, name}], outputs: [{id, name}]}` | input and output port names |
 | `list_params` | `"id": <int>` | `[{id, value, name, min, max, unit}]` | params for a module |
-| `get_param` | `"id": <int>`, `"param": <int>` | `{id, value, name, min, max, unit}` | one parameter's current value and metadata |
-| `set_param` | `"id": <int>`, `"param": <int>`, `"value": <float>` | `null` | set a parameter value |
+| `get_param` | `"id": <int>`, `"param": <int or string>` | `{id, value, name, min, max, unit}` | one parameter's current value and metadata; `param` is the index or the name |
+| `set_param` | `"id": <int>`, `"param": <int or string>`, `"value": <float>` | `{id, value, name, min, max, unit}` | set a parameter value, clamped to `min`/`max` and rounded on a stepped control; the reply shows the value applied |
 | `add_module` | `"plugin": "<slug>"`, `"model": "<slug>"`, `"x"`, `"y"`, `"mode"` (opt.) | `{id, pos: {x, y}, hp}` | add a module to the patch |
 | `remove_module` | `"id": <int>` | `null` | remove a module from the patch |
 | `move_module` | `"id": <int>`, `"x": <int>`, `"y": <int>`, `"mode"` (opt.) | `{id, pos: {x, y}}` | move a module to a grid position |
+
+A param name is the one `list_params` shows. It is matched exactly first,
+then ignoring case; a name that several params share (unnamed ones, for
+instance) is an error that lists their indices, so use the index there.
 
 ##### Module positions
 
