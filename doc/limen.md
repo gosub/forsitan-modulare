@@ -2,7 +2,7 @@
 
 ![limen](../img/limen.png)
 
-*limen* is a TCP+JSON control interface for VCV Rack. It exposes a simple newline-delimited JSON protocol over a local TCP socket, letting you query and control your patch from scripts, Emacs, or any other tool that can open a socket.
+*limen* is a TCP+JSON control interface for VCV Rack. It exposes a simple newline-delimited JSON protocol over a local TCP socket, letting you query and control your patch from scripts, language models, or any other tool that can open a socket.
 
 ## Module UI
 
@@ -15,9 +15,9 @@ The port and enabled state are saved with the patch.
 
 ## Use cases
 
-**CLI control** - the included `limen` CLI lets you inspect and modify a live patch from the terminal. Useful for quick experiments, parameter sweeps, or integrating Rack into shell scripts.
+**CLI control** - `limen-cli`, from [limen-tools](https://github.com/gosub/limen-tools), lets you inspect and modify a live patch from the terminal. Useful for quick experiments, parameter sweeps, or integrating Rack into shell scripts.
 
-**Alternative interfaces** - any tool that can open a TCP socket can drive Rack. An Emacs minor mode (coming soon) will let you interact with your patch directly from your editor: list modules, tweak parameters, connect cables, all without touching the mouse.
+**Alternative interfaces** - any tool that can open a TCP socket can drive Rack, so an editor, a controller script or another program can list modules, tweak parameters and connect cables without touching the mouse.
 
 **LLM interfacing** - a language model can use limen as a tool to explore and build patches. `list_models` gives it the full module catalogue; `list_ports` tells it what each port does; `add_module` and `add_cable` let it act. The JSON protocol is easy for models to generate and parse.
 
@@ -225,12 +225,13 @@ print(json.loads(s.recv(65536)))
 
 ## CLI tool
 
-A ready-made command-line client, **limen-cli**, lives in the separate
-[limen-tools](https://github.com/gosub/limen-tools) repository, in two
-flavors with the same interface: a compiled C client (prebuilt binaries for
-Linux, Windows and macOS on the
-[releases page](https://github.com/gosub/limen-tools/releases)) and a
-dependency-free Python client. It covers the whole protocol - see the
+The clients live in the separate
+[limen-tools](https://github.com/gosub/limen-tools) repository: **limen-cli**,
+a command-line client, and **limen-mcp**, an MCP server that gives a language
+model one tool per protocol command, both written in Go with prebuilt
+binaries for Linux, Windows and macOS on the
+[releases page](https://github.com/gosub/limen-tools/releases); plus a small
+Python library for scripts. See the
 [limen-tools readme](https://github.com/gosub/limen-tools#readme) for the
 full command reference.
 

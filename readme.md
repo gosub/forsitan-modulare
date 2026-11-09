@@ -8,49 +8,49 @@ A collection of VCV Rack modules.
 
 ## Modules
 
-| module | description | doc |
-|--------|-------------|-----|
-| [alea](doc/alea.md) | Add a random module to your rack | [doc/alea.md](doc/alea.md) |
-| [interea](doc/interea.md) | Chord generator from a V/Oct input, with quality, voicing and inversion | [doc/interea.md](doc/interea.md) |
-| [cumuli](doc/cumuli.md) | Accumulator with up/down gates and rates | [doc/cumuli.md](doc/cumuli.md) |
-| [deinde](doc/deinde.md) | Quad cascading addressable attack-hold envelope | [doc/deinde.md](doc/deinde.md) |
-| [pavo](doc/pavo.md) | Polyphonic stereo spreader (Splay UGen) | [doc/pavo.md](doc/pavo.md) |
-| [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack | [doc/limen.md](doc/limen.md) |
-| [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop | [doc/mmcccxcix.md](doc/mmcccxcix.md) |
-| [scando](doc/scando.md) | Scanned-synthesis oscillator (vibrating mass-spring string, scanned into a wavetable) | [doc/scando.md](doc/scando.md) |
-| [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level | [doc/pellicula.md](doc/pellicula.md) |
-| [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and an original hyf set), played from hz + amp | [doc/draen.md](doc/draen.md) |
-| [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos | [doc/rete.md](doc/rete.md) |
-| [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp in a howling loop | [doc/ululo.md](doc/ululo.md) |
-| [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass | [doc/tabes.md](doc/tabes.md) |
-| [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank | [doc/lustro.md](doc/lustro.md) |
-| [bulla](doc/bulla.md) | Inspired by Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter | [doc/bulla.md](doc/bulla.md) |
-| [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats, freeze, glitch and layered dimension (AC noises CONTINUA homage) | [doc/perge.md](doc/perge.md) |
-| [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with degrading tape echo (Audrey II port) | [doc/vorax.md](doc/vorax.md) |
-| [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops (Fieldtone Weaver clone) | [doc/textor.md](doc/textor.md) |
-| [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing, everything synthesized from nothing (Haiku-inspired) | [doc/imber.md](doc/imber.md) |
-| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from 27 selectable engines, in any root and scale (imber's little voice) | [doc/sylla.md](doc/sylla.md) |
-| [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters (Gutter Synthesis port) | [doc/guttur.md](doc/guttur.md) |
-| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124, dirty because its state-variable core is built from CMOS inverters on one unipolar supply | [doc/vespae.md](doc/vespae.md) |
-| [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, with the lossy stages of a real codec | [doc/quadrare.md](doc/quadrare.md) |
-| [vestigia](doc/vestigia.md) | Stereo memory effect: an endless tape loop under three memory modes, with fragments that degrade each time they return | [doc/vestigia.md](doc/vestigia.md) |
-| [antrum](doc/antrum.md) | Feedback delay network reverb: a space that runs from a coffin to the heavens, every parameter voltage-controlled (Erbe-Verb clone) | [doc/antrum.md](doc/antrum.md) |
-| [caligo](doc/caligo.md) | Greyhole: a long modulated echo inside a nested allpass diffuser, so every repeat comes back smeared further than the last, with the feedback loop broken out to jacks (Julian Parker's Greyhole) | [doc/caligo.md](doc/caligo.md) |
-| [raucus](doc/raucus.md) | Big Muff Pi: four transistor stages, feedback diode clipping solved rather than limited, and the passive tone stack's notch where it belongs | [doc/raucus.md](doc/raucus.md) |
-| [tundo](doc/tundo.md) | Parameterized digital drum voice: six additive oscillators, morphing waves, prime-series spread and an infinite folder (Basimilus Iteritas Alter clone) | [doc/tundo.md](doc/tundo.md) |
-| [cartilago](doc/cartilago.md) | Gristleizer: one LFO into a FET attenuator that never quite closes, or into a swept filter; ticks like the hardware and ring-modulates at audio rate | [doc/cartilago.md](doc/cartilago.md) |
-| [scrupea](doc/scrupea.md) | Sixteen oscillators into tuned feedback combs, each modulated by whichever of them you point it at; one knob decides whether it drones or shatters (inspired by Reaktor's Skrewell) | [doc/scrupea.md](doc/scrupea.md) |
-| [viginti](doc/viginti.md) | MS-20 lowpass: the KORG35 Rev.2 circuit solved as the nonlinear system it is, so the resonance itself distorts and collapses with level | [doc/viginti.md](doc/viginti.md) |
-| [gradus](doc/gradus.md) | Eight triggered steps into one CV: each row's knob steps the output up or down, or jumps it to plus or minus that value | [doc/gradus.md](doc/gradus.md) |
-| [materiae](doc/materiae.md) | Percussion from two square waves and the relationship between them: logic operators, bidirectional feedback, a tuneable digital grid and a ringing filter for a body | [doc/materiae.md](doc/materiae.md) |
-| [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound | [doc/aether.md](doc/aether.md) |
-| [vates](doc/vates.md) | Stereo sample player over banks it generates itself: modulate which sample plays and the rhythm falls out, with a reversing envelope, a filter and FX, an LFO and a 16-step pattern generator | [doc/vates.md](doc/vates.md) |
-| [artifex](doc/artifex.md) | Nine stereo effects - delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter - sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator | [doc/artifex.md](doc/artifex.md) |
-| [radix](doc/radix.md) | Chaotic 8-bit source on its own clock: where the modulator comes from, how it bends the accumulator and how the result is read, 150 programs on three stepped knobs with CV, on a label-free panel (in the family of the Radical22) | [doc/radix.md](doc/radix.md) |
-| [olim](doc/olim.md) | Eight-head stereo delay over up to 150 s of memory: TIME places the last head, SPREAD crowds the rest toward now or then, nine lit sliders with a VCA each, feedback from sound on sound to a howl (Time Machine clone, VCA expander built in) | [doc/olim.md](doc/olim.md) |
-| [nodi](doc/nodi.md) | Continuous-time sequencer: eight rising or falling thresholds on a moving voltage X pick one of eight stages, so the lower sliders place steps in time, map a melody onto an LFO or quantize a random voltage; a graphic VCO or waveshaper at audio rate (Discrete Map clone, A / B / C Expander built in) | [doc/nodi.md](doc/nodi.md) |
-| [rubigo](doc/rubigo.md) | Digital percussion voice played by its own random sequencer: two generators decide which steps fire and what each one carries, and one knob locks what you hear into a loop and regenerates it piece by piece (Metal Fetishist clone) | [doc/rubigo.md](doc/rubigo.md) |
-| [spira](doc/spira.md) | Looper of grains: short circles loop off the input while it plays on, and each turn can shrink or grow, speed up or slow down, fade, darken, pluck or swell, so a circle becomes a spiral; inward spirals end in a pitch | [doc/spira.md](doc/spira.md) |
+| module | description |
+|--------|-------------|
+| [alea](doc/alea.md) | Add a random module to your rack |
+| [interea](doc/interea.md) | Chord generator from a V/Oct input, with quality, voicing and inversion |
+| [cumuli](doc/cumuli.md) | Accumulator with up/down gates and rates |
+| [deinde](doc/deinde.md) | Quad cascading addressable attack-hold envelope |
+| [pavo](doc/pavo.md) | Polyphonic stereo spreader (Splay UGen) |
+| [limen](doc/limen.md) | TCP+JSON control interface for VCV Rack |
+| [MMCCCXCIX](doc/mmcccxcix.md) | PT2399 delay chip emulation with feedback send/return loop |
+| [scando](doc/scando.md) | Scanned-synthesis oscillator (vibrating mass-spring string, scanned into a wavetable) |
+| [pellicula](doc/pellicula.md) | Exploded 8-voice drum sampler: a knob + CV per voice for sample, pitch, decay and level |
+| [dræn](doc/draen.md) | Drone synthesizer: two banks of 37 drones (the dronecaster set and an original hyf set), played from hz + amp |
+| [rete](doc/rete.md) | Feedback integrator network: 8 nodes in a random mixing matrix, self-oscillating chaos |
+| [ululo](doc/ululo.md) | Feedback guitar: six comb strings against a saturating amp in a howling loop |
+| [tabes](doc/tabes.md) | Disintegration looper: the tape loop degrades a little more on every pass |
+| [lustro](doc/lustro.md) | Scanned filter: scando's mass-spring string plays the band gains of a 16-band resonant filterbank |
+| [bulla](doc/bulla.md) | Inspired by Rob Hordijk's Blippoo Box: cross-modulating oscillators, runglers and a twin-peak filter |
+| [perge](doc/perge.md) | Stereo dynamic sampler and multi-effect: dynamics-driven repeats, freeze, glitch and layered dimension (AC noises CONTINUA homage) |
+| [vorax](doc/vorax.md) | Feedback drone synthesizer: a Karplus-Strong string self-excited by a feedback loop, with degrading tape echo (Audrey II port) |
+| [textor](doc/textor.md) | One-knob loop weaver: two seconds of sound rewoven into ever-new loops (Fieldtone Weaver clone) |
+| [imber](doc/imber.md) | Generative rain: 8 sample players on a 2D field where position is routing, everything synthesized from nothing (Haiku-inspired) |
+| [sylla](doc/sylla.md) | Random sample generator/player: ever-new procedural samples from 27 selectable engines, in any root and scale (imber's little voice) |
+| [guttur](doc/guttur.md) | Chaotic resonator drone: a Duffing oscillator coupled through two banks of 24 resonant filters (Gutter Synthesis port) |
+| [vespae](doc/vespae.md) | Wasp filter: the EDP Wasp / Doepfer A-124, dirty because its state-variable core is built from CMOS inverters on one unipolar supply |
+| [quadrare](doc/quadrare.md) | Walsh-Hadamard codec: sixteen sliders and thirty-two jacks onto the transform domain itself, with the lossy stages of a real codec |
+| [vestigia](doc/vestigia.md) | Stereo memory effect: an endless tape loop under three memory modes, with fragments that degrade each time they return |
+| [antrum](doc/antrum.md) | Feedback delay network reverb: a space that runs from a coffin to the heavens, every parameter voltage-controlled (Erbe-Verb clone) |
+| [caligo](doc/caligo.md) | Greyhole: a long modulated echo inside a nested allpass diffuser, so every repeat comes back smeared further than the last, with the feedback loop broken out to jacks (Julian Parker's Greyhole) |
+| [raucus](doc/raucus.md) | Big Muff Pi: four transistor stages, feedback diode clipping solved rather than limited, and the passive tone stack's notch where it belongs |
+| [tundo](doc/tundo.md) | Parameterized digital drum voice: six additive oscillators, morphing waves, prime-series spread and an infinite folder (Basimilus Iteritas Alter clone) |
+| [cartilago](doc/cartilago.md) | Gristleizer: one LFO into a FET attenuator that never quite closes, or into a swept filter; ticks like the hardware and ring-modulates at audio rate |
+| [scrupea](doc/scrupea.md) | Sixteen oscillators into tuned feedback combs, each modulated by whichever of them you point it at; one knob decides whether it drones or shatters (inspired by Reaktor's Skrewell) |
+| [viginti](doc/viginti.md) | MS-20 lowpass: the KORG35 Rev.2 circuit solved as the nonlinear system it is, so the resonance itself distorts and collapses with level |
+| [gradus](doc/gradus.md) | Eight triggered steps into one CV: each row's knob steps the output up or down, or jumps it to plus or minus that value |
+| [materiae](doc/materiae.md) | Percussion from two square waves and the relationship between them: logic operators, bidirectional feedback, a tuneable digital grid and a ringing filter for a body |
+| [aether](doc/aether.md) | A faulty transmission line: a synchronous converter turns audio into a pulse train on one clock and a phase-locked loop recovers it on another, so the two clocks disagreeing is the sound |
+| [vates](doc/vates.md) | Stereo sample player over banks it generates itself: modulate which sample plays and the rhythm falls out, with a reversing envelope, a filter and FX, an LFO and a 16-step pattern generator |
+| [artifex](doc/artifex.md) | Nine stereo effects - delay, flanger, freezer, panner, crusher, slicer, pitcher, replayer, shifter - sharing one filtered feedback loop, with a stereo detune, an envelope follower, an LFO and the same 16-step pattern generator |
+| [radix](doc/radix.md) | Chaotic 8-bit source on its own clock: where the modulator comes from, how it bends the accumulator and how the result is read, 150 programs on three stepped knobs with CV, on a label-free panel (in the family of the Radical22) |
+| [olim](doc/olim.md) | Eight-head stereo delay over up to 150 s of memory: TIME places the last head, SPREAD crowds the rest toward now or then, nine lit sliders with a VCA each, feedback from sound on sound to a howl (Time Machine clone, VCA expander built in) |
+| [nodi](doc/nodi.md) | Continuous-time sequencer: eight rising or falling thresholds on a moving voltage X pick one of eight stages, so the lower sliders place steps in time, map a melody onto an LFO or quantize a random voltage; a graphic VCO or waveshaper at audio rate (Discrete Map clone, A / B / C Expander built in) |
+| [rubigo](doc/rubigo.md) | Digital percussion voice played by its own random sequencer: two generators decide which steps fire and what each one carries, and one knob locks what you hear into a loop and regenerates it piece by piece (Metal Fetishist clone) |
+| [spira](doc/spira.md) | Looper of grains: short circles loop off the input while it plays on, and each turn can shrink or grow, speed up or slow down, fade, darken, pluck or swell, so a circle becomes a spiral; inward spirals end in a pitch |
 
 ## Tools
 
@@ -61,7 +61,7 @@ A collection of VCV Rack modules.
 
 ## Controlling Rack externally (limen)
 
-The [limen](doc/limen.md) module runs a small TCP server speaking newline-delimited JSON, so external tools can drive Rack: list/add/remove modules and cables, get/set parameters, and control the window (fullscreen, zoom-to-fit, quit). It is built for **automation and scripting**, **LLM tools** that build patches programmatically, and **alternative interfaces** (such as a planned Emacs mode).
+The [limen](doc/limen.md) module runs a small TCP server speaking newline-delimited JSON, so external tools can drive Rack: list/add/remove modules and cables, get/set parameters, and control the window (fullscreen, zoom-to-fit, quit). It is built for **automation and scripting**, **LLM tools** that build patches programmatically, and **alternative interfaces**.
 
 Quickstart:
 
