@@ -79,8 +79,7 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.17.3/doc/mmcccxcix.md",
       "tags": [
         "Delay",
-        "Effect",
-        "Hardware clone"
+        "Effect"
       ]
     },
     {
@@ -241,8 +240,7 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.17.3/doc/vespae.md",
       "tags": [
         "Filter",
-        "Distortion",
-        "Hardware clone"
+        "Distortion"
       ]
     },
     {
@@ -299,7 +297,6 @@
       "tags": [
         "Effect",
         "Distortion",
-        "Hardware clone",
         "Polyphonic"
       ]
     },
@@ -324,7 +321,6 @@
         "Voltage-controlled amplifier",
         "Ring modulator",
         "Filter",
-        "Hardware clone",
         "Polyphonic"
       ]
     },
@@ -348,7 +344,6 @@
       "manualUrl": "https://github.com/gosub/forsitan-modulare/blob/v2.17.3/doc/viginti.md",
       "tags": [
         "Filter",
-        "Hardware clone",
         "Polyphonic",
         "Distortion"
       ]
@@ -383,7 +378,6 @@
       "tags": [
         "Distortion",
         "Effect",
-        "Hardware clone",
         "Ring modulator"
       ]
     },
@@ -395,8 +389,7 @@
       "tags": [
         "Effect",
         "Delay",
-        "Distortion",
-        "Hardware clone"
+        "Distortion"
       ]
     },
     {
@@ -407,8 +400,7 @@
       "tags": [
         "Sampler",
         "Drum",
-        "Sequencer",
-        "Hardware clone"
+        "Sequencer"
       ]
     },
     {
@@ -431,7 +423,6 @@
       "tags": [
         "Delay",
         "Granular",
-        "Hardware clone",
         "Effect"
       ]
     },
@@ -444,7 +435,6 @@
         "Sequencer",
         "Quantizer",
         "Waveshaper",
-        "Hardware clone",
         "Polyphonic"
       ]
     },
@@ -458,8 +448,7 @@
         "Synth voice",
         "Sequencer",
         "Random",
-        "Digital",
-        "Hardware clone"
+        "Digital"
       ]
     },
     {
