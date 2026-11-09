@@ -172,6 +172,7 @@ struct Tabes : Module {
         configOutput(EOC_OUTPUT, "End of loop trigger (one per heard repeat)");
         configOutput(RAMP_OUTPUT, "Audible head position (0..10V ramp)");
         configOutput(SEND_OUTPUT, "FX send (the loop read)");
+        configBypass(AUDIO_INPUT, AUDIO_OUTPUT);
         configLight(REC_LIGHT, "Recording");
         configLight(DUB_LIGHT, "Overdubbing");
         configLight(EOC_LIGHT, "End of loop");

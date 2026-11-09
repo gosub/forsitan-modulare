@@ -83,6 +83,7 @@ struct MMCCCXCIX : Module {
 
         configOutput(AUDIO_OUTPUT,  "Audio");
         configOutput(FB_SEND_OUTPUT,"Feedback Loop Send");
+        configBypass(AUDIO_INPUT, AUDIO_OUTPUT);
 
         configLight(FB_LOOP_ACTIVE_LIGHT, "FB Loop Active");
     }

@@ -33,6 +33,9 @@ struct Pavo : Module {
 		// output labels
 		configOutput(LEFT_OUTPUT, "Left");
 		configOutput(RIGHT_OUTPUT, "Right");
+		// Bypassed, the poly input goes to both sides unspread.
+		configBypass(POLYIN_INPUT, LEFT_OUTPUT);
+		configBypass(POLYIN_INPUT, RIGHT_OUTPUT);
 	}
 
 	// TODO:

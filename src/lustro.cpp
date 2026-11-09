@@ -92,6 +92,7 @@ struct Lustro : Module {
         configInput(EXCITE_INPUT,    "Excite (hammer hit) trigger");
         configInput(AUDIO_INPUT,     "Audio");
         configOutput(AUDIO_OUTPUT,   "Audio");
+        configBypass(AUDIO_INPUT, AUDIO_OUTPUT);
         configLight(LEVEL_LIGHT,     "Wet level");
 
         hammer.init();

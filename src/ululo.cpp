@@ -114,6 +114,7 @@ struct Ululo : Module {
         configInput(DECAY_CV_INPUT, "String decay CV");
         configInput(TONE_CV_INPUT, "Tone CV");
         configOutput(AUDIO_OUTPUT, "Audio");
+        configBypass(AUDIO_INPUT, AUDIO_OUTPUT);
         configLight(LEVEL_LIGHT, "Output level");
     }
 
