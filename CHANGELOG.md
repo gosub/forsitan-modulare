@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.17.4] - 2026-11-09
+### Added
+  - **limen**: `get_param` and `set_param` take a param's name, as
+    `list_params` shows it, as well as its index
+    ([#15](https://github.com/gosub/forsitan-modulare/issues/15)). A name is
+    matched exactly, then ignoring case; one that several params share is
+    an error listing their indices.
+### Changed
+  - **limen**: `set_param` clamps the value to the param's range and rounds
+    it on a stepped control, as a knob turned by hand would be, and replies
+    with the param after the change instead of `null`.
+  - The `Hardware clone` tag is gone from every module: these are
+    emulations with their own panels, not official clones, and the VCV
+    Library keeps that tag for those.
+### Fixed
+  - **MMCCCXCIX**, **tabes**, **lustro**, **ululo** and **pavo** went silent
+    when bypassed; they now pass their audio through
+    ([#8](https://github.com/gosub/forsitan-modulare/issues/8)).
+  - The limen documentation described clients that no longer exist and an
+    Emacs mode that was never built
+    ([#10](https://github.com/gosub/forsitan-modulare/issues/10)).
+
 ## [2.17.3] - 2026-11-04
 ### Fixed
   - **limen**: `add_cable` to a port its module declares but has no jack
